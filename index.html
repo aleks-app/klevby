@@ -2,186 +2,526 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Klevby — Рыбалка</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klevby — Рыбалка в Беларуси</title>
 
 <style>
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-    margin: 0;
-    font-family: Arial;
-    background: #0b1d16;
-    color: white;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #07130f;
+  color: white;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
 }
 
 /* HEADER */
+
 .header {
-    display: flex;
-    justify-content: space-between;
-    padding: 20px 40px;
-    position: absolute;
-    width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 26px 42px;
+  z-index: 10;
 }
 
 .logo {
-    font-size: 24px;
-    font-weight: bold;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.nav {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .nav a {
-    margin-left: 15px;
-    padding: 10px 18px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.1);
-    text-decoration: none;
-    color: white;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.18);
+  font-weight: 800;
+  backdrop-filter: blur(10px);
+}
+
+.nav a.telegram {
+  background: #27a7e7;
 }
 
 /* HERO */
+
 .hero {
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    padding: 0 40px;
-    background:
-    linear-gradient(90deg, rgba(0,0,0,0.7), rgba(0,0,0,0.3)),
-    url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e');
-    background-size: cover;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 40px;
+  align-items: center;
+  padding: 120px 42px 60px;
+  background:
+    linear-gradient(90deg, rgba(3,12,8,0.94), rgba(3,12,8,0.55), rgba(3,12,8,0.88)),
+    url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=80");
+  background-size: cover;
+  background-position: center;
 }
 
 .hero-left {
-    max-width: 600px;
+  max-width: 720px;
 }
 
 .badge {
-    background: #1c7c54;
-    padding: 8px 15px;
-    border-radius: 20px;
-    display: inline-block;
-    margin-bottom: 20px;
+  display: inline-block;
+  background: rgba(34,197,94,0.22);
+  border: 1px solid rgba(134,239,172,0.4);
+  color: #bbf7d0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 900;
+  margin-bottom: 22px;
 }
 
 h1 {
-    font-size: 56px;
-    margin: 0;
+  margin: 0;
+  font-size: clamp(46px, 7vw, 86px);
+  line-height: 0.95;
+  letter-spacing: -3px;
 }
 
 .desc {
-    margin-top: 15px;
-    color: #ccc;
+  margin-top: 22px;
+  font-size: 21px;
+  line-height: 1.45;
+  color: #e5e7eb;
 }
 
 .buttons {
-    margin-top: 20px;
+  margin-top: 28px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .btn {
-    padding: 12px 20px;
-    border-radius: 10px;
-    text-decoration: none;
-    margin-right: 10px;
+  padding: 16px 24px;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 17px;
+  display: inline-block;
 }
 
 .btn-main {
-    background: #2cc56e;
-    color: black;
+  background: #22c55e;
+  color: #04110a;
 }
 
 .btn-second {
-    background: rgba(255,255,255,0.1);
-    color: white;
+  background: rgba(255,255,255,0.16);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.18);
 }
 
 /* RIGHT CARD */
-.card {
-    margin-left: auto;
-    width: 350px;
-    background: rgba(0,0,0,0.6);
-    border-radius: 20px;
-    overflow: hidden;
+
+.side-card {
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+  backdrop-filter: blur(14px);
 }
 
-.card img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
+.side-card img {
+  width: 100%;
+  height: 270px;
+  object-fit: cover;
 }
 
-.card-content {
-    padding: 15px;
+.side-content {
+  padding: 20px;
+}
+
+.side-title {
+  font-size: 26px;
+  font-weight: 900;
+  margin-bottom: 16px;
 }
 
 .user {
-    background: rgba(255,255,255,0.1);
-    padding: 8px;
-    margin-top: 10px;
-    border-radius: 10px;
+  background: rgba(255,255,255,0.12);
+  padding: 13px 14px;
+  border-radius: 16px;
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-/* STATS */
-.stats {
-    display: flex;
-    gap: 15px;
-    padding: 20px 40px;
+.green-dot {
+  color: #22c55e;
 }
 
-.stat {
-    background: rgba(255,255,255,0.1);
-    padding: 15px;
-    border-radius: 15px;
-    flex: 1;
+/* SECTIONS */
+
+.section {
+  padding: 70px 42px;
+  background: #07130f;
+}
+
+.section.alt {
+  background: #0b1a13;
+}
+
+.section h2 {
+  font-size: 44px;
+  margin: 0 0 14px;
+}
+
+.section p.sub {
+  color: #cbd5e1;
+  font-size: 18px;
+  margin-bottom: 30px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+.card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.card img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.card h3 {
+  margin: 0 0 10px;
+}
+
+.card p {
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+
+.tag {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(34,197,94,0.18);
+  color: #bbf7d0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* AD */
+
+.ad {
+  margin-top: 36px;
+  padding: 34px;
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(250,204,21,0.18), rgba(34,197,94,0.14)),
+    rgba(255,255,255,0.08);
+  border: 1px dashed rgba(250,204,21,0.65);
+}
+
+.ad strong {
+  color: #fde68a;
+}
+
+/* CTA */
+
+.cta {
+  text-align: center;
+  padding: 60px 30px;
+  background:
+    linear-gradient(135deg, rgba(34,197,94,0.24), rgba(39,167,231,0.20)),
+    #07130f;
+}
+
+.cta h2 {
+  font-size: 48px;
+  margin: 0 0 14px;
+}
+
+.cta p {
+  color: #cbd5e1;
+  font-size: 19px;
+}
+
+/* FOOTER */
+
+.footer {
+  padding: 30px;
+  text-align: center;
+  background: #050c09;
+  color: #94a3b8;
+}
+
+.floating {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  background: #27a7e7;
+  padding: 15px 20px;
+  border-radius: 999px;
+  font-weight: 900;
+  z-index: 20;
+  box-shadow: 0 20px 55px rgba(0,0,0,0.38);
+}
+
+/* MOBILE */
+
+@media (max-width: 900px) {
+  .header {
+    position: static;
+    background: #07130f;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    padding-top: 50px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    letter-spacing: -1px;
+  }
+
+  .floating {
+    left: 18px;
+    right: 18px;
+    text-align: center;
+  }
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="header">
-    <div class="logo">🎣 Klevby</div>
-    <div class="nav">
-        <a href="#">Напарники</a>
-        <a href="#">Трофеи</a>
-        <a href="#">Магазинам</a>
-        <a href="#">Telegram</a>
+<a class="floating" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">
+💬 Войти в чат
+</a>
+
+<header class="header">
+  <div class="logo">🎣 Klevby</div>
+
+  <nav class="nav">
+    <a href="#partners">Напарники</a>
+    <a href="#trophies">Трофеи</a>
+    <a href="#shops">Магазинам</a>
+    <a class="telegram" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Telegram</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
+
+    <h1>Найди компанию на рыбалку за пару минут</h1>
+
+    <div class="desc">
+      Едешь один? Новичок и нужен опытный напарник?
+      Хочешь поделиться трофеем или узнать, куда сейчас клюёт?
+      Klevby — портал рыбаков Беларуси.
     </div>
-</div>
 
-<div class="hero">
+    <div class="buttons">
+      <a href="https://t.me/+W6eAuefzcJwwODEy" target="_blank" class="btn btn-main">
+        🚀 Войти в Telegram-чат
+      </a>
 
-    <div class="hero-left">
-        <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
+      <a href="#partners" class="btn btn-second">
+        Смотреть объявления
+      </a>
+    </div>
+  </div>
 
-        <h1>Найди компанию<br>на рыбалку за пару минут</h1>
+  <div class="side-card">
+    <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80">
 
-        <div class="desc">
-            Едешь один? Новичок? Или ищешь компанию?  
-            Здесь находят напарников, делятся уловом и опытом.
+    <div class="side-content">
+      <div class="side-title">Озеро, снасти, дорога — осталось найти компанию</div>
+
+      <div class="user">
+        <span><span class="green-dot">●</span> Андрей, Минск</span>
+        <b>едет завтра</b>
+      </div>
+
+      <div class="user">
+        <span><span class="green-dot">●</span> Сергей, Гомель</span>
+        <b>ищет лодку</b>
+      </div>
+
+      <div class="user">
+        <span><span class="green-dot">●</span> Игорь, Брест</span>
+        <b>карп на сутки</b>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="partners">
+  <h2>Сегодня ищут напарника</h2>
+  <p class="sub">
+    Будущая интерактивная доска объявлений: кто куда едет, когда, есть ли машина, лодка и опыт.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>Андрей — Минск</h3>
+        <p>Еду в субботу на Минское море. Машина есть, место знаю. Ищу нормального напарника.</p>
+        <div class="tags">
+          <span class="tag">🚗 есть машина</span>
+          <span class="tag">🎣 спиннинг</span>
+          <span class="tag">📅 суббота</span>
         </div>
-
-        <div class="buttons">
-            <a href="#" class="btn btn-main">🚀 Войти в чат</a>
-            <a href="#" class="btn btn-second">Объявления</a>
-        </div>
+        <a href="https://t.me/+W6eAuefzcJwwODEy" target="_blank" class="btn btn-main">Ответить в чате</a>
+      </div>
     </div>
 
     <div class="card">
-        <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb">
-
-        <div class="card-content">
-            <div>Озеро, снасти — осталось найти компанию</div>
-
-            <div class="user">🟢 Андрей, Минск — едет завтра</div>
-            <div class="user">🟢 Сергей, Гомель — ищет лодку</div>
-            <div class="user">🟢 Игорь, Брест — карп</div>
+      <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>Сергей — Гомель</h3>
+        <p>Новичок. Хочу вечером на реку, ищу опытного человека, чтобы подсказал по снастям.</p>
+        <div class="tags">
+          <span class="tag">🎣 новичок</span>
+          <span class="tag">🌙 вечер</span>
+          <span class="tag">💬 нужен совет</span>
         </div>
+        <a href="https://t.me/+W6eAuefzcJwwODEy" target="_blank" class="btn btn-main">Написать</a>
+      </div>
     </div>
 
-</div>
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>Игорь — Брест</h3>
+        <p>Планирую выезд на сутки. Палатка есть. Нужна спокойная компания без суеты.</p>
+        <div class="tags">
+          <span class="tag">⛺ палатка</span>
+          <span class="tag">🐟 карп</span>
+          <span class="tag">🕐 сутки</span>
+        </div>
+        <a href="https://t.me/+W6eAuefzcJwwODEy" target="_blank" class="btn btn-main">Обсудить</a>
+      </div>
+    </div>
+  </div>
+</section>
 
-<div class="stats">
-    <div class="stat">127+ рыбаков</div>
-    <div class="stat">18 выездов</div>
-    <div class="stat">6 городов</div>
-</div>
+<section class="section alt" id="trophies">
+  <h2>Трофеи и отчёты</h2>
+  <p class="sub">
+    Люди будут заходить не только искать компанию, но и делиться уловом, местами и опытом.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1504532724559-22878efd533a?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>Щука 7 кг</h3>
+        <p>Вилейка. Утро, воблер, берег. Отличный отчёт для новичков.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>Карп на ночь</h3>
+        <p>Отчёт по снастям, прикормке и месту. Формат будущей ленты трофеев.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <img src="https://images.unsplash.com/photo-1517232115160-ff93364542dd?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>Первый выезд новичка</h3>
+        <p>Нашёл напарника, получил советы и закрыл первый рыбацкий выезд.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="shops">
+  <h2>Магазинам и брендам</h2>
+  <p class="sub">
+    Когда здесь будет активная аудитория рыбаков, магазины смогут покупать рекламные места.
+  </p>
+
+  <div class="grid">
+    <div class="ad">
+      <strong>Рекламное место</strong>
+      <h3>Магазин недели</h3>
+      <p>Здесь позже можно разместить магазин снастей.</p>
+    </div>
+
+    <div class="ad">
+      <strong>Монетизация</strong>
+      <h3>Поднятие объявлений</h3>
+      <p>Рыбак платит, чтобы его объявление было выше в ленте.</p>
+    </div>
+
+    <div class="ad">
+      <strong>Партнёрство</strong>
+      <h3>Промо товаров</h3>
+      <p>Снасти, лодки, базы отдыха, экипировка и услуги.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Не едь один — найди своих</h2>
+  <p>Вступай в чат, знакомься с рыбаками, ищи компанию и делись трофеями.</p>
+  <br>
+  <a href="https://t.me/+W6eAuefzcJwwODEy" target="_blank" class="btn btn-main">
+    🎣 Войти в Telegram-чат
+  </a>
+</section>
+
+<footer class="footer">
+  Klevby © 2026 — рыбалка, компания, трофеи и выезды по Беларуси
+</footer>
 
 </body>
 </html>
