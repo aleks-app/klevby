@@ -2,117 +2,132 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Klevby — Рыбалка в Беларуси</title>
+<title>Klevby — Рыбалка</title>
 
 <style>
 body {
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#0b1d16;
-  color:white;
+    margin: 0;
+    font-family: Arial;
+    background: #0b1d16;
+    color: white;
 }
 
 /* HEADER */
 .header {
-  display:flex;
-  justify-content:space-between;
-  padding:20px 40px;
-  position:absolute;
-  width:100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 40px;
+    position: absolute;
+    width: 100%;
 }
 
 .logo {
-  font-size:24px;
-  font-weight:bold;
+    font-size: 24px;
+    font-weight: bold;
 }
 
 .nav a {
-  margin-left:20px;
-  text-decoration:none;
-  color:white;
+    margin-left: 15px;
+    padding: 10px 18px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.1);
+    text-decoration: none;
+    color: white;
 }
 
 /* HERO */
 .hero {
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  text-align:center;
-  background:
-    linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)),
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    background:
+    linear-gradient(90deg, rgba(0,0,0,0.7), rgba(0,0,0,0.3)),
     url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e');
-  background-size:cover;
+    background-size: cover;
 }
 
-.hero h1 {
-  font-size:48px;
-  max-width:700px;
+.hero-left {
+    max-width: 600px;
 }
 
-.hero p {
-  margin-top:10px;
-  color:#ccc;
+.badge {
+    background: #1c7c54;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 56px;
+    margin: 0;
+}
+
+.desc {
+    margin-top: 15px;
+    color: #ccc;
+}
+
+.buttons {
+    margin-top: 20px;
 }
 
 .btn {
-  margin-top:20px;
-  padding:15px 30px;
-  background:#2cc56e;
-  color:black;
-  border:none;
-  border-radius:8px;
-  font-weight:bold;
-  cursor:pointer;
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    margin-right: 10px;
 }
 
-/* POSTS */
-.section {
-  padding:60px 40px;
+.btn-main {
+    background: #2cc56e;
+    color: black;
 }
 
-.grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
-  gap:20px;
+.btn-second {
+    background: rgba(255,255,255,0.1);
+    color: white;
 }
 
+/* RIGHT CARD */
 .card {
-  background:#132a21;
-  border-radius:12px;
-  overflow:hidden;
+    margin-left: auto;
+    width: 350px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 20px;
+    overflow: hidden;
 }
 
 .card img {
-  width:100%;
-  height:200px;
-  object-fit:cover;
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
 }
 
 .card-content {
-  padding:15px;
+    padding: 15px;
 }
 
-.card-title {
-  font-weight:bold;
+.user {
+    background: rgba(255,255,255,0.1);
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 10px;
 }
 
-/* AD BLOCK */
-.ad {
-  background:#1f3d2f;
-  padding:30px;
-  text-align:center;
-  border-radius:12px;
-  margin:40px 0;
+/* STATS */
+.stats {
+    display: flex;
+    gap: 15px;
+    padding: 20px 40px;
 }
 
-/* FOOTER */
-.footer {
-  text-align:center;
-  padding:30px;
-  color:#777;
+.stat {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 15px;
+    flex: 1;
 }
 </style>
 
@@ -121,83 +136,51 @@ body {
 <body>
 
 <div class="header">
-  <div class="logo">🎣 Klevby</div>
-  <div class="nav">
-    <a href="#">Объявления</a>
-    <a href="#">Отчёты</a>
-    <a href="#">Форум</a>
-  </div>
+    <div class="logo">🎣 Klevby</div>
+    <div class="nav">
+        <a href="#">Напарники</a>
+        <a href="#">Трофеи</a>
+        <a href="#">Магазинам</a>
+        <a href="#">Telegram</a>
+    </div>
 </div>
 
 <div class="hero">
-  <h1>Найди напарника на рыбалку в Беларуси</h1>
-  <p>Объявления • Отчёты • Живое комьюнити</p>
-  <button class="btn">Создать объявление</button>
-</div>
 
-<div class="section">
+    <div class="hero-left">
+        <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
 
-  <h2>🔥 Свежие объявления</h2>
+        <h1>Найди компанию<br>на рыбалку за пару минут</h1>
 
-  <div class="grid">
+        <div class="desc">
+            Едешь один? Новичок? Или ищешь компанию?  
+            Здесь находят напарников, делятся уловом и опытом.
+        </div>
 
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee">
-      <div class="card-content">
-        <div class="card-title">Минск • Еду завтра</div>
-        <div>Ищу напарника, есть лодка</div>
-      </div>
+        <div class="buttons">
+            <a href="#" class="btn btn-main">🚀 Войти в чат</a>
+            <a href="#" class="btn btn-second">Объявления</a>
+        </div>
     </div>
 
     <div class="card">
-      <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e">
-      <div class="card-content">
-        <div class="card-title">Гомель • Карп</div>
-        <div>Нужен опытный рыбак</div>
-      </div>
+        <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb">
+
+        <div class="card-content">
+            <div>Озеро, снасти — осталось найти компанию</div>
+
+            <div class="user">🟢 Андрей, Минск — едет завтра</div>
+            <div class="user">🟢 Сергей, Гомель — ищет лодку</div>
+            <div class="user">🟢 Игорь, Брест — карп</div>
+        </div>
     </div>
-
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470">
-      <div class="card-content">
-        <div class="card-title">Брест • Спиннинг</div>
-        <div>Новичок, ищу компанию</div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="ad">
-    🔥 Здесь будет реклама рыболовного магазина  
-    (ты потом будешь продавать это место)
-  </div>
-
-  <h2>🏆 Отчёты с рыбалки</h2>
-
-  <div class="grid">
-
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba">
-      <div class="card-content">
-        <div class="card-title">Щука 5кг</div>
-        <div>Озеро под Минском</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <img src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429">
-      <div class="card-content">
-        <div class="card-title">Судак</div>
-        <div>Ночной выезд</div>
-      </div>
-    </div>
-
-  </div>
 
 </div>
 
-<div class="footer">
-  Klevby © 2026 — Рыбалка в Беларуси
+<div class="stats">
+    <div class="stat">127+ рыбаков</div>
+    <div class="stat">18 выездов</div>
+    <div class="stat">6 городов</div>
 </div>
 
 </body>
