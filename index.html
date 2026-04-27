@@ -8,6 +8,8 @@
 <style>
 * { box-sizing: border-box; }
 
+html { scroll-behavior: smooth; }
+
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -23,6 +25,9 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
   align-items: center;
   background: #07130f;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 .logo {
@@ -39,26 +44,37 @@ a { color: inherit; text-decoration: none; }
 }
 
 .hero {
-  min-height: 70vh;
-  padding: 80px 40px;
+  min-height: 72vh;
+  padding: 90px 40px;
   background:
-    linear-gradient(90deg, rgba(3,12,8,.95), rgba(3,12,8,.55)),
+    linear-gradient(90deg, rgba(3,12,8,.96), rgba(3,12,8,.58)),
     url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=80");
   background-size: cover;
   background-position: center;
 }
 
+.badge {
+  display: inline-block;
+  background: rgba(34,197,94,.22);
+  color: #bbf7d0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 900;
+  margin-bottom: 22px;
+}
+
 .hero h1 {
   max-width: 760px;
-  font-size: clamp(44px, 7vw, 82px);
+  font-size: clamp(46px, 7vw, 86px);
   line-height: .95;
-  margin: 0 0 20px;
+  margin: 0 0 22px;
 }
 
 .hero p {
-  max-width: 650px;
+  max-width: 680px;
   font-size: 21px;
   color: #d1d5db;
+  line-height: 1.45;
 }
 
 .btn {
@@ -110,9 +126,7 @@ input, textarea {
   font-size: 16px;
 }
 
-textarea {
-  min-height: 100px;
-}
+textarea { min-height: 105px; }
 
 .grid {
   display: grid;
@@ -133,17 +147,13 @@ textarea {
   object-fit: cover;
 }
 
-.card-content {
-  padding: 20px;
-}
+.card-content { padding: 20px; }
 
-.card h3 {
-  margin: 0 0 10px;
-}
+.card h3 { margin: 0 0 10px; }
 
 .card p {
   color: #d1d5db;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .tag {
@@ -171,7 +181,7 @@ textarea {
   font-weight: 700;
 }
 
-.success {
+#success {
   color: #86efac;
   margin-top: 12px;
   font-weight: 700;
@@ -193,7 +203,7 @@ textarea {
   padding: 14px 20px;
   border-radius: 999px;
   font-weight: 900;
-  z-index: 50;
+  z-index: 100;
 }
 
 @media (max-width: 900px) {
@@ -203,13 +213,9 @@ textarea {
     gap: 12px;
   }
 
-  .grid {
-    grid-template-columns: 1fr;
-  }
+  .grid { grid-template-columns: 1fr; }
 
-  .section, .hero {
-    padding: 40px 20px;
-  }
+  .section, .hero { padding: 40px 20px; }
 
   .floating {
     left: 18px;
@@ -236,18 +242,22 @@ textarea {
 </header>
 
 <section class="hero">
-  <h1>Найди компанию на рыбалку в Беларуси</h1>
+  <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
+
+  <h1>Найди компанию на рыбалку за пару минут</h1>
+
   <p>
     Едешь один? Новичок и нужен опытный напарник?
     Добавь объявление, найди компанию и делись выездами.
   </p>
+
   <a class="btn" href="#postsSection">Смотреть объявления</a>
   <a class="btn gray" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Войти в Telegram</a>
 </section>
 
 <section class="section" id="postsSection">
   <h2>Сегодня ищут напарника</h2>
-  <p class="sub">Объявления сохраняются в базе Supabase и не пропадают после обновления страницы.</p>
+  <p class="sub">Объявления сохраняются в базе и не пропадают после обновления страницы.</p>
 
   <div class="form-box">
     <h3>➕ Создать объявление</h3>
@@ -257,6 +267,7 @@ textarea {
     <textarea id="textInput" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
 
     <button class="btn" onclick="addPost()">Создать объявление</button>
+
     <div id="error"></div>
     <div id="success"></div>
   </div>
@@ -266,7 +277,7 @@ textarea {
   <div class="ad" id="shops">
     <strong>Рекламное место</strong>
     <h3>Здесь может быть магазин снастей</h3>
-    <p>Позже это место можно продавать рыболовным магазинам: баннер, акция, промокод, ссылка.</p>
+    <p>Позже это место можно продавать магазинам: баннер, акция, промокод, ссылка.</p>
   </div>
 </section>
 
@@ -317,7 +328,6 @@ async function loadPosts() {
 
   if (error) {
     showError('Ошибка загрузки: ' + error.message);
-    console.error(error);
     return;
   }
 
@@ -368,7 +378,6 @@ async function addPost() {
 
   if (error) {
     showError('Ошибка добавления: ' + error.message);
-    console.error(error);
     return;
   }
 
