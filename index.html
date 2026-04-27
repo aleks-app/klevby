@@ -109,6 +109,11 @@ a { text-decoration: none; color: inherit; }
   color: white;
 }
 
+.btn.edit {
+  background: #facc15;
+  color: #111827;
+}
+
 .section { padding: 70px 42px; }
 
 .section h2 {
@@ -250,6 +255,17 @@ textarea { min-height: 105px; }
   margin-bottom: 20px;
 }
 
+.edit-panel {
+  display: none;
+  background: rgba(250,204,21,.12);
+  border: 1px solid rgba(250,204,21,.55);
+  border-radius: 22px;
+  padding: 22px;
+  margin-bottom: 26px;
+}
+
+.edit-panel.active { display: block; }
+
 @media (max-width: 900px) {
   .header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .grid, .filters { grid-template-columns: 1fr; }
@@ -299,9 +315,20 @@ textarea { min-height: 105px; }
   <div id="modePanel" class="mode-panel">Сейчас показаны: все объявления</div>
 
   <div id="adminPanel" class="admin-panel">
-    🔐 Админ-режим включён. Можно удалять любые объявления.
+    🔐 Админ-режим включён. Можно удалять и редактировать любые объявления.
     <br>
     <button class="btn delete" onclick="adminLogout()">Выйти из админ-режима</button>
+  </div>
+
+  <div id="editPanel" class="edit-panel">
+    <h3>✏️ Редактировать объявление</h3>
+    <input id="editNameInput" placeholder="Имя">
+    <input id="editCityInput" placeholder="Город">
+    <textarea id="editTextInput" placeholder="Описание"></textarea>
+    <input id="editTelegramInput" placeholder="Telegram username без @">
+
+    <button class="btn" onclick="saveEdit()">Сохранить изменения</button>
+    <button class="btn gray" onclick="cancelEdit()">Отмена</button>
   </div>
 
   <div class="form-box">
@@ -360,6 +387,7 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 let allPosts = [];
 let viewMode = 'all';
+let editingPostId = null;
 let isAdmin = localStorage.getItem('klevby_admin') === 'true';
 
 function getOwnerId() {
@@ -382,7 +410,7 @@ function updateAdminPanel() {
 function updateModePanel() {
   const panel = document.getElementById('modePanel');
   if (viewMode === 'mine') {
-    panel.innerText = 'Сейчас показаны: мои объявления. У своих объявлений доступно удаление.';
+    panel.innerText = 'Сейчас показаны: мои объявления. Свои объявления можно удалять и редактировать.';
   } else {
     panel.innerText = 'Сейчас показаны: все объявления.';
   }
@@ -489,6 +517,10 @@ function clearFilters() {
   applyFilters();
 }
 
+function canManagePost(post) {
+  return isAdmin || String(post.owner_id || '') === OWNER_ID;
+}
+
 function renderPosts(posts) {
   const grid = document.getElementById('postsGrid');
   grid.innerHTML = '';
@@ -500,13 +532,17 @@ function renderPosts(posts) {
 
   posts.forEach(post => {
     const telegram = cleanTelegram(post.telegram);
-    const canDelete = isAdmin || String(post.owner_id || '') === OWNER_ID;
+    const canManage = canManagePost(post);
 
     const tgButton = telegram
       ? `<a class="btn" href="https://t.me/${escapeHtml(telegram)}" target="_blank">Написать автору</a>`
       : `<a class="btn" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Написать в общий чат</a>`;
 
-    const deleteButton = canDelete
+    const editButton = canManage
+      ? `<button class="btn edit" onclick="startEdit(${post.id})">Редактировать</button>`
+      : '';
+
+    const deleteButton = canManage
       ? `<button class="btn delete" onclick="deletePost(${post.id})">Удалить</button>`
       : '';
 
@@ -528,6 +564,7 @@ function renderPosts(posts) {
         ${ownerTag}
         <br>
         ${tgButton}
+        ${editButton}
         ${deleteButton}
       </div>
     `;
@@ -568,9 +605,68 @@ async function addPost() {
   await loadPosts();
 }
 
+function startEdit(id) {
+  const post = allPosts.find(p => p.id === id);
+
+  if (!post || !canManagePost(post)) {
+    alert('Можно редактировать только свои объявления.');
+    return;
+  }
+
+  editingPostId = id;
+
+  document.getElementById('editNameInput').value = post.name || '';
+  document.getElementById('editCityInput').value = post.city || '';
+  document.getElementById('editTextInput').value = post.text || '';
+  document.getElementById('editTelegramInput').value = post.telegram || '';
+
+  document.getElementById('editPanel').classList.add('active');
+  document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingPostId = null;
+  document.getElementById('editPanel').classList.remove('active');
+}
+
+async function saveEdit() {
+  if (!editingPostId) return;
+
+  const post = allPosts.find(p => p.id === editingPostId);
+
+  if (!post || !canManagePost(post)) {
+    alert('Можно редактировать только свои объявления.');
+    return;
+  }
+
+  const name = document.getElementById('editNameInput').value.trim();
+  const city = document.getElementById('editCityInput').value.trim();
+  const text = document.getElementById('editTextInput').value.trim();
+  const telegram = cleanTelegram(document.getElementById('editTelegramInput').value);
+
+  if (!name || !city || !text) {
+    alert('Заполни имя, город и описание.');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('posts')
+    .update({ name, city, text, telegram })
+    .eq('id', editingPostId);
+
+  if (error) {
+    alert('Ошибка редактирования: ' + error.message);
+    return;
+  }
+
+  cancelEdit();
+  await loadPosts();
+  alert('Объявление обновлено.');
+}
+
 async function deletePost(id) {
   const post = allPosts.find(p => p.id === id);
-  const canDelete = isAdmin || (post && String(post.owner_id || '') === OWNER_ID);
+  const canDelete = post && canManagePost(post);
 
   if (!canDelete) {
     alert('Можно удалять только свои объявления.');
