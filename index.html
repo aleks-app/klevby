@@ -3,549 +3,113 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Klevby — Рыбалка в Беларуси</title>
+<title>Klevby — Рыбалка</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: Arial;
   background: #07130f;
   color: white;
 }
 
-a { text-decoration: none; color: inherit; }
-
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  padding: 22px 40px;
-  background: rgba(7,19,15,.96);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.container {
+  padding: 20px;
+  max-width: 900px;
+  margin: auto;
 }
 
-.logo { font-size: 30px; font-weight: 900; }
-
-.nav { display: flex; gap: 12px; flex-wrap: wrap; }
-
-.nav a, .admin-btn {
-  padding: 12px 20px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.14);
-  font-weight: 800;
-  border: none;
-  color: white;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.telegram { background: #27a7e7 !important; }
-
-.hero {
-  min-height: 76vh;
-  padding: 90px 42px;
-  background:
-    linear-gradient(90deg, rgba(3,12,8,.96), rgba(3,12,8,.55)),
-    url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=80");
-  background-size: cover;
-  background-position: center;
-}
-
-.badge {
-  display: inline-block;
-  background: rgba(34,197,94,.22);
-  border: 1px solid rgba(134,239,172,.35);
-  color: #bbf7d0;
-  padding: 10px 18px;
-  border-radius: 999px;
-  font-weight: 900;
-  margin-bottom: 22px;
-}
-
-.hero h1 {
-  max-width: 820px;
-  font-size: clamp(46px, 7vw, 86px);
-  line-height: .95;
-  margin: 0 0 22px;
-}
-
-.hero p {
-  max-width: 720px;
-  font-size: 21px;
-  line-height: 1.45;
-  color: #e5e7eb;
-}
-
-.btn {
-  display: inline-block;
-  margin-top: 14px;
-  margin-right: 10px;
-  padding: 15px 24px;
-  border-radius: 15px;
-  border: none;
-  background: #22c55e;
-  color: #04110a;
-  font-weight: 900;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.btn.gray {
-  background: rgba(255,255,255,.16);
-  color: white;
-}
-
-.btn.delete {
-  background: #ef4444;
-  color: white;
-}
-
-.section { padding: 70px 42px; }
-
-.section h2 {
-  font-size: 44px;
-  margin: 0 0 12px;
-}
-
-.sub {
-  color: #cbd5e1;
-  margin-bottom: 30px;
-  font-size: 18px;
-}
-
-.form-box {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 26px;
-  padding: 26px;
-  margin-bottom: 36px;
-}
-
-input, textarea, select {
+input, textarea {
   width: 100%;
-  margin: 8px 0;
-  padding: 15px;
-  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
   border: none;
-  font-size: 16px;
 }
 
-textarea { min-height: 105px; }
-
-.filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 12px;
-  margin-bottom: 28px;
-}
-
-.check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,.08);
-  border-radius: 14px;
-  padding: 0 14px;
-}
-
-.check input { width: auto; }
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+button {
+  background: #22c55e;
+  color: black;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
 }
 
 .card {
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 24px;
-  overflow: hidden;
+  background: #0f1f1a;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 15px;
 }
 
-.card img {
-  width: 100%;
-  height: 210px;
-  object-fit: cover;
-}
-
-.card-content { padding: 22px; }
-
-.card h3 {
-  margin: 0 0 12px;
-  font-size: 24px;
-}
-
-.card p {
-  color: #d1d5db;
-  line-height: 1.45;
-}
-
-.tag {
-  display: inline-block;
-  margin: 5px 5px 12px 0;
-  padding: 8px 11px;
-  border-radius: 999px;
-  background: rgba(34,197,94,.18);
-  color: #bbf7d0;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.ad {
-  margin-top: 38px;
-  padding: 32px;
-  border-radius: 26px;
-  background: rgba(250,204,21,.12);
-  border: 1px dashed rgba(250,204,21,.65);
-}
-
-#error { color: #ff7b7b; margin-top: 12px; font-weight: 800; }
-#success { color: #86efac; margin-top: 12px; font-weight: 800; }
-
-.footer {
-  padding: 32px;
-  text-align: center;
-  background: #050c09;
-  color: #94a3b8;
-}
-
-.floating {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  background: #27a7e7;
-  color: white;
-  padding: 15px 22px;
-  border-radius: 999px;
-  font-weight: 900;
-  z-index: 100;
-}
-
-.admin-panel {
-  display: none;
-  background: rgba(239,68,68,.15);
-  border: 1px solid rgba(239,68,68,.45);
-  border-radius: 18px;
-  padding: 16px;
-  margin-bottom: 22px;
-}
-
-.admin-panel.active {
-  display: block;
-}
-
-@media (max-width: 900px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .grid, .filters {
-    grid-template-columns: 1fr;
-  }
-
-  .hero, .section {
-    padding: 42px 20px;
-  }
-
-  .floating {
-    left: 18px;
-    right: 18px;
-    text-align: center;
-  }
+a {
+  color: #22c55e;
 }
 </style>
 </head>
 
 <body>
 
-<a class="floating" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">
-💬 Войти в чат
-</a>
+<div class="container">
 
-<header class="header">
-  <div class="logo">🎣 Klevby</div>
+<h1>🎣 Klevby</h1>
 
-  <nav class="nav">
-    <a href="#postsSection">Напарники</a>
-    <a href="#shops">Магазинам</a>
-    <a class="telegram" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Telegram</a>
-    <button class="admin-btn" onclick="adminLogin()">Админ</button>
-  </nav>
-</header>
+<input id="name" placeholder="Имя">
+<input id="city" placeholder="Город">
+<textarea id="text" placeholder="Описание"></textarea>
+<input id="telegram" placeholder="Telegram username (без @)">
 
-<section class="hero">
-  <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
+<button onclick="addPost()">Создать объявление</button>
 
-  <h1>Найди компанию на рыбалку за пару минут</h1>
+<div id="posts"></div>
 
-  <p>
-    Едешь один? Новичок и нужен опытный напарник?
-    Добавь объявление, найди компанию и делись выездами.
-  </p>
-
-  <a class="btn" href="#postsSection">Смотреть объявления</a>
-  <a class="btn gray" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Войти в Telegram</a>
-</section>
-
-<section class="section" id="postsSection">
-  <h2>Сегодня ищут напарника</h2>
-  <p class="sub">Объявления сохраняются в базе и не пропадают после обновления страницы.</p>
-
-  <div id="adminPanel" class="admin-panel">
-    🔐 Админ-режим включён. Теперь у карточек появится кнопка удаления.
-    <br>
-    <button class="btn delete" onclick="adminLogout()">Выйти из админ-режима</button>
-  </div>
-
-  <div class="form-box">
-    <h3>➕ Создать объявление</h3>
-
-    <input id="nameInput" placeholder="Имя">
-    <input id="cityInput" placeholder="Город">
-    <textarea id="textInput" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
-    <input id="telegramInput" placeholder="Telegram username без @">
-
-    <button class="btn" onclick="addPost()">Создать объявление</button>
-
-    <div id="error"></div>
-    <div id="success"></div>
-  </div>
-
-  <div class="filters">
-    <input id="searchInput" oninput="applyFilters()" placeholder="Поиск: Минск, лодка, карп...">
-    <input id="cityFilter" oninput="applyFilters()" placeholder="Фильтр по городу">
-    <label class="check">
-      <input id="telegramOnly" type="checkbox" onchange="applyFilters()">
-      Только с Telegram
-    </label>
-  </div>
-
-  <div class="grid" id="postsGrid"></div>
-
-  <div class="ad" id="shops">
-    <strong>Рекламное место</strong>
-    <h3>Здесь может быть магазин снастей</h3>
-    <p>Позже это место можно продавать магазинам: баннер, акция, промокод, ссылка.</p>
-  </div>
-</section>
-
-<section class="section">
-  <h2>Магазинам и брендам</h2>
-  <p class="sub">
-    Когда появится активная аудитория рыбаков, магазины смогут покупать рекламные места и промо-посты.
-  </p>
-</section>
-
-<footer class="footer">
-  Klevby © 2026 — рыбалка, компания, трофеи и выезды по Беларуси
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</div>
 
 <script>
-const ADMIN_PASSWORD = 'a2112a2112A';
-
-const supabaseUrl = 'https://oecdshvozssadztcokog.supabase.co';
-const supabaseKey = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS';
-
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-let allPosts = [];
-let isAdmin = localStorage.getItem('klevby_admin') === 'true';
-
-function updateAdminPanel() {
-  const panel = document.getElementById('adminPanel');
-  if (isAdmin) {
-    panel.classList.add('active');
-  } else {
-    panel.classList.remove('active');
-  }
-}
-
-function adminLogin() {
-  const pass = prompt('Введите пароль администратора:');
-
-  if (pass === ADMIN_PASSWORD) {
-    isAdmin = true;
-    localStorage.setItem('klevby_admin', 'true');
-    updateAdminPanel();
-    renderPosts(allPosts);
-    alert('Админ-режим включён');
-  } else if (pass !== null) {
-    alert('Неверный пароль');
-  }
-}
-
-function adminLogout() {
-  isAdmin = false;
-  localStorage.removeItem('klevby_admin');
-  updateAdminPanel();
-  renderPosts(allPosts);
-}
-
-function showError(message) {
-  document.getElementById('error').innerText = message || '';
-}
-
-function showSuccess(message) {
-  document.getElementById('success').innerText = message || '';
-}
-
-function escapeHtml(text) {
-  return String(text || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-function cleanTelegram(value) {
-  return String(value || '').replace('@', '').trim();
-}
+const supabase = window.supabase.createClient(
+  "https://oecdshvozssadztcokog.supabase.co",
+  "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS"
+)
 
 async function loadPosts() {
-  showError('');
-  showSuccess('');
+  const { data } = await supabase.from('posts').select('*').order('id', { ascending: false })
 
-  const { data, error } = await supabaseClient
-    .from('posts')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const container = document.getElementById('posts')
+  container.innerHTML = ''
 
-  if (error) {
-    showError('Ошибка загрузки: ' + error.message);
-    return;
-  }
+  data.forEach(post => {
+    const div = document.createElement('div')
+    div.className = 'card'
 
-  allPosts = data || [];
-  applyFilters();
-}
+    div.innerHTML = `
+      <b>${post.name} — ${post.city}</b>
+      <p>${post.text}</p>
+      <a href="https://t.me/${post.telegram}" target="_blank">
+        👉 Написать в Telegram
+      </a>
+    `
 
-function applyFilters() {
-  const search = document.getElementById('searchInput').value.toLowerCase().trim();
-  const city = document.getElementById('cityFilter').value.toLowerCase().trim();
-  const telegramOnly = document.getElementById('telegramOnly').checked;
-
-  let filtered = allPosts.filter(post => {
-    const text = `${post.name || ''} ${post.city || ''} ${post.text || ''}`.toLowerCase();
-    const cityValue = String(post.city || '').toLowerCase();
-    const telegram = cleanTelegram(post.telegram);
-
-    if (search && !text.includes(search)) return false;
-    if (city && !cityValue.includes(city)) return false;
-    if (telegramOnly && !telegram) return false;
-
-    return true;
-  });
-
-  renderPosts(filtered);
-}
-
-function renderPosts(posts) {
-  const grid = document.getElementById('postsGrid');
-  grid.innerHTML = '';
-
-  if (!posts || posts.length === 0) {
-    grid.innerHTML = '<p>Объявлений пока нет или ничего не найдено.</p>';
-    return;
-  }
-
-  posts.forEach(post => {
-    const telegram = cleanTelegram(post.telegram);
-    const tgButton = telegram
-      ? `<a class="btn" href="https://t.me/${escapeHtml(telegram)}" target="_blank">Написать автору</a>`
-      : `<a class="btn" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Написать в общий чат</a>`;
-
-    const deleteButton = isAdmin
-      ? `<button class="btn delete" onclick="deletePost(${post.id})">Удалить</button>`
-      : '';
-
-    const card = document.createElement('div');
-    card.className = 'card';
-
-    card.innerHTML = `
-      <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80">
-      <div class="card-content">
-        <h3>${escapeHtml(post.name)} — ${escapeHtml(post.city)}</h3>
-        <p>${escapeHtml(post.text)}</p>
-        <span class="tag">🎣 рыбалка</span>
-        <span class="tag">🟢 объявление</span>
-        ${telegram ? `<span class="tag">💬 Telegram</span>` : ''}
-        <br>
-        ${tgButton}
-        ${deleteButton}
-      </div>
-    `;
-
-    grid.appendChild(card);
-  });
+    container.appendChild(div)
+  })
 }
 
 async function addPost() {
-  showError('');
-  showSuccess('');
+  const name = document.getElementById('name').value
+  const city = document.getElementById('city').value
+  const text = document.getElementById('text').value
+  const telegram = document.getElementById('telegram').value
 
-  const name = document.getElementById('nameInput').value.trim();
-  const city = document.getElementById('cityInput').value.trim();
-  const text = document.getElementById('textInput').value.trim();
-  const telegram = cleanTelegram(document.getElementById('telegramInput').value);
+  await supabase.from('posts').insert([
+    { name, city, text, telegram }
+  ])
 
-  if (!name || !city || !text) {
-    showError('Заполни имя, город и описание.');
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from('posts')
-    .insert([{ name, city, text, telegram }]);
-
-  if (error) {
-    showError('Ошибка добавления: ' + error.message);
-    return;
-  }
-
-  document.getElementById('nameInput').value = '';
-  document.getElementById('cityInput').value = '';
-  document.getElementById('textInput').value = '';
-  document.getElementById('telegramInput').value = '';
-
-  showSuccess('Объявление добавлено.');
-  await loadPosts();
+  loadPosts()
 }
 
-async function deletePost(id) {
-  if (!isAdmin) {
-    alert('Удалять может только администратор');
-    return;
-  }
-
-  const ok = confirm('Удалить это объявление?');
-  if (!ok) return;
-
-  const { error } = await supabaseClient
-    .from('posts')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    alert('Ошибка удаления: ' + error.message);
-    return;
-  }
-
-  await loadPosts();
-}
-
-updateAdminPanel();
-loadPosts();
+loadPosts()
 </script>
 
 </body>
