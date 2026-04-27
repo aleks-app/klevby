@@ -29,26 +29,22 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
 }
 
-.logo {
-  font-size: 30px;
-  font-weight: 900;
-}
+.logo { font-size: 30px; font-weight: 900; }
 
-.nav {
-  display: flex;
-  gap: 12px;
-}
+.nav { display: flex; gap: 12px; flex-wrap: wrap; }
 
-.nav a {
+.nav a, .admin-btn {
   padding: 12px 20px;
   border-radius: 999px;
   background: rgba(255,255,255,.14);
   font-weight: 800;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
 }
 
-.nav a.telegram {
-  background: #27a7e7;
-}
+.telegram { background: #27a7e7 !important; }
 
 .hero {
   min-height: 76vh;
@@ -104,9 +100,12 @@ a { text-decoration: none; color: inherit; }
   color: white;
 }
 
-.section {
-  padding: 70px 42px;
+.btn.delete {
+  background: #ef4444;
+  color: white;
 }
+
+.section { padding: 70px 42px; }
 
 .section h2 {
   font-size: 44px;
@@ -127,7 +126,7 @@ a { text-decoration: none; color: inherit; }
   margin-bottom: 36px;
 }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
   margin: 8px 0;
   padding: 15px;
@@ -136,9 +135,25 @@ input, textarea {
   font-size: 16px;
 }
 
-textarea {
-  min-height: 105px;
+textarea { min-height: 105px; }
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  margin-bottom: 28px;
 }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 0 14px;
+}
+
+.check input { width: auto; }
 
 .grid {
   display: grid;
@@ -159,9 +174,7 @@ textarea {
   object-fit: cover;
 }
 
-.card-content {
-  padding: 22px;
-}
+.card-content { padding: 22px; }
 
 .card h3 {
   margin: 0 0 12px;
@@ -192,17 +205,8 @@ textarea {
   border: 1px dashed rgba(250,204,21,.65);
 }
 
-#error {
-  color: #ff7b7b;
-  margin-top: 12px;
-  font-weight: 800;
-}
-
-#success {
-  color: #86efac;
-  margin-top: 12px;
-  font-weight: 800;
-}
+#error { color: #ff7b7b; margin-top: 12px; font-weight: 800; }
+#success { color: #86efac; margin-top: 12px; font-weight: 800; }
 
 .footer {
   padding: 32px;
@@ -223,6 +227,19 @@ textarea {
   z-index: 100;
 }
 
+.admin-panel {
+  display: none;
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.45);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 22px;
+}
+
+.admin-panel.active {
+  display: block;
+}
+
 @media (max-width: 900px) {
   .header {
     flex-direction: column;
@@ -230,11 +247,7 @@ textarea {
     gap: 12px;
   }
 
-  .nav {
-    flex-wrap: wrap;
-  }
-
-  .grid {
+  .grid, .filters {
     grid-template-columns: 1fr;
   }
 
@@ -264,6 +277,7 @@ textarea {
     <a href="#postsSection">Напарники</a>
     <a href="#shops">Магазинам</a>
     <a class="telegram" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Telegram</a>
+    <button class="admin-btn" onclick="adminLogin()">Админ</button>
   </nav>
 </header>
 
@@ -285,6 +299,12 @@ textarea {
   <h2>Сегодня ищут напарника</h2>
   <p class="sub">Объявления сохраняются в базе и не пропадают после обновления страницы.</p>
 
+  <div id="adminPanel" class="admin-panel">
+    🔐 Админ-режим включён. Теперь у карточек появится кнопка удаления.
+    <br>
+    <button class="btn delete" onclick="adminLogout()">Выйти из админ-режима</button>
+  </div>
+
   <div class="form-box">
     <h3>➕ Создать объявление</h3>
 
@@ -297,6 +317,15 @@ textarea {
 
     <div id="error"></div>
     <div id="success"></div>
+  </div>
+
+  <div class="filters">
+    <input id="searchInput" oninput="applyFilters()" placeholder="Поиск: Минск, лодка, карп...">
+    <input id="cityFilter" oninput="applyFilters()" placeholder="Фильтр по городу">
+    <label class="check">
+      <input id="telegramOnly" type="checkbox" onchange="applyFilters()">
+      Только с Telegram
+    </label>
   </div>
 
   <div class="grid" id="postsGrid"></div>
@@ -322,10 +351,45 @@ textarea {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+const ADMIN_PASSWORD = 'a2112a2112A';
+
 const supabaseUrl = 'https://oecdshvozssadztcokog.supabase.co';
 const supabaseKey = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS';
 
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+let allPosts = [];
+let isAdmin = localStorage.getItem('klevby_admin') === 'true';
+
+function updateAdminPanel() {
+  const panel = document.getElementById('adminPanel');
+  if (isAdmin) {
+    panel.classList.add('active');
+  } else {
+    panel.classList.remove('active');
+  }
+}
+
+function adminLogin() {
+  const pass = prompt('Введите пароль администратора:');
+
+  if (pass === ADMIN_PASSWORD) {
+    isAdmin = true;
+    localStorage.setItem('klevby_admin', 'true');
+    updateAdminPanel();
+    renderPosts(allPosts);
+    alert('Админ-режим включён');
+  } else if (pass !== null) {
+    alert('Неверный пароль');
+  }
+}
+
+function adminLogout() {
+  isAdmin = false;
+  localStorage.removeItem('klevby_admin');
+  updateAdminPanel();
+  renderPosts(allPosts);
+}
 
 function showError(message) {
   document.getElementById('error').innerText = message || '';
@@ -362,19 +426,48 @@ async function loadPosts() {
     return;
   }
 
+  allPosts = data || [];
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const city = document.getElementById('cityFilter').value.toLowerCase().trim();
+  const telegramOnly = document.getElementById('telegramOnly').checked;
+
+  let filtered = allPosts.filter(post => {
+    const text = `${post.name || ''} ${post.city || ''} ${post.text || ''}`.toLowerCase();
+    const cityValue = String(post.city || '').toLowerCase();
+    const telegram = cleanTelegram(post.telegram);
+
+    if (search && !text.includes(search)) return false;
+    if (city && !cityValue.includes(city)) return false;
+    if (telegramOnly && !telegram) return false;
+
+    return true;
+  });
+
+  renderPosts(filtered);
+}
+
+function renderPosts(posts) {
   const grid = document.getElementById('postsGrid');
   grid.innerHTML = '';
 
-  if (!data || data.length === 0) {
-    grid.innerHTML = '<p>Пока нет объявлений. Создай первое.</p>';
+  if (!posts || posts.length === 0) {
+    grid.innerHTML = '<p>Объявлений пока нет или ничего не найдено.</p>';
     return;
   }
 
-  data.forEach(post => {
+  posts.forEach(post => {
     const telegram = cleanTelegram(post.telegram);
     const tgButton = telegram
       ? `<a class="btn" href="https://t.me/${escapeHtml(telegram)}" target="_blank">Написать автору</a>`
       : `<a class="btn" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Написать в общий чат</a>`;
+
+    const deleteButton = isAdmin
+      ? `<button class="btn delete" onclick="deletePost(${post.id})">Удалить</button>`
+      : '';
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -386,8 +479,10 @@ async function loadPosts() {
         <p>${escapeHtml(post.text)}</p>
         <span class="tag">🎣 рыбалка</span>
         <span class="tag">🟢 объявление</span>
+        ${telegram ? `<span class="tag">💬 Telegram</span>` : ''}
         <br>
         ${tgButton}
+        ${deleteButton}
       </div>
     `;
 
@@ -427,6 +522,29 @@ async function addPost() {
   await loadPosts();
 }
 
+async function deletePost(id) {
+  if (!isAdmin) {
+    alert('Удалять может только администратор');
+    return;
+  }
+
+  const ok = confirm('Удалить это объявление?');
+  if (!ok) return;
+
+  const { error } = await supabaseClient
+    .from('posts')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    alert('Ошибка удаления: ' + error.message);
+    return;
+  }
+
+  await loadPosts();
+}
+
+updateAdminPanel();
 loadPosts();
 </script>
 
