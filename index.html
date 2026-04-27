@@ -3,134 +3,384 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Klevby — Рыбалка</title>
+<title>Klevby — Рыбалка в Беларуси</title>
 
 <style>
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #07130f;
   color: white;
 }
 
+a { color: inherit; text-decoration: none; }
+
 .header {
-  padding: 20px;
-  font-size: 24px;
-  font-weight: bold;
+  padding: 22px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #07130f;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.nav a {
+  margin-left: 10px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  font-weight: 700;
 }
 
 .hero {
-  padding: 60px 20px;
+  min-height: 70vh;
+  padding: 80px 40px;
+  background:
+    linear-gradient(90deg, rgba(3,12,8,.95), rgba(3,12,8,.55)),
+    url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=80");
+  background-size: cover;
+  background-position: center;
 }
 
-h1 {
-  font-size: 42px;
+.hero h1 {
+  max-width: 760px;
+  font-size: clamp(44px, 7vw, 82px);
+  line-height: .95;
+  margin: 0 0 20px;
 }
 
-button {
-  padding: 12px 20px;
-  border-radius: 10px;
+.hero p {
+  max-width: 650px;
+  font-size: 21px;
+  color: #d1d5db;
+}
+
+.btn {
+  display: inline-block;
   border: none;
-  background: #1ed760;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 14px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  background: #22c55e;
+  color: #04110a;
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.btn.gray {
+  background: rgba(255,255,255,.14);
+  color: white;
+}
+
+.section {
+  padding: 60px 40px;
+}
+
+.section h2 {
+  font-size: 42px;
+  margin: 0 0 12px;
+}
+
+.sub {
+  color: #cbd5e1;
+  margin-bottom: 30px;
+}
+
+.form-box {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 35px;
 }
 
 input, textarea {
   width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border-radius: 8px;
+  margin: 8px 0;
+  padding: 14px;
+  border-radius: 12px;
   border: none;
+  font-size: 16px;
 }
 
-#posts {
-  padding: 20px;
+textarea {
+  min-height: 100px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
 }
 
 .card {
-  background: #1c2b26;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.card img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
+
+.card-content {
   padding: 20px;
-  border-radius: 16px;
-  margin-bottom: 15px;
+}
+
+.card h3 {
+  margin: 0 0 10px;
+}
+
+.card p {
+  color: #d1d5db;
+  line-height: 1.4;
+}
+
+.tag {
+  display: inline-block;
+  margin: 4px 4px 10px 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(34,197,94,.18);
+  color: #bbf7d0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ad {
+  margin-top: 35px;
+  padding: 28px;
+  border-radius: 22px;
+  background: rgba(250,204,21,.12);
+  border: 1px dashed rgba(250,204,21,.6);
+}
+
+#error {
+  color: #ff7777;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.success {
+  color: #86efac;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.footer {
+  padding: 30px;
+  text-align: center;
+  background: #050c09;
+  color: #94a3b8;
+}
+
+.floating {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  background: #27a7e7;
+  color: white;
+  padding: 14px 20px;
+  border-radius: 999px;
+  font-weight: 900;
+  z-index: 50;
+}
+
+@media (max-width: 900px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section, .hero {
+    padding: 40px 20px;
+  }
+
+  .floating {
+    left: 18px;
+    right: 18px;
+    text-align: center;
+  }
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">🎣 Klevby</div>
+<a class="floating" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">
+💬 Войти в чат
+</a>
 
-<div class="hero">
-  <h1>Найди компанию на рыбалку</h1>
+<header class="header">
+  <div class="logo">🎣 Klevby</div>
+  <nav class="nav">
+    <a href="#postsSection">Напарники</a>
+    <a href="#shops">Магазинам</a>
+    <a href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Telegram</a>
+  </nav>
+</header>
 
-  <input id="name" placeholder="Имя">
-  <input id="city" placeholder="Город">
-  <textarea id="text" placeholder="Описание"></textarea>
+<section class="hero">
+  <h1>Найди компанию на рыбалку в Беларуси</h1>
+  <p>
+    Едешь один? Новичок и нужен опытный напарник?
+    Добавь объявление, найди компанию и делись выездами.
+  </p>
+  <a class="btn" href="#postsSection">Смотреть объявления</a>
+  <a class="btn gray" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Войти в Telegram</a>
+</section>
 
-  <button onclick="addPost()">Создать объявление</button>
-</div>
+<section class="section" id="postsSection">
+  <h2>Сегодня ищут напарника</h2>
+  <p class="sub">Объявления сохраняются в базе Supabase и не пропадают после обновления страницы.</p>
 
-<div id="posts"></div>
+  <div class="form-box">
+    <h3>➕ Создать объявление</h3>
+
+    <input id="nameInput" placeholder="Имя">
+    <input id="cityInput" placeholder="Город">
+    <textarea id="textInput" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
+
+    <button class="btn" onclick="addPost()">Создать объявление</button>
+    <div id="error"></div>
+    <div id="success"></div>
+  </div>
+
+  <div class="grid" id="postsGrid"></div>
+
+  <div class="ad" id="shops">
+    <strong>Рекламное место</strong>
+    <h3>Здесь может быть магазин снастей</h3>
+    <p>Позже это место можно продавать рыболовным магазинам: баннер, акция, промокод, ссылка.</p>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Магазинам и брендам</h2>
+  <p class="sub">
+    Когда появится активная аудитория рыбаков, магазины смогут покупать рекламные места и промо-посты.
+  </p>
+</section>
+
+<footer class="footer">
+  Klevby © 2026 — рыбалка, компания, трофеи и выезды по Беларуси
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-const supabaseUrl = 'https://oecdshvozssadztcokog.supabase.co'
-const supabaseKey = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
+const supabaseUrl = 'https://oecdshvozssadztcokog.supabase.co';
+const supabaseKey = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS';
 
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// загрузка объявлений
+function showError(message) {
+  document.getElementById('error').innerText = message || '';
+}
+
+function showSuccess(message) {
+  document.getElementById('success').innerText = message || '';
+}
+
+function escapeHtml(text) {
+  return String(text || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 async function loadPosts() {
-  const { data, error } = await supabase
+  showError('');
+  showSuccess('');
+
+  const { data, error } = await supabaseClient
     .from('posts')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error(error)
-    return
+    showError('Ошибка загрузки: ' + error.message);
+    console.error(error);
+    return;
   }
 
-  const container = document.getElementById('posts')
-  container.innerHTML = ''
+  const grid = document.getElementById('postsGrid');
+  grid.innerHTML = '';
+
+  if (!data || data.length === 0) {
+    grid.innerHTML = '<p>Пока нет объявлений. Создай первое.</p>';
+    return;
+  }
 
   data.forEach(post => {
-    const card = document.createElement('div')
-    card.className = 'card'
+    const card = document.createElement('div');
+    card.className = 'card';
 
     card.innerHTML = `
-      <h3>${post.name} — ${post.city}</h3>
-      <p>${post.text}</p>
-    `
+      <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>${escapeHtml(post.name)} — ${escapeHtml(post.city)}</h3>
+        <p>${escapeHtml(post.text)}</p>
+        <span class="tag">🎣 рыбалка</span>
+        <span class="tag">🟢 объявление</span>
+        <br>
+        <a class="btn" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Написать</a>
+      </div>
+    `;
 
-    container.appendChild(card)
-  })
+    grid.appendChild(card);
+  });
 }
 
-// добавление объявления
 async function addPost() {
-  const name = document.getElementById('name').value
-  const city = document.getElementById('city').value
-  const text = document.getElementById('text').value
+  showError('');
+  showSuccess('');
 
-  const { error } = await supabase
+  const name = document.getElementById('nameInput').value.trim();
+  const city = document.getElementById('cityInput').value.trim();
+  const text = document.getElementById('textInput').value.trim();
+
+  if (!name || !city || !text) {
+    showError('Заполни имя, город и описание.');
+    return;
+  }
+
+  const { error } = await supabaseClient
     .from('posts')
-    .insert([{ name, city, text }])
+    .insert([{ name: name, city: city, text: text }]);
 
   if (error) {
-    alert('Ошибка добавления')
-  } else {
-    document.getElementById('name').value = ''
-    document.getElementById('city').value = ''
-    document.getElementById('text').value = ''
-    loadPosts()
+    showError('Ошибка добавления: ' + error.message);
+    console.error(error);
+    return;
   }
+
+  document.getElementById('nameInput').value = '';
+  document.getElementById('cityInput').value = '';
+  document.getElementById('textInput').value = '';
+
+  showSuccess('Объявление добавлено.');
+  await loadPosts();
 }
 
-// запуск
-loadPosts()
+loadPosts();
 </script>
 
 </body>
