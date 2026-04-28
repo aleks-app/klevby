@@ -5,23 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klevby — рыбалка в Беларуси</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 
 <style>
 body {
     margin: 0;
     font-family: Arial;
-    background: #06130f;
+    background: linear-gradient(180deg, #06130f, #0c2c24);
     color: white;
 }
 
+/* HEADER */
 header {
     padding: 20px;
     font-size: 22px;
     font-weight: bold;
 }
 
+/* HERO */
 .hero {
     position: relative;
     height: 400px;
@@ -31,7 +33,6 @@ header {
     position: absolute;
     width: 100%;
     height: 100%;
-    top: 0;
 }
 
 .hero-content {
@@ -42,13 +43,35 @@ header {
 
 .btn {
     background: #2ecc71;
-    padding: 12px 20px;
-    border-radius: 10px;
+    padding: 14px 25px;
+    border-radius: 12px;
+    cursor: pointer;
     display: inline-block;
     margin-top: 20px;
+}
+
+/* FORM */
+.form {
+    padding: 20px;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: none;
+}
+
+button {
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: #2ecc71;
     cursor: pointer;
 }
 
+/* CARDS */
 .cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
@@ -57,25 +80,14 @@ header {
 }
 
 .card {
-    background: #0f2a24;
+    background: rgba(255,255,255,0.05);
     padding: 20px;
     border-radius: 15px;
+    backdrop-filter: blur(10px);
 }
 
-input, textarea {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-}
-
-button {
-    padding: 10px;
-    border: none;
-    border-radius: 8px;
-    background: #2ecc71;
-    cursor: pointer;
+.card h3 {
+    margin: 0 0 10px 0;
 }
 </style>
 </head>
@@ -86,14 +98,13 @@ button {
 
 <div class="hero">
     <div id="bg3d"></div>
-
     <div class="hero-content">
         <h1>Найди компанию на рыбалку</h1>
         <div class="btn" onclick="scrollToAds()">Смотреть объявления</div>
     </div>
 </div>
 
-<div style="padding:20px">
+<div class="form">
     <h2>Добавить объявление</h2>
     <input id="name" placeholder="Имя">
     <input id="city" placeholder="Город">
@@ -128,6 +139,8 @@ async function addAd() {
     const city = document.getElementById('city').value;
     const text = document.getElementById('text').value;
 
+    if(!name || !city || !text) return alert("Заполни всё");
+
     await supabase.from('ads').insert([{name, city, text}]);
     loadAds();
 }
@@ -147,6 +160,7 @@ const renderer = new THREE.WebGLRenderer({ alpha:true });
 renderer.setSize(window.innerWidth, 400);
 document.getElementById('bg3d').appendChild(renderer.domElement);
 
+// FLOAT
 const geometry = new THREE.CylinderGeometry(0.1,0.1,2,32);
 const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 const float = new THREE.Mesh(geometry, material);
