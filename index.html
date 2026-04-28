@@ -3,177 +3,847 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Klevby — рыбалка в Беларуси</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<title>Klevby — Рыбалка в Беларуси</title>
 
 <style>
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
 body {
-    margin: 0;
-    font-family: Arial;
-    background: linear-gradient(180deg, #06130f, #0c2c24);
-    color: white;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #07130f;
+  color: white;
 }
 
-/* HEADER */
-header {
-    padding: 20px;
-    font-size: 22px;
-    font-weight: bold;
+a { text-decoration: none; color: inherit; }
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 18px 36px;
+  background: rgba(7,19,15,.96);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
 }
 
-/* HERO */
+.logo {
+  font-size: 30px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav a, .nav button {
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  font-weight: 800;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.telegram { background: #27a7e7 !important; }
+
 .hero {
-    position: relative;
-    height: 400px;
+  min-height: 76vh;
+  padding: 90px 42px;
+  background:
+    linear-gradient(90deg, rgba(3,12,8,.96), rgba(3,12,8,.55)),
+    url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=80");
+  background-size: cover;
+  background-position: center;
 }
 
-#bg3d {
-    position: absolute;
-    width: 100%;
-    height: 100%;
+.badge {
+  display: inline-block;
+  background: rgba(34,197,94,.22);
+  border: 1px solid rgba(134,239,172,.35);
+  color: #bbf7d0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 900;
+  margin-bottom: 22px;
 }
 
-.hero-content {
-    position: relative;
-    z-index: 2;
-    padding: 40px;
+.hero h1 {
+  max-width: 820px;
+  font-size: clamp(44px, 7vw, 86px);
+  line-height: .95;
+  margin: 0 0 22px;
+}
+
+.hero p {
+  max-width: 720px;
+  font-size: 21px;
+  line-height: 1.45;
+  color: #e5e7eb;
 }
 
 .btn {
-    background: #2ecc71;
-    padding: 14px 25px;
-    border-radius: 12px;
-    cursor: pointer;
-    display: inline-block;
-    margin-top: 20px;
+  display: inline-block;
+  margin-top: 14px;
+  margin-right: 10px;
+  padding: 15px 24px;
+  border-radius: 15px;
+  border: none;
+  background: #22c55e;
+  color: #04110a;
+  font-weight: 900;
+  font-size: 16px;
+  cursor: pointer;
 }
 
-/* FORM */
-.form {
-    padding: 20px;
+.btn.gray {
+  background: rgba(255,255,255,.16);
+  color: white;
+}
+
+.btn.delete {
+  background: #ef4444;
+  color: white;
+}
+
+.btn.edit {
+  background: #facc15;
+  color: #111827;
+}
+
+.section {
+  padding: 70px 42px;
+}
+
+.section h2 {
+  font-size: 44px;
+  margin: 0 0 12px;
+}
+
+.sub {
+  color: #cbd5e1;
+  margin-bottom: 30px;
+  font-size: 18px;
+}
+
+.form-box {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 26px;
+  padding: 26px;
+  margin-bottom: 36px;
 }
 
 input, textarea {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 10px;
-    border-radius: 10px;
-    border: none;
+  width: 100%;
+  margin: 8px 0;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  font-size: 16px;
 }
 
-button {
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    background: #2ecc71;
-    cursor: pointer;
+textarea { min-height: 105px; }
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
-/* CARDS */
-.cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
-    gap: 20px;
-    padding: 20px;
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 0 14px;
+}
+
+.check input { width: auto; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
 }
 
 .card {
-    background: rgba(255,255,255,0.05);
-    padding: 20px;
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.card img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+}
+
+.card-content {
+  padding: 22px;
 }
 
 .card h3 {
-    margin: 0 0 10px 0;
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+
+.card p {
+  color: #d1d5db;
+  line-height: 1.45;
+}
+
+.tag {
+  display: inline-block;
+  margin: 5px 5px 12px 0;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(34,197,94,.18);
+  color: #bbf7d0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ad {
+  margin-top: 38px;
+  padding: 32px;
+  border-radius: 26px;
+  background: rgba(250,204,21,.12);
+  border: 1px dashed rgba(250,204,21,.65);
+}
+
+#error { color: #ff7b7b; margin-top: 12px; font-weight: 800; }
+#success { color: #86efac; margin-top: 12px; font-weight: 800; }
+
+.footer {
+  padding: 32px;
+  text-align: center;
+  background: #050c09;
+  color: #94a3b8;
+}
+
+.floating {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  background: #27a7e7;
+  color: white;
+  padding: 15px 22px;
+  border-radius: 999px;
+  font-weight: 900;
+  z-index: 100;
+}
+
+.admin-panel {
+  display: none;
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.45);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 22px;
+}
+
+.admin-panel.active { display: block; }
+
+.mode-panel {
+  background: rgba(34,197,94,.12);
+  border: 1px solid rgba(34,197,94,.35);
+  padding: 14px 18px;
+  border-radius: 18px;
+  margin-bottom: 20px;
+}
+
+.edit-panel {
+  display: none;
+  background: rgba(250,204,21,.12);
+  border: 1px solid rgba(250,204,21,.55);
+  border-radius: 22px;
+  padding: 22px;
+  margin-bottom: 26px;
+}
+
+.edit-panel.active { display: block; }
+
+/* ✅ Планшет */
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ✅ Телефон */
+@media (max-width: 700px) {
+  .header {
+    padding: 14px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    position: sticky;
+  }
+
+  .logo {
+    font-size: 26px;
+    text-align: center;
+  }
+
+  .nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .nav a, .nav button {
+    width: 100%;
+    text-align: center;
+    padding: 11px 8px;
+    font-size: 14px;
+  }
+
+  .hero {
+    min-height: auto;
+    padding: 48px 18px;
+    background-position: center;
+  }
+
+  .badge {
+    font-size: 14px;
+    padding: 9px 14px;
+  }
+
+  .hero h1 {
+    font-size: 42px;
+    line-height: 1;
+  }
+
+  .hero p {
+    font-size: 17px;
+  }
+
+  .btn {
+    width: 100%;
+    text-align: center;
+    margin-right: 0;
+    padding: 15px 16px;
+  }
+
+  .section {
+    padding: 42px 16px;
+  }
+
+  .section h2 {
+    font-size: 34px;
+  }
+
+  .sub {
+    font-size: 16px;
+  }
+
+  .form-box,
+  .edit-panel,
+  .admin-panel,
+  .mode-panel,
+  .ad {
+    border-radius: 20px;
+    padding: 18px;
+  }
+
+  input, textarea {
+    font-size: 16px;
+    padding: 14px;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .check {
+    min-height: 52px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .card {
+    border-radius: 22px;
+  }
+
+  .card img {
+    height: 190px;
+  }
+
+  .card-content {
+    padding: 18px;
+  }
+
+  .card h3 {
+    font-size: 22px;
+  }
+
+  .floating {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    text-align: center;
+    padding: 14px 18px;
+  }
+
+  .footer {
+    padding-bottom: 76px;
+  }
+}
+
+/* ✅ Очень маленький телефон */
+@media (max-width: 390px) {
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  .section h2 {
+    font-size: 30px;
+  }
+
+  .nav {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
 
 <body>
 
-<header>🎣 Klevby</header>
+<a class="floating" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">
+💬 Войти в чат
+</a>
 
-<div class="hero">
-    <div id="bg3d"></div>
-    <div class="hero-content">
-        <h1>Найди компанию на рыбалку</h1>
-        <div class="btn" onclick="scrollToAds()">Смотреть объявления</div>
-    </div>
-</div>
+<header class="header">
+  <div class="logo">🎣 Klevby</div>
 
-<div class="form">
-    <h2>Добавить объявление</h2>
-    <input id="name" placeholder="Имя">
-    <input id="city" placeholder="Город">
-    <textarea id="text" placeholder="Описание"></textarea>
-    <button onclick="addAd()">Добавить</button>
-</div>
+  <nav class="nav">
+    <a href="#postsSection">Напарники</a>
+    <a href="#shops">Магазинам</a>
+    <a class="telegram" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Telegram</a>
+    <button onclick="showAllPosts()">Все объявления</button>
+    <button onclick="showMyPosts()">Мои объявления</button>
+    <button onclick="adminLogin()">Админ</button>
+  </nav>
+</header>
 
-<div id="ads" class="cards"></div>
+<section class="hero">
+  <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
+
+  <h1>Найди компанию на рыбалку за пару минут</h1>
+
+  <p>
+    Едешь один? Новичок и нужен опытный напарник?
+    Добавь объявление, найди компанию и делись выездами.
+  </p>
+
+  <a class="btn" href="#postsSection">Смотреть объявления</a>
+  <a class="btn gray" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Войти в Telegram</a>
+</section>
+
+<section class="section" id="postsSection">
+  <h2>Сегодня ищут напарника</h2>
+  <p class="sub">Объявления сохраняются в базе и не пропадают после обновления страницы.</p>
+
+  <div id="modePanel" class="mode-panel">Сейчас показаны: все объявления</div>
+
+  <div id="adminPanel" class="admin-panel">
+    🔐 Админ-режим включён. Можно удалять и редактировать любые объявления.
+    <br>
+    <button class="btn delete" onclick="adminLogout()">Выйти из админ-режима</button>
+  </div>
+
+  <div id="editPanel" class="edit-panel">
+    <h3>✏️ Редактировать объявление</h3>
+    <input id="editNameInput" placeholder="Имя">
+    <input id="editCityInput" placeholder="Город">
+    <textarea id="editTextInput" placeholder="Описание"></textarea>
+    <input id="editTelegramInput" placeholder="Telegram username без @">
+
+    <button class="btn" onclick="saveEdit()">Сохранить изменения</button>
+    <button class="btn gray" onclick="cancelEdit()">Отмена</button>
+  </div>
+
+  <div class="form-box">
+    <h3>➕ Создать объявление</h3>
+
+    <input id="nameInput" placeholder="Имя">
+    <input id="cityInput" placeholder="Город">
+    <textarea id="textInput" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
+    <input id="telegramInput" placeholder="Telegram username без @">
+
+    <button class="btn" onclick="addPost()">Создать объявление</button>
+
+    <div id="error"></div>
+    <div id="success"></div>
+  </div>
+
+  <div class="filters">
+    <input id="searchInput" oninput="applyFilters()" placeholder="Поиск: Минск, лодка, карп...">
+    <input id="cityFilter" oninput="applyFilters()" placeholder="Фильтр по городу">
+    <label class="check">
+      <input id="telegramOnly" type="checkbox" onchange="applyFilters()">
+      Только с Telegram
+    </label>
+    <button class="btn gray" onclick="clearFilters()">Сброс</button>
+  </div>
+
+  <div class="grid" id="postsGrid"></div>
+
+  <div class="ad" id="shops">
+    <strong>Рекламное место</strong>
+    <h3>Здесь может быть магазин снастей</h3>
+    <p>Позже это место можно продавать магазинам: баннер, акция, промокод, ссылка.</p>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Магазинам и брендам</h2>
+  <p class="sub">
+    Когда появится активная аудитория рыбаков, магазины смогут покупать рекламные места и промо-посты.
+  </p>
+</section>
+
+<footer class="footer">
+  Klevby © 2026 — рыбалка, компания, трофеи и выезды по Беларуси
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-const supabase = window.supabase.createClient(
-    "https://oecdshvozssadzctokog.supabase.co",
-    "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS"
-);
+const ADMIN_PASSWORD = 'a2112a2112A';
 
-async function loadAds() {
-    const { data } = await supabase.from('ads').select('*').order('id', {ascending:false});
-    const adsDiv = document.getElementById('ads');
-    adsDiv.innerHTML = '';
+const supabaseUrl = 'https://oecdshvozssadztcokog.supabase.co';
+const supabaseKey = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS';
 
-    data.forEach(ad => {
-        adsDiv.innerHTML += `
-        <div class="card">
-            <h3>${ad.name} — ${ad.city}</h3>
-            <p>${ad.text}</p>
-        </div>`;
-    });
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+let allPosts = [];
+let viewMode = 'all';
+let editingPostId = null;
+let isAdmin = localStorage.getItem('klevby_admin') === 'true';
+
+function getOwnerId() {
+  let owner = localStorage.getItem('klevby_owner_id');
+  if (!owner) {
+    owner = 'owner_' + Math.random().toString(36).slice(2) + Date.now();
+    localStorage.setItem('klevby_owner_id', owner);
+  }
+  return owner;
 }
 
-async function addAd() {
-    const name = document.getElementById('name').value;
-    const city = document.getElementById('city').value;
-    const text = document.getElementById('text').value;
+const OWNER_ID = getOwnerId();
 
-    if(!name || !city || !text) return alert("Заполни всё");
-
-    await supabase.from('ads').insert([{name, city, text}]);
-    loadAds();
+function updateAdminPanel() {
+  const panel = document.getElementById('adminPanel');
+  if (isAdmin) panel.classList.add('active');
+  else panel.classList.remove('active');
 }
 
-function scrollToAds() {
-    document.getElementById('ads').scrollIntoView({behavior:'smooth'});
+function updateModePanel() {
+  const panel = document.getElementById('modePanel');
+  if (viewMode === 'mine') {
+    panel.innerText = 'Сейчас показаны: мои объявления. Свои объявления можно удалять и редактировать.';
+  } else {
+    panel.innerText = 'Сейчас показаны: все объявления.';
+  }
 }
 
-loadAds();
-</script>
+function adminLogin() {
+  const pass = prompt('Введите пароль администратора:');
 
-<script>
-// THREE JS
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ alpha:true });
-renderer.setSize(window.innerWidth, 400);
-document.getElementById('bg3d').appendChild(renderer.domElement);
-
-// FLOAT
-const geometry = new THREE.CylinderGeometry(0.1,0.1,2,32);
-const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-const float = new THREE.Mesh(geometry, material);
-scene.add(float);
-
-camera.position.z = 5;
-
-function animate() {
-    requestAnimationFrame(animate);
-    float.rotation.y += 0.01;
-    renderer.render(scene, camera);
+  if (pass === ADMIN_PASSWORD) {
+    isAdmin = true;
+    localStorage.setItem('klevby_admin', 'true');
+    updateAdminPanel();
+    applyFilters();
+    alert('Админ-режим включён');
+  } else if (pass !== null) {
+    alert('Неверный пароль');
+  }
 }
-animate();
+
+function adminLogout() {
+  isAdmin = false;
+  localStorage.removeItem('klevby_admin');
+  updateAdminPanel();
+  applyFilters();
+}
+
+function showAllPosts() {
+  viewMode = 'all';
+  updateModePanel();
+  applyFilters();
+}
+
+function showMyPosts() {
+  viewMode = 'mine';
+  updateModePanel();
+  applyFilters();
+}
+
+function showError(message) {
+  document.getElementById('error').innerText = message || '';
+}
+
+function showSuccess(message) {
+  document.getElementById('success').innerText = message || '';
+}
+
+function escapeHtml(text) {
+  return String(text || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function cleanTelegram(value) {
+  return String(value || '').replace('@', '').trim();
+}
+
+async function loadPosts() {
+  showError('');
+  showSuccess('');
+
+  const { data, error } = await supabaseClient
+    .from('posts')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    showError('Ошибка загрузки: ' + error.message);
+    return;
+  }
+
+  allPosts = data || [];
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const city = document.getElementById('cityFilter').value.toLowerCase().trim();
+  const telegramOnly = document.getElementById('telegramOnly').checked;
+
+  let filtered = allPosts.filter(post => {
+    const text = `${post.name || ''} ${post.city || ''} ${post.text || ''}`.toLowerCase();
+    const cityValue = String(post.city || '').toLowerCase();
+    const telegram = cleanTelegram(post.telegram);
+    const owner = String(post.owner_id || '');
+
+    if (viewMode === 'mine' && owner !== OWNER_ID) return false;
+    if (search && !text.includes(search)) return false;
+    if (city && !cityValue.includes(city)) return false;
+    if (telegramOnly && !telegram) return false;
+
+    return true;
+  });
+
+  renderPosts(filtered);
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('cityFilter').value = '';
+  document.getElementById('telegramOnly').checked = false;
+  applyFilters();
+}
+
+function canManagePost(post) {
+  return isAdmin || String(post.owner_id || '') === OWNER_ID;
+}
+
+function renderPosts(posts) {
+  const grid = document.getElementById('postsGrid');
+  grid.innerHTML = '';
+
+  if (!posts || posts.length === 0) {
+    grid.innerHTML = '<p>Объявлений пока нет или ничего не найдено.</p>';
+    return;
+  }
+
+  posts.forEach(post => {
+    const telegram = cleanTelegram(post.telegram);
+    const canManage = canManagePost(post);
+
+    const tgButton = telegram
+      ? `<a class="btn" href="https://t.me/${escapeHtml(telegram)}" target="_blank">Написать автору</a>`
+      : `<a class="btn" href="https://t.me/+W6eAuefzcJwwODEy" target="_blank">Написать в общий чат</a>`;
+
+    const editButton = canManage
+      ? `<button class="btn edit" onclick="startEdit(${post.id})">Редактировать</button>`
+      : '';
+
+    const deleteButton = canManage
+      ? `<button class="btn delete" onclick="deletePost(${post.id})">Удалить</button>`
+      : '';
+
+    const ownerTag = String(post.owner_id || '') === OWNER_ID
+      ? `<span class="tag">⭐ моё</span>`
+      : '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    card.innerHTML = `
+      <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80">
+      <div class="card-content">
+        <h3>${escapeHtml(post.name)} — ${escapeHtml(post.city)}</h3>
+        <p>${escapeHtml(post.text)}</p>
+        <span class="tag">🎣 рыбалка</span>
+        <span class="tag">🟢 объявление</span>
+        ${telegram ? `<span class="tag">💬 Telegram</span>` : ''}
+        ${ownerTag}
+        <br>
+        ${tgButton}
+        ${editButton}
+        ${deleteButton}
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+async function addPost() {
+  showError('');
+  showSuccess('');
+
+  const name = document.getElementById('nameInput').value.trim();
+  const city = document.getElementById('cityInput').value.trim();
+  const text = document.getElementById('textInput').value.trim();
+  const telegram = cleanTelegram(document.getElementById('telegramInput').value);
+
+  if (!name || !city || !text) {
+    showError('Заполни имя, город и описание.');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('posts')
+    .insert([{ name, city, text, telegram, owner_id: OWNER_ID }]);
+
+  if (error) {
+    showError('Ошибка добавления: ' + error.message);
+    return;
+  }
+
+  document.getElementById('nameInput').value = '';
+  document.getElementById('cityInput').value = '';
+  document.getElementById('textInput').value = '';
+  document.getElementById('telegramInput').value = '';
+
+  showSuccess('Объявление добавлено.');
+  await loadPosts();
+}
+
+function startEdit(id) {
+  const post = allPosts.find(p => p.id === id);
+
+  if (!post || !canManagePost(post)) {
+    alert('Можно редактировать только свои объявления.');
+    return;
+  }
+
+  editingPostId = id;
+
+  document.getElementById('editNameInput').value = post.name || '';
+  document.getElementById('editCityInput').value = post.city || '';
+  document.getElementById('editTextInput').value = post.text || '';
+  document.getElementById('editTelegramInput').value = post.telegram || '';
+
+  document.getElementById('editPanel').classList.add('active');
+  document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingPostId = null;
+  document.getElementById('editPanel').classList.remove('active');
+}
+
+async function saveEdit() {
+  if (!editingPostId) return;
+
+  const post = allPosts.find(p => p.id === editingPostId);
+
+  if (!post || !canManagePost(post)) {
+    alert('Можно редактировать только свои объявления.');
+    return;
+  }
+
+  const name = document.getElementById('editNameInput').value.trim();
+  const city = document.getElementById('editCityInput').value.trim();
+  const text = document.getElementById('editTextInput').value.trim();
+  const telegram = cleanTelegram(document.getElementById('editTelegramInput').value);
+
+  if (!name || !city || !text) {
+    alert('Заполни имя, город и описание.');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('posts')
+    .update({ name, city, text, telegram })
+    .eq('id', editingPostId);
+
+  if (error) {
+    alert('Ошибка редактирования: ' + error.message);
+    return;
+  }
+
+  cancelEdit();
+  await loadPosts();
+  alert('Объявление обновлено.');
+}
+
+async function deletePost(id) {
+  const post = allPosts.find(p => p.id === id);
+  const canDelete = post && canManagePost(post);
+
+  if (!canDelete) {
+    alert('Можно удалять только свои объявления.');
+    return;
+  }
+
+  const ok = confirm('Удалить это объявление?');
+  if (!ok) return;
+
+  const { error } = await supabaseClient
+    .from('posts')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    alert('Ошибка удаления: ' + error.message);
+    return;
+  }
+
+  await loadPosts();
+}
+
+updateAdminPanel();
+updateModePanel();
+loadPosts();
 </script>
 
 </body>
