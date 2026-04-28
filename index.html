@@ -6,7 +6,6 @@
   <title>Klevby — рыбалка в Беларуси</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -32,7 +31,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(6, 19, 15, 0.92);
+      background: rgba(6, 19, 15, 0.96);
       backdrop-filter: blur(14px);
       padding: 18px 0;
     }
@@ -80,7 +79,7 @@
       margin: 24px 0 36px;
       border-radius: 34px;
       overflow: hidden;
-      min-height: 620px;
+      min-height: 560px;
       background:
         linear-gradient(90deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)),
         url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80")
@@ -121,7 +120,7 @@
     .hero-actions {
       display: grid;
       gap: 16px;
-      max-width: 980px;
+      max-width: 720px;
       position: relative;
       z-index: 3;
     }
@@ -146,17 +145,6 @@
     .gray { background: rgba(255,255,255,0.18); color: white; backdrop-filter: blur(10px); }
     .yellow { background: #ffd84d; color: black; }
     .red { background: #f04b4b; color: white; }
-
-    #threeFishingScene {
-      position: absolute;
-      right: 40px;
-      bottom: 20px;
-      width: 420px;
-      height: 260px;
-      opacity: 0.88;
-      pointer-events: none;
-      z-index: 2;
-    }
 
     .info-line {
       background: rgba(0, 100, 45, 0.58);
@@ -241,10 +229,10 @@
       min-height: 390px;
       box-shadow: 0 18px 40px rgba(0,0,0,0.24);
       transition: transform 0.18s ease, box-shadow 0.18s ease;
-      transform-style: preserve-3d;
     }
 
     .card:hover {
+      transform: translateY(-4px);
       box-shadow: 0 28px 65px rgba(0,0,0,0.35);
     }
 
@@ -381,7 +369,7 @@
 
       .hero {
         padding: 34px 22px;
-        min-height: 620px;
+        min-height: 520px;
         border-radius: 0;
         margin-left: -3%;
         margin-right: -3%;
@@ -393,15 +381,6 @@
 
       .hero p {
         font-size: 22px;
-      }
-
-      #threeFishingScene {
-        position: relative;
-        width: 100%;
-        height: 210px;
-        right: auto;
-        bottom: auto;
-        margin: 20px 0;
       }
 
       .filters,
@@ -466,8 +445,6 @@
         <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
         <h1>Найди компанию на рыбалку за пару минут</h1>
         <p>Едешь один? Новичок и нужен опытный напарник? Добавь объявление, найди компанию и делись выездами.</p>
-
-        <div id="threeFishingScene"></div>
 
         <div class="hero-actions">
           <button class="main-btn green" onclick="scrollToPosts()">Смотреть объявления</button>
@@ -578,13 +555,35 @@
     const ADMIN_CODE = "a2112a2112A";
     const TELEGRAM_GROUP = "https://t.me/+W6eAuefzcJwwODEy";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+    let supabaseClient = null;
     let posts = [];
     let currentUser = null;
     let adminMode = localStorage.getItem("klevby_admin") === "yes";
     let viewMode = "all";
     let editingId = null;
+
+    function getLocalOwnerId() {
+      let owner = localStorage.getItem("klevby_owner_id");
+      if (!owner) {
+        owner = "local_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+        localStorage.setItem("klevby_owner_id", owner);
+      }
+      return owner;
+    }
+
+    function getOwnerId() {
+      return currentUser ? currentUser.id : getLocalOwnerId();
+    }
+
+    function initSupabase() {
+      if (!window.supabase) {
+        alert("Supabase не загрузился. Обнови страницу.");
+        return false;
+      }
+
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return true;
+    }
 
     function openTelegram() {
       window.open(TELEGRAM_GROUP, "_blank");
@@ -625,7 +624,9 @@
     }
 
     async function initAuth() {
-      const { data } = await supabase.auth.getUser();
+      if (!supabaseClient) return;
+
+      const { data } = await supabaseClient.auth.getUser();
       currentUser = data?.user || null;
 
       if (window.location.hash.includes("access_token")) {
@@ -638,13 +639,12 @@
 
     function updateAuthStatus() {
       const status = document.getElementById("authStatus");
-
       if (!status) return;
 
       if (currentUser) {
         status.innerText = "Ты вошёл: " + currentUser.email + (adminMode ? " | Админ включён" : "");
       } else {
-        status.innerText = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
+        status.innerText = "Ты не вошёл. Объявления можно создавать и без входа.";
       }
     }
 
@@ -657,14 +657,14 @@
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
       if (error) {
         alert("Ошибка регистрации: " + error.message);
         return;
       }
 
-      alert("Регистрация выполнена. Если попросит подтверждение — проверь почту.");
+      alert("Регистрация выполнена.");
       currentUser = data?.user || null;
       updateAuthStatus();
       await loadPosts();
@@ -679,7 +679,7 @@
         return;
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
         alert("Ошибка входа: " + error.message);
@@ -693,7 +693,7 @@
     }
 
     async function logout() {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       currentUser = null;
       localStorage.removeItem("klevby_admin");
       adminMode = false;
@@ -710,7 +710,7 @@
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: "https://klevby.com"
       });
 
@@ -730,7 +730,7 @@
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
 
       if (error) {
         document.getElementById("resetMessage").innerText = "Ошибка: " + error.message;
@@ -763,7 +763,9 @@
     }
 
     async function loadPosts() {
-      const { data, error } = await supabase
+      if (!supabaseClient) return;
+
+      const { data, error } = await supabaseClient
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false });
@@ -784,11 +786,12 @@
       const search = normalizeText(document.getElementById("searchInput")?.value);
       const city = normalizeText(document.getElementById("cityFilter")?.value);
       const telegramOnly = document.getElementById("telegramOnly")?.checked;
+      const ownerId = getOwnerId();
 
       let filtered = [...posts];
 
       if (viewMode === "mine") {
-        filtered = filtered.filter(post => currentUser && post.owner_id === currentUser.id);
+        filtered = filtered.filter(post => post.owner_id === ownerId);
         document.getElementById("statusLine").innerText = "Сейчас показаны: мои объявления.";
       } else {
         document.getElementById("statusLine").innerText = "Сейчас показаны: все объявления.";
@@ -816,12 +819,12 @@
       }
 
       list.innerHTML = filtered.map(post => cardHtml(post)).join("");
-      activateTilt();
     }
 
     function cardHtml(post) {
       const tg = cleanTelegram(post.telegram);
-      const canManage = adminMode || (currentUser && post.owner_id === currentUser.id);
+      const ownerId = getOwnerId();
+      const canManage = adminMode || post.owner_id === ownerId;
 
       const tgButton = tg
         ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
@@ -851,7 +854,7 @@
               <span class="tag">🟢 объявление</span>
               ${tg ? '<span class="tag">💬 Telegram</span>' : ''}
               ${date ? `<span class="tag">🕘 ${escapeHtml(date)}</span>` : ''}
-              ${currentUser && post.owner_id === currentUser.id ? '<span class="tag">⭐ моё</span>' : ''}
+              ${post.owner_id === ownerId ? '<span class="tag">⭐ моё</span>' : ''}
             </div>
 
             <div class="actions">
@@ -870,12 +873,6 @@
       const text = document.getElementById("textInput").value.trim();
       const telegram = cleanTelegram(document.getElementById("telegramInput").value);
 
-      if (!currentUser) {
-        alert("Сначала войди или зарегистрируйся");
-        showSection("auth");
-        return;
-      }
-
       if (!name || !city || !text) {
         alert("Заполни имя, город и описание");
         return;
@@ -886,18 +883,18 @@
         city,
         text,
         telegram,
-        owner_id: currentUser.id
+        owner_id: getOwnerId()
       };
 
       let result;
 
       if (editingId) {
-        result = await supabase
+        result = await supabaseClient
           .from("posts")
           .update(payload)
           .eq("id", editingId);
       } else {
-        result = await supabase
+        result = await supabaseClient
           .from("posts")
           .insert([payload]);
       }
@@ -907,12 +904,15 @@
         return;
       }
 
+      const wasEditing = Boolean(editingId);
+
       clearForm();
-      await loadPosts();
-      document.getElementById("formMessage").innerText = editingId ? "Объявление обновлено" : "Объявление создано";
       editingId = null;
       document.getElementById("formTitle").innerText = "➕ Создать объявление";
       document.getElementById("cancelEditBtn").classList.add("hidden");
+      document.getElementById("formMessage").innerText = wasEditing ? "Объявление обновлено" : "Объявление создано";
+
+      await loadPosts();
     }
 
     function editPost(id) {
@@ -948,7 +948,7 @@
     async function deletePost(id) {
       if (!confirm("Удалить объявление?")) return;
 
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from("posts")
         .delete()
         .eq("id", id);
@@ -961,141 +961,12 @@
       await loadPosts();
     }
 
-    function activateTilt() {
-      if (window.innerWidth < 900) return;
+    document.addEventListener("DOMContentLoaded", async function () {
+      const ok = initSupabase();
+      if (!ok) return;
 
-      document.querySelectorAll(".card").forEach(card => {
-        card.onmousemove = e => {
-          const rect = card.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          const rx = -(y / rect.height - 0.5) * 8;
-          const ry = (x / rect.width - 0.5) * 8;
-          card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) scale(1.015)`;
-        };
-
-        card.onmouseleave = () => {
-          card.style.transform = "rotateX(0) rotateY(0) scale(1)";
-        };
-      });
-    }
-
-    function initThree() {
-      const box = document.getElementById("threeFishingScene");
-      if (!box || !window.THREE) return;
-
-      const scene = new THREE.Scene();
-
-      const camera = new THREE.PerspectiveCamera(
-        45,
-        box.clientWidth / box.clientHeight,
-        0.1,
-        1000
-      );
-
-      camera.position.set(0, 1.1, 5.5);
-
-      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-      renderer.setSize(box.clientWidth, box.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      box.appendChild(renderer.domElement);
-
-      const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-      scene.add(ambient);
-
-      const light = new THREE.DirectionalLight(0xffffff, 1.4);
-      light.position.set(3, 5, 6);
-      scene.add(light);
-
-      const floatGroup = new THREE.Group();
-
-      const redPart = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.18, 1.05, 32),
-        new THREE.MeshStandardMaterial({ color: 0xe53935, roughness: 0.35 })
-      );
-      redPart.position.y = 0.55;
-
-      const whitePart = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.2, 0.82, 32),
-        new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.35 })
-      );
-      whitePart.position.y = -0.35;
-
-      const tip = new THREE.Mesh(
-        new THREE.ConeGeometry(0.18, 0.38, 32),
-        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 })
-      );
-      tip.position.y = -0.95;
-      tip.rotation.x = Math.PI;
-
-      floatGroup.add(redPart);
-      floatGroup.add(whitePart);
-      floatGroup.add(tip);
-      floatGroup.rotation.z = 0.12;
-      scene.add(floatGroup);
-
-      const waterGeo = new THREE.PlaneGeometry(7.5, 3.4, 48, 48);
-      const waterMat = new THREE.MeshStandardMaterial({
-        color: 0x0b6d64,
-        transparent: true,
-        opacity: 0.55,
-        roughness: 0.35,
-        metalness: 0.1
-      });
-
-      const water = new THREE.Mesh(waterGeo, waterMat);
-      water.rotation.x = -Math.PI / 2;
-      water.position.y = -1.1;
-      scene.add(water);
-
-      const ringGeo = new THREE.TorusGeometry(0.65, 0.015, 12, 80);
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: 0x8df7d0,
-        transparent: true,
-        opacity: 0.32
-      });
-
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = -1.05;
-      scene.add(ring);
-
-      function animate() {
-        requestAnimationFrame(animate);
-
-        const t = Date.now() * 0.001;
-
-        floatGroup.position.y = Math.sin(t * 2) * 0.16;
-        floatGroup.rotation.z = 0.12 + Math.sin(t * 1.6) * 0.08;
-        floatGroup.rotation.y += 0.012;
-
-        ring.scale.setScalar(1 + Math.sin(t * 2) * 0.05);
-        ring.material.opacity = 0.22 + Math.sin(t * 2) * 0.08;
-
-        const pos = water.geometry.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-          const x = pos.getX(i);
-          const y = pos.getY(i);
-          const z = Math.sin(x * 2 + t * 1.8) * 0.035 + Math.cos(y * 3 + t * 1.4) * 0.025;
-          pos.setZ(i, z);
-        }
-        pos.needsUpdate = true;
-
-        renderer.render(scene, camera);
-      }
-
-      animate();
-
-      window.addEventListener("resize", () => {
-        if (!box.clientWidth || !box.clientHeight) return;
-        camera.aspect = box.clientWidth / box.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(box.clientWidth, box.clientHeight);
-      });
-    }
-
-    initAuth();
-    initThree();
+      await initAuth();
+    });
   </script>
 </body>
 </html>
