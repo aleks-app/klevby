@@ -7,9 +7,57 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!--
+  SUPABASE: что нужно добавить в таблицу posts
+
+  Таблица posts должна иметь поля:
+  id uuid primary key default gen_random_uuid()
+  created_at timestamptz default now()
+  name text
+  city text
+  text text
+  telegram text
+  owner_id uuid
+  crew_full boolean default false
+
+  RLS включить:
+  alter table posts enable row level security;
+
+  Политики:
+
+  1) Читать могут все:
+  create policy "Posts are public"
+  on posts for select
+  using (true);
+
+  2) Создавать может только авторизованный пользователь за себя:
+  create policy "Users can create own posts"
+  on posts for insert
+  with check (auth.uid() = owner_id);
+
+  3) Редактировать может только владелец или админ-почта:
+  create policy "Users can update own posts or admin"
+  on posts for update
+  using (
+    auth.uid() = owner_id
+    or auth.jwt()->>'email' = 'al822alex@gmail.com'
+  )
+  with check (
+    auth.uid() = owner_id
+    or auth.jwt()->>'email' = 'al822alex@gmail.com'
+  );
+
+  4) Удалять может только владелец или админ-почта:
+  create policy "Users can delete own posts or admin"
+  on posts for delete
+  using (
+    auth.uid() = owner_id
+    or auth.jwt()->>'email' = 'al822alex@gmail.com'
+  );
+  -->
+
   <style>
     * { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -60,12 +108,13 @@
       background: rgba(255,255,255,0.12);
       border: 1px solid rgba(255,255,255,0.08);
       color: white;
-      padding: 14px 22px;
+      padding: 16px 24px;
       border-radius: 999px;
       font-weight: 800;
       font-size: 17px;
       cursor: pointer;
       transition: 0.2s;
+      min-height: 54px;
     }
 
     .nav-btn:hover,
@@ -75,7 +124,6 @@
     }
 
     .hero {
-      position: relative;
       margin: 24px 0 36px;
       border-radius: 34px;
       overflow: hidden;
@@ -121,8 +169,6 @@
       display: grid;
       gap: 16px;
       max-width: 720px;
-      position: relative;
-      z-index: 3;
     }
 
     .main-btn {
@@ -145,6 +191,7 @@
     .gray { background: rgba(255,255,255,0.18); color: white; backdrop-filter: blur(10px); }
     .yellow { background: #ffd84d; color: black; }
     .red { background: #f04b4b; color: white; }
+    .disabled { background: #60706a !important; color: #cfd8d4 !important; cursor: not-allowed !important; }
 
     .info-line {
       background: rgba(0, 100, 45, 0.58);
@@ -155,6 +202,12 @@
       font-size: 18px;
       font-weight: 800;
       margin: 20px 0;
+    }
+
+    .error-line {
+      background: rgba(180, 40, 40, 0.28);
+      border-color: #ff6b6b;
+      color: #ffd6d6;
     }
 
     .panel {
@@ -170,7 +223,7 @@
       font-size: 32px;
     }
 
-    input, textarea, select {
+    input, textarea {
       width: 100%;
       border: none;
       outline: none;
@@ -228,7 +281,7 @@
       overflow: hidden;
       min-height: 390px;
       box-shadow: 0 18px 40px rgba(0,0,0,0.24);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      transition: 0.18s ease;
     }
 
     .card:hover {
@@ -236,12 +289,15 @@
       box-shadow: 0 28px 65px rgba(0,0,0,0.35);
     }
 
+    .card.full {
+      opacity: 0.55;
+      filter: grayscale(0.55);
+    }
+
     .card-img {
       height: 180px;
-      background:
-        linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.2)),
-        url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80")
-        center/cover no-repeat;
+      background-size: cover;
+      background-position: center;
     }
 
     .card-body {
@@ -274,6 +330,11 @@
       border-radius: 999px;
       font-weight: 900;
       font-size: 15px;
+    }
+
+    .tag.full {
+      background: rgba(255, 210, 60, 0.22);
+      color: #ffe88a;
     }
 
     .actions {
@@ -318,6 +379,19 @@
       font-size: 24px;
     }
 
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+      background-size: 200% 100%;
+      animation: shine 1.4s infinite;
+      border-radius: 28px;
+      min-height: 260px;
+    }
+
+    @keyframes shine {
+      from { background-position: 200% 0; }
+      to { background-position: -200% 0; }
+    }
+
     .footer {
       text-align: center;
       padding: 50px 0 70px;
@@ -359,12 +433,14 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         width: 100%;
+        gap: 12px;
       }
 
       .nav-btn {
         width: 100%;
+        min-height: 64px;
         font-size: 18px;
-        padding: 16px 10px;
+        padding: 18px 10px;
       }
 
       .hero {
@@ -396,6 +472,11 @@
 
       .logo {
         font-size: 34px;
+      }
+
+      .small-btn,
+      .main-btn {
+        min-height: 56px;
       }
     }
 
@@ -439,7 +520,6 @@
   </header>
 
   <main class="wrap">
-
     <section id="homeSection">
       <div class="hero">
         <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
@@ -452,7 +532,7 @@
         </div>
       </div>
 
-      <div id="statusLine" class="info-line">Сейчас показаны: все объявления.</div>
+      <div id="statusLine" class="info-line">Загрузка объявлений...</div>
 
       <div class="panel" id="createPanel">
         <h2 id="formTitle">➕ Создать объявление</h2>
@@ -463,8 +543,7 @@
         </div>
 
         <textarea id="textInput" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
-
-        <input id="telegramInput" placeholder="Telegram username без @" />
+        <input id="telegramInput" placeholder="Telegram username, @username или https://t.me/username" />
 
         <div class="actions">
           <button class="small-btn green" onclick="savePost()">Сохранить объявление</button>
@@ -483,13 +562,17 @@
         </label>
       </div>
 
-      <div id="postsSection" class="grid"></div>
+      <div id="postsSection" class="grid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
     </section>
 
     <section id="pondsSection" class="hidden">
       <div class="panel">
         <h2>💧 Платные пруды Беларуси</h2>
-        <p>Раздел для платных водоёмов: цены, условия, контакты и отзывы. Пока стартовая версия.</p>
+        <p>Пока стартовый раздел. Следующим шагом можно подключить отдельную таблицу ponds в Supabase.</p>
 
         <div class="ponds-grid">
           <div class="pond">
@@ -522,10 +605,6 @@
           <button class="small-btn red" onclick="logout()">Выйти</button>
         </div>
 
-        <div class="actions">
-          <button class="small-btn gray" onclick="activateAdmin()">Войти как админ</button>
-        </div>
-
         <div id="authStatus" class="auth-status">Проверяем вход...</div>
       </div>
     </section>
@@ -551,38 +630,52 @@
   <script>
     const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
-
-    const ADMIN_CODE = "a2112a2112A";
     const TELEGRAM_GROUP = "https://t.me/+W6eAuefzcJwwODEy";
+    const ADMIN_EMAIL = "al822alex@gmail.com";
+
+    const CARD_IMAGES = [
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80"
+    ];
 
     let supabaseClient = null;
     let posts = [];
     let currentUser = null;
-    let adminMode = localStorage.getItem("klevby_admin") === "yes";
     let viewMode = "all";
     let editingId = null;
 
-    function getLocalOwnerId() {
-      let owner = localStorage.getItem("klevby_owner_id");
-      if (!owner) {
-        owner = "local_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-        localStorage.setItem("klevby_owner_id", owner);
-      }
-      return owner;
-    }
-
-    function getOwnerId() {
-      return currentUser ? currentUser.id : getLocalOwnerId();
-    }
-
     function initSupabase() {
       if (!window.supabase) {
-        alert("Supabase не загрузился. Обнови страницу.");
+        showStatus("Supabase не загрузился. Обнови страницу.", true);
         return false;
       }
 
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       return true;
+    }
+
+    function isAdmin() {
+      return currentUser && currentUser.email === ADMIN_EMAIL;
+    }
+
+    function getOwnerId() {
+      return currentUser ? currentUser.id : null;
+    }
+
+    function showStatus(message, isError = false) {
+      const status = document.getElementById("statusLine");
+      if (!status) return;
+      status.textContent = message;
+      status.classList.toggle("error-line", isError);
+    }
+
+    function showFormMessage(message, isError = false) {
+      const el = document.getElementById("formMessage");
+      el.textContent = message;
+      el.style.color = isError ? "#ffd6d6" : "#c8ffd4";
     }
 
     function openTelegram() {
@@ -607,11 +700,21 @@
     }
 
     function cleanTelegram(value) {
-      return (value || "").replace("@", "").trim();
+      let v = String(value || "").trim();
+
+      v = v.replace(/^@/, "");
+      v = v.replace(/^https?:\/\/t\.me\//i, "");
+      v = v.replace(/^https?:\/\/telegram\.me\//i, "");
+      v = v.replace(/^t\.me\//i, "");
+      v = v.split("?")[0];
+      v = v.split("/")[0];
+      v = v.replace(/[^a-zA-Z0-9_]/g, "");
+
+      return v;
     }
 
     function normalizeText(value) {
-      return (value || "").toLowerCase().trim();
+      return String(value || "").toLowerCase().trim();
     }
 
     function escapeHtml(text) {
@@ -623,9 +726,36 @@
         .replaceAll("'", "&#039;");
     }
 
-    async function initAuth() {
-      if (!supabaseClient) return;
+    function getCardImage(post) {
+      const key = String(post.id || post.created_at || post.name || Math.random());
+      let sum = 0;
 
+      for (let i = 0; i < key.length; i++) {
+        sum += key.charCodeAt(i);
+      }
+
+      return CARD_IMAGES[sum % CARD_IMAGES.length];
+    }
+
+    function saveAuthorLocal(name, telegram) {
+      localStorage.setItem("klevby_author_name", name || "");
+      localStorage.setItem("klevby_author_telegram", telegram || "");
+    }
+
+    function fillAuthorLocal() {
+      const savedName = localStorage.getItem("klevby_author_name") || "";
+      const savedTelegram = localStorage.getItem("klevby_author_telegram") || "";
+
+      if (savedName && !document.getElementById("nameInput").value) {
+        document.getElementById("nameInput").value = savedName;
+      }
+
+      if (savedTelegram && !document.getElementById("telegramInput").value) {
+        document.getElementById("telegramInput").value = savedTelegram;
+      }
+    }
+
+    async function initAuth() {
       const { data } = await supabaseClient.auth.getUser();
       currentUser = data?.user || null;
 
@@ -642,9 +772,9 @@
       if (!status) return;
 
       if (currentUser) {
-        status.innerText = "Ты вошёл: " + currentUser.email + (adminMode ? " | Админ включён" : "");
+        status.textContent = "Ты вошёл: " + currentUser.email + (isAdmin() ? " | Админ включён" : "");
       } else {
-        status.innerText = "Ты не вошёл. Объявления можно создавать и без входа.";
+        status.textContent = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
       }
     }
 
@@ -653,20 +783,18 @@
       const password = document.getElementById("passwordInput").value.trim();
 
       if (!email || !password) {
-        alert("Введи email и пароль");
-        return;
+        return alert("Введи email и пароль.");
       }
 
       const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
       if (error) {
-        alert("Ошибка регистрации: " + error.message);
-        return;
+        return alert("Не удалось зарегистрироваться: " + error.message);
       }
 
-      alert("Регистрация выполнена.");
       currentUser = data?.user || null;
       updateAuthStatus();
+      alert("Регистрация выполнена. Если придёт письмо — подтверди почту.");
       await loadPosts();
     }
 
@@ -675,15 +803,13 @@
       const password = document.getElementById("passwordInput").value.trim();
 
       if (!email || !password) {
-        alert("Введи email и пароль");
-        return;
+        return alert("Введи email и пароль.");
       }
 
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
-        alert("Ошибка входа: " + error.message);
-        return;
+        return alert("Не получилось войти. Проверь email и пароль.");
       }
 
       currentUser = data.user;
@@ -695,19 +821,16 @@
     async function logout() {
       await supabaseClient.auth.signOut();
       currentUser = null;
-      localStorage.removeItem("klevby_admin");
-      adminMode = false;
       updateAuthStatus();
       await loadPosts();
-      alert("Ты вышел");
+      alert("Ты вышел.");
     }
 
     async function sendRecovery() {
       const email = document.getElementById("emailInput").value.trim();
 
       if (!email) {
-        alert("Введи email");
-        return;
+        return alert("Введи email.");
       }
 
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
@@ -715,29 +838,28 @@
       });
 
       if (error) {
-        alert("Ошибка: " + error.message);
-        return;
+        return alert("Не получилось отправить письмо: " + error.message);
       }
 
-      alert("Письмо для сброса пароля отправлено");
+      alert("Письмо для сброса пароля отправлено.");
     }
 
     async function updatePassword() {
       const newPassword = document.getElementById("newPasswordInput").value.trim();
 
       if (!newPassword) {
-        alert("Введи новый пароль");
-        return;
+        return alert("Введи новый пароль.");
       }
 
       const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
 
       if (error) {
-        document.getElementById("resetMessage").innerText = "Ошибка: " + error.message;
+        document.getElementById("resetMessage").textContent = "Ошибка: " + error.message;
         return;
       }
 
-      document.getElementById("resetMessage").innerText = "Пароль обновлён";
+      document.getElementById("resetMessage").textContent = "Пароль обновлён.";
+
       setTimeout(() => {
         closeResetModal();
         window.history.replaceState(null, "", window.location.pathname);
@@ -748,22 +870,13 @@
       document.getElementById("resetModal").classList.add("hidden");
     }
 
-    function activateAdmin() {
-      const code = prompt("Введи админ-код");
-
-      if (code === ADMIN_CODE) {
-        localStorage.setItem("klevby_admin", "yes");
-        adminMode = true;
-        alert("Админ включён");
-        updateAuthStatus();
-        renderPosts();
-      } else {
-        alert("Неверный админ-код");
-      }
-    }
-
     async function loadPosts() {
-      if (!supabaseClient) return;
+      showStatus("Загрузка объявлений...");
+      document.getElementById("postsSection").innerHTML = `
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      `;
 
       const { data, error } = await supabaseClient
         .from("posts")
@@ -772,8 +885,8 @@
 
       if (error) {
         console.error(error);
-        document.getElementById("postsSection").innerHTML =
-          '<div class="info-line">Ошибка загрузки: ' + escapeHtml(error.message) + '</div>';
+        showStatus("Не удалось загрузить объявления. Проверь таблицу posts и RLS.", true);
+        document.getElementById("postsSection").innerHTML = "";
         return;
       }
 
@@ -791,10 +904,10 @@
       let filtered = [...posts];
 
       if (viewMode === "mine") {
-        filtered = filtered.filter(post => post.owner_id === ownerId);
-        document.getElementById("statusLine").innerText = "Сейчас показаны: мои объявления.";
+        filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
+        showStatus("Сейчас показаны: мои объявления.");
       } else {
-        document.getElementById("statusLine").innerText = "Сейчас показаны: все объявления.";
+        showStatus("Сейчас показаны: все объявления.");
       }
 
       if (search) {
@@ -818,17 +931,25 @@
         return;
       }
 
-      list.innerHTML = filtered.map(post => cardHtml(post)).join("");
+      list.innerHTML = filtered.map(cardHtml).join("");
     }
 
     function cardHtml(post) {
       const tg = cleanTelegram(post.telegram);
       const ownerId = getOwnerId();
-      const canManage = adminMode || post.owner_id === ownerId;
+      const canManage = isAdmin() || (ownerId && post.owner_id === ownerId);
+      const isFull = Boolean(post.crew_full);
+      const image = getCardImage(post);
 
-      const tgButton = tg
-        ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
-        : `<button class="small-btn green" onclick="openTelegram()">Написать в общий чат</button>`;
+      const tgButton = isFull
+        ? `<button class="small-btn disabled" disabled>Экипаж набран</button>`
+        : tg
+          ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
+          : `<button class="small-btn green" onclick="openTelegram()">Написать в общий чат</button>`;
+
+      const fullBtn = canManage
+        ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="toggleCrewFull('${post.id}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
+        : "";
 
       const editBtn = canManage
         ? `<button class="small-btn yellow" onclick="editPost('${post.id}')">Редактировать</button>`
@@ -843,8 +964,8 @@
         : "";
 
       return `
-        <div class="card">
-          <div class="card-img"></div>
+        <div class="card ${isFull ? "full" : ""}">
+          <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${image}')"></div>
           <div class="card-body">
             <h3>${escapeHtml(post.name || "Без имени")} — ${escapeHtml(post.city || "")}</h3>
             <p>${escapeHtml(post.text || "")}</p>
@@ -852,13 +973,15 @@
             <div class="tags">
               <span class="tag">🎣 рыбалка</span>
               <span class="tag">🟢 объявление</span>
+              ${isFull ? '<span class="tag full">✅ экипаж набран</span>' : ''}
               ${tg ? '<span class="tag">💬 Telegram</span>' : ''}
               ${date ? `<span class="tag">🕘 ${escapeHtml(date)}</span>` : ''}
-              ${post.owner_id === ownerId ? '<span class="tag">⭐ моё</span>' : ''}
+              ${ownerId && post.owner_id === ownerId ? '<span class="tag">⭐ моё</span>' : ''}
             </div>
 
             <div class="actions">
               ${tgButton}
+              ${fullBtn}
               ${editBtn}
               ${deleteBtn}
             </div>
@@ -873,17 +996,25 @@
       const text = document.getElementById("textInput").value.trim();
       const telegram = cleanTelegram(document.getElementById("telegramInput").value);
 
-      if (!name || !city || !text) {
-        alert("Заполни имя, город и описание");
+      if (!currentUser) {
+        showSection("auth");
+        alert("Сначала войди или зарегистрируйся. Так объявления будут защищены от удаления чужими людьми.");
         return;
       }
+
+      if (!name || !city || !text) {
+        showFormMessage("Заполни имя, город и описание.", true);
+        return;
+      }
+
+      saveAuthorLocal(name, telegram);
 
       const payload = {
         name,
         city,
         text,
         telegram,
-        owner_id: getOwnerId()
+        owner_id: currentUser.id
       };
 
       let result;
@@ -896,21 +1027,23 @@
       } else {
         result = await supabaseClient
           .from("posts")
-          .insert([payload]);
+          .insert([{ ...payload, crew_full: false }]);
       }
 
       if (result.error) {
-        alert("Ошибка сохранения: " + result.error.message);
+        showFormMessage("Не получилось сохранить. Проверь RLS и поля таблицы posts.", true);
+        console.error(result.error);
         return;
       }
 
       const wasEditing = Boolean(editingId);
 
       clearForm();
+      fillAuthorLocal();
       editingId = null;
       document.getElementById("formTitle").innerText = "➕ Создать объявление";
       document.getElementById("cancelEditBtn").classList.add("hidden");
-      document.getElementById("formMessage").innerText = wasEditing ? "Объявление обновлено" : "Объявление создано";
+      showFormMessage(wasEditing ? "Объявление обновлено." : "Объявление создано.");
 
       await loadPosts();
     }
@@ -934,8 +1067,10 @@
     function cancelEdit() {
       editingId = null;
       clearForm();
+      fillAuthorLocal();
       document.getElementById("formTitle").innerText = "➕ Создать объявление";
       document.getElementById("cancelEditBtn").classList.add("hidden");
+      showFormMessage("");
     }
 
     function clearForm() {
@@ -945,8 +1080,23 @@
       document.getElementById("telegramInput").value = "";
     }
 
+    async function toggleCrewFull(id, value) {
+      const { error } = await supabaseClient
+        .from("posts")
+        .update({ crew_full: value })
+        .eq("id", id);
+
+      if (error) {
+        alert("Не получилось изменить статус. Проверь поле crew_full и RLS.");
+        console.error(error);
+        return;
+      }
+
+      await loadPosts();
+    }
+
     async function deletePost(id) {
-      if (!confirm("Удалить объявление?")) return;
+      if (!confirm("Удалить объявление? Это действие нельзя отменить.")) return;
 
       const { error } = await supabaseClient
         .from("posts")
@@ -954,7 +1104,8 @@
         .eq("id", id);
 
       if (error) {
-        alert("Ошибка удаления: " + error.message);
+        alert("Не получилось удалить. Удалять может только владелец объявления или админ.");
+        console.error(error);
         return;
       }
 
@@ -965,6 +1116,7 @@
       const ok = initSupabase();
       if (!ok) return;
 
+      fillAuthorLocal();
       await initAuth();
     });
   </script>
