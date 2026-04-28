@@ -1,149 +1,935 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Klevby</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Klevby — Рыбалка в Беларуси</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
 
-<style>
-body {
-  margin:0;
-  font-family: Arial;
-  background:#0b1f1a;
-  color:white;
-}
-.container {
-  max-width:600px;
-  margin:auto;
-  padding:20px;
-}
-input, textarea {
-  width:100%;
-  margin:5px 0;
-  padding:10px;
-  border-radius:10px;
-  border:none;
-}
-button {
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  margin:5px;
-}
-.post {
-  background:#12332c;
-  padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-}
-</style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #06130f;
+      color: white;
+    }
+
+    .wrap {
+      width: 94%;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    header {
+      padding: 22px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      position: sticky;
+      top: 0;
+      background: rgba(6,19,15,.92);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .logo {
+      font-size: 34px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav button {
+      border: 0;
+      padding: 15px 22px;
+      border-radius: 999px;
+      background: #26352f;
+      color: white;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .nav button.active {
+      background: #35a9ee;
+    }
+
+    .hero {
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.78), rgba(0,0,0,.25)),
+        url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80");
+      background-size: cover;
+      background-position: center;
+      padding: 70px 40px;
+      border-radius: 30px;
+      margin-bottom: 28px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(45,134,72,.55);
+      border: 1px solid #65b878;
+      padding: 13px 20px;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 58px;
+      line-height: 1.05;
+      margin: 0 0 20px;
+    }
+
+    .hero p {
+      font-size: 24px;
+      line-height: 1.45;
+      max-width: 760px;
+    }
+
+    .bigbtn {
+      display: block;
+      width: 100%;
+      border: 0;
+      padding: 22px;
+      border-radius: 22px;
+      background: #24cf63;
+      color: #03120d;
+      font-size: 22px;
+      font-weight: 900;
+      cursor: pointer;
+      margin-top: 16px;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .bigbtn.gray {
+      background: rgba(255,255,255,.18);
+      color: white;
+    }
+
+    .box {
+      background: #1d2c26;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 26px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+
+    .box h2 {
+      margin-top: 0;
+      font-size: 30px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 17px;
+      border-radius: 16px;
+      border: 0;
+      margin: 8px 0;
+      font-size: 17px;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: #1d2c26;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    .card-img {
+      height: 170px;
+      background:
+        url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80");
+      background-size: cover;
+      background-position: center;
+    }
+
+    .card-body {
+      padding: 22px;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 25px;
+    }
+
+    .card p {
+      color: #d7e1dc;
+      font-size: 17px;
+      line-height: 1.4;
+      white-space: pre-line;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .tag {
+      background: #255d35;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      color: #03120d;
+      background: #24cf63;
+    }
+
+    .btn.yellow { background: #ffd84a; }
+    .btn.red { background: #ef4b45; color: white; }
+    .btn.gray { background: #33423c; color: white; }
+    .btn.blue { background: #35a9ee; color: white; }
+
+    .searchbar {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr auto;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .notice {
+      padding: 18px;
+      border-radius: 18px;
+      background: #053d1d;
+      border: 1px solid #18984b;
+      margin-bottom: 22px;
+      font-weight: 800;
+      color: #c7ffd3;
+    }
+
+    .auth-status {
+      font-weight: 800;
+      margin-top: 10px;
+      color: #c7ffd3;
+    }
+
+    .hidden { display: none; }
+
+    footer {
+      opacity: .7;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    @media (max-width: 800px) {
+      .wrap { width: 93%; }
+
+      header {
+        display: block;
+        text-align: center;
+        position: static;
+      }
+
+      .logo {
+        font-size: 38px;
+        margin-bottom: 20px;
+      }
+
+      .nav {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .nav button {
+        font-size: 18px;
+        padding: 16px 10px;
+      }
+
+      .hero {
+        padding: 42px 20px;
+        border-radius: 0;
+        margin-left: -3.5%;
+        margin-right: -3.5%;
+      }
+
+      h1 { font-size: 42px; }
+
+      .hero p { font-size: 20px; }
+
+      .grid { grid-template-columns: 1fr; }
+
+      .row { grid-template-columns: 1fr; }
+
+      .searchbar { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 
 <body>
+  <div class="wrap">
+    <header>
+      <div class="logo">🎣💧 Klevby</div>
 
-<div class="container">
+      <div class="nav">
+        <button onclick="showSection('home')">Напарники</button>
+        <button onclick="showSection('ponds')">Платные пруды</button>
+        <button onclick="openTelegram()" class="active">Telegram</button>
+        <button onclick="showSection('all')">Все объявления</button>
+        <button onclick="showSection('mine')">Мои объявления</button>
+        <button onclick="showSection('auth')">Вход</button>
+      </div>
+    </header>
 
-<h2>Klevby 🎣</h2>
+    <section id="authSection" class="hidden">
+      <div class="box">
+        <h2>🔐 Вход на сайт</h2>
+        <input id="authEmail" placeholder="Email">
+        <input id="authPassword" type="password" placeholder="Пароль">
 
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Пароль">
+        <div class="btns">
+          <button class="btn blue" onclick="signIn()">Войти</button>
+          <button class="btn gray" onclick="signUp()">Регистрация</button>
+          <button class="btn red" onclick="signOut()">Выйти</button>
+        </div>
 
-<button onclick="signUp()">Регистрация</button>
-<button onclick="signIn()">Вход</button>
+        <div id="authStatus" class="auth-status">Проверяем вход...</div>
+      </div>
+    </section>
 
-<hr>
+    <section id="homeSection">
+      <div class="hero">
+        <div class="badge">🔥 Рыбаки Беларуси собираются здесь</div>
+        <h1>Найди компанию на рыбалку за пару минут</h1>
+        <p>
+          Едешь один? Новичок и нужен опытный напарник?
+          Добавь объявление, найди компанию и делись выездами.
+        </p>
 
-<h3>Добавить объявление</h3>
+        <button class="bigbtn" onclick="scrollToPosts()">Смотреть объявления</button>
+        <button class="bigbtn gray" onclick="openTelegram()">Войти в Telegram</button>
+      </div>
 
-<input id="name" placeholder="Имя">
-<input id="city" placeholder="Город">
-<textarea id="text" placeholder="Описание"></textarea>
-<input id="telegram" placeholder="Telegram без @">
+      <div class="notice" id="modeText">Сейчас показаны: все объявления.</div>
 
-<button onclick="addPost()">Добавить</button>
+      <div class="box" id="formBox">
+        <h2 id="formTitle">➕ Создать объявление</h2>
 
-<hr>
+        <input id="name" placeholder="Имя">
+        <input id="city" placeholder="Город">
+        <textarea id="text" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
+        <input id="telegram" placeholder="Telegram username без @">
 
-<div id="posts"></div>
+        <div class="btns">
+          <button class="btn" onclick="savePost()" id="savePostBtn">Создать объявление</button>
+          <button class="btn gray hidden" onclick="cancelEdit()" id="cancelEditBtn">Отмена</button>
+        </div>
 
-</div>
+        <p id="postError" style="color:#ff7777;font-weight:800;"></p>
+      </div>
 
-<script>
+      <div class="searchbar">
+        <input id="searchInput" placeholder="Поиск: Минск, лодка, карп..." oninput="renderPosts()">
+        <input id="cityFilter" placeholder="Фильтр по городу" oninput="renderPosts()">
+        <label style="background:#1d2c26;padding:16px;border-radius:16px;font-weight:800;">
+          <input type="checkbox" id="tgOnly" onchange="renderPosts()"> Только с Telegram
+        </label>
+      </div>
 
-const supabase = window.supabase.createClient(
-  "https://oecdshvozssadzctcokog.supabase.co",
-  "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS"
-);
+      <div id="postsSection" class="grid"></div>
+    </section>
 
-async function signUp() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+    <section id="pondsSection" class="hidden">
+      <div class="hero">
+        <div class="badge">💧 Каталог платных прудов</div>
+        <h1>Платные пруды Беларуси</h1>
+        <p>
+          Добавляй места, цены, условия, что ловится и контакты.
+          Люди смогут выбирать, куда поехать.
+        </p>
+      </div>
 
-  const { error } = await supabase.auth.signUp({ email, password });
-  if(error) alert(error.message);
-  else alert("Проверь почту");
-}
+      <div class="box">
+        <h2 id="pondFormTitle">➕ Добавить платный пруд</h2>
 
-async function signIn() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+        <div class="row">
+          <input id="pondName" placeholder="Название пруда">
+          <input id="pondRegion" placeholder="Область / район">
+        </div>
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error) alert(error.message);
-  else {
-    alert("Вошёл");
-    loadPosts();
-  }
-}
+        <div class="row">
+          <input id="pondPrice" placeholder="Цена">
+          <input id="pondFish" placeholder="Что ловится">
+        </div>
 
-async function addPost() {
-  const { data: user } = await supabase.auth.getUser();
+        <textarea id="pondConditions" placeholder="Условия: время, правила, беседки, домики, снасти"></textarea>
+        <input id="pondContact" placeholder="Телефон / Telegram">
+        <textarea id="pondReviews" placeholder="Отзывы / комментарии"></textarea>
 
-  if(!user.user) {
-    alert("Сначала войди");
-    return;
-  }
+        <div class="btns">
+          <button class="btn" onclick="savePond()" id="savePondBtn">Добавить пруд</button>
+          <button class="btn gray hidden" onclick="cancelPondEdit()" id="cancelPondEditBtn">Отмена</button>
+        </div>
 
-  const { error } = await supabase.from('posts').insert([{
-    name: name.value,
-    city: city.value,
-    text: text.value,
-    telegram: telegram.value,
-    owner_id: user.user.id
-  }]);
+        <p id="pondError" style="color:#ff7777;font-weight:800;"></p>
+      </div>
 
-  if(error) alert(error.message);
-  else loadPosts();
-}
+      <div id="pondsGrid" class="grid"></div>
+    </section>
 
-async function loadPosts() {
-  const { data } = await supabase
-    .from('posts')
-    .select('*')
-    .order('created_at', { ascending:false });
+    <footer>
+      Klevby.com — рыбалка в Беларуси 🎣
+    </footer>
+  </div>
 
-  const container = document.getElementById('posts');
-  container.innerHTML = '';
+  <script>
+    const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
+    const TELEGRAM_LINK = "https://t.me/alex822alex";
 
-  data.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'post';
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    div.innerHTML = `
-      <b>${p.name} — ${p.city}</b><br>
-      ${p.text}<br>
-      @${p.telegram}
-    `;
+    let currentUser = null;
+    let isAdmin = false;
+    let posts = [];
+    let ponds = [];
+    let editPostId = null;
+    let editPondId = null;
+    let mode = "all";
 
-    container.appendChild(div);
-  });
-}
+    function openTelegram() {
+      window.open(TELEGRAM_LINK, "_blank");
+    }
 
-loadPosts();
+    function formatDate(isoString) {
+      if (!isoString) return "";
+      const date = new Date(isoString);
+      return date.toLocaleString("ru-RU", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
 
-</script>
+    async function initAuth() {
+      const { data } = await client.auth.getUser();
+      currentUser = data.user || null;
+      await loadProfile();
+      updateAuthStatus();
+      await loadPosts();
+    }
 
+    async function loadProfile() {
+      isAdmin = false;
+
+      if (!currentUser) return;
+
+      const { data, error } = await client
+        .from("profiles")
+        .select("role")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (!error && data && data.role === "admin") {
+        isAdmin = true;
+      }
+    }
+
+    function updateAuthStatus() {
+      const el = document.getElementById("authStatus");
+      if (!el) return;
+
+      if (!currentUser) {
+        el.innerText = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
+        return;
+      }
+
+      el.innerText = isAdmin
+        ? `Ты вошёл как админ: ${currentUser.email}`
+        : `Ты вошёл: ${currentUser.email}`;
+    }
+
+    async function signUp() {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value.trim();
+
+      if (!email || !password) {
+        alert("Введи email и пароль");
+        return;
+      }
+
+      const { data, error } = await client.auth.signUp({ email, password });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      alert("Регистрация создана. Если попросит — подтверди почту.");
+      currentUser = data.user || null;
+
+      if (currentUser) {
+        await ensureProfile();
+      }
+
+      await initAuth();
+    }
+
+    async function signIn() {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value.trim();
+
+      if (!email || !password) {
+        alert("Введи email и пароль");
+        return;
+      }
+
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      currentUser = data.user;
+      await ensureProfile();
+      await initAuth();
+      alert("Вошёл");
+    }
+
+    async function signOut() {
+      await client.auth.signOut();
+      currentUser = null;
+      isAdmin = false;
+      updateAuthStatus();
+      renderPosts();
+      alert("Вышел");
+    }
+
+    async function ensureProfile() {
+      if (!currentUser) return;
+
+      await client.from("profiles").upsert({
+        id: currentUser.id,
+        email: currentUser.email,
+        role: currentUser.email === "al822alex@gmail.com" ? "admin" : "user"
+      });
+    }
+
+    function showSection(section) {
+      document.getElementById("homeSection").classList.add("hidden");
+      document.getElementById("pondsSection").classList.add("hidden");
+      document.getElementById("authSection").classList.add("hidden");
+
+      if (section === "auth") {
+        document.getElementById("authSection").classList.remove("hidden");
+        updateAuthStatus();
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      if (section === "ponds") {
+        document.getElementById("pondsSection").classList.remove("hidden");
+        loadPonds();
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      document.getElementById("homeSection").classList.remove("hidden");
+
+      if (section === "mine") {
+        mode = "mine";
+        document.getElementById("modeText").innerText = "Сейчас показаны: мои объявления.";
+      } else {
+        mode = "all";
+        document.getElementById("modeText").innerText = "Сейчас показаны: все объявления.";
+      }
+
+      renderPosts();
+      window.scrollTo(0, 0);
+    }
+
+    function scrollToPosts() {
+      document.getElementById("postsSection").scrollIntoView({ behavior: "smooth" });
+    }
+
+    async function loadPosts() {
+      const { data, error } = await client
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        document.getElementById("postError").innerText = "Ошибка загрузки: " + error.message;
+        return;
+      }
+
+      posts = data || [];
+      renderPosts();
+    }
+
+    function renderPosts() {
+      const box = document.getElementById("postsSection");
+      box.innerHTML = "";
+
+      const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
+      const city = document.getElementById("cityFilter")?.value.toLowerCase() || "";
+      const tgOnly = document.getElementById("tgOnly")?.checked || false;
+
+      let list = posts.filter(p => {
+        const allText = `${p.name || ""} ${p.city || ""} ${p.text || ""}`.toLowerCase();
+
+        if (mode === "mine") {
+          if (!currentUser) return false;
+          if (p.author_id !== currentUser.id) return false;
+        }
+
+        if (search && !allText.includes(search)) return false;
+        if (city && !(p.city || "").toLowerCase().includes(city)) return false;
+        if (tgOnly && !p.telegram) return false;
+
+        return true;
+      });
+
+      if (!list.length) {
+        box.innerHTML = "<p style='font-size:22px;'>Пока объявлений нет.</p>";
+        return;
+      }
+
+      list.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        const canManage =
+          isAdmin ||
+          (currentUser && post.author_id === currentUser.id);
+
+        const tg = post.telegram ? post.telegram.replace("@", "") : "";
+
+        div.innerHTML = `
+          <div class="card-img"></div>
+          <div class="card-body">
+            <h3>${escapeHtml(post.name || "Без имени")} — ${escapeHtml(post.city || "Без города")}</h3>
+            <p>${escapeHtml(post.text || "")}</p>
+
+            <div class="tags">
+              <span class="tag">🎣 рыбалка</span>
+              <span class="tag">🟢 объявление</span>
+              ${tg ? `<span class="tag">💬 Telegram</span>` : ""}
+              ${currentUser && post.author_id === currentUser.id ? `<span class="tag">⭐ моё</span>` : ""}
+              ${post.created_at ? `<span class="tag">🕒 ${formatDate(post.created_at)}</span>` : ""}
+            </div>
+
+            <div class="btns">
+              ${
+                tg
+                  ? `<a class="btn" href="https://t.me/${tg}" target="_blank">Написать автору</a>`
+                  : `<button class="btn" onclick="openTelegram()">Написать в общий чат</button>`
+              }
+
+              ${canManage ? `<button class="btn yellow" onclick="editPost(${post.id})">Редактировать</button>` : ""}
+              ${canManage ? `<button class="btn red" onclick="deletePost(${post.id})">Удалить</button>` : ""}
+            </div>
+          </div>
+        `;
+
+        box.appendChild(div);
+      });
+    }
+
+    async function savePost() {
+      if (!currentUser) {
+        alert("Сначала войди через кнопку Вход");
+        showSection("auth");
+        return;
+      }
+
+      const name = document.getElementById("name").value.trim();
+      const city = document.getElementById("city").value.trim();
+      const text = document.getElementById("text").value.trim();
+      const telegram = document.getElementById("telegram").value.trim().replace("@", "");
+
+      if (!name || !city || !text) {
+        document.getElementById("postError").innerText = "Заполни имя, город и описание";
+        return;
+      }
+
+      let result;
+
+      if (editPostId) {
+        result = await client
+          .from("posts")
+          .update({ name, city, text, telegram })
+          .eq("id", editPostId);
+      } else {
+        result = await client
+          .from("posts")
+          .insert([{ name, city, text, telegram, author_id: currentUser.id }]);
+      }
+
+      if (result.error) {
+        document.getElementById("postError").innerText = "Ошибка: " + result.error.message;
+        return;
+      }
+
+      cancelEdit();
+      await loadPosts();
+    }
+
+    function editPost(id) {
+      const post = posts.find(p => p.id === id);
+      if (!post) return;
+
+      editPostId = id;
+
+      document.getElementById("formTitle").innerText = "✏️ Редактировать объявление";
+      document.getElementById("name").value = post.name || "";
+      document.getElementById("city").value = post.city || "";
+      document.getElementById("text").value = post.text || "";
+      document.getElementById("telegram").value = post.telegram || "";
+
+      document.getElementById("savePostBtn").innerText = "Сохранить изменения";
+      document.getElementById("cancelEditBtn").classList.remove("hidden");
+
+      document.getElementById("formBox").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function cancelEdit() {
+      editPostId = null;
+
+      document.getElementById("formTitle").innerText = "➕ Создать объявление";
+      document.getElementById("name").value = "";
+      document.getElementById("city").value = "";
+      document.getElementById("text").value = "";
+      document.getElementById("telegram").value = "";
+      document.getElementById("postError").innerText = "";
+
+      document.getElementById("savePostBtn").innerText = "Создать объявление";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+    }
+
+    async function deletePost(id) {
+      if (!confirm("Удалить объявление?")) return;
+
+      const { error } = await client
+        .from("posts")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        alert("Ошибка удаления: " + error.message);
+        return;
+      }
+
+      await loadPosts();
+    }
+
+    async function loadPonds() {
+      const { data, error } = await client
+        .from("ponds")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        document.getElementById("pondError").innerText =
+          "Ошибка загрузки прудов: " + error.message;
+        return;
+      }
+
+      ponds = data || [];
+      renderPonds();
+    }
+
+    function renderPonds() {
+      const box = document.getElementById("pondsGrid");
+      box.innerHTML = "";
+
+      if (!ponds.length) {
+        box.innerHTML = "<p style='font-size:22px;'>Пока платных прудов нет.</p>";
+        return;
+      }
+
+      ponds.forEach(pond => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        div.innerHTML = `
+          <div class="card-img"></div>
+          <div class="card-body">
+            <h3>${escapeHtml(pond.name || "Без названия")}</h3>
+
+            <p><b>Область:</b> ${escapeHtml(pond.region || "-")}</p>
+            <p><b>Цена:</b> ${escapeHtml(pond.price || "-")}</p>
+            <p><b>Что ловится:</b> ${escapeHtml(pond.fish || "-")}</p>
+            <p><b>Условия:</b> ${escapeHtml(pond.conditions || "-")}</p>
+            <p><b>Контакт:</b> ${escapeHtml(pond.contact || "-")}</p>
+            <p><b>Отзывы:</b> ${escapeHtml(pond.reviews || "-")}</p>
+
+            <div class="tags">
+              <span class="tag">💧 платник</span>
+              <span class="tag">🎣 рыбалка</span>
+            </div>
+
+            <div class="btns">
+              ${isAdmin ? `<button class="btn yellow" onclick="editPond(${pond.id})">Редактировать</button>` : ""}
+              ${isAdmin ? `<button class="btn red" onclick="deletePond(${pond.id})">Удалить</button>` : ""}
+            </div>
+          </div>
+        `;
+
+        box.appendChild(div);
+      });
+    }
+
+    async function savePond() {
+      if (!isAdmin) {
+        alert("Добавлять платные пруды может только админ");
+        return;
+      }
+
+      const name = document.getElementById("pondName").value.trim();
+      const region = document.getElementById("pondRegion").value.trim();
+      const price = document.getElementById("pondPrice").value.trim();
+      const fish = document.getElementById("pondFish").value.trim();
+      const conditions = document.getElementById("pondConditions").value.trim();
+      const contact = document.getElementById("pondContact").value.trim();
+      const reviews = document.getElementById("pondReviews").value.trim();
+
+      if (!name || !region) {
+        document.getElementById("pondError").innerText = "Заполни название и область";
+        return;
+      }
+
+      let result;
+
+      if (editPondId) {
+        result = await client
+          .from("ponds")
+          .update({ name, region, price, fish, conditions, contact, reviews })
+          .eq("id", editPondId);
+      } else {
+        result = await client
+          .from("ponds")
+          .insert([{ name, region, price, fish, conditions, contact, reviews }]);
+      }
+
+      if (result.error) {
+        document.getElementById("pondError").innerText = "Ошибка: " + result.error.message;
+        return;
+      }
+
+      cancelPondEdit();
+      await loadPonds();
+    }
+
+    function editPond(id) {
+      const pond = ponds.find(p => p.id === id);
+      if (!pond) return;
+
+      editPondId = id;
+
+      document.getElementById("pondFormTitle").innerText = "✏️ Редактировать платный пруд";
+      document.getElementById("pondName").value = pond.name || "";
+      document.getElementById("pondRegion").value = pond.region || "";
+      document.getElementById("pondPrice").value = pond.price || "";
+      document.getElementById("pondFish").value = pond.fish || "";
+      document.getElementById("pondConditions").value = pond.conditions || "";
+      document.getElementById("pondContact").value = pond.contact || "";
+      document.getElementById("pondReviews").value = pond.reviews || "";
+
+      document.getElementById("savePondBtn").innerText = "Сохранить изменения";
+      document.getElementById("cancelPondEditBtn").classList.remove("hidden");
+
+      window.scrollTo(0, 0);
+    }
+
+    function cancelPondEdit() {
+      editPondId = null;
+
+      document.getElementById("pondFormTitle").innerText = "➕ Добавить платный пруд";
+      document.getElementById("pondName").value = "";
+      document.getElementById("pondRegion").value = "";
+      document.getElementById("pondPrice").value = "";
+      document.getElementById("pondFish").value = "";
+      document.getElementById("pondConditions").value = "";
+      document.getElementById("pondContact").value = "";
+      document.getElementById("pondReviews").value = "";
+      document.getElementById("pondError").innerText = "";
+
+      document.getElementById("savePondBtn").innerText = "Добавить пруд";
+      document.getElementById("cancelPondEditBtn").classList.add("hidden");
+    }
+
+    async function deletePond(id) {
+      if (!isAdmin) {
+        alert("Удалять пруды может только админ");
+        return;
+      }
+
+      if (!confirm("Удалить платный пруд?")) return;
+
+      const { error } = await client
+        .from("ponds")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        alert("Ошибка удаления: " + error.message);
+        return;
+      }
+
+      await loadPonds();
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    initAuth();
+  </script>
 </body>
 </html>
