@@ -12,13 +12,37 @@
   <meta name="apple-mobile-web-app-title" content="Klevby" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="icon" type="image/png" sizes="512x512" href="https://img.icons8.com/color/512/pike.png">
-  <link rel="apple-touch-icon" href="https://img.icons8.com/color/512/pike.png">
   <link rel="manifest" id="pwaManifest" />
 
   <script>
     (function createInlineManifest() {
-      const iconUrl = "https://img.icons8.com/color/512/pike.png";
+      const iconSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <defs>
+            <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stop-color="#050505"/>
+              <stop offset="100%" stop-color="#123d27"/>
+            </linearGradient>
+            <linearGradient id="fish" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stop-color="#38f57b"/>
+              <stop offset="100%" stop-color="#58b7ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+          <circle cx="116" cy="104" r="54" fill="#2fbf71" opacity="0.22"/>
+          <circle cx="418" cy="120" r="78" fill="#58b7ff" opacity="0.14"/>
+          <path d="M95 327c72-120 180-156 309-103" fill="none" stroke="#e7c960" stroke-width="22" stroke-linecap="round"/>
+          <path d="M391 214c28-58 61-87 95-98" fill="none" stroke="#e7c960" stroke-width="16" stroke-linecap="round"/>
+          <path d="M131 283c54-70 151-103 247-52 24 13 42 31 53 49-11 18-29 36-53 49-96 51-193 18-247-46Z" fill="url(#fish)"/>
+          <path d="M131 283l-58-42c-16-12-38 1-35 21l8 52c3 20 28 28 43 14Z" fill="#2fbf71"/>
+          <circle cx="336" cy="260" r="12" fill="#04140c"/>
+          <path d="M219 246c20 22 20 55 0 78" fill="none" stroke="#04140c" stroke-width="14" stroke-linecap="round" opacity="0.35"/>
+          <path d="M265 235c18 28 18 67 0 96" fill="none" stroke="#04140c" stroke-width="12" stroke-linecap="round" opacity="0.25"/>
+          <text x="256" y="424" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="800" fill="#f5f5f5">Klevby</text>
+        </svg>
+      `;
+
+      const iconData = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(iconSvg);
 
       const manifest = {
         name: "Klevby — Рыбалка в Беларуси",
@@ -32,9 +56,15 @@
         theme_color: "#050505",
         icons: [
           {
-            src: iconUrl,
+            src: iconData,
+            sizes: "192x192",
+            type: "image/svg+xml",
+            purpose: "any maskable"
+          },
+          {
+            src: iconData,
             sizes: "512x512",
-            type: "image/png",
+            type: "image/svg+xml",
             purpose: "any maskable"
           }
         ]
@@ -74,7 +104,6 @@
 
     body {
       margin: 0;
-      overflow-x: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       background:
         radial-gradient(circle at 15% 0%, rgba(47,191,113,0.08), transparent 26%),
@@ -172,86 +201,42 @@
       box-shadow: 0 0 0 4px rgba(88,183,255,0.06);
     }
 
-    body.pwa-installed .pwa-install-trigger,
-    body.pwa-installed .install-nav-btn,
-    body.pwa-installed .install-hero-btn {
+    .pwa-installed .pwa-install-trigger {
       display: none !important;
-      visibility: hidden !important;
-      pointer-events: none !important;
-    }
-
-    @media (display-mode: standalone) {
-      .pwa-install-trigger,
-      .install-nav-btn,
-      .install-hero-btn {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-      }
     }
 
     .hero {
-      width: 100%;
-      margin: 24px auto 28px;
-      display: grid;
-      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-      align-items: stretch;
-      gap: 20px;
-      padding: 20px;
-      border-radius: 24px;
-      background:
-        radial-gradient(circle at 0% 0%, rgba(47,191,113,0.14), transparent 34%),
-        radial-gradient(circle at 100% 0%, rgba(88,183,255,0.12), transparent 36%),
-        rgba(255,255,255,0.055);
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.42);
-      backdrop-filter: blur(30px);
+      margin: 18px 0 28px;
+      border-radius: 22px;
       overflow: hidden;
+      min-height: 470px;
+      background:
+        radial-gradient(circle at 18% 35%, rgba(0,0,0,0.18), transparent 28%),
+        radial-gradient(circle at 75% 50%, rgba(0,0,0,0.18), transparent 32%),
+        linear-gradient(90deg, rgba(0,0,0,0.82), rgba(0,0,0,0.38)),
+        linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.72)),
+        url("https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=85")
+        center/cover no-repeat;
+      padding: 44px 48px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
       position: relative;
     }
 
-    .hero-content {
-      min-height: 390px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 28px;
-      border-radius: 20px;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035));
-      border: 1px solid rgba(255,255,255,0.1);
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 36%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+    }
+
+    .badge,
+    .hero h1,
+    .hero p,
+    .hero-actions {
       position: relative;
       z-index: 2;
-    }
-
-    .hero-photo-widget {
-      min-height: 390px;
-      border-radius: 20px;
-      padding: 10px;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045));
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-      position: relative;
-      z-index: 2;
-    }
-
-    .hero-photo {
-      width: 100%;
-      height: 100%;
-      min-height: 370px;
-      border-radius: 16px;
-      background-image:
-        linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.16)),
-        url("https://images.unsplash.com/photo-1500382017468-9049fee74a62?auto=format&fit=crop&q=80&w=1920");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: scroll;
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 18px 54px rgba(0,0,0,0.28);
-      overflow: hidden;
     }
 
     .badge {
@@ -271,21 +256,19 @@
     .hero h1 {
       font-size: clamp(36px, 5vw, 54px);
       line-height: 1.06;
-      max-width: 620px;
+      max-width: 760px;
       margin: 0 0 18px;
       letter-spacing: -1px;
-      font-weight: 760;
-      text-shadow: none;
+      font-weight: 720;
     }
 
     .hero p {
       font-size: 19px;
-      max-width: 560px;
+      max-width: 680px;
       line-height: 1.55;
       margin: 0 0 26px;
-      color: rgba(245,245,245,0.76);
+      color: rgba(245,245,245,0.78);
       font-weight: 450;
-      text-shadow: none;
     }
 
     .hero-actions {
@@ -1148,19 +1131,17 @@
       nav {
         width: 100%;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 6px;
         overflow: visible;
         padding: 0 0 4px;
         justify-content: stretch;
-        align-items: stretch;
       }
 
       .nav-btn {
         width: 100%;
-        height: 42px;
-        min-height: 42px;
-        padding: 0 8px;
+        min-height: 34px;
+        padding: 7px 6px;
         font-size: 12.5px;
         line-height: 1.15;
         text-align: center;
@@ -1168,56 +1149,25 @@
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.08);
         white-space: normal;
-        display: flex;
-        align-items: center;
-        justify-content: center;
       }
 
       .install-nav-btn {
-        height: 42px !important;
-        min-height: 42px !important;
-        padding: 0 8px !important;
+        padding: 7px 6px !important;
         border-radius: 10px !important;
       }
 
       .nav-btn:last-child {
-        grid-column: 1 / -1;
+        grid-column: auto;
         width: 100%;
-        height: 42px;
-        min-height: 42px;
-        padding: 0 8px;
+        min-height: 34px;
+        padding: 7px 6px;
         border-radius: 10px;
       }
 
       .hero {
-        grid-template-columns: 1fr;
-        gap: 14px;
-        margin: 16px auto 24px;
-        padding: 14px;
-        border-radius: 20px;
-      }
-
-      .hero-content {
-        min-height: auto;
-        padding: 22px 18px;
-        border-radius: 16px;
-        order: 1;
-      }
-
-      .hero-photo-widget {
-        min-height: 260px;
-        border-radius: 16px;
-        padding: 8px;
-        order: 2;
-      }
-
-      .hero-photo {
-        min-height: 244px;
-        border-radius: 14px;
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: scroll;
+        min-height: 430px;
+        padding: 30px 22px;
+        border-radius: 18px;
       }
 
       .hero h1 {
@@ -1405,54 +1355,34 @@
       }
 
       nav {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 6px;
       }
 
       .nav-btn {
-        height: 40px;
-        min-height: 40px;
+        min-height: 32px;
         font-size: 12px;
-        padding: 0 6px;
+        padding: 6px 5px;
         border-radius: 9px;
       }
 
       .install-nav-btn {
-        height: 40px !important;
-        min-height: 40px !important;
-        padding: 0 6px !important;
+        padding: 6px 5px !important;
         border-radius: 9px !important;
       }
 
       .nav-btn:last-child {
-        grid-column: 1 / -1;
+        grid-column: auto;
         width: 100%;
-        height: 40px;
-        min-height: 40px;
-        padding: 0 6px;
+        min-height: 32px;
+        padding: 6px 5px;
         border-radius: 9px;
       }
 
       .hero {
-        margin: 14px auto 22px;
-        padding: 12px;
-        border-radius: 18px;
-      }
-
-      .hero-content {
-        padding: 20px 16px;
-        border-radius: 15px;
-      }
-
-      .hero-photo-widget {
-        min-height: 220px;
-        border-radius: 15px;
-        padding: 7px;
-      }
-
-      .hero-photo {
-        min-height: 206px;
-        border-radius: 13px;
+        margin-top: 14px;
+        min-height: 400px;
+        padding: 28px 20px;
       }
 
       .hero h1 { font-size: 34px; }
@@ -1567,6 +1497,7 @@
       <nav>
         <button class="nav-btn" onclick="showSection('home')">Напарники</button>
         <button class="nav-btn" onclick="showSection('ponds')">Платные пруды</button>
+        <button class="nav-btn" onclick="showSection('map')">Карта клева</button>
         <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
         <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
         <button class="nav-btn" onclick="setMode('mine')">Мои объявления</button>
@@ -1579,20 +1510,14 @@
   <main class="wrap">
     <section id="homeSection">
       <div class="hero">
-        <div class="hero-content">
-          <div class="badge">Рыбаки Беларуси собираются здесь</div>
-          <h1>Найди компанию на рыбалку</h1>
-          <p>Добавь объявление, найди напарника и договорись о совместном выезде без лишней суеты.</p>
+        <div class="badge">Рыбаки Беларуси собираются здесь</div>
+        <h1>Найди компанию на рыбалку</h1>
+        <p>Добавь объявление, найди напарника и договорись о совместном выезде без лишней суеты.</p>
 
-          <div class="hero-actions">
-            <button class="main-btn green" onclick="scrollToPosts()">Смотреть объявления</button>
-            <button class="main-btn gray" onclick="openTelegram()">Telegram-чат</button>
-            <button class="main-btn install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить на телефон</button>
-          </div>
-        </div>
-
-        <div class="hero-photo-widget">
-          <div class="hero-photo"></div>
+        <div class="hero-actions">
+          <button class="main-btn green" onclick="scrollToPosts()">Смотреть объявления</button>
+          <button class="main-btn gray" onclick="openTelegram()">Telegram-чат</button>
+          <button class="main-btn install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить на телефон</button>
         </div>
       </div>
 
