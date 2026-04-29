@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="ru" class="">
 <head>
@@ -6,7 +7,7 @@
 
   <title>Klevby — рыбалка в Беларуси</title>
 
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#071014" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Klevby" />
@@ -38,8 +39,8 @@
         scope: "./",
         display: "standalone",
         orientation: "portrait",
-        background_color: "#0a0a0a",
-        theme_color: "#0a0a0a",
+        background_color: "#071014",
+        theme_color: "#071014",
         icons: [
           {
             src: iconUrl,
@@ -65,21 +66,24 @@
     * { box-sizing: border-box; }
 
     :root {
-      --bg: #0a0a0a;
-      --panel: rgba(26,26,26,0.9);
-      --panel2: rgba(34,34,34,0.86);
+      --bg: #071014;
+      --bg2: #0b171d;
+      --panel: rgba(14, 25, 31, 0.86);
+      --panel2: rgba(20, 34, 41, 0.9);
+      --panel3: rgba(255,255,255,0.045);
       --border: rgba(255,255,255,0.1);
       --border-strong: rgba(255,255,255,0.18);
-      --text: #f5f5f5;
-      --muted: rgba(245,245,245,0.66);
-      --muted2: rgba(245,245,245,0.42);
-      --green: #35c77b;
+      --text: #f4fbf7;
+      --muted: rgba(244,251,247,0.66);
+      --muted2: rgba(244,251,247,0.42);
+      --green: #42d986;
+      --green2: #1fae68;
       --blue: #58b7ff;
       --gold: #e5b957;
-      --gold2: #ffd36a;
       --red: #e45858;
-      --radius: 18px;
-      --shadow: 0 24px 80px rgba(0,0,0,0.48);
+      --radius: 20px;
+      --shadow: 0 24px 80px rgba(0,0,0,0.46);
+      --glow: 0 0 34px rgba(66,217,134,0.11);
     }
 
     html { scroll-behavior: smooth; }
@@ -91,10 +95,10 @@
       color: var(--text);
       min-height: 100vh;
       background:
-        radial-gradient(circle at 12% 0%, rgba(53,199,123,0.09), transparent 28%),
-        radial-gradient(circle at 86% 0%, rgba(88,183,255,0.08), transparent 28%),
-        radial-gradient(circle at 50% 100%, rgba(229,185,87,0.06), transparent 32%),
-        #0a0a0a;
+        radial-gradient(circle at 15% 0%, rgba(66,217,134,0.10), transparent 28%),
+        radial-gradient(circle at 85% 5%, rgba(88,183,255,0.09), transparent 30%),
+        radial-gradient(circle at 50% 100%, rgba(28,86,72,0.18), transparent 34%),
+        linear-gradient(180deg, #071014 0%, #091419 44%, #05090c 100%);
     }
 
     a { color: inherit; text-decoration: none; }
@@ -108,7 +112,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(10,10,10,0.78);
+      background: rgba(7,16,20,0.78);
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
       border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -167,14 +171,15 @@
       color: var(--text);
       transform: translateY(-1px);
       background: rgba(255,255,255,0.075);
-      border-color: rgba(229,185,87,0.35);
+      border-color: rgba(66,217,134,0.35);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.24), var(--glow);
     }
 
     .nav-auth {
-      color: #160f03;
-      border-color: rgba(229,185,87,0.72);
-      background: linear-gradient(135deg, var(--gold2), var(--gold));
-      box-shadow: 0 10px 28px rgba(229,185,87,0.22);
+      color: #03150c;
+      border-color: rgba(66,217,134,0.72);
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      box-shadow: 0 12px 32px rgba(66,217,134,0.22);
       font-weight: 850;
     }
 
@@ -232,22 +237,22 @@
       width: 100%;
       min-height: 500px;
       margin: 24px auto 28px;
-      border-radius: 28px;
+      border-radius: 30px;
       overflow: hidden;
-      padding: 48px;
+      padding: 52px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: flex-start;
       position: relative;
       background:
-        linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)),
+        linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.64)),
         url("https://images.unsplash.com/photo-1500382017468-9049fee74a62?auto=format&fit=crop&q=80&w=1920");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
       border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), var(--glow);
     }
 
     .hero::after {
@@ -255,9 +260,9 @@
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(circle at 20% 25%, rgba(229,185,87,0.16), transparent 34%),
-        radial-gradient(circle at 90% 20%, rgba(88,183,255,0.1), transparent 32%),
-        linear-gradient(90deg, rgba(0,0,0,0.42), rgba(0,0,0,0.06));
+        radial-gradient(circle at 16% 30%, rgba(66,217,134,0.12), transparent 32%),
+        radial-gradient(circle at 86% 15%, rgba(88,183,255,0.12), transparent 32%),
+        linear-gradient(90deg, rgba(0,0,0,0.46), rgba(0,0,0,0.06));
       pointer-events: none;
     }
 
@@ -276,7 +281,7 @@
       border-radius: 999px;
       background: rgba(0,0,0,0.32);
       border: 1px solid rgba(255,255,255,0.16);
-      color: rgba(255,255,255,0.88);
+      color: rgba(255,255,255,0.9);
       font-size: 14px;
       font-weight: 750;
       margin-bottom: 20px;
@@ -293,7 +298,7 @@
       letter-spacing: -1.6px;
       font-weight: 900;
       color: #fff;
-      text-shadow: 0 3px 18px rgba(0,0,0,0.85);
+      text-shadow: 0 3px 18px rgba(0,0,0,0.88);
     }
 
     .hero p {
@@ -301,7 +306,7 @@
       max-width: 650px;
       line-height: 1.55;
       margin: 0 0 28px;
-      color: rgba(255,255,255,0.84);
+      color: rgba(255,255,255,0.86);
       font-weight: 560;
       text-shadow: 0 2px 12px rgba(0,0,0,0.82);
     }
@@ -324,7 +329,7 @@
       width: auto;
       min-width: auto;
       white-space: nowrap;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.26);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -350,9 +355,9 @@
     }
 
     .green {
-      background: linear-gradient(135deg, var(--gold2), var(--gold));
-      color: #160f03;
-      border-color: rgba(229,185,87,0.55);
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #03150c;
+      border-color: rgba(66,217,134,0.58);
     }
 
     .blue {
@@ -371,9 +376,9 @@
     }
 
     .yellow {
-      background: linear-gradient(135deg, var(--gold2), var(--gold));
-      color: #160f03;
-      border-color: rgba(229,185,87,0.55);
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #03150c;
+      border-color: rgba(66,217,134,0.58);
     }
 
     .red {
@@ -392,7 +397,7 @@
       position: relative;
       overflow: hidden;
       background:
-        radial-gradient(circle at 10% 0%, rgba(229,185,87,0.11), transparent 34%),
+        radial-gradient(circle at 10% 0%, rgba(66,217,134,0.10), transparent 34%),
         radial-gradient(circle at 100% 0%, rgba(88,183,255,0.12), transparent 36%),
         var(--panel);
       border: 1px solid var(--border);
@@ -401,7 +406,7 @@
       margin: 24px 0;
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), var(--glow);
     }
 
     .forecast-panel::before,
@@ -417,7 +422,7 @@
       right: -80px;
       top: -90px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,216,111,0.28), rgba(229,185,87,0.12) 42%, transparent 70%);
+      background: radial-gradient(circle, rgba(66,217,134,0.18), rgba(88,183,255,0.08) 42%, transparent 70%);
       animation: sunPulse 4s ease-in-out infinite;
     }
 
@@ -558,7 +563,7 @@
 
     .forecast-item:hover {
       transform: translateY(-3px);
-      border-color: rgba(229,185,87,0.32);
+      border-color: rgba(66,217,134,0.32);
       background: rgba(255,255,255,0.075);
     }
 
@@ -680,8 +685,21 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
     }
 
+    select {
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(244,251,247,0.65) 50%),
+        linear-gradient(135deg, rgba(244,251,247,0.65) 50%, transparent 50%);
+      background-position:
+        calc(100% - 20px) calc(50% - 3px),
+        calc(100% - 14px) calc(50% - 3px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 42px;
+    }
+
     select option {
-      background: #111;
+      background: #101a20;
       color: var(--text);
     }
 
@@ -693,8 +711,8 @@
     input:focus,
     textarea:focus,
     select:focus {
-      border-color: rgba(229,185,87,0.48);
-      box-shadow: 0 0 0 4px rgba(229,185,87,0.09);
+      border-color: rgba(66,217,134,0.5);
+      box-shadow: 0 0 0 4px rgba(66,217,134,0.09);
       background: rgba(255,255,255,0.075);
     }
 
@@ -710,67 +728,90 @@
       gap: 12px;
     }
 
+    .filter-card {
+      background:
+        radial-gradient(circle at 0% 0%, rgba(66,217,134,0.08), transparent 34%),
+        var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 18px;
+      margin: 22px 0 16px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.28), var(--glow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .filter-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .filter-title h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.25px;
+      font-weight: 820;
+      color: var(--text);
+    }
+
+    .filter-title span {
+      color: var(--muted2);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
     .filters {
       display: grid;
-      grid-template-columns: 1.2fr 1fr auto;
-      gap: 12px;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 0.9fr) auto;
+      gap: 10px;
       align-items: center;
-      margin: 26px 0 14px;
+      margin: 0;
+    }
+
+    .filter-reset {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.035);
+      color: var(--muted);
+      border-radius: 14px;
+      height: 50px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 780;
+      cursor: pointer;
+      transition: 0.22s ease;
+      white-space: nowrap;
+    }
+
+    .filter-reset:hover {
+      border-color: rgba(66,217,134,0.32);
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
     }
 
     .check {
       background: rgba(255,255,255,0.045);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 15px 16px;
+      padding: 13px 14px;
       font-weight: 750;
       white-space: nowrap;
       color: var(--muted);
-      font-size: 15px;
+      font-size: 14px;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
+      display: inline-flex;
+      align-items: center;
+      min-height: 50px;
     }
 
     .check input {
       width: auto;
-      margin-right: 8px;
-      accent-color: var(--gold);
-    }
-
-    .quick-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 0 0 22px;
-    }
-
-    .quick-tag-btn {
-      appearance: none;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.045);
-      color: var(--muted);
-      border-radius: 999px;
-      padding: 9px 13px;
-      font-size: 13px;
-      font-weight: 780;
-      cursor: pointer;
-      transition: 0.22s ease;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.14);
-    }
-
-    .quick-tag-btn:hover {
-      transform: translateY(-2px);
-      border-color: rgba(229,185,87,0.38);
-      background: rgba(255,255,255,0.07);
-      color: var(--text);
-    }
-
-    .quick-tag-btn.clear {
-      border-color: rgba(229,185,87,0.24);
-      color: #ffe7a3;
-      background: rgba(229,185,87,0.08);
+      margin: 0 8px 0 0;
+      accent-color: var(--green);
     }
 
     .grid {
@@ -794,8 +835,8 @@
 
     .card:hover {
       transform: translateY(-4px) scale(1.006);
-      box-shadow: 0 28px 80px rgba(0,0,0,0.5);
-      border-color: rgba(229,185,87,0.3);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.5), var(--glow);
+      border-color: rgba(66,217,134,0.28);
     }
 
     .card.full {
@@ -953,7 +994,8 @@
 
     .pond:hover {
       transform: translateY(-3px);
-      border-color: rgba(229,185,87,0.3);
+      border-color: rgba(66,217,134,0.3);
+      box-shadow: 0 16px 42px rgba(0,0,0,0.24), var(--glow);
     }
 
     .pond h3 {
@@ -988,7 +1030,7 @@
 
     .map-card {
       max-width: 620px;
-      background: rgba(26,26,26,0.76);
+      background: rgba(14,25,31,0.82);
       border: 1px solid var(--border);
       border-radius: 22px;
       padding: 24px;
@@ -1048,7 +1090,7 @@
     .modal {
       width: 100%;
       max-width: 560px;
-      background: rgba(26,26,26,0.96);
+      background: rgba(14,25,31,0.96);
       border: 1px solid var(--border);
       border-radius: 24px;
       padding: 24px;
@@ -1088,12 +1130,12 @@
       opacity: 0;
       transition: 0.34s ease;
       background:
-        radial-gradient(circle at 10% 0%, rgba(229,185,87,0.14), transparent 38%),
+        radial-gradient(circle at 10% 0%, rgba(66,217,134,0.14), transparent 38%),
         radial-gradient(circle at 95% 0%, rgba(88,183,255,0.13), transparent 40%),
-        rgba(26,26,26,0.94);
+        rgba(14,25,31,0.94);
       border: 1px solid var(--border);
       border-radius: 22px;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), var(--glow);
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
       padding: 14px;
@@ -1116,7 +1158,7 @@
       height: 46px;
       border-radius: 16px;
       background:
-        linear-gradient(135deg, rgba(229,185,87,0.26), rgba(255,255,255,0.045));
+        linear-gradient(135deg, rgba(66,217,134,0.24), rgba(255,255,255,0.045));
       border: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -1146,9 +1188,9 @@
 
     .install-btn {
       appearance: none;
-      border: 1px solid rgba(229,185,87,0.58);
-      background: linear-gradient(135deg, var(--gold2), var(--gold));
-      color: #160f03;
+      border: 1px solid rgba(66,217,134,0.58);
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #03150c;
       border-radius: 999px;
       padding: 10px 14px;
       font-size: 13px;
@@ -1202,6 +1244,15 @@
       .nav-auth {
         grid-column: 1 / -1;
       }
+
+      .filters {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .filter-reset,
+      .check {
+        width: 100%;
+      }
     }
 
     @media (max-width: 900px) {
@@ -1210,7 +1261,7 @@
         top: auto;
         z-index: 10;
         padding: 8px 0;
-        background: rgba(10,10,10,0.82);
+        background: rgba(7,16,20,0.84);
       }
 
       .header-inner {
@@ -1315,7 +1366,7 @@
         margin: 16px 0;
         padding: 14px;
         border-radius: 22px;
-        box-shadow: 0 14px 44px rgba(0,0,0,0.32);
+        box-shadow: 0 14px 44px rgba(0,0,0,0.32), var(--glow);
       }
 
       .weather-sunny::before {
@@ -1446,14 +1497,15 @@
         text-align: center;
       }
 
-      .quick-tags {
-        gap: 7px;
-        margin-bottom: 18px;
+      .filter-card {
+        padding: 14px;
+        border-radius: 22px;
       }
 
-      .quick-tag-btn {
-        padding: 8px 10px;
-        font-size: 12px;
+      .filter-title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
       }
 
       .filters,
@@ -1461,6 +1513,14 @@
       .grid,
       .ponds-grid {
         grid-template-columns: 1fr;
+      }
+
+      .filters {
+        gap: 8px;
+      }
+
+      .filter-reset {
+        width: 100%;
       }
 
       .grid { gap: 22px; }
@@ -1743,27 +1803,60 @@
         <div id="formMessage" class="auth-status"></div>
       </div>
 
-      <div class="filters">
-        <input id="searchInput" placeholder="Поиск: Минск, лодка, карп..." oninput="renderPosts()" />
-        <input id="cityFilter" placeholder="Фильтр по городу" oninput="renderPosts()" />
-        <label class="check">
-          <input type="checkbox" id="telegramOnly" onchange="renderPosts()" />
-          Только с Telegram
-        </label>
-      </div>
+      <div class="filter-card">
+        <div class="filter-title">
+          <h3>Фильтр объявлений</h3>
+          <span>Быстрый поиск без лишних кнопок</span>
+        </div>
 
-      <div class="quick-tags">
-        <button class="quick-tag-btn" onclick="quickSearch('Минск')">Минск</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Гомель')">Гомель</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Брест')">Брест</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Витебск')">Витебск</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Гродно')">Гродно</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Могилев')">Могилев</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Спиннинг')">Спиннинг</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Фидер')">Фидер</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Поплавок')">Поплавок</button>
-        <button class="quick-tag-btn" onclick="quickSearch('Карпфишинг')">Карпфишинг</button>
-        <button class="quick-tag-btn clear" onclick="quickSearch('')">Сбросить</button>
+        <div class="filters">
+          <input id="searchInput" placeholder="Поиск: лодка, карп, завтра..." oninput="renderPosts()" />
+
+          <select id="citySelect" onchange="renderPosts()">
+            <option value="">Выберите город</option>
+            <option value="Минск">Минск</option>
+            <option value="Гомель">Гомель</option>
+            <option value="Могилев">Могилев</option>
+            <option value="Витебск">Витебск</option>
+            <option value="Гродно">Гродно</option>
+            <option value="Брест">Брест</option>
+            <option value="Барановичи">Барановичи</option>
+            <option value="Бобруйск">Бобруйск</option>
+            <option value="Борисов">Борисов</option>
+            <option value="Пинск">Пинск</option>
+            <option value="Орша">Орша</option>
+            <option value="Мозырь">Мозырь</option>
+            <option value="Солигорск">Солигорск</option>
+            <option value="Новополоцк">Новополоцк</option>
+            <option value="Лида">Лида</option>
+            <option value="Молодечно">Молодечно</option>
+            <option value="Полоцк">Полоцк</option>
+            <option value="Жлобин">Жлобин</option>
+            <option value="Слуцк">Слуцк</option>
+            <option value="Светлогорск">Светлогорск</option>
+            <option value="Речица">Речица</option>
+            <option value="Жодино">Жодино</option>
+            <option value="Кобрин">Кобрин</option>
+            <option value="Сморгонь">Сморгонь</option>
+            <option value="Волковыск">Волковыск</option>
+          </select>
+
+          <select id="typeSelect" onchange="renderPosts()">
+            <option value="">Способ ловли</option>
+            <option value="Спиннинг">Спиннинг</option>
+            <option value="Фидер">Фидер</option>
+            <option value="Поплавок">Поплавок</option>
+            <option value="Карпфишинг">Карпфишинг</option>
+            <option value="Зимняя">Зимняя</option>
+          </select>
+
+          <label class="check">
+            <input type="checkbox" id="telegramOnly" onchange="renderPosts()" />
+            Telegram
+          </label>
+
+          <button class="filter-reset" onclick="resetFilters()">Сбросить</button>
+        </div>
       </div>
 
       <div id="postsSection" class="grid">
@@ -1951,19 +2044,18 @@
       renderPosts();
     }
 
-    function quickSearch(value) {
+    function resetFilters() {
       const searchInput = document.getElementById("searchInput");
-      const cityFilter = document.getElementById("cityFilter");
+      const citySelect = document.getElementById("citySelect");
+      const typeSelect = document.getElementById("typeSelect");
+      const telegramOnly = document.getElementById("telegramOnly");
 
-      if (searchInput) searchInput.value = value || "";
-      if (cityFilter) cityFilter.value = "";
+      if (searchInput) searchInput.value = "";
+      if (citySelect) citySelect.value = "";
+      if (typeSelect) typeSelect.value = "";
+      if (telegramOnly) telegramOnly.checked = false;
 
       renderPosts();
-
-      const postsSection = document.getElementById("postsSection");
-      if (postsSection) {
-        postsSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
     }
 
     function cleanTelegram(value) {
@@ -2305,7 +2397,8 @@
     function renderPosts() {
       const list = document.getElementById("postsSection");
       const search = normalizeText(document.getElementById("searchInput")?.value);
-      const city = normalizeText(document.getElementById("cityFilter")?.value);
+      const selectedCity = normalizeText(document.getElementById("citySelect")?.value);
+      const selectedType = normalizeText(document.getElementById("typeSelect")?.value);
       const telegramOnly = document.getElementById("telegramOnly")?.checked;
       const ownerId = getOwnerId();
 
@@ -2327,8 +2420,12 @@
         );
       }
 
-      if (city) {
-        filtered = filtered.filter(post => normalizeText(post.city).includes(city));
+      if (selectedCity) {
+        filtered = filtered.filter(post => normalizeText(post.city).includes(selectedCity));
+      }
+
+      if (selectedType) {
+        filtered = filtered.filter(post => normalizeText(post.fishing_type).includes(selectedType));
       }
 
       if (telegramOnly) {
@@ -2688,3 +2785,4 @@
   </script>
 </body>
 </html>
+```
