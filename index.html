@@ -1500,7 +1500,16 @@
       }
 
       .filters {
-        gap: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px !important;
+      }
+
+      .filters > input,
+      .filters > select,
+      .filters > .filter-reset,
+      .filters > .check {
+        margin: 0;
       }
 
       .filter-reset {
