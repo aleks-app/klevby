@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-title" content="Klevby" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2830/2830211.png">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZCI+PHBhdGggZD0iTTEyIDJDMTEuNDUgMiAxMSA0IDExIDRTMTEuNDUgNiAxMiA2UzEzIDQgMTMgNFMxMi41NSAyIDEyIDJaTTcgN0M1LjkgNyA1IDcuOSA1IDlWMTVDNSAxNy44IDIuNyAyMCAyIDIwVjIyQzQuMiAyMiA3IDE5LjIgNyAxNlY5QzcgOC40IDcuNCA4IDggOFM5IDguNCA5IDlWMTVDOSAxOS40IDEyLjYgMjMgMTcgMjNTMjEgMTkuNCAyMSAxNVY5QzIxIDcuOSAyMC4xIDcgMTkgN1MxNyA3LjkgMTcgOVYxNUMxNyAxNy4yIDE1LjIgMTkgMTMgMTlWMTBDMTMgOC4zIDE0LjcgNyAxNi41IDdIMTdaTTE5IDlWMTVDMTkgMTYuMSAxOC4xIDE3IDE3IDE3UzE1IDE2LjEgMTUgMTVWOUgxN1oiLz48L3N2Zz4=">
   <link rel="manifest" id="pwaManifest" />
 
   <script>
     (function createInlineManifest() {
-      const iconUrl = "https://cdn-icons-png.flaticon.com/512/2830/2830211.png";
+      const iconUrl = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZCI+PHBhdGggZD0iTTEyIDJDMTEuNDUgMiAxMSA0IDExIDRTMTEuNDUgNiAxMiA2UzEzIDQgMTMgNFMxMi41NSAyIDEyIDJaTTcgN0M1LjkgNyA1IDcuOSA1IDlWMTVDNSAxNy44IDIuNyAyMCAyIDIwVjIyQzQuMiAyMiA3IDE5LjIgNyAxNlY5QzcgOC40IDcuNCA4IDggOFM5IDguNCA5IDlWMTVDOSAxOS40IDEyLjYgMjMgMTcgMjNTMjEgMTkuNCAyMSAxNVY5QzIxIDcuOSAyMC4xIDcgMTkgN1MxNyA3LjkgMTcgOVYxNUMxNyAxNy4yIDE1LjIgMTkgMTMgMTlWMTBDMTMgOC4zIDE0LjcgNyAxNi41IDdIMTdaTTE5IDlWMTVDMTkgMTYuMSAxOC4xIDE3IDE3IDE3UzE1IDE2LjEgMTUgMTVWOUgxN1oiLz48L3N2Zz4=";
 
       const manifest = {
         name: "Klevby — Рыбалка в Беларуси",
@@ -33,13 +33,13 @@
           {
             src: iconUrl,
             sizes: "192x192",
-            type: "image/png",
+            type: "image/svg+xml",
             purpose: "any maskable"
           },
           {
             src: iconUrl,
             sizes: "512x512",
-            type: "image/png",
+            type: "image/svg+xml",
             purpose: "any maskable"
           }
         ]
@@ -1139,6 +1139,10 @@
         border-radius: 10px;
       }
 
+      .pwa-installed nav .nav-btn:last-child {
+        grid-column: 1 / -1;
+      }
+
       .hero {
         min-height: 430px;
         padding: 30px 22px;
@@ -1352,6 +1356,10 @@
         min-height: 32px;
         padding: 6px 5px;
         border-radius: 9px;
+      }
+
+      .pwa-installed nav .nav-btn:last-child {
+        grid-column: 1 / -1;
       }
 
       .hero {
