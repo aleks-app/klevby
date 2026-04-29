@@ -7,64 +7,37 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!--
-  SUPABASE: что нужно добавить в таблицу posts
-
-  Таблица posts должна иметь поля:
-  id uuid primary key default gen_random_uuid()
-  created_at timestamptz default now()
-  name text
-  city text
-  text text
-  telegram text
-  owner_id uuid
-  crew_full boolean default false
-
-  RLS включить:
-  alter table posts enable row level security;
-
-  Политики:
-
-  1) Читать могут все:
-  create policy "Posts are public"
-  on posts for select
-  using (true);
-
-  2) Создавать может только авторизованный пользователь за себя:
-  create policy "Users can create own posts"
-  on posts for insert
-  with check (auth.uid() = owner_id);
-
-  3) Редактировать может только владелец или админ-почта:
-  create policy "Users can update own posts or admin"
-  on posts for update
-  using (
-    auth.uid() = owner_id
-    or auth.jwt()->>'email' = 'al822alex@gmail.com'
-  )
-  with check (
-    auth.uid() = owner_id
-    or auth.jwt()->>'email' = 'al822alex@gmail.com'
-  );
-
-  4) Удалять может только владелец или админ-почта:
-  create policy "Users can delete own posts or admin"
-  on posts for delete
-  using (
-    auth.uid() = owner_id
-    or auth.jwt()->>'email' = 'al822alex@gmail.com'
-  );
-  -->
-
   <style>
     * { box-sizing: border-box; }
+
+    :root {
+      --bg: #020d09;
+      --bg2: #061812;
+      --panel: rgba(255,255,255,0.075);
+      --panel2: rgba(255,255,255,0.105);
+      --border: rgba(255,255,255,0.11);
+      --text: #f4fff9;
+      --muted: rgba(244,255,249,0.68);
+      --green: #38f57b;
+      --green2: #25d366;
+      --blue: #3ab7ff;
+      --yellow: #ffd95a;
+      --red: #ff5555;
+      --radius: 28px;
+      --shadow: 0 24px 80px rgba(0,0,0,0.42);
+    }
+
     html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #06130f;
-      color: white;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56,245,123,0.11), transparent 34%),
+        radial-gradient(circle at top right, rgba(58,183,255,0.10), transparent 30%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      color: var(--text);
+      min-height: 100vh;
     }
 
     a { color: inherit; text-decoration: none; }
@@ -79,9 +52,10 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(6, 19, 15, 0.96);
-      backdrop-filter: blur(14px);
-      padding: 18px 0;
+      background: rgba(2,13,9,0.78);
+      backdrop-filter: blur(22px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 16px 0;
     }
 
     .header-inner {
@@ -93,8 +67,10 @@
 
     .logo {
       font-size: 34px;
-      font-weight: 900;
+      font-weight: 950;
+      letter-spacing: -1px;
       white-space: nowrap;
+      text-shadow: 0 0 24px rgba(56,245,123,0.16);
     }
 
     nav {
@@ -105,139 +81,176 @@
     }
 
     .nav-btn {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: white;
-      padding: 16px 24px;
+      background: rgba(255,255,255,0.09);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 15px 24px;
       border-radius: 999px;
-      font-weight: 800;
-      font-size: 17px;
+      font-weight: 850;
+      font-size: 16px;
       cursor: pointer;
-      transition: 0.2s;
+      transition: 0.3s ease;
       min-height: 54px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
     }
 
     .nav-btn:hover,
     .nav-btn.active {
-      background: #2da8ef;
-      transform: translateY(-2px);
+      background: linear-gradient(135deg, var(--blue), #188de0);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 14px 38px rgba(58,183,255,0.22);
     }
 
     .hero {
-      margin: 24px 0 36px;
-      border-radius: 34px;
+      margin: 26px 0 36px;
+      border-radius: 36px;
       overflow: hidden;
-      min-height: 560px;
+      min-height: 580px;
       background:
-        linear-gradient(90deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)),
+        linear-gradient(90deg, rgba(0,0,0,0.82), rgba(0,0,0,0.42)),
         url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80")
         center/cover no-repeat;
-      padding: 70px;
-      box-shadow: 0 30px 90px rgba(0,0,0,0.35);
+      padding: 76px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.09);
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 70% 80%, rgba(56,245,123,0.12), transparent 38%);
+      pointer-events: none;
     }
 
     .badge {
       display: inline-block;
-      padding: 14px 26px;
+      padding: 14px 24px;
       border-radius: 999px;
-      background: rgba(30, 160, 80, 0.42);
-      border: 1px solid rgba(97, 255, 151, 0.55);
-      color: #c8ffd4;
-      font-size: 20px;
+      background: rgba(56,245,123,0.14);
+      border: 1px solid rgba(56,245,123,0.34);
+      color: #ccffdc;
+      font-size: 18px;
       font-weight: 900;
-      margin-bottom: 28px;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
     }
 
     .hero h1 {
-      font-size: 68px;
-      line-height: 1.04;
+      font-size: clamp(42px, 6vw, 76px);
+      line-height: 0.98;
       max-width: 900px;
-      margin: 0 0 24px;
-      letter-spacing: -2px;
+      margin: 0 0 26px;
+      letter-spacing: -3px;
+      font-weight: 950;
+      position: relative;
+      z-index: 2;
     }
 
     .hero p {
-      font-size: 26px;
+      font-size: 24px;
       max-width: 820px;
-      line-height: 1.45;
-      margin: 0 0 34px;
-      color: #e8eeee;
-      font-weight: 600;
+      line-height: 1.5;
+      margin: 0 0 38px;
+      color: rgba(244,255,249,0.82);
+      font-weight: 650;
+      position: relative;
+      z-index: 2;
     }
 
     .hero-actions {
       display: grid;
       gap: 16px;
       max-width: 720px;
+      position: relative;
+      z-index: 2;
     }
 
     .main-btn {
       border: none;
-      border-radius: 22px;
-      padding: 22px 28px;
+      border-radius: 24px;
+      padding: 23px 30px;
       font-size: 22px;
-      font-weight: 900;
+      font-weight: 950;
       cursor: pointer;
-      transition: 0.2s;
+      transition: 0.3s ease;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
     }
 
     .main-btn:hover {
-      transform: scale(1.015);
+      transform: translateY(-2px) scale(1.018);
       filter: brightness(1.05);
     }
 
-    .green { background: #25d366; color: black; }
-    .blue { background: #2da8ef; color: white; }
-    .gray { background: rgba(255,255,255,0.18); color: white; backdrop-filter: blur(10px); }
-    .yellow { background: #ffd84d; color: black; }
-    .red { background: #f04b4b; color: white; }
+    .green { background: linear-gradient(135deg, var(--green), var(--green2)); color: #03130b; }
+    .blue { background: linear-gradient(135deg, var(--blue), #188de0); color: white; }
+    .gray { background: rgba(255,255,255,0.13); color: white; backdrop-filter: blur(14px); }
+    .yellow { background: linear-gradient(135deg, var(--yellow), #ffbd22); color: #151100; }
+    .red { background: linear-gradient(135deg, var(--red), #df2f2f); color: white; }
     .disabled { background: #60706a !important; color: #cfd8d4 !important; cursor: not-allowed !important; }
 
     .info-line {
-      background: rgba(0, 100, 45, 0.58);
-      border: 1px solid #11a64f;
+      background: rgba(56,245,123,0.11);
+      border: 1px solid rgba(56,245,123,0.28);
       color: #d5ffe0;
       padding: 18px 22px;
-      border-radius: 18px;
-      font-size: 18px;
-      font-weight: 800;
-      margin: 20px 0;
+      border-radius: 22px;
+      font-size: 17px;
+      font-weight: 850;
+      margin: 22px 0;
+      backdrop-filter: blur(16px);
     }
 
     .error-line {
-      background: rgba(180, 40, 40, 0.28);
-      border-color: #ff6b6b;
+      background: rgba(255, 85, 85, 0.14);
+      border-color: rgba(255, 85, 85, 0.38);
       color: #ffd6d6;
     }
 
     .panel {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.16);
-      border-radius: 28px;
-      padding: 28px;
-      margin: 28px 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      padding: 30px;
+      margin: 30px 0;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.23);
+      backdrop-filter: blur(18px);
     }
 
     .panel h2 {
-      margin: 0 0 22px;
-      font-size: 32px;
+      margin: 0 0 24px;
+      font-size: 34px;
+      letter-spacing: -1px;
+      font-weight: 950;
     }
 
     input, textarea {
       width: 100%;
-      border: none;
+      border: 1px solid rgba(255,255,255,0.11);
       outline: none;
-      border-radius: 16px;
-      padding: 18px;
-      font-size: 18px;
+      border-radius: 20px;
+      padding: 18px 19px;
+      font-size: 17px;
       margin: 10px 0;
-      background: white;
-      color: #111;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      transition: 0.3s ease;
+    }
+
+    input::placeholder, textarea::placeholder { color: rgba(244,255,249,0.44); }
+
+    input:focus, textarea:focus {
+      border-color: rgba(58,183,255,0.65);
+      box-shadow: 0 0 0 4px rgba(58,183,255,0.12);
+      background: rgba(255,255,255,0.115);
     }
 
     textarea {
-      min-height: 120px;
+      min-height: 130px;
       resize: vertical;
+      line-height: 1.5;
     }
 
     .form-row {
@@ -251,42 +264,47 @@
       grid-template-columns: 1.2fr 1fr auto;
       gap: 14px;
       align-items: center;
-      margin: 28px 0;
+      margin: 30px 0;
     }
 
     .check {
       background: rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 17px;
-      font-weight: 800;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      font-weight: 850;
       white-space: nowrap;
+      color: rgba(244,255,249,0.86);
     }
 
     .check input {
       width: auto;
       margin-right: 8px;
+      accent-color: var(--green);
     }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 26px;
-      margin: 30px 0 60px;
+      gap: 30px;
+      margin: 34px 0 70px;
     }
 
     .card {
-      background: #1b2a24;
-      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.075);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 28px;
       overflow: hidden;
-      min-height: 390px;
-      box-shadow: 0 18px 40px rgba(0,0,0,0.24);
-      transition: 0.18s ease;
+      min-height: 410px;
+      box-shadow: 0 22px 60px rgba(0,0,0,0.26);
+      transition: 0.3s ease;
+      backdrop-filter: blur(18px);
     }
 
     .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 28px 65px rgba(0,0,0,0.35);
+      transform: translateY(-6px) scale(1.012);
+      box-shadow: 0 28px 80px rgba(56,245,123,0.13), 0 24px 70px rgba(0,0,0,0.36);
+      border-color: rgba(56,245,123,0.22);
     }
 
     .card.full {
@@ -295,24 +313,25 @@
     }
 
     .card-img {
-      height: 180px;
+      height: 190px;
       background-size: cover;
       background-position: center;
     }
 
-    .card-body {
-      padding: 24px;
-    }
+    .card-body { padding: 24px; }
 
     .card h3 {
-      font-size: 26px;
+      font-size: 27px;
       margin: 0 0 16px;
+      letter-spacing: -0.7px;
+      line-height: 1.1;
+      font-weight: 950;
     }
 
     .card p {
-      font-size: 18px;
-      line-height: 1.45;
-      color: #e3ece8;
+      font-size: 17px;
+      line-height: 1.58;
+      color: var(--muted);
       white-space: pre-line;
     }
 
@@ -320,20 +339,22 @@
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin: 18px 0;
+      margin: 20px 0;
     }
 
     .tag {
-      background: rgba(39, 180, 83, 0.25);
+      background: rgba(56,245,123,0.13);
       color: #caffd2;
+      border: 1px solid rgba(56,245,123,0.16);
       padding: 9px 14px;
       border-radius: 999px;
       font-weight: 900;
-      font-size: 15px;
+      font-size: 14px;
     }
 
     .tag.full {
-      background: rgba(255, 210, 60, 0.22);
+      background: rgba(255, 217, 90, 0.14);
+      border-color: rgba(255, 217, 90, 0.18);
       color: #ffe88a;
     }
 
@@ -346,45 +367,68 @@
 
     .small-btn {
       border: none;
-      border-radius: 14px;
-      padding: 13px 18px;
-      font-size: 16px;
-      font-weight: 900;
+      border-radius: 17px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 950;
       cursor: pointer;
+      transition: 0.3s ease;
+      min-height: 48px;
+    }
+
+    .small-btn:hover {
+      transform: translateY(-2px) scale(1.02);
+      filter: brightness(1.04);
     }
 
     .hidden { display: none !important; }
 
     .auth-status {
-      margin-top: 12px;
+      margin-top: 14px;
       color: #c8ffd4;
-      font-weight: 900;
+      font-weight: 850;
+      line-height: 1.45;
     }
 
     .ponds-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 22px;
+      gap: 24px;
     }
 
     .pond {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 24px;
-      padding: 24px;
+      background: rgba(255,255,255,0.075);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 28px;
+      padding: 26px;
+      min-height: 180px;
+      transition: 0.3s ease;
+    }
+
+    .pond:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(58,183,255,0.1);
+      border-color: rgba(58,183,255,0.22);
     }
 
     .pond h3 {
       margin-top: 0;
       font-size: 24px;
+      letter-spacing: -0.5px;
+    }
+
+    .pond p {
+      color: var(--muted);
+      line-height: 1.55;
     }
 
     .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+      background: linear-gradient(90deg, rgba(255,255,255,0.07), rgba(255,255,255,0.14), rgba(255,255,255,0.07));
       background-size: 200% 100%;
       animation: shine 1.4s infinite;
       border-radius: 28px;
-      min-height: 260px;
+      min-height: 280px;
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
     @keyframes shine {
@@ -394,34 +438,34 @@
 
     .footer {
       text-align: center;
-      padding: 50px 0 70px;
-      color: #c8d4cf;
-      font-size: 17px;
+      padding: 56px 0 76px;
+      color: rgba(244,255,249,0.58);
+      font-size: 16px;
     }
 
     .modal-bg {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.72);
+      background: rgba(0,0,0,0.76);
       z-index: 999;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      backdrop-filter: blur(12px);
     }
 
     .modal {
       width: 100%;
       max-width: 620px;
-      background: #11231c;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 26px;
-      padding: 28px;
+      background: rgba(17,35,28,0.94);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 30px;
+      padding: 30px;
+      box-shadow: var(--shadow);
     }
 
-    .modal h2 {
-      margin-top: 0;
-    }
+    .modal h2 { margin-top: 0; }
 
     @media (max-width: 900px) {
       .header-inner {
@@ -439,24 +483,25 @@
       .nav-btn {
         width: 100%;
         min-height: 64px;
-        font-size: 18px;
+        font-size: 17px;
         padding: 18px 10px;
       }
 
       .hero {
         padding: 34px 22px;
         min-height: 520px;
-        border-radius: 0;
+        border-radius: 0 0 34px 34px;
         margin-left: -3%;
         margin-right: -3%;
       }
 
       .hero h1 {
-        font-size: 46px;
+        font-size: 44px;
+        letter-spacing: -1.8px;
       }
 
       .hero p {
-        font-size: 22px;
+        font-size: 20px;
       }
 
       .filters,
@@ -464,6 +509,10 @@
       .grid,
       .ponds-grid {
         grid-template-columns: 1fr;
+      }
+
+      .grid {
+        gap: 26px;
       }
 
       .card {
@@ -476,25 +525,51 @@
 
       .small-btn,
       .main-btn {
-        min-height: 56px;
+        min-height: 58px;
       }
     }
 
     @media (max-width: 520px) {
+      .wrap { width: 92%; }
+
+      header {
+        padding: 14px 0;
+      }
+
+      nav {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .nav-btn {
+        font-size: 15px;
+        min-height: 58px;
+        padding: 14px 8px;
+      }
+
       .hero h1 {
-        font-size: 38px;
+        font-size: 37px;
       }
 
       .hero p {
-        font-size: 19px;
+        font-size: 18px;
       }
 
       .main-btn {
         font-size: 18px;
+        border-radius: 20px;
       }
 
       .panel {
-        padding: 20px;
+        padding: 22px;
+        border-radius: 28px;
+      }
+
+      .panel h2 {
+        font-size: 28px;
+      }
+
+      .card {
+        border-radius: 26px;
       }
 
       .card h3 {
@@ -572,7 +647,7 @@
     <section id="pondsSection" class="hidden">
       <div class="panel">
         <h2>💧 Платные пруды Беларуси</h2>
-        <p>Пока стартовый раздел. Следующим шагом можно подключить отдельную таблицу ponds в Supabase.</p>
+        <p style="color:rgba(244,255,249,0.68);line-height:1.6;">Пока стартовый раздел. Следующим шагом можно подключить отдельную таблицу ponds в Supabase.</p>
 
         <div class="ponds-grid">
           <div class="pond">
