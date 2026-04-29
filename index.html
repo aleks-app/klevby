@@ -768,56 +768,51 @@
       header {
         position: relative;
         top: auto;
+        z-index: 10;
         padding: 6px 0;
         background: rgba(5,5,5,0.72);
       }
 
       .header-inner {
-        align-items: flex-start;
+        align-items: stretch;
         flex-direction: column;
         gap: 8px;
         min-height: auto;
       }
 
       .logo {
-        font-size: 24px;
+        font-size: 23px;
         line-height: 1;
         padding-top: 4px;
       }
 
       nav {
         width: 100%;
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 8px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 4px 0 8px;
-        justify-content: flex-start;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      nav::-webkit-scrollbar {
-        display: none;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        overflow: visible;
+        padding: 0 0 4px;
+        justify-content: stretch;
       }
 
       .nav-btn {
-        flex: 0 0 auto;
-        min-height: 38px;
-        padding: 9px 12px;
-        font-size: 13.5px;
+        width: 100%;
+        min-height: 34px;
+        padding: 7px 6px;
+        font-size: 12.5px;
+        line-height: 1.15;
         text-align: center;
-        border-radius: 999px;
+        border-radius: 10px;
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.08);
+        white-space: normal;
       }
 
       .nav-btn:last-child {
-        flex: 0 0 auto;
-        min-height: 38px;
-        padding: 9px 14px;
-        border-radius: 999px;
+        min-height: 34px;
+        padding: 7px 6px;
+        border-radius: 10px;
       }
 
       .hero {
@@ -869,18 +864,25 @@
       }
 
       .logo {
-        font-size: 23px;
+        font-size: 22px;
+      }
+
+      nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
       }
 
       .nav-btn {
-        min-height: 36px;
-        font-size: 13px;
-        padding: 8px 11px;
+        min-height: 32px;
+        font-size: 12px;
+        padding: 6px 5px;
+        border-radius: 9px;
       }
 
       .nav-btn:last-child {
-        min-height: 36px;
-        padding: 8px 12px;
+        min-height: 32px;
+        padding: 6px 5px;
+        border-radius: 9px;
       }
 
       .hero {
