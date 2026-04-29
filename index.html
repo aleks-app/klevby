@@ -1,4 +1,3 @@
-```html id="klevby-final-index"
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -13,37 +12,12 @@
   <meta name="apple-mobile-web-app-title" content="Klevby" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2830/2830211.png">
   <link rel="manifest" id="pwaManifest" />
 
   <script>
     (function createInlineManifest() {
-      const iconSvg = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-          <defs>
-            <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stop-color="#050505"/>
-              <stop offset="100%" stop-color="#123d27"/>
-            </linearGradient>
-            <linearGradient id="fish" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stop-color="#38f57b"/>
-              <stop offset="100%" stop-color="#58b7ff"/>
-            </linearGradient>
-          </defs>
-          <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-          <circle cx="116" cy="104" r="54" fill="#2fbf71" opacity="0.22"/>
-          <circle cx="418" cy="120" r="78" fill="#58b7ff" opacity="0.14"/>
-          <path d="M95 327c72-120 180-156 309-103" fill="none" stroke="#e7c960" stroke-width="22" stroke-linecap="round"/>
-          <path d="M391 214c28-58 61-87 95-98" fill="none" stroke="#e7c960" stroke-width="16" stroke-linecap="round"/>
-          <path d="M131 283c54-70 151-103 247-52 24 13 42 31 53 49-11 18-29 36-53 49-96 51-193 18-247-46Z" fill="url(#fish)"/>
-          <path d="M131 283l-58-42c-16-12-38 1-35 21l8 52c3 20 28 28 43 14Z" fill="#2fbf71"/>
-          <circle cx="336" cy="260" r="12" fill="#04140c"/>
-          <path d="M219 246c20 22 20 55 0 78" fill="none" stroke="#04140c" stroke-width="14" stroke-linecap="round" opacity="0.35"/>
-          <path d="M265 235c18 28 18 67 0 96" fill="none" stroke="#04140c" stroke-width="12" stroke-linecap="round" opacity="0.25"/>
-          <text x="256" y="424" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="800" fill="#f5f5f5">Klevby</text>
-        </svg>
-      `;
-
-      const iconData = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(iconSvg);
+      const iconUrl = "https://cdn-icons-png.flaticon.com/512/2830/2830211.png";
 
       const manifest = {
         name: "Klevby — Рыбалка в Беларуси",
@@ -57,15 +31,15 @@
         theme_color: "#050505",
         icons: [
           {
-            src: iconData,
+            src: iconUrl,
             sizes: "192x192",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "any maskable"
           },
           {
-            src: iconData,
+            src: iconUrl,
             sizes: "512x512",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "any maskable"
           }
         ]
@@ -2547,4 +2521,3 @@
   </script>
 </body>
 </html>
-```
