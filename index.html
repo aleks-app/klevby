@@ -180,13 +180,16 @@
       border-radius: 22px;
       overflow: hidden;
       min-height: 470px;
-      background:
+      background-color: rgba(0,0,0,0.3);
+      background-image:
         radial-gradient(circle at 18% 35%, rgba(0,0,0,0.18), transparent 28%),
         radial-gradient(circle at 75% 50%, rgba(0,0,0,0.18), transparent 32%),
-        linear-gradient(90deg, rgba(0,0,0,0.82), rgba(0,0,0,0.38)),
+        linear-gradient(90deg, rgba(0,0,0,0.78), rgba(0,0,0,0.34)),
         linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.72)),
-        url("https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=85")
-        center/cover no-repeat;
+        url("./image_10.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       padding: 44px 48px;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
@@ -197,7 +200,7 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at center, transparent 36%, rgba(0,0,0,0.5) 100%);
+      background: radial-gradient(circle at center, transparent 36%, rgba(0,0,0,0.42) 100%);
       pointer-events: none;
     }
 
@@ -214,13 +217,14 @@
       align-items: center;
       padding: 9px 14px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      color: rgba(245,245,245,0.8);
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: rgba(245,245,245,0.88);
       font-size: 14px;
       font-weight: 650;
       margin-bottom: 20px;
       backdrop-filter: blur(14px);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.72);
     }
 
     .hero h1 {
@@ -230,6 +234,7 @@
       margin: 0 0 18px;
       letter-spacing: -1px;
       font-weight: 720;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.78);
     }
 
     .hero p {
@@ -237,8 +242,9 @@
       max-width: 680px;
       line-height: 1.55;
       margin: 0 0 26px;
-      color: rgba(245,245,245,0.78);
+      color: rgba(245,245,245,0.86);
       font-weight: 450;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.76);
     }
 
     .hero-actions {
@@ -2524,3 +2530,4 @@
   </script>
 </body>
 </html>
+```
