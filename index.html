@@ -239,16 +239,132 @@
     }
 
     .forecast-panel {
+      position: relative;
+      overflow: hidden;
       background:
-        radial-gradient(circle at 0% 0%, rgba(47,191,113,0.13), transparent 32%),
-        radial-gradient(circle at 100% 0%, rgba(88,183,255,0.11), transparent 34%),
-        rgba(255,255,255,0.045);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 22px;
+        radial-gradient(circle at 10% 0%, rgba(47,191,113,0.16), transparent 34%),
+        radial-gradient(circle at 100% 0%, rgba(88,183,255,0.14), transparent 36%),
+        rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 24px;
       margin: 24px 0;
-      backdrop-filter: blur(18px);
-      box-shadow: 0 14px 50px rgba(0,0,0,0.26);
+      backdrop-filter: blur(30px);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.42);
+    }
+
+    .forecast-panel::before,
+    .forecast-panel::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .weather-sunny::before {
+      width: 260px;
+      height: 260px;
+      right: -80px;
+      top: -90px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,218,92,0.42), rgba(255,183,56,0.16) 42%, transparent 70%);
+      animation: sunPulse 4s ease-in-out infinite;
+    }
+
+    @keyframes sunPulse {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.16); opacity: 1; }
+    }
+
+    .weather-cloudy .cloud {
+      display: block;
+    }
+
+    .cloud {
+      display: none;
+      position: absolute;
+      width: 180px;
+      height: 56px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.13);
+      filter: blur(1px);
+      opacity: 0.65;
+      pointer-events: none;
+      animation: cloudMove 18s linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.14);
+    }
+
+    .cloud::before {
+      width: 76px;
+      height: 76px;
+      left: 28px;
+      top: -34px;
+    }
+
+    .cloud::after {
+      width: 96px;
+      height: 96px;
+      right: 24px;
+      top: -46px;
+    }
+
+    .cloud-1 { top: 34px; left: -220px; animation-duration: 22s; }
+    .cloud-2 { top: 96px; left: -280px; transform: scale(0.7); animation-duration: 28s; animation-delay: -8s; }
+
+    @keyframes cloudMove {
+      from { translate: 0 0; }
+      to { translate: calc(100vw + 440px) 0; }
+    }
+
+    .rain-layer {
+      display: none;
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .weather-rainy .rain-layer {
+      display: block;
+    }
+
+    .drop {
+      position: absolute;
+      top: -80px;
+      width: 1px;
+      height: 64px;
+      background: linear-gradient(transparent, rgba(160,210,255,0.8), transparent);
+      animation: rainFall 1.1s linear infinite;
+    }
+
+    .drop:nth-child(1) { left: 6%; animation-delay: -0.1s; }
+    .drop:nth-child(2) { left: 14%; animation-delay: -0.8s; }
+    .drop:nth-child(3) { left: 22%; animation-delay: -0.3s; }
+    .drop:nth-child(4) { left: 31%; animation-delay: -0.6s; }
+    .drop:nth-child(5) { left: 39%; animation-delay: -1s; }
+    .drop:nth-child(6) { left: 48%; animation-delay: -0.2s; }
+    .drop:nth-child(7) { left: 57%; animation-delay: -0.9s; }
+    .drop:nth-child(8) { left: 66%; animation-delay: -0.4s; }
+    .drop:nth-child(9) { left: 75%; animation-delay: -0.7s; }
+    .drop:nth-child(10) { left: 84%; animation-delay: -0.15s; }
+    .drop:nth-child(11) { left: 92%; animation-delay: -0.5s; }
+
+    @keyframes rainFall {
+      from { transform: translateY(-100px) rotate(12deg); }
+      to { transform: translateY(520px) rotate(12deg); }
+    }
+
+    .forecast-head,
+    .forecast-grid {
+      position: relative;
+      z-index: 2;
     }
 
     .forecast-head {
@@ -280,15 +396,29 @@
     }
 
     .forecast-item {
-      background: rgba(255,255,255,0.055);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 18px;
+      backdrop-filter: blur(22px);
+      transition: 0.25s ease;
+    }
+
+    .forecast-item:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.085);
     }
 
     .forecast-icon {
-      font-size: 24px;
-      margin-bottom: 10px;
+      font-size: 34px;
+      margin-bottom: 12px;
+      transition: 0.3s ease;
+      display: inline-block;
+    }
+
+    .forecast-item:hover .forecast-icon {
+      transform: scale(1.13) rotate(-5deg);
     }
 
     .forecast-label {
@@ -441,9 +571,7 @@
       background-position: center;
     }
 
-    .card-body {
-      padding: 22px;
-    }
+    .card-body { padding: 22px; }
 
     .card h3 {
       font-size: 22px;
@@ -676,13 +804,9 @@
         letter-spacing: -0.9px;
       }
 
-      .hero p {
-        font-size: 18px;
-      }
+      .hero p { font-size: 18px; }
 
-      .hero-actions {
-        display: flex;
-      }
+      .hero-actions { display: flex; }
 
       .forecast-head {
         align-items: flex-start;
@@ -700,17 +824,11 @@
         grid-template-columns: 1fr;
       }
 
-      .grid {
-        gap: 22px;
-      }
+      .grid { gap: 22px; }
 
-      .card {
-        min-height: auto;
-      }
+      .card { min-height: auto; }
 
-      .logo {
-        font-size: 28px;
-      }
+      .logo { font-size: 28px; }
 
       .small-btn,
       .main-btn {
@@ -721,17 +839,11 @@
     @media (max-width: 520px) {
       .wrap { width: 92%; }
 
-      header {
-        padding: 10px 0;
-      }
+      header { padding: 10px 0; }
 
-      nav {
-        grid-template-columns: 1fr 1fr;
-      }
+      nav { grid-template-columns: 1fr 1fr; }
 
-      .nav-btn {
-        font-size: 14px;
-      }
+      .nav-btn { font-size: 14px; }
 
       .hero {
         margin-top: 14px;
@@ -739,13 +851,9 @@
         padding: 28px 20px;
       }
 
-      .hero h1 {
-        font-size: 34px;
-      }
+      .hero h1 { font-size: 34px; }
 
-      .hero p {
-        font-size: 16.5px;
-      }
+      .hero p { font-size: 16.5px; }
 
       .main-btn {
         font-size: 15px;
@@ -757,30 +865,20 @@
         padding: 20px;
       }
 
-      .panel h2 {
-        font-size: 24px;
-      }
+      .panel h2 { font-size: 24px; }
 
-      .forecast-grid {
-        grid-template-columns: 1fr;
-      }
+      .forecast-grid { grid-template-columns: 1fr; }
 
-      .card h3 {
-        font-size: 21px;
-      }
+      .card h3 { font-size: 21px; }
 
-      .actions {
-        gap: 8px;
-      }
+      .actions { gap: 8px; }
 
       .map-placeholder {
         min-height: 360px;
         padding: 18px;
       }
 
-      .map-card h2 {
-        font-size: 24px;
-      }
+      .map-card h2 { font-size: 24px; }
     }
   </style>
 </head>
@@ -814,7 +912,23 @@
         </div>
       </div>
 
-      <div class="forecast-panel">
+      <div class="forecast-panel weather-cloudy" id="forecastPanel">
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="rain-layer">
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+          <span class="drop"></span>
+        </div>
+
         <div class="forecast-head">
           <div>
             <h2>Прогноз на сегодня</h2>
@@ -825,22 +939,22 @@
 
         <div class="forecast-grid">
           <div class="forecast-item">
-            <div class="forecast-icon">🌡️</div>
+            <div class="forecast-icon">☀️</div>
             <div class="forecast-label">Температура</div>
             <div class="forecast-value" id="weatherTemp">—</div>
           </div>
           <div class="forecast-item">
-            <div class="forecast-icon">🌬️</div>
+            <div class="forecast-icon">💨</div>
             <div class="forecast-label">Ветер</div>
             <div class="forecast-value" id="weatherWind">—</div>
           </div>
           <div class="forecast-item">
-            <div class="forecast-icon">🧭</div>
+            <div class="forecast-icon">⌁</div>
             <div class="forecast-label">Давление</div>
             <div class="forecast-value" id="weatherPressure">—</div>
           </div>
           <div class="forecast-item">
-            <div class="forecast-icon">🌓</div>
+            <div class="forecast-icon">◐</div>
             <div class="forecast-label">Фаза луны</div>
             <div class="forecast-value" id="weatherMoon">—</div>
           </div>
@@ -1114,6 +1228,30 @@
       return dirs[Math.round(deg / 45) % 8];
     }
 
+    function setWeatherAnimation(main, description) {
+      const panel = document.getElementById("forecastPanel");
+      if (!panel) return;
+
+      const text = `${main || ""} ${description || ""}`.toLowerCase();
+
+      panel.classList.remove("weather-sunny", "weather-cloudy", "weather-rainy");
+
+      if (text.includes("rain") || text.includes("drizzle") || text.includes("дожд")) {
+        panel.classList.add("weather-rainy");
+      } else if (
+        text.includes("cloud") ||
+        text.includes("облач") ||
+        text.includes("пасмур") ||
+        text.includes("туман") ||
+        text.includes("mist") ||
+        text.includes("fog")
+      ) {
+        panel.classList.add("weather-cloudy");
+      } else {
+        panel.classList.add("weather-sunny");
+      }
+    }
+
     async function fetchWeather() {
       const status = document.getElementById("weatherStatus");
       const tempEl = document.getElementById("weatherTemp");
@@ -1139,14 +1277,16 @@
         const windDeg = data.wind?.deg;
         const pressureHpa = data.main.pressure;
         const pressureMm = Math.round(pressureHpa * 0.75006);
+        const description = data.weather?.[0]?.description || "погода обновлена";
+        const main = data.weather?.[0]?.main || "";
 
         tempEl.textContent = `${temp > 0 ? "+" : ""}${temp}°C`;
         windEl.textContent = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
         pressureEl.textContent = `${pressureMm} мм`;
         moonEl.textContent = getMoonPhaseName();
-
-        const description = data.weather?.[0]?.description || "погода обновлена";
         status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
+
+        setWeatherAnimation(main, description);
       } catch (error) {
         console.error(error);
         status.textContent = "Погоду не удалось загрузить. Показываем ориентировочные значения.";
@@ -1154,6 +1294,7 @@
         windEl.textContent = "3 м/с СЗ";
         pressureEl.textContent = "752 мм";
         moonEl.textContent = getMoonPhaseName();
+        setWeatherAnimation("Clouds", "облачно");
       }
     }
 
@@ -1527,6 +1668,7 @@
 
       fillAuthorLocal();
       fetchWeather();
+      setInterval(fetchWeather, 1800000);
       await initAuth();
     });
   </script>
