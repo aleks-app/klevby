@@ -1,3 +1,4 @@
+```html id="klevby-final-index"
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -187,6 +188,24 @@
       box-shadow: 0 0 0 4px rgba(47,191,113,0.06);
     }
 
+    .install-nav-btn {
+      color: #dff1ff !important;
+      border: 1px solid rgba(88,183,255,0.26) !important;
+      border-radius: 999px !important;
+      padding: 9px 14px !important;
+      background: rgba(88,183,255,0.09) !important;
+    }
+
+    .install-nav-btn:hover {
+      border-color: rgba(88,183,255,0.46) !important;
+      background: rgba(88,183,255,0.14) !important;
+      box-shadow: 0 0 0 4px rgba(88,183,255,0.06);
+    }
+
+    .pwa-installed .pwa-install-trigger {
+      display: none !important;
+    }
+
     .hero {
       margin: 18px 0 28px;
       border-radius: 22px;
@@ -276,6 +295,18 @@
     .main-btn:hover {
       transform: translateY(-2px);
       filter: brightness(1.05);
+    }
+
+    .install-hero-btn {
+      background: rgba(255,255,255,0.035);
+      color: rgba(245,245,245,0.9);
+      border-color: rgba(255,255,255,0.24);
+      backdrop-filter: blur(12px);
+    }
+
+    .install-hero-btn:hover {
+      border-color: rgba(88,183,255,0.45);
+      background: rgba(88,183,255,0.08);
     }
 
     .green {
@@ -952,6 +983,26 @@
 
     .modal h2 { margin-top: 0; }
 
+    .ios-step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px;
+      margin: 10px 0;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.045);
+      color: rgba(245,245,245,0.82);
+      line-height: 1.45;
+      font-weight: 650;
+    }
+
+    .ios-step-icon {
+      font-size: 26px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
     .install-banner {
       position: fixed;
       left: 50%;
@@ -1101,8 +1152,13 @@
         white-space: normal;
       }
 
+      .install-nav-btn {
+        padding: 7px 6px !important;
+        border-radius: 10px !important;
+      }
+
       .nav-btn:last-child {
-        grid-column: 1 / -1;
+        grid-column: auto;
         width: 100%;
         min-height: 34px;
         padding: 7px 6px;
@@ -1311,8 +1367,13 @@
         border-radius: 9px;
       }
 
+      .install-nav-btn {
+        padding: 6px 5px !important;
+        border-radius: 9px !important;
+      }
+
       .nav-btn:last-child {
-        grid-column: 1 / -1;
+        grid-column: auto;
         width: 100%;
         min-height: 32px;
         padding: 6px 5px;
@@ -1441,6 +1502,7 @@
         <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
         <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
         <button class="nav-btn" onclick="setMode('mine')">Мои объявления</button>
+        <button class="nav-btn install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
         <button class="nav-btn" onclick="showSection('auth')">Вход</button>
       </nav>
     </div>
@@ -1456,6 +1518,7 @@
         <div class="hero-actions">
           <button class="main-btn green" onclick="scrollToPosts()">Смотреть объявления</button>
           <button class="main-btn gray" onclick="openTelegram()">Telegram-чат</button>
+          <button class="main-btn install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить на телефон</button>
         </div>
       </div>
 
@@ -1639,6 +1702,27 @@
     </div>
   </div>
 
+  <div id="iosInstallModal" class="modal-bg hidden">
+    <div class="modal">
+      <h2>Установить Klevby на iPhone 📱</h2>
+      <p style="color:rgba(245,245,245,0.68);line-height:1.6;">На iPhone установка делается через меню Safari:</p>
+
+      <div class="ios-step">
+        <div class="ios-step-icon">📤</div>
+        <div>1. Нажми <b>«Поделиться»</b> — квадрат со стрелочкой.</div>
+      </div>
+
+      <div class="ios-step">
+        <div class="ios-step-icon">📲</div>
+        <div>2. Выбери <b>«На экран Домой»</b>, затем нажми <b>«Добавить»</b>.</div>
+      </div>
+
+      <div class="actions">
+        <button class="small-btn green" onclick="closeIosInstallModal()">Понятно</button>
+      </div>
+    </div>
+  </div>
+
   <div id="installBanner" class="install-banner hidden" role="dialog" aria-live="polite">
     <div class="install-inner">
       <div class="install-icon">🎣</div>
@@ -1647,7 +1731,7 @@
         <div class="install-subtext">Открывай как приложение — без лишних вкладок.</div>
       </div>
       <div class="install-actions">
-        <button class="install-btn" onclick="installKlevby()">Установить</button>
+        <button class="install-btn" onclick="handleInstallClick()">Установить</button>
         <button class="install-close" onclick="hideInstallBanner(true)" aria-label="Закрыть">×</button>
       </div>
     </div>
@@ -2306,6 +2390,22 @@
       await loadPosts();
     }
 
+    function isStandaloneMode() {
+      return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    }
+
+    function isIosDevice() {
+      return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    }
+
+    function updatePwaInstallVisibility() {
+      if (isStandaloneMode()) {
+        document.body.classList.add("pwa-installed");
+      } else {
+        document.body.classList.remove("pwa-installed");
+      }
+    }
+
     function shouldShowInstallBanner() {
       const closedAt = Number(localStorage.getItem("klevby_install_banner_closed_at") || "0");
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
@@ -2314,7 +2414,7 @@
         return false;
       }
 
-      if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone) {
+      if (isStandaloneMode()) {
         return false;
       }
 
@@ -2322,7 +2422,9 @@
     }
 
     function showInstallBanner() {
-      if (!deferredInstallPrompt || installBannerShown || !shouldShowInstallBanner()) return;
+      if (installBannerShown || !shouldShowInstallBanner()) return;
+
+      if (!deferredInstallPrompt && !isIosDevice()) return;
 
       const banner = document.getElementById("installBanner");
       if (!banner) return;
@@ -2350,9 +2452,28 @@
       }, 350);
     }
 
-    async function installKlevby() {
+    function openIosInstallModal() {
+      hideInstallBanner(false);
+      document.getElementById("iosInstallModal").classList.remove("hidden");
+    }
+
+    function closeIosInstallModal() {
+      document.getElementById("iosInstallModal").classList.add("hidden");
+    }
+
+    async function handleInstallClick() {
+      if (isStandaloneMode()) {
+        updatePwaInstallVisibility();
+        return;
+      }
+
+      if (isIosDevice()) {
+        openIosInstallModal();
+        return;
+      }
+
       if (!deferredInstallPrompt) {
-        hideInstallBanner(true);
+        alert("Если окно установки не появилось, открой сайт в Chrome или Edge и попробуй ещё раз. Иногда браузер показывает установку только после нескольких посещений сайта.");
         return;
       }
 
@@ -2366,9 +2487,12 @@
 
       deferredInstallPrompt = null;
       hideInstallBanner(true);
+      updatePwaInstallVisibility();
     }
 
     function initInstallPrompt() {
+      updatePwaInstallVisibility();
+
       window.addEventListener("beforeinstallprompt", function (event) {
         event.preventDefault();
         deferredInstallPrompt = event;
@@ -2388,107 +2512,23 @@
       window.addEventListener("appinstalled", function () {
         deferredInstallPrompt = null;
         hideInstallBanner(true);
+        document.body.classList.add("pwa-installed");
       });
+
+      if (isIosDevice() && shouldShowInstallBanner()) {
+        setTimeout(showInstallBanner, 2600);
+      }
     }
 
     async function registerPwaServiceWorker() {
       if (!("serviceWorker" in navigator)) return;
       if (!window.isSecureContext) return;
 
-      const swCode = `
-        const CACHE_NAME = "klevby-pwa-cache-v1";
-        const STATIC_ASSETS = [
-          "./",
-          "./index.html",
-          "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-        ];
-
-        self.addEventListener("install", function(event) {
-          event.waitUntil(
-            caches.open(CACHE_NAME)
-              .then(function(cache) {
-                return cache.addAll(STATIC_ASSETS).catch(function() {
-                  return Promise.resolve();
-                });
-              })
-              .then(function() {
-                return self.skipWaiting();
-              })
-          );
-        });
-
-        self.addEventListener("activate", function(event) {
-          event.waitUntil(
-            caches.keys()
-              .then(function(keys) {
-                return Promise.all(
-                  keys
-                    .filter(function(key) { return key !== CACHE_NAME; })
-                    .map(function(key) { return caches.delete(key); })
-                );
-              })
-              .then(function() {
-                return self.clients.claim();
-              })
-          );
-        });
-
-        self.addEventListener("fetch", function(event) {
-          const request = event.request;
-
-          if (request.method !== "GET") return;
-
-          const url = new URL(request.url);
-          const isPageOrAsset =
-            url.origin === self.location.origin ||
-            url.hostname === "cdn.jsdelivr.net" ||
-            url.hostname === "images.unsplash.com";
-
-          if (!isPageOrAsset) return;
-
-          event.respondWith(
-            caches.match(request).then(function(cached) {
-              if (cached) return cached;
-
-              return fetch(request)
-                .then(function(response) {
-                  if (!response || response.status >= 500) return response;
-
-                  const copy = response.clone();
-
-                  caches.open(CACHE_NAME).then(function(cache) {
-                    cache.put(request, copy).catch(function() {});
-                  });
-
-                  return response;
-                })
-                .catch(function() {
-                  if (request.mode === "navigate") {
-                    return caches.match("./index.html");
-                  }
-
-                  return cached;
-                });
-            })
-          );
-        });
-      `;
-
       try {
-        const swBlob = new Blob([swCode], { type: "text/javascript" });
-        const swUrl = URL.createObjectURL(swBlob);
-
-        await navigator.serviceWorker.register(swUrl, { scope: "./" });
-        console.log("Klevby PWA Service Worker зарегистрирован.");
-      } catch (blobError) {
-        console.warn("Inline Service Worker не зарегистрировался. Некоторые браузеры требуют отдельный файл sw.js.", blobError);
-
-        try {
-          await navigator.serviceWorker.register("./sw.js", { scope: "./" });
-          console.log("Klevby PWA Service Worker зарегистрирован через sw.js.");
-        } catch (fileError) {
-          console.warn("Service Worker не зарегистрирован. Остальная часть сайта работает без изменений.", fileError);
-        }
+        await navigator.serviceWorker.register("/sw.js");
+        console.log("Klevby Service Worker зарегистрирован: /sw.js");
+      } catch (error) {
+        console.warn("Service Worker не зарегистрирован. Проверь, что файл /sw.js лежит в корневой папке сайта.", error);
       }
     }
 
@@ -2507,3 +2547,4 @@
   </script>
 </body>
 </html>
+```
