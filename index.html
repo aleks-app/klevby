@@ -172,7 +172,9 @@
     .filter-reset,
     .install-btn,
     .install-close,
-    .mobile-tab-btn {
+    .mobile-tab-btn,
+    .burger-btn,
+    .mobile-menu-item {
       appearance: none;
       font-family: inherit;
     }
@@ -251,11 +253,13 @@
         inset 0 1px 0 rgba(255,255,255,0.08) !important;
     }
 
-    .mobile-tabbar {
+    .mobile-menu-wrap,
+    .mobile-tabbar,
+    .trust-bar,
+    .mobile-weather-title {
       display: none;
     }
 
-    /* PWA STANDALONE MODE HIDING */
     html.pwa-standalone .pwa-install-trigger,
     html.pwa-standalone .install-nav-btn,
     html.pwa-standalone .install-hero-btn,
@@ -287,13 +291,11 @@
         display: none !important;
       }
       
-      /* Maintain symmetry if the app button vanishes */
       .nav-mine {
         grid-column: 1 / -1;
       }
     }
 
-    /* HERO WIDGET */
     .hero {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1368,14 +1370,16 @@
       header {
         position: relative;
         top: auto;
-        z-index: 10;
-        padding: 8px 0;
-        background: rgba(7,16,20,0.84);
+        z-index: 1000;
+        padding: 12px 0;
+        background: rgba(7,16,20,0.62);
+        border-bottom: 0;
+        box-shadow: none;
       }
 
       .header-inner {
-        align-items: stretch;
-        grid-template-columns: 1fr;
+        align-items: center;
+        grid-template-columns: 1fr auto;
         gap: 10px;
         min-height: auto;
       }
@@ -1383,31 +1387,94 @@
       .logo {
         font-size: 23px;
         line-height: 1;
-        padding-top: 4px;
+        padding-top: 0;
       }
 
       nav {
+        display: none;
+      }
+
+      .mobile-menu-wrap {
+        display: block;
+        position: relative;
+        justify-self: end;
+      }
+
+      .burger-btn {
+        width: 44px;
+        height: 44px;
+        border: 0;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.06);
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        cursor: pointer;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+      }
+
+      .burger-btn span {
+        width: 20px;
+        height: 2px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.92);
+        display: block;
+        transition: 0.22s ease;
+      }
+
+      .burger-btn.open span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+      }
+
+      .burger-btn.open span:nth-child(2) {
+        opacity: 0;
+      }
+
+      .burger-btn.open span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+      }
+
+      .mobile-menu {
+        position: absolute;
+        right: 0;
+        top: 54px;
+        width: min(82vw, 300px);
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 16px;
+        background: rgba(14,25,31,0.96);
+        box-shadow: 0 16px 42px rgba(0,0,0,0.34);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .mobile-menu.open {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        justify-content: stretch;
-        align-items: stretch;
-        width: 100%;
-        padding: 0 0 4px;
       }
 
-      .nav-btn {
+      .mobile-menu-item {
+        min-height: 46px;
         width: 100%;
-        height: 48px;
-        padding: 0 10px;
-        font-size: 13px;
+        padding: 0 14px;
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 16px;
+        background: rgba(255,255,255,0.055);
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
       }
 
-      .nav-auth {
-        grid-column: 1 / -1;
-        width: 100%;
-        height: 48px;
-        padding: 0 10px;
+      .mobile-menu-item:active {
+        transform: scale(0.98);
       }
 
       .mobile-tabbar {
@@ -1484,107 +1551,183 @@
         grid-template-columns: 1fr;
         gap: 14px;
         align-items: stretch;
-        margin: 12px 0 14px;
+        margin: 10px 0 14px;
         padding: 18px;
       }
 
       .hero-copy {
-        padding: 6px 4px 0;
+        padding: 4px 2px 0;
         max-width: none;
       }
 
+      .badge {
+        margin-bottom: 12px;
+        font-size: 12.5px;
+        padding: 7px 10px;
+      }
+
       .hero h1 {
-        font-size: 38px;
-        letter-spacing: -0.9px;
+        font-size: 36px;
+        letter-spacing: -0.95px;
+        margin-bottom: 10px;
       }
 
       .hero p {
-        font-size: 17px;
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+
+      .hero-actions {
+        display: none;
+      }
+
+      .trust-bar {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        overflow: hidden;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.045);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.16);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+
+      .trust-item {
+        min-height: 76px;
+        padding: 14px 12px;
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        grid-template-areas:
+          "icon value"
+          "icon label";
+        align-items: center;
+        column-gap: 10px;
+      }
+
+      .trust-item + .trust-item {
+        border-left: 1px solid rgba(255,255,255,0.06);
+      }
+
+      .trust-icon {
+        grid-area: icon;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+
+      .trust-icon.fish {
+        color: var(--green);
+        background: rgba(66,217,134,0.12);
+      }
+
+      .trust-icon.pin {
+        color: var(--red);
+        background: rgba(228,88,88,0.12);
+      }
+
+      .trust-value {
+        grid-area: value;
+        color: var(--green);
+        font-size: 22px;
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: -0.35px;
+      }
+
+      .trust-label {
+        grid-area: label;
+        color: rgba(244,251,247,0.62);
+        font-size: 12px;
+        line-height: 1.2;
+        font-weight: 600;
       }
 
       .hero-photo {
         width: 100%;
         height: auto;
-        min-height: 245px;
+        min-height: 230px;
       }
 
       .forecast-panel {
         margin: 14px 0;
-        padding: 18px;
+        padding: 16px;
+        background: var(--panel);
       }
 
-      .weather-sunny::before {
-        width: 160px;
-        height: 160px;
-        right: -56px;
-        top: -58px;
+      .forecast-panel::before,
+      .forecast-panel::after,
+      .cloud,
+      .rain-layer {
+        display: none !important;
       }
 
-      .cloud {
-        width: 120px;
-        height: 38px;
-        opacity: 0.42;
-      }
-
-      .cloud::before {
-        width: 52px;
-        height: 52px;
-        left: 20px;
-        top: -24px;
-      }
-
-      .cloud::after {
-        width: 62px;
-        height: 62px;
-        right: 18px;
-        top: -30px;
-      }
-
-      .forecast-head {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 10px;
+      .mobile-weather-title {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         margin-bottom: 12px;
       }
 
-      .forecast-head h2 {
-        font-size: 21px;
-        line-height: 1.2;
+      .mobile-weather-city {
+        font-size: 20px;
+        line-height: 1.1;
+        font-weight: 800;
+        letter-spacing: -0.35px;
+        color: #ffffff;
       }
 
-      .forecast-head p {
-        margin-top: 5px;
-        font-size: 12.5px;
-        line-height: 1.5;
+      .mobile-weather-condition {
+        min-height: 34px;
+        padding: 7px 11px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.055);
+        color: rgba(255,255,255,0.86);
+        font-size: 13px;
+        line-height: 1;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
       }
 
-      .forecast-head .main-btn {
-        width: 100%;
-        min-height: 40px;
-        padding: 10px 13px;
-        font-size: 12.5px;
+      .forecast-head {
+        display: none;
       }
 
       .forecast-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        grid-template-columns: 1fr;
+        gap: 8px;
       }
 
       .forecast-item {
-        min-height: 78px;
-        padding: 14px 15px;
+        min-height: 44px;
+        padding: 10px 12px;
         display: grid;
-        grid-template-columns: 34px 1fr;
-        grid-template-areas:
-          "icon label"
-          "icon value";
+        grid-template-columns: 34px 1fr auto;
+        grid-template-areas: "icon label value";
         align-items: center;
         column-gap: 10px;
-        row-gap: 2px;
+        box-shadow: none;
+        background: rgba(255,255,255,0.045);
+      }
+
+      .forecast-item:nth-child(4) {
+        display: none;
       }
 
       .forecast-item:hover {
         transform: none;
+        background: rgba(255,255,255,0.045);
+        box-shadow: none;
       }
 
       .forecast-icon {
@@ -1603,7 +1746,7 @@
 
       .forecast-icon::before {
         content: attr(data-mobile-icon);
-        font-size: 23px;
+        font-size: 21px;
         line-height: 1;
       }
 
@@ -1614,25 +1757,23 @@
       .forecast-label {
         grid-area: label;
         margin: 0;
-        color: rgba(245,245,245,0.52);
-        font-size: 11.5px;
+        color: rgba(245,245,245,0.56);
+        font-size: 12px;
         line-height: 1.2;
         font-weight: 600;
       }
 
       .forecast-value {
         grid-area: value;
-        font-size: 17px;
-        line-height: 1.25;
+        font-size: 15px;
+        line-height: 1.2;
         font-weight: 800;
-        letter-spacing: -0.25px;
+        letter-spacing: -0.15px;
+        text-align: right;
       }
 
       .bite-line {
-        min-height: 46px;
-        margin-top: 10px;
-        padding: 12px 14px;
-        font-size: 13.5px;
+        display: none;
       }
 
       #statusLine.info-line {
@@ -1747,20 +1888,15 @@
       }
 
       header {
-        padding: 6px 0;
+        padding: 10px 0;
       }
 
       .logo {
         font-size: 22px;
       }
 
-      .nav-btn {
-        height: 48px;
-        font-size: 13px;
-      }
-
       .hero {
-        margin: 12px 0 14px;
+        margin: 10px 0 14px;
         padding: 16px;
         gap: 12px;
       }
@@ -1788,40 +1924,6 @@
 
       .panel h2 {
         font-size: 24px;
-      }
-
-      .forecast-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      .forecast-item {
-        min-height: 76px;
-        padding: 14px;
-        grid-template-columns: 32px 1fr;
-        column-gap: 9px;
-      }
-
-      .forecast-icon {
-        width: 32px;
-        height: 32px;
-      }
-
-      .forecast-icon::before {
-        font-size: 22px;
-      }
-
-      .forecast-label {
-        font-size: 11px;
-      }
-
-      .forecast-value {
-        font-size: 16px;
-      }
-
-      .bite-line {
-        min-height: 44px;
-        font-size: 13px;
       }
 
       .card h3 {
@@ -1879,6 +1981,7 @@
   <header>
     <div class="wrap header-inner">
       <div class="logo">🎣💧 Klevby</div>
+
       <nav>
         <button class="nav-btn" onclick="showSection('home')">Напарники</button>
         <button class="nav-btn" onclick="showSection('ponds')">Платные пруды</button>
@@ -1888,6 +1991,24 @@
         <button class="nav-btn install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
         <button class="nav-btn nav-auth" onclick="showSection('auth')">Вход</button>
       </nav>
+
+      <div class="mobile-menu-wrap">
+        <button class="burger-btn" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Открыть меню" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="mobile-menu" id="mobileMenu">
+          <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Напарники</button>
+          <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
+          <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
+          <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
+          <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои объявления</button>
+          <button class="mobile-menu-item pwa-install-trigger" onclick="handleInstallClick(); closeMobileMenu()">📱 Приложение</button>
+          <button class="mobile-menu-item" onclick="showSection('auth'); closeMobileMenu()">Вход</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -1898,6 +2019,20 @@
           <div class="badge">Рыбаки Беларуси собираются здесь</div>
           <h1>Найди компанию на рыбалку</h1>
           <p>Добавь объявление, найди напарника и договорись о совместном выезде без лишней суеты.</p>
+
+          <div class="trust-bar">
+            <div class="trust-item">
+              <div class="trust-icon fish">🐟</div>
+              <div class="trust-value">1,524</div>
+              <div class="trust-label">Рыбака в сети</div>
+            </div>
+
+            <div class="trust-item">
+              <div class="trust-icon pin">📍</div>
+              <div class="trust-value">250+</div>
+              <div class="trust-label">Точек клёва</div>
+            </div>
+          </div>
 
           <div class="hero-actions">
             <button class="main-btn green" onclick="scrollToPosts()">Смотреть</button>
@@ -1924,6 +2059,11 @@
           <span class="drop"></span>
           <span class="drop"></span>
           <span class="drop"></span>
+        </div>
+
+        <div class="mobile-weather-title">
+          <div class="mobile-weather-city">Minsk</div>
+          <div class="mobile-weather-condition" id="mobileWeatherCondition">☀️ Солнце</div>
         </div>
 
         <div class="forecast-head">
@@ -2216,6 +2356,26 @@
       return true;
     }
 
+    function toggleMobileMenu() {
+      const menu = document.getElementById("mobileMenu");
+      const btn = document.getElementById("burgerBtn");
+      if (!menu || !btn) return;
+
+      const isOpen = menu.classList.toggle("open");
+      btn.classList.toggle("open", isOpen);
+      btn.setAttribute("aria-expanded", String(isOpen));
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById("mobileMenu");
+      const btn = document.getElementById("burgerBtn");
+      if (!menu || !btn) return;
+
+      menu.classList.remove("open");
+      btn.classList.remove("open");
+      btn.setAttribute("aria-expanded", "false");
+    }
+
     function isAdmin() {
       return currentUser && currentUser.email === ADMIN_EMAIL;
     }
@@ -2428,6 +2588,7 @@
 
     function setWeatherAnimation(main, description) {
       const panel = document.getElementById("forecastPanel");
+      const mobileCondition = document.getElementById("mobileWeatherCondition");
       if (!panel) return;
 
       const text = `${main || ""} ${description || ""}`.toLowerCase();
@@ -2436,6 +2597,7 @@
 
       if (text.includes("rain") || text.includes("drizzle") || text.includes("дожд")) {
         panel.classList.add("weather-rainy");
+        if (mobileCondition) mobileCondition.textContent = "🌧️ Дождь";
       } else if (
         text.includes("cloud") ||
         text.includes("облач") ||
@@ -2445,8 +2607,10 @@
         text.includes("fog")
       ) {
         panel.classList.add("weather-cloudy");
+        if (mobileCondition) mobileCondition.textContent = "☁️ Облачно";
       } else {
         panel.classList.add("weather-sunny");
+        if (mobileCondition) mobileCondition.textContent = "☀️ Солнце";
       }
     }
 
