@@ -418,28 +418,34 @@
     .hero-actions .main-btn.green,
     .hero-actions .main-btn.gray,
     .hero-actions .install-hero-btn {
-      background: rgba(255, 255, 255, 0.05) !important;
-      color: rgba(255, 255, 255, 0.92) !important;
+      min-height: 48px;
+      background: linear-gradient(180deg, rgba(32, 55, 70, 0.98), rgba(13, 29, 40, 0.98)) !important;
+      color: #ffffff !important;
       border: 1px solid rgba(255, 255, 255, 0.1) !important;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      border-top-color: rgba(255, 255, 255, 0.18) !important;
       box-shadow:
-        0 10px 28px rgba(0,0,0,0.22),
-        inset 0 1px 0 rgba(255,255,255,0.06);
+        0 12px 30px rgba(0,0,0,0.34),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      font-weight: 700;
     }
 
     .hero-actions .main-btn:hover,
     .hero-actions .main-btn:focus-visible,
     .hero-actions .install-hero-btn:hover,
     .hero-actions .install-hero-btn:focus-visible {
-      background: rgba(255, 255, 255, 0.085) !important;
-      border-color: rgba(255, 255, 255, 0.16) !important;
-      color: #fff !important;
+      background: linear-gradient(180deg, rgba(39, 66, 84, 1), rgba(17, 36, 49, 1)) !important;
+      color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.14) !important;
+      box-shadow:
+        0 14px 34px rgba(0,0,0,0.38),
+        inset 0 1px 0 rgba(255,255,255,0.1);
     }
 
     .hero-actions .main-btn:active,
     .hero-actions .install-hero-btn:active {
-      background: rgba(255, 255, 255, 0.12) !important;
+      background: linear-gradient(180deg, rgba(20, 40, 54, 1), rgba(10, 24, 34, 1)) !important;
       transform: translateY(0);
     }
 
