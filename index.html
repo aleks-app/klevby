@@ -360,7 +360,8 @@
     }
 
     .forecast-head,
-    .forecast-grid {
+    .forecast-grid,
+    .bite-line {
       position: relative;
       z-index: 2;
     }
@@ -428,6 +429,51 @@
     .forecast-value {
       font-size: 19px;
       font-weight: 760;
+    }
+
+    .bite-line {
+      margin-top: 14px;
+      padding: 13px 15px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+      color: rgba(245,245,245,0.78);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      backdrop-filter: blur(18px);
+    }
+
+    .bite-score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .bite-good {
+      background: rgba(47,191,113,0.18);
+      color: #bfffd8;
+      border: 1px solid rgba(47,191,113,0.34);
+    }
+
+    .bite-medium {
+      background: rgba(231,201,96,0.16);
+      color: #ffe99c;
+      border: 1px solid rgba(231,201,96,0.34);
+    }
+
+    .bite-weak {
+      background: rgba(228,88,88,0.16);
+      color: #ffd1d1;
+      border: 1px solid rgba(228,88,88,0.34);
     }
 
     .info-line {
@@ -514,7 +560,7 @@
       grid-template-columns: 1.2fr 1fr auto;
       gap: 12px;
       align-items: center;
-      margin: 26px 0;
+      margin: 26px 0 14px;
     }
 
     .check {
@@ -532,6 +578,40 @@
       width: auto;
       margin-right: 8px;
       accent-color: var(--emerald);
+    }
+
+    .quick-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 22px;
+    }
+
+    .quick-tag-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.045);
+      color: rgba(245,245,245,0.76);
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: 0.22s ease;
+      backdrop-filter: blur(14px);
+    }
+
+    .quick-tag-btn:hover {
+      transform: translateY(-2px);
+      border-color: rgba(47,191,113,0.36);
+      background: rgba(47,191,113,0.08);
+      color: var(--text);
+    }
+
+    .quick-tag-btn.clear {
+      border-color: rgba(231,201,96,0.22);
+      color: #f4df93;
+      background: rgba(231,201,96,0.08);
     }
 
     .grid {
@@ -579,6 +659,17 @@
       font-weight: 760;
     }
 
+    .card-icon {
+      font-size: 18px;
+      margin-right: 4px;
+      vertical-align: 1px;
+    }
+
+    .card-sep {
+      color: rgba(245,245,245,0.38);
+      margin: 0 4px;
+    }
+
     .card p {
       font-size: 15.5px;
       line-height: 1.65;
@@ -614,6 +705,36 @@
       background: rgba(47,191,113,0.12);
       border-color: rgba(47,191,113,0.28);
       color: #bdf7d2;
+    }
+
+    .tag.fishing-type.type-spinning {
+      background: rgba(47,191,113,0.18);
+      border-color: rgba(47,191,113,0.38);
+      color: #bfffd8;
+    }
+
+    .tag.fishing-type.type-feeder {
+      background: rgba(231,201,96,0.18);
+      border-color: rgba(231,201,96,0.38);
+      color: #ffe99c;
+    }
+
+    .tag.fishing-type.type-float {
+      background: rgba(88,183,255,0.18);
+      border-color: rgba(88,183,255,0.38);
+      color: #d8f0ff;
+    }
+
+    .tag.fishing-type.type-carp {
+      background: rgba(255,146,72,0.17);
+      border-color: rgba(255,146,72,0.34);
+      color: #ffd7b5;
+    }
+
+    .tag.fishing-type.type-winter {
+      background: rgba(167,221,255,0.16);
+      border-color: rgba(167,221,255,0.34);
+      color: #d9f2ff;
     }
 
     .actions {
@@ -957,6 +1078,28 @@
         letter-spacing: -0.25px;
       }
 
+      .bite-line {
+        margin-top: 10px;
+        padding: 10px 11px;
+        border-radius: 14px;
+        font-size: 12.5px;
+      }
+
+      .bite-score {
+        padding: 6px 9px;
+        font-size: 12px;
+      }
+
+      .quick-tags {
+        gap: 7px;
+        margin-bottom: 18px;
+      }
+
+      .quick-tag-btn {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
       .filters,
       .form-row,
       .grid,
@@ -1061,6 +1204,16 @@
         font-size: 16px;
       }
 
+      .bite-line {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .bite-score {
+        width: fit-content;
+      }
+
       .card h3 { font-size: 21px; }
 
       .actions { gap: 8px; }
@@ -1151,6 +1304,11 @@
             <div class="forecast-value" id="weatherMoon">—</div>
           </div>
         </div>
+
+        <div class="bite-line" id="biteForecast">
+          <span>Прогноз клева:</span>
+          <span class="bite-score bite-medium">Средний</span>
+        </div>
       </div>
 
       <div id="statusLine" class="info-line">Загрузка объявлений...</div>
@@ -1190,6 +1348,20 @@
           <input type="checkbox" id="telegramOnly" onchange="renderPosts()" />
           Только с Telegram
         </label>
+      </div>
+
+      <div class="quick-tags">
+        <button class="quick-tag-btn" onclick="quickSearch('Минск')">Минск</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Гомель')">Гомель</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Брест')">Брест</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Витебск')">Витебск</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Гродно')">Гродно</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Могилев')">Могилев</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Спиннинг')">Спиннинг</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Фидер')">Фидер</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Поплавок')">Поплавок</button>
+        <button class="quick-tag-btn" onclick="quickSearch('Карпфишинг')">Карпфишинг</button>
+        <button class="quick-tag-btn clear" onclick="quickSearch('')">Сбросить</button>
       </div>
 
       <div id="postsSection" class="grid">
@@ -1340,6 +1512,21 @@
       renderPosts();
     }
 
+    function quickSearch(value) {
+      const searchInput = document.getElementById("searchInput");
+      const cityFilter = document.getElementById("cityFilter");
+
+      if (searchInput) searchInput.value = value || "";
+      if (cityFilter) cityFilter.value = "";
+
+      renderPosts();
+
+      const postsSection = document.getElementById("postsSection");
+      if (postsSection) {
+        postsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
     function cleanTelegram(value) {
       let v = String(value || "").trim();
 
@@ -1365,6 +1552,64 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function getFishingTypeClass(type) {
+      const t = normalizeText(type);
+
+      if (t.includes("спин")) return "type-spinning";
+      if (t.includes("фидер")) return "type-feeder";
+      if (t.includes("поплав")) return "type-float";
+      if (t.includes("карп")) return "type-carp";
+      if (t.includes("зим")) return "type-winter";
+
+      return "";
+    }
+
+    function getBiteForecastByPressure(pressureMm) {
+      const pressure = Number(pressureMm);
+
+      if (!Number.isFinite(pressure)) {
+        return {
+          text: "Средний",
+          className: "bite-medium",
+          note: "нет точных данных"
+        };
+      }
+
+      if (pressure >= 748 && pressure <= 758) {
+        return {
+          text: "Хороший",
+          className: "bite-good",
+          note: "давление близко к стабильному"
+        };
+      }
+
+      if ((pressure >= 740 && pressure < 748) || (pressure > 758 && pressure <= 768)) {
+        return {
+          text: "Средний",
+          className: "bite-medium",
+          note: "условия нормальные"
+        };
+      }
+
+      return {
+        text: "Слабый",
+        className: "bite-weak",
+        note: "давление может мешать клеву"
+      };
+    }
+
+    function updateBiteForecast(pressureMm) {
+      const el = document.getElementById("biteForecast");
+      if (!el) return;
+
+      const result = getBiteForecastByPressure(pressureMm);
+
+      el.innerHTML = `
+        <span>Прогноз клева: <span style="color:rgba(245,245,245,0.54);font-weight:650;">${result.note}</span></span>
+        <span class="bite-score ${result.className}">${result.text}</span>
+      `;
     }
 
     function getCardImage(post) {
@@ -1478,6 +1723,7 @@
         moonEl.textContent = getMoonPhaseName();
         status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
 
+        updateBiteForecast(pressureMm);
         setWeatherAnimation(main, description);
       } catch (error) {
         console.error(error);
@@ -1486,6 +1732,7 @@
         windEl.textContent = "3 м/с СЗ";
         pressureEl.textContent = "752 мм";
         moonEl.textContent = getMoonPhaseName();
+        updateBiteForecast(752);
         setWeatherAnimation("Clouds", "облачно");
       }
     }
@@ -1677,6 +1924,7 @@
       const isFull = Boolean(post.crew_full);
       const image = getCardImage(post);
       const fishingType = post.fishing_type || "";
+      const fishingTypeClass = getFishingTypeClass(fishingType);
 
       const tgButton = isFull
         ? `<button class="small-btn disabled" disabled>Экипаж набран</button>`
@@ -1704,13 +1952,13 @@
         <div class="card ${isFull ? "full" : ""}">
           <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${image}')"></div>
           <div class="card-body">
-            <h3>${escapeHtml(post.name || "Без имени")} — ${escapeHtml(post.city || "")}</h3>
+            <h3><span class="card-icon">👤</span>${escapeHtml(post.name || "Без имени")} <span class="card-sep">—</span> <span class="card-icon">📍</span>${escapeHtml(post.city || "")}</h3>
             <p>${escapeHtml(post.text || "")}</p>
 
             <div class="tags">
               <span class="tag">🎣 рыбалка</span>
               <span class="tag">объявление</span>
-              ${fishingType ? `<span class="tag fishing-type">${escapeHtml(fishingType)}</span>` : ""}
+              ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
               ${isFull ? '<span class="tag full">экипаж набран</span>' : ''}
               ${tg ? '<span class="tag">Telegram</span>' : ''}
               ${date ? `<span class="tag">${escapeHtml(date)}</span>` : ''}
@@ -1859,6 +2107,7 @@
       if (!ok) return;
 
       fillAuthorLocal();
+      updateBiteForecast(752);
       fetchWeather();
       setInterval(fetchWeather, 1800000);
       await initAuth();
