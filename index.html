@@ -1516,6 +1516,46 @@
         width: 100%;
       }
 
+      #createPanel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      #createPanel h2 {
+        margin: 0;
+      }
+
+      #createPanel .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        width: 100%;
+      }
+
+      #createPanel input,
+      #createPanel select,
+      #createPanel textarea {
+        width: 100%;
+        margin: 0;
+      }
+
+      #createPanel .actions {
+        width: 100%;
+        margin-top: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+      }
+
+      #createPanel .actions .small-btn.green {
+        width: 60%;
+        min-height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
       .grid {
         gap: 18px;
       }
