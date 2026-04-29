@@ -113,6 +113,11 @@
         linear-gradient(180deg, #071014 0%, #091419 42%, #05090c 100%);
     }
 
+    body.post-modal-open {
+      overflow: hidden;
+      touch-action: none;
+    }
+
     h1,
     h2 {
       font-weight: 800 !important;
@@ -304,7 +309,9 @@
     .install-close,
     .mobile-tab-btn,
     .burger-btn,
-    .mobile-menu-item {
+    .mobile-menu-item,
+    .post-modal-close,
+    .post-modal-write {
       appearance: none;
     }
 
@@ -1182,6 +1189,11 @@
       -webkit-backdrop-filter: blur(18px);
     }
 
+    #postsSection .card {
+      cursor: pointer;
+      will-change: transform;
+    }
+
     .card:hover {
       transform: translateY(-4px) scale(1.006);
       box-shadow: 0 6px 24px rgba(0,0,0,0.24);
@@ -1230,6 +1242,13 @@
       white-space: pre-line;
       margin: 0;
       font-weight: 500;
+    }
+
+    #postsSection .card p {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .tags {
@@ -1580,6 +1599,229 @@
     .install-close:hover {
       background: rgba(255,255,255,0.10);
       color: var(--text);
+    }
+
+    /* POST FULLSCREEN MODAL */
+    .post-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+      background: rgba(0,0,0,0);
+      opacity: 0;
+      visibility: hidden;
+      backdrop-filter: blur(0);
+      -webkit-backdrop-filter: blur(0);
+      transition:
+        opacity 0.34s cubic-bezier(.22,.9,.22,1),
+        background 0.34s cubic-bezier(.22,.9,.22,1),
+        backdrop-filter 0.34s cubic-bezier(.22,.9,.22,1),
+        visibility 0.34s ease;
+    }
+
+    .post-modal-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+    }
+
+    .post-modal-sheet {
+      position: relative;
+      width: 100%;
+      max-width: 760px;
+      max-height: 94vh;
+      overflow: hidden;
+      border-radius: 30px 30px 0 0;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(66,217,134,0.16), transparent 34%),
+        radial-gradient(circle at 95% 0%, rgba(88,183,255,0.13), transparent 36%),
+        rgba(10, 18, 23, 0.98);
+      color: var(--text);
+      box-shadow:
+        0 -24px 70px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      transform: translateY(46px) scale(0.94);
+      opacity: 0;
+      transition:
+        transform 0.42s cubic-bezier(.16,1,.3,1),
+        opacity 0.34s ease;
+    }
+
+    .post-modal-backdrop.open .post-modal-sheet {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .post-modal-scroll {
+      max-height: 94vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    }
+
+    .post-modal-image {
+      width: 100%;
+      height: 330px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .post-modal-image::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.18) 50%, rgba(10,18,23,0.96) 100%);
+      pointer-events: none;
+    }
+
+    .post-modal-close {
+      position: absolute;
+      top: max(14px, env(safe-area-inset-top));
+      right: 14px;
+      z-index: 3;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.42);
+      color: #ffffff;
+      font-size: 27px;
+      line-height: 1;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: 0.22s ease;
+    }
+
+    .post-modal-close:hover {
+      transform: scale(1.05);
+      background: rgba(255,255,255,0.12);
+    }
+
+    .post-modal-content {
+      position: relative;
+      margin-top: -34px;
+      padding: 0 20px 0;
+      z-index: 2;
+    }
+
+    .post-modal-card {
+      border-radius: 26px;
+      padding: 22px;
+      background: rgba(18, 30, 36, 0.9);
+      box-shadow:
+        0 16px 48px rgba(0,0,0,0.32),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .post-modal-kicker {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      margin-bottom: 10px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(66,217,134,0.12);
+      color: #c8ffe0;
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .post-modal-title {
+      margin: 0;
+      font-size: clamp(25px, 7vw, 42px);
+      line-height: 1.04;
+      letter-spacing: -1.1px;
+      font-weight: 800 !important;
+      color: #ffffff;
+    }
+
+    .post-modal-meta {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .post-modal-pill {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.065);
+      color: rgba(244,251,247,0.74);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .post-modal-text {
+      margin: 18px 0 0;
+      color: rgba(244,251,247,0.82);
+      font-size: 16px;
+      line-height: 1.7;
+      white-space: pre-line;
+      font-weight: 500;
+    }
+
+    .post-modal-write {
+      width: 100%;
+      min-height: 58px;
+      margin-top: 22px;
+      border: 0;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #03150c;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow:
+        0 14px 36px rgba(66,217,134,0.24),
+        inset 0 1px 0 rgba(255,255,255,0.22);
+      transition: 0.22s ease;
+    }
+
+    .post-modal-write:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.04);
+    }
+
+    .post-modal-write:disabled {
+      cursor: not-allowed;
+      background: rgba(255,255,255,0.08);
+      color: rgba(244,251,247,0.42);
+      box-shadow: none;
+    }
+
+    @media (min-width: 760px) {
+      .post-modal-backdrop {
+        align-items: center;
+        padding: 24px;
+      }
+
+      .post-modal-sheet {
+        border-radius: 30px;
+        max-height: 88vh;
+      }
+
+      .post-modal-scroll {
+        max-height: 88vh;
+      }
     }
 
     @media (max-width: 1050px) {
@@ -1986,6 +2228,10 @@
         transform: translateY(-2px);
       }
 
+      #postsSection .card:active {
+        transform: scale(0.98);
+      }
+
       #postsSection .card-img {
         height: 118px;
         border-radius: 16px 16px 0 0;
@@ -2006,7 +2252,7 @@
         font-size: 12px;
         line-height: 1.45;
         display: -webkit-box;
-        -webkit-line-clamp: 4;
+        -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
@@ -2050,6 +2296,10 @@
       .small-btn,
       .main-btn {
         min-height: 48px;
+      }
+
+      .post-modal-image {
+        height: 300px;
       }
     }
 
@@ -2128,6 +2378,29 @@
 
       #postsSection .card p {
         font-size: 11.4px;
+        -webkit-line-clamp: 3;
+      }
+
+      .post-modal-sheet {
+        border-radius: 28px 28px 0 0;
+      }
+
+      .post-modal-image {
+        height: 275px;
+      }
+
+      .post-modal-content {
+        padding: 0 14px 0;
+      }
+
+      .post-modal-card {
+        padding: 18px;
+        border-radius: 24px;
+      }
+
+      .post-modal-text {
+        font-size: 15px;
+        line-height: 1.65;
       }
 
       .install-banner {
@@ -2177,6 +2450,10 @@
 
       #postsSection .tag:nth-child(n+4) {
         display: none;
+      }
+
+      .post-modal-image {
+        height: 245px;
       }
     }
   </style>
@@ -2506,6 +2783,31 @@
     </div>
   </div>
 
+  <div id="postModal" class="post-modal-backdrop hidden" onclick="handlePostModalBackdrop(event)">
+    <div class="post-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="postModalTitle" onclick="event.stopPropagation()">
+      <button class="post-modal-close" onclick="closePostModal()" aria-label="Закрыть">×</button>
+
+      <div class="post-modal-scroll">
+        <div id="postModalImage" class="post-modal-image"></div>
+
+        <div class="post-modal-content">
+          <div class="post-modal-card">
+            <div class="post-modal-kicker">🎣 Объявление</div>
+            <h2 id="postModalTitle" class="post-modal-title">Объявление</h2>
+
+            <div id="postModalMeta" class="post-modal-meta"></div>
+
+            <div id="postModalText" class="post-modal-text"></div>
+
+            <button id="postModalWriteBtn" class="post-modal-write" onclick="writePostAuthor()">
+              Написать
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="mobile-tabbar" aria-label="Нижняя навигация">
     <button class="mobile-tab-btn active" onclick="goMobileFeed()">
       <span class="mobile-tab-icon">🏠</span>
@@ -2555,6 +2857,8 @@
     let editingId = null;
     let deferredInstallPrompt = null;
     let installBannerShown = false;
+    let activeModalPost = null;
+    let postModalCloseTimer = null;
 
     const splashStartedAt = Date.now();
 
@@ -3104,21 +3408,21 @@
       const fishingTypeClass = getFishingTypeClass(fishingType);
 
       const tgButton = isFull
-        ? `<button class="small-btn disabled" disabled>Экипаж набран</button>`
+        ? `<button class="small-btn disabled" disabled onclick="event.stopPropagation()">Экипаж набран</button>`
         : tg
-          ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
-          : `<button class="small-btn green" onclick="openTelegram()">Написать в общий чат</button>`;
+          ? `<button class="small-btn green" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
+          : `<button class="small-btn green" onclick="event.stopPropagation(); openTelegram()">Написать в общий чат</button>`;
 
       const fullBtn = canManage
-        ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="toggleCrewFull('${post.id}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
+        ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${post.id}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
         : "";
 
       const editBtn = canManage
-        ? `<button class="small-btn yellow" onclick="editPost('${post.id}')">Редактировать</button>`
+        ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${post.id}')">Редактировать</button>`
         : "";
 
       const deleteBtn = canManage
-        ? `<button class="small-btn red" onclick="deletePost('${post.id}')">Удалить</button>`
+        ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${post.id}')">Удалить</button>`
         : "";
 
       const date = post.created_at
@@ -3126,7 +3430,7 @@
         : "";
 
       return `
-        <div class="card ${isFull ? "full" : ""}">
+        <div class="card ${isFull ? "full" : ""}" onclick="openPostModal('${post.id}')">
           <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${image}')"></div>
           <div class="card-body">
             <h3><span class="card-icon">👤</span>${escapeHtml(post.name || "Без имени")} <span class="card-sep">—</span> <span class="card-icon">📍</span>${escapeHtml(post.city || "")}</h3>
@@ -3152,6 +3456,95 @@
         </div>
       `;
     }
+
+    function openPostModal(id) {
+      const post = posts.find(p => String(p.id) === String(id));
+      if (!post) return;
+
+      activeModalPost = post;
+
+      const modal = document.getElementById("postModal");
+      const imageEl = document.getElementById("postModalImage");
+      const titleEl = document.getElementById("postModalTitle");
+      const metaEl = document.getElementById("postModalMeta");
+      const textEl = document.getElementById("postModalText");
+      const writeBtn = document.getElementById("postModalWriteBtn");
+
+      if (!modal || !imageEl || !titleEl || !metaEl || !textEl || !writeBtn) return;
+
+      const image = getCardImage(post);
+      const tg = cleanTelegram(post.telegram);
+      const isFull = Boolean(post.crew_full);
+      const date = post.created_at
+        ? new Date(post.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })
+        : "";
+      const fishingType = post.fishing_type || "";
+
+      imageEl.style.backgroundImage = `url('${image}')`;
+      titleEl.textContent = `${post.name || "Без имени"} — ${post.city || "город не указан"}`;
+      textEl.textContent = post.text || "Описание не указано.";
+
+      metaEl.innerHTML = `
+        ${post.city ? `<span class="post-modal-pill">📍 ${escapeHtml(post.city)}</span>` : ""}
+        ${fishingType ? `<span class="post-modal-pill">🎣 ${escapeHtml(fishingType)}</span>` : ""}
+        ${date ? `<span class="post-modal-pill">🕒 ${escapeHtml(date)}</span>` : ""}
+        ${tg ? `<span class="post-modal-pill">Telegram</span>` : ""}
+        ${isFull ? `<span class="post-modal-pill">Экипаж набран</span>` : ""}
+      `;
+
+      if (isFull) {
+        writeBtn.textContent = "Экипаж уже набран";
+        writeBtn.disabled = true;
+      } else {
+        writeBtn.textContent = "Написать";
+        writeBtn.disabled = false;
+      }
+
+      clearTimeout(postModalCloseTimer);
+      modal.classList.remove("hidden");
+
+      requestAnimationFrame(() => {
+        modal.classList.add("open");
+        document.body.classList.add("post-modal-open");
+      });
+    }
+
+    function closePostModal() {
+      const modal = document.getElementById("postModal");
+      if (!modal) return;
+
+      modal.classList.remove("open");
+      document.body.classList.remove("post-modal-open");
+
+      postModalCloseTimer = setTimeout(() => {
+        modal.classList.add("hidden");
+        activeModalPost = null;
+      }, 360);
+    }
+
+    function handlePostModalBackdrop(event) {
+      if (event.target && event.target.id === "postModal") {
+        closePostModal();
+      }
+    }
+
+    function writePostAuthor() {
+      if (!activeModalPost) return;
+
+      const tg = cleanTelegram(activeModalPost.telegram);
+
+      if (tg) {
+        window.open(`https://t.me/${tg}`, "_blank");
+      } else {
+        openTelegram();
+      }
+    }
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape") {
+        closePostModal();
+      }
+    });
 
     async function savePost() {
       const name = document.getElementById("nameInput").value.trim();
