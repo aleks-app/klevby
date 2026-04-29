@@ -83,8 +83,7 @@
       --blue: #58b7ff;
       --gold: #e5b957;
       --red: #e45858;
-      --radius-ui: 12px;
-      --radius-card: 22px;
+      --radius: 12px;
       --shadow: 0 18px 56px rgba(0,0,0,0.38);
       --glow: 0 0 32px rgba(66,217,134,0.10);
     }
@@ -144,12 +143,12 @@
     }
 
     nav {
+      width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       align-items: stretch;
       justify-content: stretch;
-      width: 100%;
     }
 
     .nav-btn,
@@ -160,6 +159,7 @@
     .install-close {
       appearance: none;
       font-family: inherit;
+      box-sizing: border-box;
     }
 
     .nav-btn {
@@ -168,7 +168,7 @@
       min-height: 44px;
       padding: 0 12px;
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       background: rgba(255,255,255,0.05);
       color: var(--muted);
       font-size: 14px;
@@ -205,21 +205,27 @@
       font-weight: 850;
     }
 
+    .app-button,
     .install-nav-btn {
       color: #dff1ff !important;
       border-color: rgba(88,183,255,0.28) !important;
       background: rgba(88,183,255,0.10) !important;
     }
 
+    .app-button:hover,
     .install-nav-btn:hover {
       border-color: rgba(88,183,255,0.50) !important;
       background: rgba(88,183,255,0.15) !important;
     }
 
     html.pwa-standalone .pwa-install-trigger,
+    html.pwa-standalone .install-button,
+    html.pwa-standalone .app-button,
     html.pwa-standalone .install-nav-btn,
     html.pwa-standalone .install-hero-btn,
     body.pwa-installed .pwa-install-trigger,
+    body.pwa-installed .install-button,
+    body.pwa-installed .app-button,
     body.pwa-installed .install-nav-btn,
     body.pwa-installed .install-hero-btn {
       display: none !important;
@@ -237,29 +243,29 @@
     }
 
     @media (display-mode: standalone) {
+      .install-button,
+      .app-button,
       .pwa-install-trigger,
       .install-nav-btn,
       .install-hero-btn {
         display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        width: 0 !important;
-        height: 0 !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border: 0 !important;
-        overflow: hidden !important;
       }
+
+      .nav-mine {
+        grid-column: 1 / -1;
+      }
+    }
+
+    html.pwa-standalone .nav-mine,
+    body.pwa-installed .nav-mine {
+      grid-column: 1 / -1;
     }
 
     .hero {
       width: 100%;
       margin: 14px auto 14px;
       padding: 16px;
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       overflow: hidden;
       position: relative;
       background:
@@ -281,7 +287,7 @@
       display: inline-flex;
       align-items: center;
       padding: 8px 12px;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       background: rgba(255,255,255,0.055);
       border: 1px solid var(--border);
       color: rgba(255,255,255,0.82);
@@ -323,7 +329,7 @@
     .hero-photo {
       width: 100%;
       min-height: 300px;
-      border-radius: 18px;
+      border-radius: 12px;
       overflow: hidden;
       background:
         linear-gradient(rgba(0,0,0,0.10), rgba(0,0,0,0.28)),
@@ -340,7 +346,7 @@
       min-height: 48px;
       padding: 0 16px;
       border: 1px solid rgba(255,255,255,0.14);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       font-size: 15px;
       font-weight: 800;
       cursor: pointer;
@@ -357,6 +363,7 @@
       filter: brightness(1.04);
     }
 
+    .install-button,
     .install-hero-btn {
       grid-column: 1 / -1;
       background: rgba(255,255,255,0.055);
@@ -366,6 +373,7 @@
       -webkit-backdrop-filter: blur(10px);
     }
 
+    .install-button:hover,
     .install-hero-btn:hover {
       border-color: rgba(88,183,255,0.50);
       background: rgba(88,183,255,0.12);
@@ -418,7 +426,7 @@
         radial-gradient(circle at 100% 0%, rgba(88,183,255,0.12), transparent 36%),
         var(--panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       padding: 16px;
       margin: 14px 0;
       box-shadow: var(--shadow), var(--glow);
@@ -585,7 +593,7 @@
     .forecast-item {
       background: rgba(255,255,255,0.055);
       border: 1px solid var(--border);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       padding: 16px;
       transition: 0.22s ease;
       box-shadow: 0 12px 30px rgba(0,0,0,0.18);
@@ -628,7 +636,7 @@
       min-height: 50px;
       margin-top: 10px;
       padding: 12px 15px;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.045);
       color: var(--text);
@@ -667,7 +675,7 @@
       border: 1px solid var(--border);
       color: var(--muted);
       padding: 13px 15px;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       font-size: 14px;
       font-weight: 750;
       margin: 14px 0;
@@ -685,7 +693,7 @@
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       padding: 18px;
       margin: 14px 0;
       box-shadow: var(--shadow);
@@ -707,7 +715,7 @@
       width: 100%;
       border: 1px solid var(--border);
       outline: none;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       padding: 14px 15px;
       font-size: 16px;
       margin: 6px 0;
@@ -767,7 +775,7 @@
         radial-gradient(circle at 0% 0%, rgba(66,217,134,0.08), transparent 34%),
         var(--panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       padding: 16px;
       margin: 14px 0;
       box-shadow: 0 18px 52px rgba(0,0,0,0.28), var(--glow);
@@ -809,7 +817,7 @@
       height: 48px;
       padding: 0 14px;
       border: 1px solid var(--border);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       background: rgba(255,255,255,0.035);
       color: var(--muted);
       font-size: 13px;
@@ -829,7 +837,7 @@
       min-height: 48px;
       padding: 12px 13px;
       border: 1px solid var(--border);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       background: rgba(255,255,255,0.045);
       color: var(--muted);
       font-size: 14px;
@@ -858,7 +866,7 @@
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       overflow: hidden;
       min-height: 380px;
       box-shadow: var(--shadow);
@@ -987,7 +995,7 @@
       min-height: 42px;
       padding: 11px 14px;
       border: 1px solid rgba(255,255,255,0.12);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       font-size: 14px;
       font-weight: 780;
       cursor: pointer;
@@ -1023,7 +1031,7 @@
       padding: 20px;
       background: rgba(255,255,255,0.045);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       transition: 0.22s ease;
       box-shadow: 0 12px 30px rgba(0,0,0,0.16);
       backdrop-filter: blur(14px);
@@ -1053,7 +1061,7 @@
 
     .map-placeholder {
       min-height: 410px;
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       border: 1px solid var(--border);
       overflow: hidden;
       background:
@@ -1070,7 +1078,7 @@
       max-width: 620px;
       background: rgba(14,25,31,0.82);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       padding: 22px;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
@@ -1092,7 +1100,7 @@
 
     .skeleton {
       min-height: 260px;
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
       background-size: 200% 100%;
@@ -1130,7 +1138,7 @@
       max-width: 560px;
       background: rgba(14,25,31,0.96);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       padding: 24px;
       box-shadow: var(--shadow);
       color: var(--text);
@@ -1147,7 +1155,7 @@
       padding: 14px;
       margin: 10px 0;
       border: 1px solid var(--border);
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       background: rgba(255,255,255,0.045);
       color: var(--muted);
       line-height: 1.45;
@@ -1174,7 +1182,7 @@
         radial-gradient(circle at 95% 0%, rgba(88,183,255,0.13), transparent 40%),
         rgba(14,25,31,0.94);
       border: 1px solid var(--border);
-      border-radius: var(--radius-card);
+      border-radius: 12px;
       box-shadow: var(--shadow), var(--glow);
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
@@ -1196,7 +1204,7 @@
     .install-icon {
       width: 46px;
       height: 46px;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       background:
         linear-gradient(135deg, rgba(66,217,134,0.24), rgba(255,255,255,0.045));
       border: 1px solid var(--border);
@@ -1230,7 +1238,7 @@
       border: 1px solid rgba(66,217,134,0.58);
       background: linear-gradient(135deg, var(--green), var(--green2));
       color: #03150c;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       padding: 10px 14px;
       font-size: 13px;
       font-weight: 850;
@@ -1247,7 +1255,7 @@
     .install-close {
       width: 34px;
       height: 34px;
-      border-radius: var(--radius-ui);
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.06);
       color: var(--muted);
@@ -1313,6 +1321,7 @@
 
       nav {
         width: 100%;
+        display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 10px;
         overflow: visible;
@@ -1326,7 +1335,7 @@
         padding: 0 8px;
         font-size: 12.5px;
         line-height: 1.15;
-        border-radius: var(--radius-ui);
+        border-radius: 12px;
         white-space: normal;
       }
 
@@ -1338,21 +1347,10 @@
         font-size: 13px;
       }
 
-      body.pwa-installed .nav-mine,
-      html.pwa-standalone .nav-mine {
-        grid-column: 1 / -1;
-      }
-
-      @media (display-mode: standalone) {
-        .nav-mine {
-          grid-column: 1 / -1;
-        }
-      }
-
       .hero {
         margin: 12px auto 14px;
         padding: 14px;
-        border-radius: var(--radius-card);
+        border-radius: 12px;
       }
 
       .hero-copy {
@@ -1374,13 +1372,14 @@
         gap: 10px;
       }
 
+      .install-button,
       .install-hero-btn {
         grid-column: 1 / -1;
       }
 
       .hero-photo {
         min-height: 245px;
-        border-radius: var(--radius-ui);
+        border-radius: 12px;
       }
 
       .forecast-panel {
@@ -1470,7 +1469,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--radius-ui);
+        border-radius: 12px;
         background: rgba(255,255,255,0.07);
         font-size: 0;
         line-height: 1;
@@ -1711,7 +1710,7 @@
         <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
         <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
         <button class="nav-btn nav-mine" onclick="setMode('mine')">Мои объявления</button>
-        <button class="nav-btn install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
+        <button class="nav-btn app-button install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
         <button class="nav-btn nav-auth" onclick="showSection('auth')">Вход</button>
       </nav>
     </div>
@@ -1728,7 +1727,7 @@
           <div class="hero-actions">
             <button class="main-btn green" onclick="scrollToPosts()">Смотреть</button>
             <button class="main-btn gray" onclick="openTelegram()">Telegram</button>
-            <button class="main-btn install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить на телефон</button>
+            <button class="main-btn install-button install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить на телефон</button>
           </div>
         </div>
 
@@ -1981,7 +1980,7 @@
         <div class="install-subtext">Открывай как приложение — без лишних вкладок.</div>
       </div>
       <div class="install-actions">
-        <button class="install-btn" onclick="handleInstallClick()">Установить</button>
+        <button class="install-btn install-button" onclick="handleInstallClick()">Установить</button>
         <button class="install-close" onclick="hideInstallBanner(true)" aria-label="Закрыть">×</button>
       </div>
     </div>
