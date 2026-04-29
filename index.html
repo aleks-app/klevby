@@ -165,41 +165,52 @@
     .nav-btn {
       box-sizing: border-box;
       width: auto;
-      height: 48px;
+      height: 42px;
       padding: 0 16px;
-      background: rgba(255,255,255,0.05);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: linear-gradient(180deg, rgba(32, 55, 70, 0.98), rgba(13, 29, 40, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.18);
       border-radius: var(--radius-ui);
-      color: var(--muted);
+      color: #ffffff;
       font-size: 14px;
-      font-weight: 760;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
       cursor: pointer;
       transition: 0.22s ease;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+      box-shadow:
+        0 12px 30px rgba(0,0,0,0.34),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      white-space: nowrap;
     }
 
     .nav-btn:hover,
     .nav-btn.active {
-      color: var(--text);
-      background: rgba(255,255,255,0.075);
-      border-color: rgba(66,217,134,0.35);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.24), var(--glow);
+      color: #ffffff;
+      background: linear-gradient(180deg, rgba(39, 66, 84, 1), rgba(17, 36, 49, 1));
+      border-color: rgba(255, 255, 255, 0.14);
+      border-top-color: rgba(255, 255, 255, 0.22);
+      box-shadow:
+        0 14px 34px rgba(0,0,0,0.38),
+        inset 0 1px 0 rgba(255,255,255,0.1);
       transform: translateY(-1px);
     }
 
     .nav-auth {
-      height: 48px;
-      color: #03150c;
-      border-color: rgba(66,217,134,0.72);
-      background: linear-gradient(135deg, var(--green), var(--green2));
-      box-shadow: 0 12px 32px rgba(66,217,134,0.22);
-      font-weight: 850;
+      height: 42px;
+      padding: 0 16px;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top-color: rgba(255, 255, 255, 0.18);
+      background: linear-gradient(180deg, rgba(32, 55, 70, 0.98), rgba(13, 29, 40, 0.98));
+      box-shadow:
+        0 12px 30px rgba(0,0,0,0.34),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      font-weight: 700;
     }
 
     .install-nav-btn {
@@ -218,6 +229,7 @@
     .install-nav-btn:hover {
       color: #ffffff !important;
       border-color: rgba(255, 255, 255, 0.14) !important;
+      border-top-color: rgba(255, 255, 255, 0.22) !important;
       background: linear-gradient(180deg, rgba(39, 66, 84, 1), rgba(17, 36, 49, 1)) !important;
       box-shadow:
         0 14px 34px rgba(0,0,0,0.38),
@@ -1370,6 +1382,8 @@
       .nav-auth {
         grid-column: 1 / -1;
         width: 100%;
+        height: 48px;
+        padding: 0 10px;
       }
 
       .hero {
@@ -2866,3 +2880,4 @@
   </script>
 </body>
 </html>
+```
