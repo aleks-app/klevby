@@ -90,6 +90,7 @@
       cursor: pointer;
       transition: 0.25s ease;
       min-height: auto;
+      white-space: nowrap;
     }
 
     .nav-btn:hover,
@@ -195,6 +196,7 @@
       transition: 0.25s ease;
       width: auto;
       min-width: auto;
+      white-space: nowrap;
     }
 
     .main-btn:hover {
@@ -275,9 +277,7 @@
       50% { transform: scale(1.16); opacity: 1; }
     }
 
-    .weather-cloudy .cloud {
-      display: block;
-    }
+    .weather-cloudy .cloud { display: block; }
 
     .cloud {
       display: none;
@@ -331,9 +331,7 @@
       opacity: 0.7;
     }
 
-    .weather-rainy .rain-layer {
-      display: block;
-    }
+    .weather-rainy .rain-layer { display: block; }
 
     .drop {
       position: absolute;
@@ -634,6 +632,7 @@
       cursor: pointer;
       transition: 0.25s ease;
       min-height: 42px;
+      white-space: nowrap;
     }
 
     .small-btn:hover {
@@ -766,31 +765,59 @@
     .modal h2 { margin-top: 0; }
 
     @media (max-width: 900px) {
+      header {
+        position: relative;
+        top: auto;
+        padding: 6px 0;
+        background: rgba(5,5,5,0.72);
+      }
+
       .header-inner {
         align-items: flex-start;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
+        min-height: auto;
+      }
+
+      .logo {
+        font-size: 24px;
+        line-height: 1;
+        padding-top: 4px;
       }
 
       nav {
         width: 100%;
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        display: flex;
+        flex-wrap: nowrap;
         gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 4px 0 8px;
+        justify-content: flex-start;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      nav::-webkit-scrollbar {
+        display: none;
       }
 
       .nav-btn {
-        min-height: 46px;
-        padding: 10px 8px;
-        font-size: 14px;
+        flex: 0 0 auto;
+        min-height: 38px;
+        padding: 9px 12px;
+        font-size: 13.5px;
         text-align: center;
-        border-radius: 12px;
-        background: rgba(255,255,255,0.035);
+        border-radius: 999px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
       }
 
       .nav-btn:last-child {
-        padding: 10px 8px;
-        border-radius: 12px;
+        flex: 0 0 auto;
+        min-height: 38px;
+        padding: 9px 14px;
+        border-radius: 999px;
       }
 
       .hero {
@@ -828,8 +855,6 @@
 
       .card { min-height: auto; }
 
-      .logo { font-size: 28px; }
-
       .small-btn,
       .main-btn {
         min-height: 48px;
@@ -839,11 +864,24 @@
     @media (max-width: 520px) {
       .wrap { width: 92%; }
 
-      header { padding: 10px 0; }
+      header {
+        padding: 5px 0;
+      }
 
-      nav { grid-template-columns: 1fr 1fr; }
+      .logo {
+        font-size: 23px;
+      }
 
-      .nav-btn { font-size: 14px; }
+      .nav-btn {
+        min-height: 36px;
+        font-size: 13px;
+        padding: 8px 11px;
+      }
+
+      .nav-btn:last-child {
+        min-height: 36px;
+        padding: 8px 12px;
+      }
 
       .hero {
         margin-top: 14px;
