@@ -41,33 +41,82 @@
 
     a { color: inherit; text-decoration: none; }
 
-    .wrap { width: min(92%, 1180px); margin: 0 auto; }
+    .wrap {
+      width: min(92%, 1180px);
+      margin: 0 auto;
+    }
 
     header {
-      position: sticky; top: 0; z-index: 100;
+      position: sticky;
+      top: 0;
+      z-index: 100;
       background: rgba(5,5,5,0.62);
       backdrop-filter: blur(22px);
       border-bottom: 1px solid rgba(255,255,255,0.07);
       padding: 10px 0;
     }
 
-    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 54px; }
-    .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.4px; white-space: nowrap; }
-    
-    nav { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: flex-end; }
-    .nav-btn {
-      background: transparent; border: none; color: var(--muted);
-      padding: 8px 0; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.25s ease;
-    }
-    .nav-btn:hover, .nav-btn.active { color: var(--text); }
-    .nav-btn.special {
-      color: var(--text); border: 1px solid var(--border-strong);
-      border-radius: 999px; padding: 8px 16px; background: rgba(255,255,255,0.035);
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 54px;
     }
 
-    /* Hero Block с твоими новыми градиентами */
+    .logo {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      white-space: nowrap;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-btn {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 8px 0;
+      font-weight: 650;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.25s ease;
+      min-height: auto;
+    }
+
+    .nav-btn:hover,
+    .nav-btn.active {
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .nav-btn:last-child {
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.035);
+    }
+
+    .nav-btn:last-child:hover {
+      border-color: rgba(47,191,113,0.55);
+      background: rgba(47,191,113,0.08);
+      box-shadow: 0 0 0 4px rgba(47,191,113,0.06);
+    }
+
     .hero {
-      margin: 18px 0 28px; border-radius: 22px; overflow: hidden; min-height: 470px;
+      margin: 18px 0 28px;
+      border-radius: 22px;
+      overflow: hidden;
+      min-height: 470px;
       background:
         radial-gradient(circle at 18% 35%, rgba(0,0,0,0.18), transparent 28%),
         radial-gradient(circle at 75% 50%, rgba(0,0,0,0.18), transparent 32%),
@@ -75,52 +124,663 @@
         linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.72)),
         url("https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=85")
         center/cover no-repeat;
-      padding: 44px 48px; box-shadow: var(--shadow); border: 1px solid var(--border);
-      position: relative; display: flex; flex-direction: column; justify-content: center;
+      padding: 44px 48px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 36%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+    }
+
+    .badge,
+    .hero h1,
+    .hero p,
+    .hero-actions {
+      position: relative;
+      z-index: 2;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: rgba(245,245,245,0.8);
+      font-size: 14px;
+      font-weight: 650;
+      margin-bottom: 20px;
+      backdrop-filter: blur(14px);
     }
 
     .hero h1 {
-      font-size: clamp(34px, 5vw, 52px); line-height: 1.06; max-width: 760px;
-      margin: 0 0 18px; letter-spacing: -1px; font-weight: 700; position: relative; z-index: 2;
+      font-size: clamp(36px, 5vw, 54px);
+      line-height: 1.06;
+      max-width: 760px;
+      margin: 0 0 18px;
+      letter-spacing: -1px;
+      font-weight: 720;
     }
 
     .hero p {
-      font-size: 19px; max-width: 600px; line-height: 1.5; margin: 0 0 26px;
-      color: rgba(245,245,245,0.8); position: relative; z-index: 2;
+      font-size: 19px;
+      max-width: 680px;
+      line-height: 1.55;
+      margin: 0 0 26px;
+      color: rgba(245,245,245,0.78);
+      font-weight: 450;
     }
 
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
 
-    /* Погодная панель */
+    .main-btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      padding: 14px 22px;
+      font-size: 15px;
+      font-weight: 720;
+      cursor: pointer;
+      transition: 0.25s ease;
+      width: auto;
+      min-width: auto;
+    }
+
+    .main-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .green {
+      background: var(--emerald);
+      color: #020b06;
+      border-color: rgba(47,191,113,0.8);
+    }
+
+    .blue {
+      background: rgba(88,183,255,0.14);
+      color: #dff1ff;
+      border-color: rgba(88,183,255,0.28);
+    }
+
+    .gray {
+      background: rgba(255,255,255,0.055);
+      color: var(--text);
+      backdrop-filter: blur(12px);
+    }
+
+    .yellow {
+      background: rgba(231,201,96,0.95);
+      color: #141006;
+      border-color: rgba(231,201,96,0.5);
+    }
+
+    .red {
+      background: rgba(228,88,88,0.95);
+      color: white;
+      border-color: rgba(228,88,88,0.5);
+    }
+
+    .disabled {
+      background: rgba(255,255,255,0.08) !important;
+      color: var(--muted2) !important;
+      cursor: not-allowed !important;
+    }
+
     .forecast-panel {
-      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-      border-radius: 20px; padding: 22px; margin: 24px 0; backdrop-filter: blur(10px);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(47,191,113,0.13), transparent 32%),
+        radial-gradient(circle at 100% 0%, rgba(88,183,255,0.11), transparent 34%),
+        rgba(255,255,255,0.045);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      margin: 24px 0;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 14px 50px rgba(0,0,0,0.26);
     }
-    .forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
-    .forecast-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); padding: 15px; border-radius: 14px; }
-    .forecast-val { font-size: 20px; font-weight: 700; margin-top: 5px; }
 
-    /* Карточки */
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-bottom: 50px; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; transition: 0.3s ease; }
-    .card:hover { transform: translateY(-5px); border-color: var(--border-strong); }
-    .card-img { height: 170px; background-size: cover; background-position: center; }
-    .card-body { padding: 20px; }
-    .tag { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; background: rgba(255,255,255,0.08); margin-right: 5px; margin-bottom: 5px; }
-    .tag.fishing-type { background: rgba(47,191,113,0.15); color: var(--emerald); border: 1px solid rgba(47,191,113,0.3); }
-
-    .main-btn, .small-btn {
-      border: none; border-radius: 50px; padding: 12px 24px; font-weight: 700; cursor: pointer; transition: 0.2s;
+    .forecast-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
     }
-    .green { background: var(--emerald); color: #000; }
-    .blue { background: var(--blue); color: #fff; }
-    .gray { background: rgba(255,255,255,0.1); color: #fff; }
-    .red { background: var(--red); color: #fff; }
 
-    @media (max-width: 768px) {
-      .hero { padding: 30px 20px; min-height: 400px; }
-      nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .nav-btn.special { text-align: center; }
+    .forecast-head h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 760;
+      letter-spacing: -0.4px;
+    }
+
+    .forecast-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .forecast-item {
+      background: rgba(255,255,255,0.055);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .forecast-icon {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .forecast-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .forecast-value {
+      font-size: 19px;
+      font-weight: 760;
+    }
+
+    .info-line {
+      background: rgba(255,255,255,0.045);
+      border: 1px solid var(--border);
+      color: rgba(245,245,245,0.76);
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      margin: 18px 0;
+      backdrop-filter: blur(16px);
+    }
+
+    .error-line {
+      background: rgba(228,88,88,0.12);
+      border-color: rgba(228,88,88,0.34);
+      color: #ffd6d6;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin: 24px 0;
+      box-shadow: 0 14px 50px rgba(0,0,0,0.26);
+      backdrop-filter: blur(18px);
+    }
+
+    .panel h2 {
+      margin: 0 0 18px;
+      font-size: 26px;
+      letter-spacing: -0.5px;
+      font-weight: 760;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      outline: none;
+      border-radius: 14px;
+      padding: 15px 16px;
+      font-size: 16px;
+      margin: 8px 0;
+      background: rgba(255,255,255,0.055);
+      color: var(--text);
+      transition: 0.25s ease;
+      font-family: inherit;
+    }
+
+    select option {
+      background: #111;
+      color: white;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: rgba(245,245,245,0.38);
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: rgba(47,191,113,0.52);
+      box-shadow: 0 0 0 4px rgba(47,191,113,0.08);
+      background: rgba(255,255,255,0.075);
+    }
+
+    textarea {
+      min-height: 118px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin: 26px 0;
+    }
+
+    .check {
+      background: rgba(255,255,255,0.045);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 15px 16px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .check input {
+      width: auto;
+      margin-right: 8px;
+      accent-color: var(--emerald);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin: 28px 0 60px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.045);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 390px;
+      box-shadow: 0 14px 50px rgba(0,0,0,0.26);
+      transition: 0.25s ease;
+      backdrop-filter: blur(18px);
+    }
+
+    .card:hover {
+      transform: translateY(-4px) scale(1.006);
+      box-shadow: 0 22px 70px rgba(0,0,0,0.44), 0 0 34px rgba(47,191,113,0.07);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    .card.full {
+      opacity: 0.56;
+      filter: grayscale(0.55);
+    }
+
+    .card-img {
+      height: 168px;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .card-body {
+      padding: 22px;
+    }
+
+    .card h3 {
+      font-size: 22px;
+      margin: 0 0 14px;
+      letter-spacing: -0.35px;
+      line-height: 1.16;
+      font-weight: 760;
+    }
+
+    .card p {
+      font-size: 15.5px;
+      line-height: 1.65;
+      color: var(--muted);
+      white-space: pre-line;
+      margin: 0;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    .tag {
+      background: rgba(255,255,255,0.055);
+      color: rgba(245,245,245,0.74);
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-weight: 650;
+      font-size: 12.5px;
+    }
+
+    .tag.full {
+      background: rgba(231,201,96,0.12);
+      border-color: rgba(231,201,96,0.22);
+      color: #f3dd8a;
+    }
+
+    .tag.fishing-type {
+      background: rgba(47,191,113,0.12);
+      border-color: rgba(47,191,113,0.28);
+      color: #bdf7d2;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .small-btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.25s ease;
+      min-height: 42px;
+    }
+
+    .small-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.04);
+    }
+
+    .hidden { display: none !important; }
+
+    .auth-status {
+      margin-top: 14px;
+      color: rgba(245,245,245,0.72);
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .ponds-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .pond {
+      background: rgba(255,255,255,0.045);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      min-height: 164px;
+      transition: 0.25s ease;
+    }
+
+    .pond:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    .pond h3 {
+      margin-top: 0;
+      font-size: 21px;
+      letter-spacing: -0.3px;
+      font-weight: 760;
+    }
+
+    .pond p {
+      color: var(--muted);
+      line-height: 1.62;
+      font-size: 15px;
+    }
+
+    .map-placeholder {
+      min-height: 430px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.72), rgba(0,0,0,0.22)),
+        url("https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=85")
+        center/cover no-repeat;
+      display: flex;
+      align-items: flex-end;
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .map-card {
+      max-width: 620px;
+      background: rgba(0,0,0,0.42);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      backdrop-filter: blur(18px);
+    }
+
+    .map-card h2 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      letter-spacing: -0.6px;
+    }
+
+    .map-card p {
+      margin: 0;
+      color: rgba(245,245,245,0.72);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      background-size: 200% 100%;
+      animation: shine 1.4s infinite;
+      border-radius: 16px;
+      min-height: 260px;
+      border: 1px solid var(--border);
+    }
+
+    @keyframes shine {
+      from { background-position: 200% 0; }
+      to { background-position: -200% 0; }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 48px 0 70px;
+      color: rgba(245,245,245,0.42);
+      font-size: 14px;
+    }
+
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(14px);
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 560px;
+      background: rgba(14,14,14,0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .modal h2 { margin-top: 0; }
+
+    @media (max-width: 900px) {
+      .header-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      nav {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .nav-btn {
+        min-height: 46px;
+        padding: 10px 8px;
+        font-size: 14px;
+        text-align: center;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.035);
+      }
+
+      .nav-btn:last-child {
+        padding: 10px 8px;
+        border-radius: 12px;
+      }
+
+      .hero {
+        min-height: 430px;
+        padding: 30px 22px;
+        border-radius: 18px;
+      }
+
+      .hero h1 {
+        font-size: 40px;
+        letter-spacing: -0.9px;
+      }
+
+      .hero p {
+        font-size: 18px;
+      }
+
+      .hero-actions {
+        display: flex;
+      }
+
+      .forecast-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .forecast-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .filters,
+      .form-row,
+      .grid,
+      .ponds-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        gap: 22px;
+      }
+
+      .card {
+        min-height: auto;
+      }
+
+      .logo {
+        font-size: 28px;
+      }
+
+      .small-btn,
+      .main-btn {
+        min-height: 48px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .wrap { width: 92%; }
+
+      header {
+        padding: 10px 0;
+      }
+
+      nav {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .nav-btn {
+        font-size: 14px;
+      }
+
+      .hero {
+        margin-top: 14px;
+        min-height: 400px;
+        padding: 28px 20px;
+      }
+
+      .hero h1 {
+        font-size: 34px;
+      }
+
+      .hero p {
+        font-size: 16.5px;
+      }
+
+      .main-btn {
+        font-size: 15px;
+        padding: 13px 17px;
+      }
+
+      .panel,
+      .forecast-panel {
+        padding: 20px;
+      }
+
+      .panel h2 {
+        font-size: 24px;
+      }
+
+      .forecast-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card h3 {
+        font-size: 21px;
+      }
+
+      .actions {
+        gap: 8px;
+      }
+
+      .map-placeholder {
+        min-height: 360px;
+        padding: 18px;
+      }
+
+      .map-card h2 {
+        font-size: 24px;
+      }
     }
   </style>
 </head>
@@ -128,12 +788,15 @@
 <body>
   <header>
     <div class="wrap header-inner">
-      <div class="logo">🎣 Klevby</div>
+      <div class="logo">🎣💧 Klevby</div>
       <nav>
         <button class="nav-btn" onclick="showSection('home')">Напарники</button>
-        <button class="nav-btn" onclick="showSection('map')">Карта</button>
-        <button class="nav-btn" onclick="setMode('mine')">Мои посты</button>
-        <button class="nav-btn special" onclick="showSection('auth')">Аккаунт</button>
+        <button class="nav-btn" onclick="showSection('ponds')">Платные пруды</button>
+        <button class="nav-btn" onclick="showSection('map')">Карта клева</button>
+        <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
+        <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
+        <button class="nav-btn" onclick="setMode('mine')">Мои объявления</button>
+        <button class="nav-btn" onclick="showSection('auth')">Вход</button>
       </nav>
     </div>
   </header>
@@ -141,223 +804,731 @@
   <main class="wrap">
     <section id="homeSection">
       <div class="hero">
-        <div class="badge">🇧🇾 Сообщество рыбаков Беларуси</div>
+        <div class="badge">Рыбаки Беларуси собираются здесь</div>
         <h1>Найди компанию на рыбалку</h1>
-        <p>Добавляй объявления, находи напарников и делись опытом выездов в один клик.</p>
+        <p>Добавь объявление, найди напарника и договорись о совместном выезде без лишней суеты.</p>
+
         <div class="hero-actions">
-          <button class="main-btn green" onclick="scrollToPosts()">Смотреть ленту</button>
+          <button class="main-btn green" onclick="scrollToPosts()">Смотреть объявления</button>
           <button class="main-btn gray" onclick="openTelegram()">Telegram-чат</button>
         </div>
       </div>
 
       <div class="forecast-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h2 style="margin:0; font-size: 22px;">Прогноз клева: Минск</h2>
-          <span id="weatherStatus" style="font-size: 13px; color: var(--muted);">Обновление...</span>
+        <div class="forecast-head">
+          <div>
+            <h2>Прогноз на сегодня</h2>
+            <p id="weatherStatus">Загружаем погоду для Минска...</p>
+          </div>
+          <button class="main-btn blue" onclick="showSection('map')">Открыть карту клева</button>
         </div>
+
         <div class="forecast-grid">
-          <div class="forecast-item">🌡️ Температура <div class="forecast-val" id="weatherTemp">—</div></div>
-          <div class="forecast-item">🌬️ Ветер <div class="forecast-val" id="weatherWind">—</div></div>
-          <div class="forecast-item">🧭 Давление <div class="forecast-val" id="weatherPressure">—</div></div>
-          <div class="forecast-item">🌓 Луна <div class="forecast-val" id="weatherMoon">—</div></div>
+          <div class="forecast-item">
+            <div class="forecast-icon">🌡️</div>
+            <div class="forecast-label">Температура</div>
+            <div class="forecast-value" id="weatherTemp">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon">🌬️</div>
+            <div class="forecast-label">Ветер</div>
+            <div class="forecast-value" id="weatherWind">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon">🧭</div>
+            <div class="forecast-label">Давление</div>
+            <div class="forecast-value" id="weatherPressure">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon">🌓</div>
+            <div class="forecast-label">Фаза луны</div>
+            <div class="forecast-value" id="weatherMoon">—</div>
+          </div>
         </div>
       </div>
 
-      <div class="panel">
+      <div id="statusLine" class="info-line">Загрузка объявлений...</div>
+
+      <div class="panel" id="createPanel">
         <h2 id="formTitle">Создать объявление</h2>
+
         <div class="form-row">
-          <input id="nameInput" placeholder="Имя">
-          <input id="cityInput" placeholder="Город">
+          <input id="nameInput" placeholder="Имя" />
+          <input id="cityInput" placeholder="Город" />
         </div>
+
         <select id="fishingTypeInput">
-          <option value="">Выберите тип ловли</option>
+          <option value="">Тип рыбалки</option>
           <option value="Спиннинг">Спиннинг</option>
           <option value="Фидер">Фидер</option>
           <option value="Поплавок">Поплавок</option>
           <option value="Карпфишинг">Карпфишинг</option>
           <option value="Зимняя">Зимняя</option>
         </select>
-        <textarea id="textInput" placeholder="Куда едешь, когда, есть ли место в машине?"></textarea>
-        <input id="telegramInput" placeholder="Telegram @username">
+
+        <textarea id="textInput" placeholder="Описание: куда едешь, когда, есть ли машина/лодка"></textarea>
+        <input id="telegramInput" placeholder="Telegram username, @username или https://t.me/username" />
+
         <div class="actions">
-          <button class="small-btn green" onclick="savePost()">Опубликовать</button>
+          <button class="small-btn green" onclick="savePost()">Сохранить</button>
           <button id="cancelEditBtn" class="small-btn gray hidden" onclick="cancelEdit()">Отмена</button>
         </div>
+
         <div id="formMessage" class="auth-status"></div>
       </div>
 
       <div class="filters">
-        <input id="searchInput" placeholder="Поиск по ленте..." oninput="renderPosts()">
-        <input id="cityFilter" placeholder="Город..." oninput="renderPosts()">
-        <label class="check"><input type="checkbox" id="telegramOnly" onchange="renderPosts()"> Только с TG</label>
+        <input id="searchInput" placeholder="Поиск: Минск, лодка, карп..." oninput="renderPosts()" />
+        <input id="cityFilter" placeholder="Фильтр по городу" oninput="renderPosts()" />
+        <label class="check">
+          <input type="checkbox" id="telegramOnly" onchange="renderPosts()" />
+          Только с Telegram
+        </label>
       </div>
 
-      <div id="statusLine" style="margin: 15px 0; color: var(--blue); font-weight: bold;"></div>
-      <div id="postsSection" class="grid"></div>
+      <div id="postsSection" class="grid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section id="pondsSection" class="hidden">
+      <div class="panel">
+        <h2>Платные пруды Беларуси</h2>
+        <p style="color:rgba(245,245,245,0.62);line-height:1.6;">Пока стартовый раздел. Следующим шагом можно подключить отдельную таблицу ponds в Supabase.</p>
+
+        <div class="ponds-grid">
+          <div class="pond">
+            <h3>Пруд возле Минска</h3>
+            <p>Карп, карась, амур. Цена уточняется. Можно добавить контакты владельца.</p>
+          </div>
+          <div class="pond">
+            <h3>Платник Гомельская область</h3>
+            <p>Рыбалка по записи. Есть беседки, отдых, платная ловля.</p>
+          </div>
+          <div class="pond">
+            <h3>Платный водоём Брест</h3>
+            <p>Подходит для семейного отдыха и рыбалки на карпа.</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="mapSection" class="hidden">
-      <div class="hero" style="background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=80')">
-        <h1>Карта клева Беларуси</h1>
-        <p>Скоро: отмечай свои секретные точки и смотри, где клюет прямо сейчас.</p>
+      <div class="map-placeholder">
+        <div class="map-card">
+          <h2>Карта клева Беларуси</h2>
+          <p>Скоро: отмечай свои выезды, добавляй точки, смотри, где клюет, и находи популярные места рядом.</p>
+        </div>
       </div>
     </section>
 
     <section id="authSection" class="hidden">
       <div class="panel">
-        <h2>Вход в систему</h2>
-        <input id="emailInput" type="email" placeholder="Email">
-        <input id="passwordInput" type="password" placeholder="Пароль">
+        <h2>Вход на сайт</h2>
+
+        <input id="emailInput" type="email" placeholder="Email" />
+        <input id="passwordInput" type="password" placeholder="Пароль" />
+
         <div class="actions">
           <button class="small-btn blue" onclick="login()">Войти</button>
           <button class="small-btn gray" onclick="register()">Регистрация</button>
+          <button class="small-btn yellow" onclick="sendRecovery()">Сбросить пароль</button>
           <button class="small-btn red" onclick="logout()">Выйти</button>
         </div>
-        <div id="authStatus" class="auth-status"></div>
+
+        <div id="authStatus" class="auth-status">Проверяем вход...</div>
       </div>
     </section>
+
+    <div class="footer">
+      Klevby.com — рыбалка в Беларуси 🎣
+    </div>
   </main>
+
+  <div id="resetModal" class="modal-bg hidden">
+    <div class="modal">
+      <h2>Новый пароль</h2>
+      <p>Введите новый пароль для аккаунта.</p>
+      <input id="newPasswordInput" type="password" placeholder="Новый пароль" />
+      <div class="actions">
+        <button class="small-btn green" onclick="updatePassword()">Сохранить пароль</button>
+        <button class="small-btn gray" onclick="closeResetModal()">Закрыть</button>
+      </div>
+      <div id="resetMessage" class="auth-status"></div>
+    </div>
+  </div>
 
   <script>
     const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
-    const WEATHER_KEY = "2b08e3fec07f3dd6a25cf6862ab4b030";
+    const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
+    const TELEGRAM_GROUP = "https://t.me/+W6eAuefzcJwwODEy";
     const ADMIN_EMAIL = "al822alex@gmail.com";
+    const WEATHER_API_KEY = "2b08e3fec07f3dd6a25cf6862ab4b030";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let posts = [], user = null, viewMode = 'all', editId = null;
+    const CARD_IMAGES = [
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80"
+    ];
 
-    async function init() {
-      const { data } = await supabase.auth.getUser();
-      user = data?.user || null;
-      
-      // Автозаполнение
-      document.getElementById('nameInput').value = localStorage.getItem('kb_name') || '';
-      document.getElementById('telegramInput').value = localStorage.getItem('kb_tg') || '';
-      
-      fetchWeather();
-      setInterval(fetchWeather, 1800000); // Авто-обновление каждые 30 мин
-      loadPosts();
-      updateAuthUI();
+    let supabaseClient = null;
+    let posts = [];
+    let currentUser = null;
+    let viewMode = "all";
+    let editingId = null;
+
+    function initSupabase() {
+      if (!window.supabase) {
+        showStatus("Supabase не загрузился. Обнови страницу.", true);
+        return false;
+      }
+
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return true;
+    }
+
+    function isAdmin() {
+      return currentUser && currentUser.email === ADMIN_EMAIL;
+    }
+
+    function getOwnerId() {
+      return currentUser ? currentUser.id : null;
+    }
+
+    function showStatus(message, isError = false) {
+      const status = document.getElementById("statusLine");
+      if (!status) return;
+      status.textContent = message;
+      status.classList.toggle("error-line", isError);
+    }
+
+    function showFormMessage(message, isError = false) {
+      const el = document.getElementById("formMessage");
+      el.textContent = message;
+      el.style.color = isError ? "#ffd6d6" : "rgba(245,245,245,0.72)";
+    }
+
+    function openTelegram() {
+      window.open(TELEGRAM_GROUP, "_blank");
+    }
+
+    function showSection(section) {
+      document.getElementById("homeSection").classList.toggle("hidden", section !== "home");
+      document.getElementById("pondsSection").classList.toggle("hidden", section !== "ponds");
+      document.getElementById("mapSection").classList.toggle("hidden", section !== "map");
+      document.getElementById("authSection").classList.toggle("hidden", section !== "auth");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function scrollToPosts() {
+      document.getElementById("postsSection").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function setMode(mode) {
+      viewMode = mode;
+      showSection("home");
+      renderPosts();
+    }
+
+    function cleanTelegram(value) {
+      let v = String(value || "").trim();
+
+      v = v.replace(/^@/, "");
+      v = v.replace(/^https?:\/\/t\.me\//i, "");
+      v = v.replace(/^https?:\/\/telegram\.me\//i, "");
+      v = v.replace(/^t\.me\//i, "");
+      v = v.split("?")[0];
+      v = v.split("/")[0];
+      v = v.replace(/[^a-zA-Z0-9_]/g, "");
+
+      return v;
+    }
+
+    function normalizeText(value) {
+      return String(value || "").toLowerCase().trim();
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function getCardImage(post) {
+      const key = String(post.id || post.created_at || post.name || Math.random());
+      let sum = 0;
+
+      for (let i = 0; i < key.length; i++) {
+        sum += key.charCodeAt(i);
+      }
+
+      return CARD_IMAGES[sum % CARD_IMAGES.length];
+    }
+
+    function saveAuthorLocal(name, telegram) {
+      localStorage.setItem("klevby_author_name", name || "");
+      localStorage.setItem("klevby_author_telegram", telegram || "");
+    }
+
+    function fillAuthorLocal() {
+      const savedName = localStorage.getItem("klevby_author_name") || "";
+      const savedTelegram = localStorage.getItem("klevby_author_telegram") || "";
+
+      if (savedName && !document.getElementById("nameInput").value) {
+        document.getElementById("nameInput").value = savedName;
+      }
+
+      if (savedTelegram && !document.getElementById("telegramInput").value) {
+        document.getElementById("telegramInput").value = savedTelegram;
+      }
+    }
+
+    function getMoonPhaseName() {
+      const now = new Date();
+      const knownNewMoon = new Date("2000-01-06T18:14:00Z");
+      const lunarCycle = 29.53058867;
+      const days = (now - knownNewMoon) / 86400000;
+      const phase = ((days % lunarCycle) + lunarCycle) % lunarCycle;
+
+      if (phase < 1.85) return "Новолуние";
+      if (phase < 5.54) return "Растущий серп";
+      if (phase < 9.23) return "Первая четверть";
+      if (phase < 12.92) return "Растущая луна";
+      if (phase < 16.61) return "Полнолуние";
+      if (phase < 20.30) return "Убывающая луна";
+      if (phase < 23.99) return "Последняя четверть";
+      if (phase < 27.68) return "Убывающий серп";
+      return "Новолуние";
+    }
+
+    function windDirection(deg) {
+      if (deg === undefined || deg === null) return "";
+      const dirs = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"];
+      return dirs[Math.round(deg / 45) % 8];
     }
 
     async function fetchWeather() {
+      const status = document.getElementById("weatherStatus");
+      const tempEl = document.getElementById("weatherTemp");
+      const windEl = document.getElementById("weatherWind");
+      const pressureEl = document.getElementById("weatherPressure");
+      const moonEl = document.getElementById("weatherMoon");
+
       try {
-        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Minsk,BY&appid=${WEATHER_KEY}&units=metric&lang=ru`);
-        const d = await res.json();
-        document.getElementById('weatherTemp').innerText = `${Math.round(d.main.temp)}°C`;
-        document.getElementById('weatherWind').innerText = `${Math.round(d.wind.speed)} м/с`;
-        document.getElementById('weatherPressure').innerText = `${Math.round(d.main.pressure * 0.75006)} мм`;
-        document.getElementById('weatherMoon').innerText = "Растущая"; 
-        document.getElementById('weatherStatus').innerText = "Данные обновлены";
-      } catch (e) { document.getElementById('weatherStatus').innerText = "Ошибка погоды"; }
+        status.textContent = "Обновляем погоду для Минска...";
+        moonEl.textContent = getMoonPhaseName();
+
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=Minsk,BY&appid=${WEATHER_API_KEY}&units=metric&lang=ru`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error("weather_error");
+        }
+
+        const data = await response.json();
+
+        const temp = Math.round(data.main.temp);
+        const wind = data.wind?.speed ?? 0;
+        const windDeg = data.wind?.deg;
+        const pressureHpa = data.main.pressure;
+        const pressureMm = Math.round(pressureHpa * 0.75006);
+
+        tempEl.textContent = `${temp > 0 ? "+" : ""}${temp}°C`;
+        windEl.textContent = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
+        pressureEl.textContent = `${pressureMm} мм`;
+        moonEl.textContent = getMoonPhaseName();
+
+        const description = data.weather?.[0]?.description || "погода обновлена";
+        status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
+      } catch (error) {
+        console.error(error);
+        status.textContent = "Погоду не удалось загрузить. Показываем ориентировочные значения.";
+        tempEl.textContent = "+14°C";
+        windEl.textContent = "3 м/с СЗ";
+        pressureEl.textContent = "752 мм";
+        moonEl.textContent = getMoonPhaseName();
+      }
+    }
+
+    async function initAuth() {
+      const { data } = await supabaseClient.auth.getUser();
+      currentUser = data?.user || null;
+
+      if (window.location.hash.includes("access_token")) {
+        document.getElementById("resetModal").classList.remove("hidden");
+      }
+
+      updateAuthStatus();
+      await loadPosts();
+    }
+
+    function updateAuthStatus() {
+      const status = document.getElementById("authStatus");
+      if (!status) return;
+
+      if (currentUser) {
+        status.textContent = "Ты вошёл: " + currentUser.email + (isAdmin() ? " | Админ включён" : "");
+      } else {
+        status.textContent = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
+      }
+    }
+
+    async function register() {
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value.trim();
+
+      if (!email || !password) {
+        return alert("Введи email и пароль.");
+      }
+
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+      if (error) {
+        return alert("Не удалось зарегистрироваться: " + error.message);
+      }
+
+      currentUser = data?.user || null;
+      updateAuthStatus();
+      alert("Регистрация выполнена. Если придёт письмо — подтверди почту.");
+      await loadPosts();
+    }
+
+    async function login() {
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value.trim();
+
+      if (!email || !password) {
+        return alert("Введи email и пароль.");
+      }
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        return alert("Не получилось войти. Проверь email и пароль.");
+      }
+
+      currentUser = data.user;
+      updateAuthStatus();
+      await loadPosts();
+      showSection("home");
+    }
+
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      currentUser = null;
+      updateAuthStatus();
+      await loadPosts();
+      alert("Ты вышел.");
+    }
+
+    async function sendRecovery() {
+      const email = document.getElementById("emailInput").value.trim();
+
+      if (!email) {
+        return alert("Введи email.");
+      }
+
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://klevby.com"
+      });
+
+      if (error) {
+        return alert("Не получилось отправить письмо: " + error.message);
+      }
+
+      alert("Письмо для сброса пароля отправлено.");
+    }
+
+    async function updatePassword() {
+      const newPassword = document.getElementById("newPasswordInput").value.trim();
+
+      if (!newPassword) {
+        return alert("Введи новый пароль.");
+      }
+
+      const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        document.getElementById("resetMessage").textContent = "Ошибка: " + error.message;
+        return;
+      }
+
+      document.getElementById("resetMessage").textContent = "Пароль обновлён.";
+
+      setTimeout(() => {
+        closeResetModal();
+        window.history.replaceState(null, "", window.location.pathname);
+      }, 1000);
+    }
+
+    function closeResetModal() {
+      document.getElementById("resetModal").classList.add("hidden");
     }
 
     async function loadPosts() {
-      const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+      showStatus("Загрузка объявлений...");
+      document.getElementById("postsSection").innerHTML = `
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      `;
+
+      const { data, error } = await supabaseClient
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+        showStatus("Не удалось загрузить объявления. Проверь таблицу posts и RLS.", true);
+        document.getElementById("postsSection").innerHTML = "";
+        return;
+      }
+
       posts = data || [];
       renderPosts();
     }
 
     function renderPosts() {
-      const list = document.getElementById('postsSection');
-      const s = document.getElementById('searchInput').value.toLowerCase();
-      const c = document.getElementById('cityFilter').value.toLowerCase();
-      const tgOnly = document.getElementById('telegramOnly').checked;
+      const list = document.getElementById("postsSection");
+      const search = normalizeText(document.getElementById("searchInput")?.value);
+      const city = normalizeText(document.getElementById("cityFilter")?.value);
+      const telegramOnly = document.getElementById("telegramOnly")?.checked;
+      const ownerId = getOwnerId();
 
-      let filtered = posts.filter(p => {
-        if (viewMode === 'mine' && p.owner_id !== user?.id) return false;
-        if (tgOnly && !p.telegram) return false;
-        return (p.name + p.city + p.text).toLowerCase().includes(s) && p.city.toLowerCase().includes(c);
-      });
+      let filtered = [...posts];
 
-      list.innerHTML = filtered.map(p => `
-        <div class="card ${p.crew_full ? 'full' : ''}">
-          <div class="card-img" style="background-image: url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600')"></div>
+      if (viewMode === "mine") {
+        filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
+        showStatus("Сейчас показаны: мои объявления.");
+      } else {
+        showStatus("Сейчас показаны: все объявления.");
+      }
+
+      if (search) {
+        filtered = filtered.filter(post =>
+          normalizeText(post.name).includes(search) ||
+          normalizeText(post.city).includes(search) ||
+          normalizeText(post.text).includes(search) ||
+          normalizeText(post.fishing_type).includes(search)
+        );
+      }
+
+      if (city) {
+        filtered = filtered.filter(post => normalizeText(post.city).includes(city));
+      }
+
+      if (telegramOnly) {
+        filtered = filtered.filter(post => cleanTelegram(post.telegram));
+      }
+
+      if (!filtered.length) {
+        list.innerHTML = '<div class="info-line">Пока объявлений нет.</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(cardHtml).join("");
+    }
+
+    function cardHtml(post) {
+      const tg = cleanTelegram(post.telegram);
+      const ownerId = getOwnerId();
+      const canManage = isAdmin() || (ownerId && post.owner_id === ownerId);
+      const isFull = Boolean(post.crew_full);
+      const image = getCardImage(post);
+      const fishingType = post.fishing_type || "";
+
+      const tgButton = isFull
+        ? `<button class="small-btn disabled" disabled>Экипаж набран</button>`
+        : tg
+          ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
+          : `<button class="small-btn green" onclick="openTelegram()">Написать в общий чат</button>`;
+
+      const fullBtn = canManage
+        ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="toggleCrewFull('${post.id}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
+        : "";
+
+      const editBtn = canManage
+        ? `<button class="small-btn yellow" onclick="editPost('${post.id}')">Редактировать</button>`
+        : "";
+
+      const deleteBtn = canManage
+        ? `<button class="small-btn red" onclick="deletePost('${post.id}')">Удалить</button>`
+        : "";
+
+      const date = post.created_at
+        ? new Date(post.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+        : "";
+
+      return `
+        <div class="card ${isFull ? "full" : ""}">
+          <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${image}')"></div>
           <div class="card-body">
-            <h3>${p.name} • ${p.city}</h3>
-            <p>${p.text}</p>
+            <h3>${escapeHtml(post.name || "Без имени")} — ${escapeHtml(post.city || "")}</h3>
+            <p>${escapeHtml(post.text || "")}</p>
+
             <div class="tags">
-              ${p.fishing_type ? `<span class="tag fishing-type">${p.fishing_type}</span>` : ''}
-              <span class="tag">🕒 ${new Date(p.created_at).toLocaleDateString()}</span>
+              <span class="tag">🎣 рыбалка</span>
+              <span class="tag">объявление</span>
+              ${fishingType ? `<span class="tag fishing-type">${escapeHtml(fishingType)}</span>` : ""}
+              ${isFull ? '<span class="tag full">экипаж набран</span>' : ''}
+              ${tg ? '<span class="tag">Telegram</span>' : ''}
+              ${date ? `<span class="tag">${escapeHtml(date)}</span>` : ''}
+              ${ownerId && post.owner_id === ownerId ? '<span class="tag">моё</span>' : ''}
             </div>
+
             <div class="actions">
-              ${!p.crew_full ? `<button class="small-btn green" onclick="window.open('https://t.me/${p.telegram?.replace('@','')}')">Связаться</button>` : ''}
-              ${(user?.id === p.owner_id || user?.email === ADMIN_EMAIL) ? `
-                <button class="small-btn blue" onclick="editPost('${p.id}')">✏️</button>
-                <button class="small-btn red" onclick="deletePost('${p.id}')">🗑️</button>
-              ` : ''}
+              ${tgButton}
+              ${fullBtn}
+              ${editBtn}
+              ${deleteBtn}
             </div>
           </div>
         </div>
-      `).join('');
+      `;
     }
 
     async function savePost() {
-      if (!user) return alert("Войдите, чтобы постить!");
-      const n = document.getElementById('nameInput').value;
-      const c = document.getElementById('cityInput').value;
-      const t = document.getElementById('textInput').value;
-      const ft = document.getElementById('fishingTypeInput').value;
-      const tg = document.getElementById('telegramInput').value;
+      const name = document.getElementById("nameInput").value.trim();
+      const city = document.getElementById("cityInput").value.trim();
+      const fishingType = document.getElementById("fishingTypeInput").value.trim();
+      const text = document.getElementById("textInput").value.trim();
+      const telegram = cleanTelegram(document.getElementById("telegramInput").value);
 
-      localStorage.setItem('kb_name', n);
-      localStorage.setItem('kb_tg', tg);
+      if (!currentUser) {
+        showSection("auth");
+        alert("Сначала войди или зарегистрируйся. Так объявления будут защищены от удаления чужими людьми.");
+        return;
+      }
 
-      const obj = { name: n, city: c, text: t, fishing_type: ft, telegram: tg, owner_id: user.id };
-      
-      if (editId) await supabase.from('posts').update(obj).eq('id', editId);
-      else await supabase.from('posts').insert([obj]);
+      if (!name || !city || !text) {
+        showFormMessage("Заполни имя, город и описание.", true);
+        return;
+      }
 
-      editId = null;
-      document.getElementById('textInput').value = "";
-      loadPosts();
-    }
+      saveAuthorLocal(name, telegram);
 
-    async function deletePost(id) {
-      if (confirm("Удалить?")) { await supabase.from('posts').delete().eq('id', id); loadPosts(); }
+      const payload = {
+        name,
+        city,
+        fishing_type: fishingType,
+        text,
+        telegram,
+        owner_id: currentUser.id
+      };
+
+      let result;
+
+      if (editingId) {
+        result = await supabaseClient
+          .from("posts")
+          .update(payload)
+          .eq("id", editingId);
+      } else {
+        result = await supabaseClient
+          .from("posts")
+          .insert([{ ...payload, crew_full: false }]);
+      }
+
+      if (result.error) {
+        showFormMessage("Не получилось сохранить. Проверь RLS и поле fishing_type в таблице posts.", true);
+        console.error(result.error);
+        return;
+      }
+
+      const wasEditing = Boolean(editingId);
+
+      clearForm();
+      fillAuthorLocal();
+      editingId = null;
+      document.getElementById("formTitle").innerText = "Создать объявление";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+      showFormMessage(wasEditing ? "Объявление обновлено." : "Объявление создано.");
+
+      await loadPosts();
     }
 
     function editPost(id) {
-      const p = posts.find(x => x.id === id);
-      editId = id;
-      document.getElementById('nameInput').value = p.name;
-      document.getElementById('cityInput').value = p.city;
-      document.getElementById('textInput').value = p.text;
-      document.getElementById('fishingTypeInput').value = p.fishing_type;
-      document.getElementById('telegramInput').value = p.telegram;
-      document.getElementById('formTitle').innerText = "Редактирование";
-      document.getElementById('createPanel').scrollIntoView();
+      const post = posts.find(p => String(p.id) === String(id));
+      if (!post) return;
+
+      editingId = id;
+
+      document.getElementById("nameInput").value = post.name || "";
+      document.getElementById("cityInput").value = post.city || "";
+      document.getElementById("fishingTypeInput").value = post.fishing_type || "";
+      document.getElementById("textInput").value = post.text || "";
+      document.getElementById("telegramInput").value = post.telegram || "";
+
+      document.getElementById("formTitle").innerText = "Редактировать объявление";
+      document.getElementById("cancelEditBtn").classList.remove("hidden");
+      document.getElementById("createPanel").scrollIntoView({ behavior: "smooth" });
     }
 
-    function cancelEdit() { editId = null; document.getElementById('formTitle').innerText = "Создать объявление"; }
-
-    // Auth
-    async function login() {
-      const e = document.getElementById('emailInput').value;
-      const p = document.getElementById('passwordInput').value;
-      const { error } = await supabase.auth.signInWithPassword({ email: e, password: p });
-      if (error) alert(error.message); else location.reload();
+    function cancelEdit() {
+      editingId = null;
+      clearForm();
+      fillAuthorLocal();
+      document.getElementById("formTitle").innerText = "Создать объявление";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+      showFormMessage("");
     }
 
-    async function logout() { await supabase.auth.signOut(); location.reload(); }
-    
-    function updateAuthUI() {
-      const s = document.getElementById('authStatus');
-      if (user) s.innerHTML = `Вход: <b>${user.email}</b>`;
-      else s.innerText = "Вы не вошли.";
+    function clearForm() {
+      document.getElementById("nameInput").value = "";
+      document.getElementById("cityInput").value = "";
+      document.getElementById("fishingTypeInput").value = "";
+      document.getElementById("textInput").value = "";
+      document.getElementById("telegramInput").value = "";
     }
 
-    function showSection(s) {
-      ['home','map','auth'].forEach(x => document.getElementById(x+'Section').classList.add('hidden'));
-      document.getElementById(s+'Section').classList.remove('hidden');
-    }
-    
-    function setMode(m) { viewMode = m; renderPosts(); }
-    function scrollToPosts() { document.getElementById('postsSection').scrollIntoView(); }
-    function openTelegram() { window.open(TELEGRAM_GROUP, "_blank"); }
+    async function toggleCrewFull(id, value) {
+      const { error } = await supabaseClient
+        .from("posts")
+        .update({ crew_full: value })
+        .eq("id", id);
 
-    init();
+      if (error) {
+        alert("Не получилось изменить статус. Проверь поле crew_full и RLS.");
+        console.error(error);
+        return;
+      }
+
+      await loadPosts();
+    }
+
+    async function deletePost(id) {
+      if (!confirm("Удалить объявление? Это действие нельзя отменить.")) return;
+
+      const { error } = await supabaseClient
+        .from("posts")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        alert("Не получилось удалить. Удалять может только владелец объявления или админ.");
+        console.error(error);
+        return;
+      }
+
+      await loadPosts();
+    }
+
+    document.addEventListener("DOMContentLoaded", async function () {
+      const ok = initSupabase();
+      if (!ok) return;
+
+      fillAuthorLocal();
+      fetchWeather();
+      await initAuth();
+    });
   </script>
 </body>
 </html>
