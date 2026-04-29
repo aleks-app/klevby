@@ -818,7 +818,7 @@
         <div class="forecast-head">
           <div>
             <h2>Прогноз на сегодня</h2>
-            <p>Быстрые ориентиры для выезда. Пока демо-данные, позже подключим реальный прогноз.</p>
+            <p id="weatherStatus">Загружаем погоду для Минска...</p>
           </div>
           <button class="main-btn blue" onclick="showSection('map')">Открыть карту клева</button>
         </div>
@@ -827,22 +827,22 @@
           <div class="forecast-item">
             <div class="forecast-icon">🌡️</div>
             <div class="forecast-label">Температура</div>
-            <div class="forecast-value">+14°C</div>
+            <div class="forecast-value" id="weatherTemp">—</div>
           </div>
           <div class="forecast-item">
             <div class="forecast-icon">🌬️</div>
             <div class="forecast-label">Ветер</div>
-            <div class="forecast-value">3 м/с СЗ</div>
+            <div class="forecast-value" id="weatherWind">—</div>
           </div>
           <div class="forecast-item">
             <div class="forecast-icon">🧭</div>
             <div class="forecast-label">Давление</div>
-            <div class="forecast-value">752 мм</div>
+            <div class="forecast-value" id="weatherPressure">—</div>
           </div>
           <div class="forecast-item">
             <div class="forecast-icon">🌓</div>
             <div class="forecast-label">Фаза луны</div>
-            <div class="forecast-value">Первая четверть</div>
+            <div class="forecast-value" id="weatherMoon">—</div>
           </div>
         </div>
       </div>
@@ -965,6 +965,7 @@
     const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
     const TELEGRAM_GROUP = "https://t.me/+W6eAuefzcJwwODEy";
     const ADMIN_EMAIL = "al822alex@gmail.com";
+    const WEATHER_API_KEY = "2b08e3fec07f3dd6a25cf6862ab4b030";
 
     const CARD_IMAGES = [
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
@@ -1086,6 +1087,73 @@
 
       if (savedTelegram && !document.getElementById("telegramInput").value) {
         document.getElementById("telegramInput").value = savedTelegram;
+      }
+    }
+
+    function getMoonPhaseName() {
+      const now = new Date();
+      const knownNewMoon = new Date("2000-01-06T18:14:00Z");
+      const lunarCycle = 29.53058867;
+      const days = (now - knownNewMoon) / 86400000;
+      const phase = ((days % lunarCycle) + lunarCycle) % lunarCycle;
+
+      if (phase < 1.85) return "Новолуние";
+      if (phase < 5.54) return "Растущий серп";
+      if (phase < 9.23) return "Первая четверть";
+      if (phase < 12.92) return "Растущая луна";
+      if (phase < 16.61) return "Полнолуние";
+      if (phase < 20.30) return "Убывающая луна";
+      if (phase < 23.99) return "Последняя четверть";
+      if (phase < 27.68) return "Убывающий серп";
+      return "Новолуние";
+    }
+
+    function windDirection(deg) {
+      if (deg === undefined || deg === null) return "";
+      const dirs = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"];
+      return dirs[Math.round(deg / 45) % 8];
+    }
+
+    async function fetchWeather() {
+      const status = document.getElementById("weatherStatus");
+      const tempEl = document.getElementById("weatherTemp");
+      const windEl = document.getElementById("weatherWind");
+      const pressureEl = document.getElementById("weatherPressure");
+      const moonEl = document.getElementById("weatherMoon");
+
+      try {
+        status.textContent = "Обновляем погоду для Минска...";
+        moonEl.textContent = getMoonPhaseName();
+
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=Minsk,BY&appid=${WEATHER_API_KEY}&units=metric&lang=ru`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error("weather_error");
+        }
+
+        const data = await response.json();
+
+        const temp = Math.round(data.main.temp);
+        const wind = data.wind?.speed ?? 0;
+        const windDeg = data.wind?.deg;
+        const pressureHpa = data.main.pressure;
+        const pressureMm = Math.round(pressureHpa * 0.75006);
+
+        tempEl.textContent = `${temp > 0 ? "+" : ""}${temp}°C`;
+        windEl.textContent = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
+        pressureEl.textContent = `${pressureMm} мм`;
+        moonEl.textContent = getMoonPhaseName();
+
+        const description = data.weather?.[0]?.description || "погода обновлена";
+        status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
+      } catch (error) {
+        console.error(error);
+        status.textContent = "Погоду не удалось загрузить. Показываем ориентировочные значения.";
+        tempEl.textContent = "+14°C";
+        windEl.textContent = "3 м/с СЗ";
+        pressureEl.textContent = "752 мм";
+        moonEl.textContent = getMoonPhaseName();
       }
     }
 
@@ -1458,6 +1526,7 @@
       if (!ok) return;
 
       fillAuthorLocal();
+      fetchWeather();
       await initAuth();
     });
   </script>
