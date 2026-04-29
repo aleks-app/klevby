@@ -1517,7 +1517,7 @@
         <div class="hero-actions">
           <button class="main-btn green" onclick="scrollToPosts()">Смотреть объявления</button>
           <button class="main-btn gray" onclick="openTelegram()">Telegram-чат</button>
-          <button class="main-btn install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить на телефон</button>
+          <button class="main-btn install-hero-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Установить</button>
         </div>
       </div>
 
@@ -1708,12 +1708,12 @@
 
       <div class="ios-step">
         <div class="ios-step-icon">📤</div>
-        <div>1. Нажми <b>«Поделиться»</b> — квадрат со стрелочкой.</div>
+        <div>Нажми кнопку <b>«Поделиться»</b> — квадрат со стрелочкой внизу экрана.</div>
       </div>
 
       <div class="ios-step">
         <div class="ios-step-icon">📲</div>
-        <div>2. Выбери <b>«На экран Домой»</b>, затем нажми <b>«Добавить»</b>.</div>
+        <div>Выбери пункт <b>«На экран Домой»</b>, затем нажми <b>«Добавить»</b>.</div>
       </div>
 
       <div class="actions">
@@ -2472,7 +2472,7 @@
       }
 
       if (!deferredInstallPrompt) {
-        alert("Если окно установки не появилось, открой сайт в Chrome или Edge и попробуй ещё раз. Иногда браузер показывает установку только после нескольких посещений сайта.");
+        alert("Если окно установки не появилось, открой сайт в Chrome/Edge и попробуй ещё раз. Иногда браузер показывает установку только после нескольких посещений сайта.");
         return;
       }
 
@@ -2523,11 +2523,100 @@
       if (!("serviceWorker" in navigator)) return;
       if (!window.isSecureContext) return;
 
+      const swCode = `
+        const CACHE_NAME = "klevby-pwa-cache-v2";
+        const STATIC_ASSETS = [
+          "./",
+          "./index.html",
+          "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+        ];
+
+        self.addEventListener("install", function(event) {
+          event.waitUntil(
+            caches.open(CACHE_NAME)
+              .then(function(cache) {
+                return cache.addAll(STATIC_ASSETS).catch(function() {
+                  return Promise.resolve();
+                });
+              })
+              .then(function() {
+                return self.skipWaiting();
+              })
+          );
+        });
+
+        self.addEventListener("activate", function(event) {
+          event.waitUntil(
+            caches.keys()
+              .then(function(keys) {
+                return Promise.all(
+                  keys
+                    .filter(function(key) { return key !== CACHE_NAME; })
+                    .map(function(key) { return caches.delete(key); })
+                );
+              })
+              .then(function() {
+                return self.clients.claim();
+              })
+          );
+        });
+
+        self.addEventListener("fetch", function(event) {
+          const request = event.request;
+
+          if (request.method !== "GET") return;
+
+          const url = new URL(request.url);
+          const isPageOrAsset =
+            url.origin === self.location.origin ||
+            url.hostname === "cdn.jsdelivr.net" ||
+            url.hostname === "images.unsplash.com";
+
+          if (!isPageOrAsset) return;
+
+          event.respondWith(
+            caches.match(request).then(function(cached) {
+              if (cached) return cached;
+
+              return fetch(request)
+                .then(function(response) {
+                  if (!response || response.status >= 500) return response;
+
+                  const copy = response.clone();
+
+                  caches.open(CACHE_NAME).then(function(cache) {
+                    cache.put(request, copy).catch(function() {});
+                  });
+
+                  return response;
+                })
+                .catch(function() {
+                  if (request.mode === "navigate") {
+                    return caches.match("./index.html");
+                  }
+
+                  return cached;
+                });
+            })
+          );
+        });
+      `;
+
       try {
-        await navigator.serviceWorker.register("/sw.js");
-        console.log("Klevby Service Worker зарегистрирован: /sw.js");
-      } catch (error) {
-        console.warn("Service Worker не зарегистрирован. Проверь, что файл /sw.js лежит в корневой папке сайта.", error);
+        const swBlob = new Blob([swCode], { type: "text/javascript" });
+        const swUrl = URL.createObjectURL(swBlob);
+
+        await navigator.serviceWorker.register(swUrl, { scope: "./" });
+        console.log("Klevby PWA Service Worker зарегистрирован.");
+      } catch (blobError) {
+        console.warn("Inline Service Worker не зарегистрировался. Некоторые браузеры требуют отдельный файл sw.js.", blobError);
+
+        try {
+          await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+          console.log("Klevby PWA Service Worker зарегистрирован через sw.js.");
+        } catch (fileError) {
+          console.warn("Service Worker не зарегистрирован. Остальная часть сайта работает без изменений.", fileError);
+        }
       }
     }
 
