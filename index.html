@@ -832,13 +832,129 @@
 
       .hero-actions { display: flex; }
 
+      .forecast-panel {
+        margin: 16px 0;
+        padding: 14px;
+        border-radius: 18px;
+        box-shadow: 0 14px 44px rgba(0,0,0,0.34);
+      }
+
+      .weather-sunny::before {
+        width: 160px;
+        height: 160px;
+        right: -56px;
+        top: -58px;
+      }
+
+      .cloud {
+        width: 120px;
+        height: 38px;
+        opacity: 0.42;
+      }
+
+      .cloud::before {
+        width: 52px;
+        height: 52px;
+        left: 20px;
+        top: -24px;
+      }
+
+      .cloud::after {
+        width: 62px;
+        height: 62px;
+        right: 18px;
+        top: -30px;
+      }
+
       .forecast-head {
         align-items: flex-start;
         flex-direction: column;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .forecast-head h2 {
+        font-size: 21px;
+        line-height: 1.1;
+      }
+
+      .forecast-head p {
+        margin-top: 5px;
+        font-size: 12.5px;
+        line-height: 1.35;
+      }
+
+      .forecast-head .main-btn {
+        width: 100%;
+        min-height: 38px;
+        padding: 10px 13px;
+        font-size: 12.5px;
       }
 
       .forecast-grid {
         grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .forecast-item {
+        min-height: 78px;
+        padding: 10px 11px;
+        border-radius: 14px;
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        grid-template-areas:
+          "icon label"
+          "icon value";
+        align-items: center;
+        column-gap: 10px;
+        row-gap: 2px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045));
+        border-color: rgba(255,255,255,0.12);
+      }
+
+      .forecast-item:hover {
+        transform: none;
+      }
+
+      .forecast-icon {
+        grid-area: icon;
+        width: 34px;
+        height: 34px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.08);
+        font-size: 0;
+        line-height: 1;
+      }
+
+      .forecast-icon::before {
+        content: attr(data-mobile-icon);
+        font-size: 23px;
+        line-height: 1;
+      }
+
+      .forecast-item:hover .forecast-icon {
+        transform: none;
+      }
+
+      .forecast-label {
+        grid-area: label;
+        margin: 0;
+        color: rgba(245,245,245,0.54);
+        font-size: 11.5px;
+        line-height: 1.1;
+        font-weight: 700;
+      }
+
+      .forecast-value {
+        grid-area: value;
+        font-size: 17px;
+        line-height: 1.15;
+        font-weight: 850;
+        letter-spacing: -0.25px;
       }
 
       .filters,
@@ -904,14 +1020,46 @@
         padding: 13px 17px;
       }
 
-      .panel,
-      .forecast-panel {
+      .panel {
         padding: 20px;
+      }
+
+      .forecast-panel {
+        padding: 14px;
+        border-radius: 18px;
       }
 
       .panel h2 { font-size: 24px; }
 
-      .forecast-grid { grid-template-columns: 1fr; }
+      .forecast-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .forecast-item {
+        min-height: 76px;
+        padding: 10px;
+        grid-template-columns: 32px 1fr;
+        column-gap: 9px;
+      }
+
+      .forecast-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 11px;
+      }
+
+      .forecast-icon::before {
+        font-size: 22px;
+      }
+
+      .forecast-label {
+        font-size: 11px;
+      }
+
+      .forecast-value {
+        font-size: 16px;
+      }
 
       .card h3 { font-size: 21px; }
 
@@ -983,22 +1131,22 @@
 
         <div class="forecast-grid">
           <div class="forecast-item">
-            <div class="forecast-icon">☀️</div>
+            <div class="forecast-icon" data-mobile-icon="🌡️">☀️</div>
             <div class="forecast-label">Температура</div>
             <div class="forecast-value" id="weatherTemp">—</div>
           </div>
           <div class="forecast-item">
-            <div class="forecast-icon">💨</div>
+            <div class="forecast-icon" data-mobile-icon="💨">💨</div>
             <div class="forecast-label">Ветер</div>
             <div class="forecast-value" id="weatherWind">—</div>
           </div>
           <div class="forecast-item">
-            <div class="forecast-icon">⌁</div>
+            <div class="forecast-icon" data-mobile-icon="🧭">⌁</div>
             <div class="forecast-label">Давление</div>
             <div class="forecast-value" id="weatherPressure">—</div>
           </div>
           <div class="forecast-item">
-            <div class="forecast-icon">◐</div>
+            <div class="forecast-icon" data-mobile-icon="🌕">◐</div>
             <div class="forecast-label">Фаза луны</div>
             <div class="forecast-value" id="weatherMoon">—</div>
           </div>
