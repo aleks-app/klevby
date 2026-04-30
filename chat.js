@@ -80,4 +80,6 @@ async function loadHistory() {
     }
 }
 
-loadHistory();
+loadHistory();const style = document.createElement('style');
+style.innerHTML = '@media (max-width: 900px) { #chat-desktop-btn { display: none !important; } }';
+document.head.appendChild(style);
