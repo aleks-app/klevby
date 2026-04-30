@@ -1,3 +1,7 @@
+const SUPABASE_URL = 'https://oecdshvozssadztcokog.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const chatHTML = `
     <div id="klevby-chat-modal" class="hidden">
         <div id="chat-window">
