@@ -3,6 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Настройки подключения
 const SUPABASE_URL = 'https://oecdshvozssadztcokog.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
+// В шестой строке ниже теперь всё четко:
 const chatDb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const chatHTML = `
@@ -31,13 +32,12 @@ const closeBtn = document.getElementById('close-chat');
 const toggleChat = () => chatModal.classList.toggle('hidden');
 if (closeBtn) closeBtn.onclick = toggleChat;
 
-// Привязка к кнопкам на сайте
 const navChatBtn = document.getElementById('nav-chat-btn');
 const desktopBtn = document.getElementById('chat-desktop-btn');
 if (navChatBtn) navChatBtn.onclick = toggleChat;
 if (desktopBtn) desktopBtn.onclick = toggleChat;
 
-// Отрисовка сообщения с корзиной для админа
+// Отрисовка с корзиной
 function addMessageToScreen(data) {
     if (!messagesContainer) return;
     const div = document.createElement('div');
@@ -52,20 +52,19 @@ function addMessageToScreen(data) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Функция удаления (Пароль: 1234)
+// Удаление (Пароль: 1234)
 window.deleteMsg = async function(messageId) {
     const pass = prompt("Пин-код для удаления:");
     if (pass === "1234") {
         await chatDb.from('messages').delete().eq('id', messageId);
         const msgElement = document.getElementById('msg-' + messageId);
         if (msgElement) msgElement.remove();
-        alert("Сообщение удалено!");
+        alert("Удалено!");
     } else if (pass !== null) {
         alert("Неверный код!");
     }
 }
 
-// Отправка сообщений
 async function sendMessage() {
     const content = messageInput.value.trim();
     if (content) {
@@ -76,11 +75,8 @@ async function sendMessage() {
 }
 
 if (sendBtn) sendBtn.onclick = sendMessage;
-if (messageInput) {
-    messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
-}
+if (messageInput) messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 
-// Загрузка и живое обновление
 async function initChat() {
     const { data } = await chatDb.from('messages').select('*').order('created_at', { ascending: true });
     if (data) data.forEach(msg => addMessageToScreen(msg));
