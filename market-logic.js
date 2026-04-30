@@ -6,6 +6,7 @@
   let marketItems = [];
   let marketUser = null;
   let editingMarketId = null;
+  let marketRendered = false;
 
   function waitForSupabase() {
     return new Promise(function (resolve, reject) {
@@ -17,6 +18,7 @@
         if (window.supabase) {
           clearInterval(timer);
           resolve();
+          return;
         }
 
         if (tries > 80) {
@@ -63,42 +65,12 @@
   }
 
   function injectMarketStyles() {
-    if (document.getElementById("marketStyles")) return;
+    if (document.getElementById("klevbyMarketStyles")) return;
 
     const style = document.createElement("style");
-    style.id = "marketStyles";
+    style.id = "klevbyMarketStyles";
 
     style.textContent = `
-      .market-hero {
-        margin: 14px 0;
-        padding: 24px;
-        border-radius: 16px;
-        background:
-          radial-gradient(circle at 0% 0%, rgba(66,217,134,0.12), transparent 34%),
-          radial-gradient(circle at 100% 0%, rgba(88,183,255,0.10), transparent 36%),
-          rgba(18, 30, 36, 0.88);
-        box-shadow: 0 16px 44px rgba(0,0,0,0.24);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-      }
-
-      .market-hero h1 {
-        margin: 0 0 8px;
-        font-size: clamp(32px, 5vw, 54px);
-        line-height: 1.08;
-        letter-spacing: -1px;
-        color: #ffffff;
-        font-weight: 800;
-      }
-
-      .market-hero p {
-        max-width: 720px;
-        margin: 0;
-        color: rgba(244,251,247,0.72);
-        font-size: 16px;
-        line-height: 1.55;
-      }
-
       .market-layout {
         display: grid;
         grid-template-columns: 380px 1fr;
@@ -106,27 +78,26 @@
         align-items: start;
       }
 
-      .market-panel {
-        background: rgba(18, 30, 36, 0.9);
-        border-radius: 16px;
-        padding: 22px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
+      .market-form-box {
+        background: rgba(255,255,255,0.045);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 22px;
+        padding: 20px;
       }
 
-      .market-panel h2 {
+      .market-form-box h2 {
         margin: 0 0 14px;
-        color: #ffffff;
         font-size: 22px;
+        color: #ffffff;
         font-weight: 800;
       }
 
       .market-note {
-        margin: 10px 0 0;
-        color: rgba(244,251,247,0.62);
+        margin-top: 12px;
+        color: rgba(244,251,247,0.58);
         font-size: 13px;
         line-height: 1.45;
+        font-weight: 500;
       }
 
       .market-filters {
@@ -144,15 +115,16 @@
 
       .market-card {
         overflow: hidden;
-        border-radius: 16px;
-        background: rgba(18, 30, 36, 0.92);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        border-radius: 20px;
+        background: rgba(255,255,255,0.055);
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 10px 28px rgba(0,0,0,0.22);
         transition: 0.22s ease;
       }
 
       .market-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.30);
       }
 
       .market-img {
@@ -175,7 +147,7 @@
 
       .market-price {
         margin-bottom: 8px;
-        color: #42d986;
+        color: #57e6b2;
         font-size: 20px;
         font-weight: 800;
       }
@@ -248,13 +220,9 @@
         }
       }
 
-      @media (max-width: 380px) {
+      @media (max-width: 430px) {
         .market-grid {
-          gap: 10px;
-        }
-
-        .market-img {
-          height: 100px;
+          grid-template-columns: 1fr;
         }
       }
     `;
@@ -262,27 +230,13 @@
     document.head.appendChild(style);
   }
 
-  function injectMarketSection() {
-    if (document.getElementById("marketSection")) return;
+  function renderMarketBase() {
+    const root = document.getElementById("marketRoot");
+    if (!root || marketRendered) return;
 
-    const main = document.querySelector("main.wrap");
-    if (!main) return;
-
-    const section = document.createElement("section");
-    section.id = "marketSection";
-    section.className = "hidden";
-
-    section.innerHTML = `
-      <div class="market-hero">
-        <h1>Барахолка рыбаков</h1>
-        <p>
-          Продай или найди снасти, катушки, удилища, лодки, эхолоты и всё, что связано с рыбалкой.
-          Раздел спрятан в меню, чтобы сайт не был перегружен.
-        </p>
-      </div>
-
+    root.innerHTML = `
       <div class="market-layout">
-        <div class="market-panel">
+        <div class="market-form-box">
           <h2 id="marketFormTitle">Добавить товар</h2>
 
           <input id="marketTitleInput" placeholder="Название: спиннинг, катушка, лодка..." />
@@ -363,79 +317,12 @@
       </div>
     `;
 
-    const footer = main.querySelector(".footer");
-
-    if (footer) {
-      main.insertBefore(section, footer);
-    } else {
-      main.appendChild(section);
-    }
-  }
-
-  function injectMarketMenuButton() {
-    const mobileMenu = document.getElementById("mobileMenu");
-
-    if (mobileMenu && !document.getElementById("marketMenuBtn")) {
-      const btn = document.createElement("button");
-      btn.id = "marketMenuBtn";
-      btn.className = "mobile-menu-item";
-      btn.textContent = "Барахолка";
-      btn.onclick = function () {
-        showSection("market");
-        if (typeof closeMobileMenu === "function") closeMobileMenu();
-      };
-
-      const authBtn = Array.from(mobileMenu.querySelectorAll("button")).find(function (button) {
-        return button.textContent.trim() === "Вход";
-      });
-
-      if (authBtn) {
-        mobileMenu.insertBefore(btn, authBtn);
-      } else {
-        mobileMenu.appendChild(btn);
-      }
-    }
-
-    const desktopNav = document.querySelector("nav");
-
-    if (desktopNav && !document.getElementById("marketDesktopBtn")) {
-      const btn = document.createElement("button");
-      btn.id = "marketDesktopBtn";
-      btn.className = "nav-btn";
-      btn.textContent = "Барахолка";
-      btn.onclick = function () {
-        showSection("market");
-      };
-
-      desktopNav.appendChild(btn);
-    }
-  }
-
-  function patchShowSection() {
-    if (window.__klevbyMarketShowSectionPatched) return;
-    if (typeof window.showSection !== "function") return;
-
-    const originalShowSection = window.showSection;
-
-    window.showSection = function (section) {
-      originalShowSection(section);
-
-      const marketSection = document.getElementById("marketSection");
-      if (marketSection) {
-        marketSection.classList.toggle("hidden", section !== "market");
-      }
-
-      if (section === "market") {
-        setTimeout(function () {
-          loadMarketItems();
-        }, 100);
-      }
-    };
-
-    window.__klevbyMarketShowSectionPatched = true;
+    marketRendered = true;
   }
 
   async function refreshMarketUser() {
+    if (!marketDb) return null;
+
     const result = await marketDb.auth.getUser();
     marketUser = result.data && result.data.user ? result.data.user : null;
     return marketUser;
@@ -458,6 +345,8 @@
   }
 
   async function loadMarketItems() {
+    renderMarketBase();
+
     const grid = document.getElementById("marketItemsGrid");
     if (!grid || !marketDb) return;
 
@@ -478,8 +367,8 @@
 
     if (result.error) {
       console.error(result.error);
-      showMarketStatus("Не удалось загрузить барахолку. Проверь таблицу market_items.", true);
-      grid.innerHTML = "";
+      showMarketStatus("Не удалось загрузить барахолку. Проверь таблицу market_items в Supabase.", true);
+      grid.innerHTML = `<div class="info-line error-line">Ошибка загрузки барахолки. Проверь таблицу market_items.</div>`;
       return;
     }
 
@@ -580,7 +469,7 @@
     await refreshMarketUser();
 
     if (!marketUser) {
-      showSection("auth");
+      if (typeof showSection === "function") showSection("auth");
       alert("Сначала войди или зарегистрируйся, чтобы добавить товар.");
       return;
     }
@@ -607,6 +496,7 @@
       condition,
       description,
       contact,
+      telegram: contact,
       image_url: imageUrl,
       owner_id: marketUser.id
     };
@@ -622,23 +512,6 @@
       result = await marketDb
         .from("market_items")
         .insert([payload]);
-    }
-
-    if (result.error && String(result.error.message || "").includes("contact")) {
-      const fallbackPayload = { ...payload };
-      fallbackPayload.telegram = fallbackPayload.contact;
-      delete fallbackPayload.contact;
-
-      if (editingMarketId) {
-        result = await marketDb
-          .from("market_items")
-          .update(fallbackPayload)
-          .eq("id", editingMarketId);
-      } else {
-        result = await marketDb
-          .from("market_items")
-          .insert([fallbackPayload]);
-      }
     }
 
     if (result.error) {
@@ -724,31 +597,35 @@
 
   async function initMarket() {
     try {
+      injectMarketStyles();
       await waitForSupabase();
 
       marketDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      injectMarketStyles();
-      injectMarketSection();
-      injectMarketMenuButton();
-      patchShowSection();
-
-      window.loadMarketItems = loadMarketItems;
+      window.klevbyLoadMarket = loadMarketItems;
       window.renderMarketItems = renderMarketItems;
       window.saveMarketItem = saveMarketItem;
       window.editMarketItem = editMarketItem;
       window.cancelMarketEdit = cancelMarketEdit;
       window.deleteMarketItem = deleteMarketItem;
 
+      renderMarketBase();
       await loadMarketItems();
 
       console.log("Klevby барахолка запущена.");
     } catch (error) {
       console.error("Ошибка запуска барахолки:", error);
+
+      const root = document.getElementById("marketRoot");
+      if (root) {
+        root.innerHTML = `<div class="info-line error-line">Ошибка запуска барахолки. Проверь market-logic.js и Supabase.</div>`;
+      }
     }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMarket);
+  } else {
     initMarket();
-  });
+  }
 })();
