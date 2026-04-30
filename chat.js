@@ -3,7 +3,6 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Настройки подключения
 const SUPABASE_URL = 'https://oecdshvozssadztcokog.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
-// В шестой строке ниже теперь всё четко:
 const chatDb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const chatHTML = `
@@ -28,7 +27,6 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const closeBtn = document.getElementById('close-chat');
 
-// Открытие/закрытие
 const toggleChat = () => chatModal.classList.toggle('hidden');
 if (closeBtn) closeBtn.onclick = toggleChat;
 
@@ -37,7 +35,6 @@ const desktopBtn = document.getElementById('chat-desktop-btn');
 if (navChatBtn) navChatBtn.onclick = toggleChat;
 if (desktopBtn) desktopBtn.onclick = toggleChat;
 
-// Отрисовка с корзиной
 function addMessageToScreen(data) {
     if (!messagesContainer) return;
     const div = document.createElement('div');
@@ -52,7 +49,6 @@ function addMessageToScreen(data) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Удаление (Пароль: 1234)
 window.deleteMsg = async function(messageId) {
     const pass = prompt("Пин-код для удаления:");
     if (pass === "1234") {
