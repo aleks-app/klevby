@@ -12,25 +12,21 @@ const chatHTML = `
             </div>
         </div>
     </div>
+    <div id="chat-desktop-btn" class="hidden-on-mobile">💬</div>
 `;
 
 document.body.insertAdjacentHTML('beforeend', chatHTML);
 
-// Привязываемся к твоему новому облачку в меню
-const navChatBtn = document.getElementById('nav-chat');
 const chatModal = document.getElementById('klevby-chat-modal');
 const closeBtn = document.getElementById('close-chat');
+const navChatBtn = document.getElementById('nav-chat');
+const desktopBtn = document.getElementById('chat-desktop-btn');
 
-if (navChatBtn) {
-    navChatBtn.onclick = () => {
-        chatModal.classList.remove('hidden'); // Открываем чат
-    };
-}
+// Функция открытия
+const openChat = () => chatModal.classList.remove('hidden');
 
-closeBtn.onclick = () => {
-    chatModal.classList.add('hidden'); // Закрываем чат
-};
+// Привязываем ко всему, что нашли
+if (navChatBtn) navChatBtn.onclick = openChat;
+if (desktopBtn) desktopBtn.onclick = openChat;
 
-// Удаляем зелёную кнопку, если она вдруг осталась в памяти
-const oldTrigger = document.getElementById('chat-trigger');
-if (oldTrigger) oldTrigger.remove();
+closeBtn.onclick = () => chatModal.classList.add('hidden');
