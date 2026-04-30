@@ -1,9 +1,9 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// Твои ключи Supabase (уже должны быть в проекте)
+// Настройки подключения
 const SUPABASE_URL = 'https://oecdshvozssadztcokog.supabase.co'
-const SUPABASE_KEY = 'YOUR_SUPABASE_KEY' // Проверь, чтобы тут стоял твой реальный ключ
-const chatDb = createClient(sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS)
+const SUPABASE_KEY = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
+const chatDb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const chatHTML = `
     <div id="klevby-chat-modal" class="hidden" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; background: #1a1a1a; border: 1px solid #333; border-radius: 12px; z-index: 10001; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
@@ -31,11 +31,13 @@ const closeBtn = document.getElementById('close-chat');
 const toggleChat = () => chatModal.classList.toggle('hidden');
 if (closeBtn) closeBtn.onclick = toggleChat;
 
-// Глобальная кнопка чата (если она есть на странице)
+// Привязка к кнопкам на сайте
 const navChatBtn = document.getElementById('nav-chat-btn');
+const desktopBtn = document.getElementById('chat-desktop-btn');
 if (navChatBtn) navChatBtn.onclick = toggleChat;
+if (desktopBtn) desktopBtn.onclick = toggleChat;
 
-// Функция отрисовки сообщения с корзиной
+// Отрисовка сообщения с корзиной для админа
 function addMessageToScreen(data) {
     if (!messagesContainer) return;
     const div = document.createElement('div');
@@ -50,20 +52,20 @@ function addMessageToScreen(data) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Секретная функция удаления (Пин-код: 1234)
+// Функция удаления (Пароль: 1234)
 window.deleteMsg = async function(messageId) {
     const pass = prompt("Пин-код для удаления:");
     if (pass === "1234") {
         await chatDb.from('messages').delete().eq('id', messageId);
         const msgElement = document.getElementById('msg-' + messageId);
         if (msgElement) msgElement.remove();
-        alert("Удалено!");
+        alert("Сообщение удалено!");
     } else if (pass !== null) {
-        alert("Неверный пин-код!");
+        alert("Неверный код!");
     }
 }
 
-// Отправка
+// Отправка сообщений
 async function sendMessage() {
     const content = messageInput.value.trim();
     if (content) {
@@ -73,10 +75,12 @@ async function sendMessage() {
     }
 }
 
-sendBtn.onclick = sendMessage;
-messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+if (sendBtn) sendBtn.onclick = sendMessage;
+if (messageInput) {
+    messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+}
 
-// Загрузка истории и подписка на обновления
+// Загрузка и живое обновление
 async function initChat() {
     const { data } = await chatDb.from('messages').select('*').order('created_at', { ascending: true });
     if (data) data.forEach(msg => addMessageToScreen(msg));
