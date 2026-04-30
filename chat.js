@@ -1,12 +1,5 @@
-// Используем свое имя для базы, чтобы не конфликтовать с index.html
-const CHAT_SUPABASE_URL = 'https://oecdshvozssadztcokog.supabase.co';
-const CHAT_SUPABASE_KEY = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS';
-const chatDb = window.supabase.createClient(CHAT_SUPABASE_URL, CHAT_SUPABASE_KEY);
-
-const chatHTML = `
-    <div id="klevby-chat-modal" class="hidden">
-        <div id="chat-window">
-            <div id="chat-header">
+alter publication supabase_realtime add table messages;
+alter table public.messages disable row level security;
                 <span>Чат Рыбаков 🎣</span>
                 <button id="close-chat">×</button>
             </div>
@@ -39,11 +32,20 @@ if (desktopBtn) desktopBtn.onclick = toggleChat;
 if (closeBtn) closeBtn.onclick = toggleChat;
 
 // Функция отрисовки сообщения
+// Функция отрисовки сообщения
 function addMessageToScreen(data) {
     if (!messagesContainer) return;
     const div = document.createElement('div');
-    div.style.cssText = 'margin-bottom: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 14px;';
-    div.innerHTML = `<span style="color: #42d986; font-weight: bold;">${data.user_name || 'Рыбак'}:</span> <span style="color: rgba(244,251,247,0.82);">${data.content}</span>`;
+    // Задаем уникальный ID каждому блоку, чтобы знать, что стирать
+    div.id = 'msg-' + data.id; 
+    div.style.cssText = 'margin-bottom: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 14px; position: relative;';
+    
+    // Внутри HTML добавляем значок корзины сбоку
+    div.innerHTML = `
+        <span style="color: #42d986; font-weight: bold;">${data.user_name || 'Рыбак'}:</span> 
+        <span style="color: rgba(244,251,247,0.82);">${data.content}</span>
+        <span onclick="deleteMsg('${data.id}')" style="cursor: pointer; position: absolute; right: 8px; top: 8px; font-size: 14px; opacity: 0.5;" title="Удалить (только для Админа)">🗑️</span>
+    `;
     messagesContainer.appendChild(div);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
