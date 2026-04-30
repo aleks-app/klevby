@@ -4,12 +4,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <title>Klevby — Карта клева и поиск напарника на рыбалку в Беларуси</title>
-  <meta name="description" content="Klevby — рыбалка в Беларуси: карта клева, Минск, Чигиринка, Нарочь, отчеты и поиск экипажа для совместного выезда." />
-  <meta name="keywords" content="рыбалка в Беларуси, карта клева РБ, ловля щуки Минск, найти напарника на рыбалку, отчеты о рыбалке Беларусь" />
-  <meta name="robots" content="index, follow" />
+  <meta name="description" content="Klevby — рыбалка в Беларуси: карта клева, Минск, Чигиринка, Нарочь, отчеты, барахолка снастей и поиск экипажа для совместного выезда." />
+  <meta name="keywords" content="рыбалка в Беларуси, карта клева РБ, ловля щуки Минск, найти напарника на рыбалку, отчеты о рыбалке Беларусь, рыболовная барахолка Беларусь, снасти бу Беларусь" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="author" content="Klevby" />
+  <meta name="application-name" content="Klevby" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <link rel="canonical" href="https://klevby.com/" />
 
   <meta property="og:type" content="website" />
@@ -17,13 +21,15 @@
   <meta property="og:locale" content="ru_BY" />
   <meta property="og:url" content="https://klevby.com/" />
   <meta property="og:title" content="Klevby — Карта клева и поиск напарника на рыбалку в Беларуси" />
-  <meta property="og:description" content="Карта клева, точки рыбалки, отчеты и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
+  <meta property="og:description" content="Карта клева, точки рыбалки, отчеты, барахолка снастей и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
   <meta property="og:image" content="https://klevby.com/narach-bg.webp" />
+  <meta property="og:image:secure_url" content="https://klevby.com/narach-bg.webp" />
+  <meta property="og:image:type" content="image/webp" />
   <meta property="og:image:alt" content="Klevby — рыбалка в Беларуси, карта клева и поиск напарника" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Klevby — Карта клева и поиск напарника на рыбалку в Беларуси" />
-  <meta name="twitter:description" content="Карта клева, точки рыбалки, отчеты и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
+  <meta name="twitter:description" content="Карта клева, точки рыбалки, отчеты, барахолка снастей и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
   <meta name="twitter:image" content="https://klevby.com/narach-bg.webp" />
 
   <meta name="theme-color" content="#000000" />
@@ -39,6 +45,9 @@
   <link rel="manifest" id="pwaManifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://api.openweathermap.org">
+  <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <script>
@@ -88,6 +97,7 @@
     * {
       box-sizing: border-box;
       font-family: 'Montserrat', sans-serif !important;
+      -webkit-tap-highlight-color: transparent;
     }
 
     :root {
@@ -148,7 +158,6 @@
       margin: 0 auto;
     }
 
-    /* SPLASH SCREEN */
     .app-splash {
       position: fixed;
       inset: 0;
@@ -246,7 +255,6 @@
     @keyframes splashRestIn { 0% { opacity: 0; transform: translateX(34px); filter: blur(8px); } 100% { opacity: 1; transform: translateX(0); filter: blur(0); } }
     @keyframes splashLine { 0% { width: 0; opacity: 0; } 45% { opacity: 1; } 100% { width: 168px; opacity: 0.85; } }
 
-    /* HEADER */
     header {
       position: sticky;
       top: 0;
@@ -442,7 +450,6 @@
       .nav-mine { grid-column: 1 / -1; }
     }
 
-    /* HERO */
     .hero {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -612,7 +619,6 @@
     .red { background: rgba(228,88,88,0.95); color: white; border-color: rgba(228,88,88,0.24); }
     .disabled { background: rgba(255,255,255,0.08) !important; color: var(--muted2) !important; cursor: not-allowed !important; }
 
-    /* WEATHER */
     .forecast-panel {
       position: relative;
       overflow: hidden;
@@ -719,6 +725,44 @@
     .pond h3 { margin-top: 0; font-size: 21px; letter-spacing: -0.3px; font-weight: 800; color: var(--text); }
     .pond p { color: var(--muted); line-height: 1.62; font-size: 15px; font-weight: 500; }
 
+    .market-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-card);
+      padding: 24px;
+      margin: 14px 0;
+      background:
+        linear-gradient(135deg, rgba(3,10,11,0.88), rgba(8,28,24,0.82)),
+        radial-gradient(circle at 10% 0%, rgba(87,230,178,0.18), transparent 34%),
+        radial-gradient(circle at 90% 0%, rgba(88,183,255,0.12), transparent 36%);
+      border: 1px solid rgba(255,255,255,0.09);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .market-hero h2 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 5vw, 44px);
+      line-height: 1.05;
+      letter-spacing: -1px;
+    }
+
+    .market-hero p {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .market-shell {
+      margin: 14px 0 44px;
+    }
+
+    #marketRoot {
+      min-height: 180px;
+    }
+
     .map-placeholder { min-height: 410px; border-radius: var(--radius-card); border: 0; overflow: hidden; background: linear-gradient(90deg, rgba(0,0,0,0.72), rgba(0,0,0,0.22)), url("https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=85") center/cover no-repeat; display: flex; align-items: flex-end; padding: 30px; box-shadow: var(--shadow); }
     .map-card { max-width: 620px; background: rgba(14,25,31,0.82); border: 0; border-radius: var(--radius-card); padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
     .map-card h2 { margin: 0 0 10px; font-size: 30px; letter-spacing: -0.6px; color: var(--text); font-weight: 800 !important; }
@@ -744,7 +788,6 @@
     .install-close { width: 34px; height: 34px; border-radius: var(--radius-ui); border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.06); color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; transition: 0.22s ease; }
     .install-close:hover { background: rgba(255,255,255,0.10); color: var(--text); }
 
-    /* POST FULLSCREEN MODAL */
     .post-modal-backdrop { position: fixed; inset: 0; z-index: 50000; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(0,0,0,0); opacity: 0; visibility: hidden; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); transition: opacity 0.34s cubic-bezier(.22,.9,.22,1), background 0.34s cubic-bezier(.22,.9,.22,1), backdrop-filter 0.34s cubic-bezier(.22,.9,.22,1), visibility 0.34s ease; }
     .post-modal-backdrop.open { opacity: 1; visibility: visible; background: rgba(0,0,0,0.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .post-modal-sheet { position: relative; width: min(100%, 760px); max-height: 85vh; overflow-y: auto; overflow-x: hidden; border-radius: 24px; background: radial-gradient(circle at 10% 0%, rgba(87,230,178,0.16), transparent 34%), radial-gradient(circle at 95% 0%, rgba(88,183,255,0.13), transparent 36%), rgba(10, 18, 23, 0.98); color: var(--text); box-shadow: 0 24px 70px rgba(0,0,0,0.54), inset 0 1px 0 rgba(255,255,255,0.08); transform: translateY(18px) scale(0.94); opacity: 0; -webkit-overflow-scrolling: touch; transition: transform 0.42s cubic-bezier(.16,1,.3,1), opacity 0.34s ease; }
@@ -895,6 +938,8 @@
       .post-modal-backdrop { align-items: center; justify-content: center; padding: 14px; }
       .post-modal-sheet { width: min(100%, 720px); max-height: 85vh; border-radius: 24px; }
       .post-modal-image { height: 300px; }
+      .market-hero { padding: 20px 16px; border-radius: 28px; }
+      .market-hero h2 { font-size: 32px; }
     }
 
     @media (max-width: 520px) {
@@ -959,6 +1004,7 @@
 
       <nav>
         <button class="nav-btn" onclick="showSection('home')">Напарники</button>
+        <button class="nav-btn" onclick="showSection('market')">Барахолка</button>
         <button class="nav-btn" onclick="showSection('ponds')">Платные пруды</button>
         <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
         <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
@@ -976,6 +1022,7 @@
 
         <div class="mobile-menu" id="mobileMenu">
           <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Напарники</button>
+          <button class="mobile-menu-item" onclick="showSection('market'); closeMobileMenu()">Барахолка</button>
           <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
           <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
           <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
@@ -1122,6 +1169,19 @@
 
       <div id="postsSection" class="grid">
         <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section id="marketSection" class="hidden">
+      <div class="market-hero">
+        <h2>Барахолка снастей</h2>
+        <p>Продажа и покупка рыболовных вещей: удилища, катушки, приманки, лодки, эхолоты и всё, что может пригодиться на рыбалке.</p>
+      </div>
+
+      <div class="panel market-shell">
+        <div id="marketRoot">
+          <div class="info-line">Загрузка барахолки...</div>
+        </div>
       </div>
     </section>
 
@@ -1314,6 +1374,7 @@
 
     function showFormMessage(message, isError = false) {
       const el = document.getElementById("formMessage");
+      if (!el) return;
       el.textContent = message;
       el.style.color = isError ? "#ffd2d2" : "rgba(245,245,245,0.66)";
     }
@@ -1324,9 +1385,19 @@
 
     function showSection(section) {
       document.getElementById("homeSection").classList.toggle("hidden", section !== "home");
+      document.getElementById("marketSection").classList.toggle("hidden", section !== "market");
       document.getElementById("pondsSection").classList.toggle("hidden", section !== "ponds");
       document.getElementById("mapSection").classList.toggle("hidden", section !== "map");
       document.getElementById("authSection").classList.toggle("hidden", section !== "auth");
+
+      if (section === "market" && typeof window.klevbyLoadMarket === "function") {
+        window.klevbyLoadMarket();
+      }
+
+      if (section === "map" && typeof window.klevbyReloadMap === "function") {
+        setTimeout(() => window.klevbyReloadMap(), 300);
+      }
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -1990,6 +2061,10 @@
       showFormMessage(wasEditing ? "Объявление обновлено." : "Объявление создано.");
 
       await loadPosts();
+
+      if (typeof window.klevbyReloadMap === "function") {
+        window.klevbyReloadMap();
+      }
     }
 
     function editPost(id) {
@@ -2056,6 +2131,10 @@
       }
 
       await loadPosts();
+
+      if (typeof window.klevbyReloadMap === "function") {
+        window.klevbyReloadMap();
+      }
     }
 
     function isStandaloneMode() {
@@ -2220,5 +2299,6 @@
   <link rel="stylesheet" href="chat-style.css">
   <script src="chat.js" defer></script>
   <script src="map-logic.js" defer></script>
+  <script src="market-logic.js" defer></script>
 </body>
 </html>
