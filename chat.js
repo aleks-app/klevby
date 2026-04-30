@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// Подключаемся напрямую (Ключ вписан прямо сюда!)
+// Настройки подключения (Ключ вписан напрямую)
 const chatDb = createClient(
     'https://oecdshvozssadztcokog.supabase.co', 
     'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
@@ -28,6 +28,7 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const closeBtn = document.getElementById('close-chat');
 
+// Функции
 const toggleChat = () => chatModal.classList.toggle('hidden');
 if (closeBtn) closeBtn.onclick = toggleChat;
 
@@ -39,27 +40,10 @@ if (desktopBtn) desktopBtn.onclick = toggleChat;
 function addMessageToScreen(data) {
     if (!messagesContainer) return;
     const div = document.createElement('div');
-    div.id = 'msg-' + data.id;
-    div.style.cssText = 'margin-bottom: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 14px; position: relative;';
-    div.innerHTML = `
-        <span style="color: #42d986; font-weight: bold;">${data.user_name || 'Рыбак'}:</span> 
-        <span style="color: rgba(244,251,247,0.82);">${data.content}</span>
-        <span onclick="deleteMsg('${data.id}')" style="cursor: pointer; position: absolute; right: 8px; top: 8px; font-size: 14px; opacity: 0.5;">🗑️</span>
-    `;
+    div.style.cssText = 'margin-bottom: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 14px;';
+    div.innerHTML = `<span style="color: #42d986; font-weight: bold;">${data.user_name || 'Рыбак'}:</span> <span style="color: rgba(244,251,247,0.82);">${data.content}</span>`;
     messagesContainer.appendChild(div);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-window.deleteMsg = async function(messageId) {
-    const pass = prompt("Пин-код для удаления:");
-    if (pass === "1234") {
-        await chatDb.from('messages').delete().eq('id', messageId);
-        const msgElement = document.getElementById('msg-' + messageId);
-        if (msgElement) msgElement.remove();
-        alert("Удалено!");
-    } else if (pass !== null) {
-        alert("Неверный код!");
-    }
 }
 
 async function sendMessage() {
@@ -71,8 +55,8 @@ async function sendMessage() {
     }
 }
 
-if (sendBtn) sendBtn.onclick = sendMessage;
-if (messageInput) messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+sendBtn.onclick = sendMessage;
+messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 
 async function initChat() {
     const { data } = await chatDb.from('messages').select('*').order('created_at', { ascending: true });
@@ -81,10 +65,6 @@ async function initChat() {
     chatDb.channel('public:messages')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
         addMessageToScreen(payload.new);
-    })
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-        const msgElement = document.getElementById('msg-' + payload.old.id);
-        if (msgElement) msgElement.remove();
     })
     .subscribe();
 }
