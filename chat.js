@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// Настройки подключения (Ключ вписан напрямую)
+// Используем твои настройки, не мешая основному коду
 const chatDb = createClient(
     'https://oecdshvozssadztcokog.supabase.co', 
     'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
@@ -10,7 +10,7 @@ const chatHTML = `
     <div id="klevby-chat-modal" class="hidden" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; background: #1a1a1a; border: 1px solid #333; border-radius: 12px; z-index: 10001; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
         <div style="padding: 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #fff; font-weight: bold;">Чат Рыбаков 🎣</span>
-            <button id="close-chat" style="background: none; border: none; color: #888; cursor: pointer; font-size: 20px;">×</button>
+            <button id="close-chat" style="background: none; border: none; color: #888; cursor: pointer; font-size: 24px;">&times;</button>
         </div>
         <div id="chat-messages" style="height: 300px; overflow-y: auto; padding: 10px; background: #0a1217;"></div>
         <div style="padding: 10px; display: flex; gap: 8px;">
@@ -20,7 +20,10 @@ const chatHTML = `
     </div>
 `;
 
-document.body.insertAdjacentHTML('beforeend', chatHTML);
+// Проверяем, чтобы не наплодить копий чата
+if (!document.getElementById('klevby-chat-modal')) {
+    document.body.insertAdjacentHTML('beforeend', chatHTML);
+}
 
 const chatModal = document.getElementById('klevby-chat-modal');
 const messagesContainer = document.getElementById('chat-messages');
@@ -28,23 +31,39 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const closeBtn = document.getElementById('close-chat');
 
-// Функции
 const toggleChat = () => chatModal.classList.toggle('hidden');
-if (closeBtn) closeBtn.onclick = toggleChat;
 
-const navChatBtn = document.getElementById('nav-chat-btn');
-const desktopBtn = document.getElementById('chat-desktop-btn');
-if (navChatBtn) navChatBtn.onclick = toggleChat;
-if (desktopBtn) desktopBtn.onclick = toggleChat;
+// Слушаем клики по всему документу, чтобы поймать твои кнопки из "большого кода"
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'nav-chat-btn' || e.target.closest('#nav-chat-btn') || 
+        e.target.id === 'chat-desktop-btn' || e.target.closest('#chat-desktop-btn')) {
+        toggleChat();
+    }
+});
+
+if (closeBtn) closeBtn.onclick = toggleChat;
 
 function addMessageToScreen(data) {
     if (!messagesContainer) return;
     const div = document.createElement('div');
-    div.style.cssText = 'margin-bottom: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 14px;';
-    div.innerHTML = `<span style="color: #42d986; font-weight: bold;">${data.user_name || 'Рыбак'}:</span> <span style="color: rgba(244,251,247,0.82);">${data.content}</span>`;
+    div.id = 'msg-' + data.id;
+    div.style.cssText = 'margin-bottom: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #fff; font-size: 14px; position: relative;';
+    div.innerHTML = `
+        <span style="color: #42d986; font-weight: bold;">${data.user_name || 'Рыбак'}:</span> 
+        <span style="color: rgba(244,251,247,0.82);">${data.content}</span>
+        <span onclick="deleteMsg('${data.id}')" style="cursor: pointer; position: absolute; right: 8px; top: 8px; font-size: 14px; opacity: 0.5;">🗑️</span>
+    `;
     messagesContainer.appendChild(div);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
+
+window.deleteMsg = async function(messageId) {
+    const pass = prompt("Пин-код:");
+    if (pass === "1234") {
+        await chatDb.from('messages').delete().eq('id', messageId);
+        document.getElementById('msg-' + messageId)?.remove();
+    }
+};
 
 async function sendMessage() {
     const content = messageInput.value.trim();
@@ -55,16 +74,22 @@ async function sendMessage() {
     }
 }
 
-sendBtn.onclick = sendMessage;
-messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+if (sendBtn) sendBtn.onclick = sendMessage;
+if (messageInput) messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 
 async function initChat() {
     const { data } = await chatDb.from('messages').select('*').order('created_at', { ascending: true });
-    if (data) data.forEach(msg => addMessageToScreen(msg));
+    if (data) {
+        messagesContainer.innerHTML = '';
+        data.forEach(msg => addMessageToScreen(msg));
+    }
 
     chatDb.channel('public:messages')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
         addMessageToScreen(payload.new);
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+        document.getElementById('msg-' + payload.old.id)?.remove();
     })
     .subscribe();
 }
