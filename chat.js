@@ -1,9 +1,10 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// Настройки подключения
-const SUPABASE_URL = 'https://oecdshvozssadztcokog.supabase.co'
-const SUPABASE_KEY = 'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
-const chatDb = createClient(SUPABASE_URL, SUPABASE_KEY)
+// Подключаемся напрямую (Ключ вписан прямо сюда!)
+const chatDb = createClient(
+    'https://oecdshvozssadztcokog.supabase.co', 
+    'sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS'
+)
 
 const chatHTML = `
     <div id="klevby-chat-modal" class="hidden" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; background: #1a1a1a; border: 1px solid #333; border-radius: 12px; z-index: 10001; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
