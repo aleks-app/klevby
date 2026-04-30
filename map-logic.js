@@ -7,9 +7,7 @@
   const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
 
-  // Вставь сюда свой ключ Яндекс.Карт.
-  // Пример: const YANDEX_MAPS_API_KEY = "твой_ключ";
-  const YANDEX_MAPS_API_KEY = "";
+  const YANDEX_MAPS_API_KEY = "6a7d9dd0-9c0c-4158-8e6d-ac06b5f43190";
 
   const DEFAULT_CENTER = [53.9023, 27.5619]; // Минск
   const DEFAULT_ZOOM = 7;
@@ -228,9 +226,7 @@
       return;
     }
 
-    const mapBlock = document.getElementById("map");
-
-    if (!mapBlock) {
+    if (!document.getElementById("map")) {
       prepareMapBlock();
     }
 
