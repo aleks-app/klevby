@@ -16,25 +16,16 @@
     let selectedPeer = null;
     let publicSubscription = null;
     let privateSubscription = null;
-    let callsSubscription = null;
-    let iceSubscription = null;
+    let presenceChannel = null;
+    let typingTimer = null;
+    let typingSendTimer = null;
+    let replyTarget = null;
+    let lastRenderedDateKey = "";
+    let unreadPrivateCount = 0;
 
-    let peerConnection = null;
-    let localStream = null;
-    let activeCall = null;
-    let currentCallRole = null;
-    let pendingIceCandidates = [];
-    let processedIceCandidateIds = new Set();
-
+    const onlineUsers = new Map();
     const guestNameKey = "klevby_chat_guest_name";
     const sentLocalMessages = new Set();
-
-    const rtcConfig = {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ]
-    };
 
     injectExtraChatStyles();
 
@@ -53,21 +44,21 @@
       try {
         const { data } = await chatDb.auth.getUser();
         currentChatUser = data?.user || null;
-        updateCallButtonVisibility();
         return currentChatUser;
       } catch (error) {
         console.warn("Не удалось проверить пользователя чата:", error);
         currentChatUser = null;
-        updateCallButtonVisibility();
         return null;
       }
     }
 
-    refreshCurrentUser();
+    refreshCurrentUser().then(() => {
+      setupPresence();
+    });
 
     chatDb.auth.onAuthStateChange((_event, session) => {
       currentChatUser = session?.user || null;
-      updateCallButtonVisibility();
+      setupPresence();
     });
 
     const chatHTML = `
@@ -76,40 +67,47 @@
       <div id="klevby-chat-modal" class="hidden">
         <div id="chat-window" class="klevby-chat-window">
           <div id="chat-header" class="klevby-chat-header">
-            <div class="klevby-chat-heading">
-              <div class="klevby-chat-title" id="chatTitle">Чат рыбаков 🎣</div>
-              <div class="klevby-chat-subtitle" id="chatSubtitle">Общий разговор Klevby</div>
+            <button id="back-chat" class="klevby-chat-back hidden" type="button">‹</button>
+
+            <div class="klevby-chat-head-main">
+              <div class="klevby-chat-avatar" id="chatAvatar">🎣</div>
+              <div class="klevby-chat-title-wrap">
+                <div class="klevby-chat-title" id="chatTitle">Чат рыбаков 🎣</div>
+                <div class="klevby-chat-subtitle" id="chatSubtitle">Общий разговор Klevby</div>
+              </div>
             </div>
 
-            <div class="klevby-chat-header-actions">
-              <button id="call-btn" class="klevby-call-btn hidden" type="button" title="Позвонить">📞</button>
-              <button id="close-chat" class="klevby-chat-close" type="button">&times;</button>
+            <button id="call-chat" class="klevby-chat-call hidden" type="button" title="Позвонить">☎</button>
+            <button id="close-chat" class="klevby-chat-close">&times;</button>
+          </div>
+
+          <div class="klevby-chat-pinned" id="pinnedPublicChat" type="button">
+            <div class="klevby-pinned-icon">📌</div>
+            <div>
+              <div class="klevby-pinned-title">Общий чат закреплён</div>
+              <div class="klevby-pinned-text">Быстрый доступ к разговору всех рыбаков</div>
             </div>
           </div>
 
           <div class="klevby-chat-tabs">
             <button id="publicChatTab" class="klevby-chat-tab active" type="button">Общий чат</button>
-            <button id="privateChatTab" class="klevby-chat-tab" type="button">Личка</button>
+            <button id="privateChatTab" class="klevby-chat-tab" type="button">
+              Личка <span id="privateUnreadBadge" class="klevby-unread-badge hidden">0</span>
+            </button>
           </div>
 
           <div id="privateChatPeople" class="klevby-private-people hidden"></div>
 
-          <div id="callPanel" class="klevby-call-panel hidden">
-            <div>
-              <div id="callPanelTitle" class="klevby-call-title">Звонок</div>
-              <div id="callPanelStatus" class="klevby-call-status">Подготовка...</div>
-            </div>
-
-            <div id="callPanelActions" class="klevby-call-actions">
-              <button id="answer-call-btn" class="klevby-call-accept hidden" type="button">Принять</button>
-              <button id="decline-call-btn" class="klevby-call-decline hidden" type="button">Отклонить</button>
-              <button id="end-call-btn" class="klevby-call-end hidden" type="button">Завершить</button>
-            </div>
-          </div>
-
-          <audio id="remoteAudio" autoplay playsinline></audio>
-
           <div id="chat-messages" class="klevby-chat-messages"></div>
+
+          <div id="replyPreview" class="klevby-reply-preview hidden">
+            <div class="klevby-reply-line"></div>
+            <div class="klevby-reply-body">
+              <div class="klevby-reply-author" id="replyAuthor">Ответ</div>
+              <div class="klevby-reply-text" id="replyText">Сообщение</div>
+            </div>
+            <button id="cancelReply" class="klevby-reply-cancel" type="button">×</button>
+          </div>
 
           <div id="chat-input-area" class="klevby-chat-inputbar">
             <input
@@ -121,6 +119,8 @@
             />
             <button id="send-btn" class="klevby-chat-send" type="button">➤</button>
           </div>
+
+          <audio id="remoteAudio" autoplay playsinline></audio>
         </div>
       </div>
     `;
@@ -138,15 +138,15 @@
     const privatePeople = document.getElementById("privateChatPeople");
     const chatTitle = document.getElementById("chatTitle");
     const chatSubtitle = document.getElementById("chatSubtitle");
-
-    const callBtn = document.getElementById("call-btn");
-    const callPanel = document.getElementById("callPanel");
-    const callPanelTitle = document.getElementById("callPanelTitle");
-    const callPanelStatus = document.getElementById("callPanelStatus");
-    const answerCallBtn = document.getElementById("answer-call-btn");
-    const declineCallBtn = document.getElementById("decline-call-btn");
-    const endCallBtn = document.getElementById("end-call-btn");
-    const remoteAudio = document.getElementById("remoteAudio");
+    const chatAvatar = document.getElementById("chatAvatar");
+    const backBtn = document.getElementById("back-chat");
+    const callBtn = document.getElementById("call-chat");
+    const pinnedPublicChat = document.getElementById("pinnedPublicChat");
+    const replyPreview = document.getElementById("replyPreview");
+    const replyAuthor = document.getElementById("replyAuthor");
+    const replyText = document.getElementById("replyText");
+    const cancelReply = document.getElementById("cancelReply");
+    const privateUnreadBadge = document.getElementById("privateUnreadBadge");
 
     function escapeHtml(text) {
       return String(text || "")
@@ -168,6 +168,66 @@
       } catch {
         return "";
       }
+    }
+
+    function getDateKey(createdAt) {
+      if (!createdAt) return "";
+
+      try {
+        const d = new Date(createdAt);
+        return d.toISOString().slice(0, 10);
+      } catch {
+        return "";
+      }
+    }
+
+    function getDateLabel(createdAt) {
+      if (!createdAt) return "";
+
+      try {
+        const date = new Date(createdAt);
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+
+        const dateKey = date.toISOString().slice(0, 10);
+        const todayKey = today.toISOString().slice(0, 10);
+        const yesterdayKey = yesterday.toISOString().slice(0, 10);
+
+        if (dateKey === todayKey) return "Сегодня";
+        if (dateKey === yesterdayKey) return "Вчера";
+
+        return date.toLocaleDateString("ru-RU", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric"
+        });
+      } catch {
+        return "";
+      }
+    }
+
+    function renderDateDivider(createdAt) {
+      const key = getDateKey(createdAt);
+      if (!key || key === lastRenderedDateKey) return;
+
+      lastRenderedDateKey = key;
+
+      const divider = document.createElement("div");
+      divider.className = "klevby-date-divider";
+      divider.textContent = getDateLabel(createdAt);
+
+      messagesContainer.appendChild(divider);
+    }
+
+    function resetDateDividers() {
+      lastRenderedDateKey = "";
+    }
+
+    function getInitials(name) {
+      const clean = String(name || "Рыбак").trim();
+      const first = clean[0] || "Р";
+      return first.toUpperCase();
     }
 
     function getCurrentChatName() {
@@ -213,6 +273,34 @@
       return myUserId && String(message.sender_id) === String(myUserId);
     }
 
+    function isOnline(userId) {
+      if (!userId) return false;
+      return onlineUsers.has(String(userId));
+    }
+
+    function getUserStatusText(userId) {
+      if (!userId) return "Был недавно";
+      return isOnline(userId) ? "Онлайн" : "Был недавно";
+    }
+
+    function updateSelectedPeerStatus() {
+      if (activeMode !== "private" || !selectedPeer) return;
+      chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
+    }
+
+    function updateUnreadBadge() {
+      if (!privateUnreadBadge) return;
+
+      if (unreadPrivateCount <= 0) {
+        privateUnreadBadge.classList.add("hidden");
+        privateUnreadBadge.textContent = "0";
+        return;
+      }
+
+      privateUnreadBadge.classList.remove("hidden");
+      privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
+    }
+
     function playBubbleSound() {
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -247,6 +335,13 @@
     function clearMessages() {
       if (!messagesContainer) return;
       messagesContainer.innerHTML = "";
+      resetDateDividers();
+    }
+
+    function scrollChatToBottom() {
+      requestAnimationFrame(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      });
     }
 
     function showEmptyState(text) {
@@ -258,482 +353,183 @@
       `;
     }
 
+    function clearReply() {
+      replyTarget = null;
+      replyPreview.classList.add("hidden");
+      replyAuthor.textContent = "";
+      replyText.textContent = "";
+    }
+
+    function setReplyTarget(message, type, isMine) {
+      const author =
+        isMine
+          ? "Вы"
+          : type === "private"
+            ? (message.sender_name || selectedPeer?.name || "Рыбак")
+            : (message.user_name || "Рыбак");
+
+      replyTarget = {
+        id: message.id || null,
+        type,
+        author,
+        text: message.content || ""
+      };
+
+      replyAuthor.textContent = "Ответ: " + author;
+      replyText.textContent = message.content || "";
+      replyPreview.classList.remove("hidden");
+      input.focus();
+    }
+
+    function buildMessageContent(value) {
+      if (!replyTarget) return value;
+
+      const quoted = String(replyTarget.text || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120);
+
+      return `↩ Ответ ${replyTarget.author}: ${quoted}\n${value}`;
+    }
+
+    function parseReplyContent(content) {
+      const text = String(content || "");
+
+      if (!text.startsWith("↩ Ответ ")) {
+        return {
+          reply: null,
+          mainText: text
+        };
+      }
+
+      const parts = text.split("\n");
+
+      if (parts.length < 2) {
+        return {
+          reply: null,
+          mainText: text
+        };
+      }
+
+      const replyLine = parts[0].replace("↩ Ответ ", "");
+      const mainText = parts.slice(1).join("\n");
+
+      return {
+        reply: replyLine,
+        mainText
+      };
+    }
+
+    function renderMessageActions(message, type, isMine) {
+      const id = message.id ? escapeHtml(message.id) : "";
+
+      return `
+        <div class="klevby-message-actions">
+          <button class="klevby-message-action reply-message-btn" type="button" data-type="${type}" data-id="${id}">↩</button>
+          ${isMine && id ? `<button class="klevby-message-action delete-message-btn" type="button" data-type="${type}" data-id="${id}">🗑</button>` : ""}
+        </div>
+      `;
+    }
+
     function renderPublicMessage(message) {
       if (!messagesContainer || !message) return;
 
+      renderDateDivider(message.created_at);
+
       const isMine = isMyPublicMessage(message);
+      const author = isMine ? "Вы" : (message.user_name || "Рыбак");
+      const time = getMessageTime(message.created_at);
+      const parsed = parseReplyContent(message.content || "");
 
       const row = document.createElement("div");
       row.className = `chat-message-row ${isMine ? "my-message-row" : "other-message-row"}`;
+      row.dataset.messageId = message.id || "";
+      row.dataset.messageType = "public";
+
+      const avatar = document.createElement("div");
+      avatar.className = "klevby-message-avatar";
+      avatar.textContent = getInitials(author);
 
       const bubble = document.createElement("div");
       bubble.className = `chat-message-bubble ${isMine ? "my-message" : "other-message"}`;
 
-      const author = isMine ? "Вы" : (message.user_name || "Рыбак");
-      const time = getMessageTime(message.created_at);
-
       bubble.innerHTML = `
         <div class="chat-message-author">${escapeHtml(author)}</div>
-        <div class="chat-message-text">${escapeHtml(message.content || "")}</div>
-        ${time ? `<div class="chat-message-time">${escapeHtml(time)}</div>` : ""}
+        ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
+        <div class="chat-message-text">${escapeHtml(parsed.mainText || "")}</div>
+        <div class="klevby-message-footer">
+          ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
+          ${isMine ? `<span class="klevby-checks">✓✓</span>` : ""}
+        </div>
+        ${renderMessageActions(message, "public", isMine)}
       `;
 
+      if (!isMine) row.appendChild(avatar);
       row.appendChild(bubble);
+      if (isMine) row.appendChild(avatar);
+
       messagesContainer.appendChild(row);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      scrollChatToBottom();
     }
 
     function renderPrivateMessage(message) {
       if (!messagesContainer || !message) return;
 
+      renderDateDivider(message.created_at);
+
       const isMine = isMyPrivateMessage(message);
+      const author = isMine ? "Вы" : (message.sender_name || selectedPeer?.name || "Рыбак");
+      const time = getMessageTime(message.created_at);
+      const parsed = parseReplyContent(message.content || "");
 
       const row = document.createElement("div");
       row.className = `chat-message-row ${isMine ? "my-message-row" : "other-message-row"}`;
+      row.dataset.messageId = message.id || "";
+      row.dataset.messageType = "private";
+
+      const avatar = document.createElement("div");
+      avatar.className = "klevby-message-avatar";
+      avatar.textContent = getInitials(author);
 
       const bubble = document.createElement("div");
       bubble.className = `chat-message-bubble ${isMine ? "my-message" : "other-message"}`;
 
-      const author = isMine ? "Вы" : (message.sender_name || selectedPeer?.name || "Рыбак");
-      const time = getMessageTime(message.created_at);
-
       bubble.innerHTML = `
         <div class="chat-message-author">${escapeHtml(author)}</div>
-        <div class="chat-message-text">${escapeHtml(message.content || "")}</div>
-        ${time ? `<div class="chat-message-time">${escapeHtml(time)}</div>` : ""}
+        ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
+        <div class="chat-message-text">${escapeHtml(parsed.mainText || "")}</div>
+        <div class="klevby-message-footer">
+          ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
+          ${isMine ? `<span class="klevby-checks">✓✓</span>` : ""}
+        </div>
+        ${renderMessageActions(message, "private", isMine)}
       `;
 
+      if (!isMine) row.appendChild(avatar);
       row.appendChild(bubble);
+      if (isMine) row.appendChild(avatar);
+
       messagesContainer.appendChild(row);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    function updateCallButtonVisibility() {
-      const canShow =
-        activeMode === "private" &&
-        selectedPeer &&
-        currentChatUser &&
-        !activeCall;
-
-      if (!callBtn) return;
-
-      callBtn.classList.toggle("hidden", !canShow);
-    }
-
-    function showCallPanel(title, status, mode = "outgoing") {
-      if (!callPanel) return;
-
-      callPanel.classList.remove("hidden");
-      callPanelTitle.textContent = title;
-      callPanelStatus.textContent = status;
-
-      answerCallBtn.classList.toggle("hidden", mode !== "incoming");
-      declineCallBtn.classList.toggle("hidden", mode !== "incoming");
-      endCallBtn.classList.toggle("hidden", mode === "incoming");
-
-      updateCallButtonVisibility();
-    }
-
-    function hideCallPanel() {
-      if (!callPanel) return;
-
-      callPanel.classList.add("hidden");
-      answerCallBtn.classList.add("hidden");
-      declineCallBtn.classList.add("hidden");
-      endCallBtn.classList.add("hidden");
-
-      updateCallButtonVisibility();
-    }
-
-    async function getMicrophoneStream() {
-      if (localStream) return localStream;
-
-      localStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false
-      });
-
-      return localStream;
-    }
-
-    function createPeerConnection(callId) {
-      const pc = new RTCPeerConnection(rtcConfig);
-
-      pc.onicecandidate = async (event) => {
-        if (!event.candidate || !currentChatUser || !callId) return;
-
-        try {
-          await chatDb
-            .from("call_ice_candidates")
-            .insert([{
-              call_id: callId,
-              user_id: currentChatUser.id,
-              candidate: event.candidate.toJSON()
-            }]);
-        } catch (error) {
-          console.warn("Не удалось отправить ICE candidate:", error);
-        }
-      };
-
-      pc.ontrack = (event) => {
-        if (remoteAudio && event.streams && event.streams[0]) {
-          remoteAudio.srcObject = event.streams[0];
-          remoteAudio.play().catch(() => {});
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        const state = pc.connectionState;
-
-        if (state === "connected") {
-          showCallPanel("Звонок активен", "Соединение установлено", "active");
-        }
-
-        if (state === "failed" || state === "disconnected" || state === "closed") {
-          if (activeCall) {
-            endCall(true);
-          }
-        }
-      };
-
-      return pc;
-    }
-
-    async function addRemoteIceCandidate(candidateData) {
-      if (!peerConnection || !candidateData) return;
-
-      try {
-        if (!peerConnection.remoteDescription) {
-          pendingIceCandidates.push(candidateData);
-          return;
-        }
-
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
-      } catch (error) {
-        console.warn("Не удалось добавить ICE candidate:", error);
-      }
-    }
-
-    async function flushPendingIceCandidates() {
-      if (!peerConnection || !peerConnection.remoteDescription) return;
-
-      const items = [...pendingIceCandidates];
-      pendingIceCandidates = [];
-
-      for (const candidate of items) {
-        await addRemoteIceCandidate(candidate);
-      }
-    }
-
-    async function startCall() {
-      await refreshCurrentUser();
-
-      if (!currentChatUser) {
-        alert("Чтобы звонить, нужно войти или зарегистрироваться.");
-        return;
-      }
-
-      if (!selectedPeer) {
-        alert("Сначала выбери собеседника.");
-        return;
-      }
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Звонки не поддерживаются в этом браузере.");
-        return;
-      }
-
-      try {
-        await endCall(false);
-
-        showCallPanel("Звонок", "Вызываем " + selectedPeer.name + "...", "outgoing");
-
-        const { data: callRow, error: insertError } = await chatDb
-          .from("calls")
-          .insert([{
-            caller_id: currentChatUser.id,
-            receiver_id: selectedPeer.id,
-            caller_name: getCurrentChatName(),
-            status: "ringing"
-          }])
-          .select("*")
-          .single();
-
-        if (insertError) {
-          console.error(insertError);
-          hideCallPanel();
-          alert("Не получилось начать звонок. Проверь таблицу calls и RLS.");
-          return;
-        }
-
-        activeCall = callRow;
-        currentCallRole = "caller";
-        pendingIceCandidates = [];
-        processedIceCandidateIds = new Set();
-
-        const stream = await getMicrophoneStream();
-        peerConnection = createPeerConnection(activeCall.id);
-
-        stream.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, stream);
-        });
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-
-        const { error: updateError } = await chatDb
-          .from("calls")
-          .update({
-            offer: offer,
-            status: "ringing"
-          })
-          .eq("id", activeCall.id);
-
-        if (updateError) {
-          console.error(updateError);
-          await endCall(true);
-          alert("Не получилось отправить вызов.");
-          return;
-        }
-
-        activeCall.offer = offer;
-      } catch (error) {
-        console.error(error);
-        await endCall(true);
-        alert("Не получилось начать звонок. Проверь разрешение микрофона.");
-      }
-    }
-
-    async function answerCall(call = activeCall) {
-      await refreshCurrentUser();
-
-      if (!currentChatUser || !call) return;
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Звонки не поддерживаются в этом браузере.");
-        return;
-      }
-
-      try {
-        activeCall = call;
-        currentCallRole = "receiver";
-        pendingIceCandidates = [];
-        processedIceCandidateIds = new Set();
-
-        showCallPanel("Звонок", "Соединяем...", "active");
-
-        const stream = await getMicrophoneStream();
-        peerConnection = createPeerConnection(activeCall.id);
-
-        stream.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, stream);
-        });
-
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(activeCall.offer));
-        await flushPendingIceCandidates();
-
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-
-        const { error } = await chatDb
-          .from("calls")
-          .update({
-            answer: answer,
-            status: "active"
-          })
-          .eq("id", activeCall.id);
-
-        if (error) {
-          console.error(error);
-          await endCall(true);
-          alert("Не получилось принять звонок.");
-          return;
-        }
-
-        activeCall.answer = answer;
-        activeCall.status = "active";
-      } catch (error) {
-        console.error(error);
-        await endCall(true);
-        alert("Не получилось принять звонок. Проверь разрешение микрофона.");
-      }
-    }
-
-    async function declineCall() {
-      if (!activeCall) {
-        hideCallPanel();
-        return;
-      }
-
-      const callId = activeCall.id;
-
-      try {
-        await chatDb
-          .from("calls")
-          .update({ status: "declined" })
-          .eq("id", callId);
-      } catch (error) {
-        console.warn("Не удалось отклонить звонок:", error);
-      }
-
-      await endCall(false);
-    }
-
-    async function endCall(updateDb = true) {
-      const callId = activeCall?.id || null;
-
-      if (updateDb && callId) {
-        try {
-          await chatDb
-            .from("calls")
-            .update({ status: "ended" })
-            .eq("id", callId);
-        } catch (error) {
-          console.warn("Не удалось завершить звонок в базе:", error);
-        }
-      }
-
-      if (peerConnection) {
-        try {
-          peerConnection.onicecandidate = null;
-          peerConnection.ontrack = null;
-          peerConnection.onconnectionstatechange = null;
-          peerConnection.close();
-        } catch (error) {
-          console.warn("Ошибка закрытия PeerConnection:", error);
-        }
-      }
-
-      peerConnection = null;
-
-      if (localStream) {
-        try {
-          localStream.getTracks().forEach(track => track.stop());
-        } catch (error) {
-          console.warn("Ошибка остановки микрофона:", error);
-        }
-      }
-
-      localStream = null;
-
-      if (remoteAudio) {
-        remoteAudio.srcObject = null;
-      }
-
-      activeCall = null;
-      currentCallRole = null;
-      pendingIceCandidates = [];
-      processedIceCandidateIds = new Set();
-
-      hideCallPanel();
-      updateCallButtonVisibility();
-    }
-
-    async function handleCallChange(call) {
-      await refreshCurrentUser();
-
-      if (!currentChatUser || !call) return;
-
-      const myId = String(currentChatUser.id);
-      const callerId = String(call.caller_id);
-      const receiverId = String(call.receiver_id);
-      const isParticipant = callerId === myId || receiverId === myId;
-
-      if (!isParticipant) return;
-
-      if (call.status === "ended" || call.status === "declined") {
-        if (activeCall && String(activeCall.id) === String(call.id)) {
-          await endCall(false);
-        }
-
-        return;
-      }
-
-      if (
-        receiverId === myId &&
-        call.status === "ringing" &&
-        call.offer &&
-        (!activeCall || String(activeCall.id) !== String(call.id))
-      ) {
-        activeCall = call;
-        currentCallRole = "receiver";
-        showCallPanel("Входящий звонок", "Звонит " + (call.caller_name || "Рыбак"), "incoming");
-        return;
-      }
-
-      if (
-        callerId === myId &&
-        activeCall &&
-        String(activeCall.id) === String(call.id) &&
-        call.status === "active" &&
-        call.answer &&
-        peerConnection &&
-        !peerConnection.remoteDescription
-      ) {
-        try {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(call.answer));
-          activeCall = call;
-          await flushPendingIceCandidates();
-          showCallPanel("Звонок активен", "Соединение установлено", "active");
-        } catch (error) {
-          console.error("Не удалось принять answer:", error);
-          await endCall(true);
-        }
-      }
-    }
-
-    async function checkIncomingCalls() {
-      await refreshCurrentUser();
-
-      if (!currentChatUser || activeCall) return;
-
-      try {
-        const { data, error } = await chatDb
-          .from("calls")
-          .select("*")
-          .eq("receiver_id", currentChatUser.id)
-          .eq("status", "ringing")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (error) {
-          console.warn("Не удалось проверить входящие звонки:", error);
-          return;
-        }
-
-        if (data && data[0]) {
-          await handleCallChange(data[0]);
-        }
-      } catch (error) {
-        console.warn("Ошибка проверки входящих звонков:", error);
-      }
-    }
-
-    async function handleIceCandidateRow(row) {
-      await refreshCurrentUser();
-
-      if (!currentChatUser || !activeCall || !row) return;
-      if (String(row.call_id) !== String(activeCall.id)) return;
-      if (String(row.user_id) === String(currentChatUser.id)) return;
-      if (processedIceCandidateIds.has(String(row.id))) return;
-
-      processedIceCandidateIds.add(String(row.id));
-      await addRemoteIceCandidate(row.candidate);
+      scrollChatToBottom();
     }
 
     async function loadPublicMessages() {
       activeMode = "public";
       selectedPeer = null;
+      clearReply();
 
       publicTab.classList.add("active");
       privateTab.classList.remove("active");
       privatePeople.classList.add("hidden");
+      backBtn.classList.add("hidden");
+      callBtn.classList.add("hidden");
+      pinnedPublicChat.classList.remove("hidden");
 
+      chatAvatar.textContent = "🎣";
       chatTitle.textContent = "Чат рыбаков 🎣";
       chatSubtitle.textContent = "Общий разговор Klevby";
       input.placeholder = "Напиши сообщение...";
 
-      updateCallButtonVisibility();
       clearMessages();
 
       const { data, error } = await chatDb
@@ -754,23 +550,31 @@
 
       clearMessages();
       data.forEach(renderPublicMessage);
+      scrollChatToBottom();
     }
 
     async function loadPrivatePeople() {
       await refreshCurrentUser();
 
       activeMode = "private";
+      clearReply();
 
       publicTab.classList.remove("active");
       privateTab.classList.add("active");
       privatePeople.classList.remove("hidden");
+      backBtn.classList.add("hidden");
+      callBtn.classList.add("hidden");
+      pinnedPublicChat.classList.add("hidden");
 
+      chatAvatar.textContent = "✉";
       chatTitle.textContent = "Личные сообщения";
       chatSubtitle.textContent = currentChatUser ? "Выбери собеседника" : "Для лички нужен вход";
       input.placeholder = "Выбери собеседника...";
       selectedPeer = null;
 
-      updateCallButtonVisibility();
+      unreadPrivateCount = 0;
+      updateUnreadBadge();
+
       clearMessages();
       privatePeople.innerHTML = "";
 
@@ -831,8 +635,9 @@
 
       privatePeople.innerHTML = peers.map(peer => `
         <button class="klevby-private-person" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
-          <span class="klevby-private-avatar">🎣</span>
+          <span class="klevby-private-avatar">${escapeHtml(getInitials(peer.name))}</span>
           <span class="klevby-private-name">${escapeHtml(peer.name)}</span>
+          <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
         </button>
       `).join("");
 
@@ -852,15 +657,21 @@
         name: peerName || "Рыбак"
       };
 
-      chatTitle.textContent = "Личка";
-      chatSubtitle.textContent = "Диалог с " + selectedPeer.name;
+      clearReply();
+
+      chatAvatar.textContent = getInitials(selectedPeer.name);
+      chatTitle.textContent = selectedPeer.name;
+      chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
       input.placeholder = "Напиши личное сообщение...";
+
+      backBtn.classList.remove("hidden");
+      callBtn.classList.remove("hidden");
+      pinnedPublicChat.classList.add("hidden");
 
       document.querySelectorAll(".klevby-private-person").forEach((button) => {
         button.classList.toggle("active", String(button.dataset.peerId) === String(peerId));
       });
 
-      updateCallButtonVisibility();
       clearMessages();
 
       const { data, error } = await chatDb
@@ -882,11 +693,12 @@
 
       clearMessages();
       data.forEach(renderPrivateMessage);
+      scrollChatToBottom();
     }
 
     async function sendPublicMessage() {
-      const val = input.value.trim();
-      if (!val) return;
+      const rawVal = input.value.trim();
+      if (!rawVal) return;
 
       await refreshCurrentUser();
 
@@ -894,6 +706,7 @@
 
       const userId = currentChatUser?.id || null;
       const userName = getCurrentChatName();
+      const val = buildMessageContent(rawVal);
 
       const payload = {
         user_name: userName,
@@ -919,6 +732,7 @@
       }
 
       input.value = "";
+      clearReply();
       playBubbleSound();
 
       setTimeout(() => {
@@ -927,8 +741,8 @@
     }
 
     async function sendPrivateMessage() {
-      const val = input.value.trim();
-      if (!val) return;
+      const rawVal = input.value.trim();
+      if (!rawVal) return;
 
       await refreshCurrentUser();
 
@@ -948,7 +762,7 @@
         sender_id: currentChatUser.id,
         receiver_id: selectedPeer.id,
         sender_name: getCurrentChatName(),
-        content: val
+        content: buildMessageContent(rawVal)
       };
 
       const { error } = await chatDb
@@ -964,6 +778,7 @@
       }
 
       input.value = "";
+      clearReply();
       playBubbleSound();
     }
 
@@ -975,12 +790,75 @@
       }
     }
 
+    async function deleteMessage(type, id) {
+      if (!id) return;
+
+      if (!confirm("Удалить сообщение?")) return;
+
+      await refreshCurrentUser();
+
+      let result;
+
+      if (type === "private") {
+        if (!currentChatUser) {
+          alert("Удалять личные сообщения можно только после входа.");
+          return;
+        }
+
+        result = await chatDb
+          .from("private_messages")
+          .delete()
+          .eq("id", id)
+          .eq("sender_id", currentChatUser.id);
+      } else {
+        if (currentChatUser) {
+          result = await chatDb
+            .from("messages")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", currentChatUser.id);
+        } else {
+          result = await chatDb
+            .from("messages")
+            .delete()
+            .eq("id", id)
+            .eq("user_name", getCurrentChatName());
+        }
+      }
+
+      if (result.error) {
+        console.error(result.error);
+        alert("Не получилось удалить. Проверь RLS delete для таблицы сообщений.");
+        return;
+      }
+
+      const row = messagesContainer.querySelector(`[data-message-id="${CSS.escape(id)}"][data-message-type="${type}"]`);
+      if (row) row.remove();
+    }
+
+    function findMessageDataFromRow(row) {
+      if (!row) return null;
+
+      const type = row.dataset.messageType || "public";
+      const id = row.dataset.messageId || "";
+      const author = row.querySelector(".chat-message-author")?.textContent || "Рыбак";
+      const text = row.querySelector(".chat-message-text")?.textContent || "";
+      const isMine = row.classList.contains("my-message-row");
+
+      return {
+        id,
+        type,
+        author,
+        content: text,
+        isMine
+      };
+    }
+
     async function openChat() {
       modal.classList.remove("hidden");
       modal.classList.add("open");
 
       await refreshCurrentUser();
-      await checkIncomingCalls();
       await loadPublicMessages();
 
       setTimeout(() => {
@@ -991,6 +869,91 @@
     function closeChat() {
       modal.classList.remove("open");
       modal.classList.add("hidden");
+      clearReply();
+    }
+
+    function sendTypingSignal() {
+      if (!presenceChannel) return;
+      if (activeMode !== "private") return;
+      if (!currentChatUser || !selectedPeer) return;
+
+      clearTimeout(typingSendTimer);
+
+      typingSendTimer = setTimeout(() => {
+        presenceChannel.send({
+          type: "broadcast",
+          event: "typing",
+          payload: {
+            sender_id: currentChatUser.id,
+            receiver_id: selectedPeer.id,
+            sender_name: getCurrentChatName(),
+            created_at: new Date().toISOString()
+          }
+        });
+      }, 250);
+    }
+
+    function setupPresence() {
+      if (presenceChannel) return;
+
+      presenceChannel = chatDb.channel("klevby_presence", {
+        config: {
+          presence: {
+            key: currentChatUser?.id || getGuestName()
+          }
+        }
+      });
+
+      presenceChannel
+        .on("presence", { event: "sync" }, () => {
+          onlineUsers.clear();
+
+          const state = presenceChannel.presenceState();
+
+          Object.values(state).forEach((items) => {
+            (items || []).forEach((item) => {
+              if (item.user_id) {
+                onlineUsers.set(String(item.user_id), item);
+              }
+            });
+          });
+
+          updateSelectedPeerStatus();
+
+          document.querySelectorAll(".klevby-private-person").forEach((button) => {
+            const peerId = button.dataset.peerId;
+            const dot = button.querySelector(".klevby-private-status");
+            if (dot) dot.classList.toggle("online", isOnline(peerId));
+          });
+        })
+        .on("broadcast", { event: "typing" }, (event) => {
+          const payload = event.payload || {};
+          const senderId = String(payload.sender_id || "");
+          const receiverId = String(payload.receiver_id || "");
+          const myId = String(currentChatUser?.id || "");
+
+          if (!myId || receiverId !== myId) return;
+          if (activeMode !== "private" || !selectedPeer) return;
+          if (String(selectedPeer.id) !== senderId) return;
+
+          chatSubtitle.textContent = "Печатает...";
+
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => {
+            updateSelectedPeerStatus();
+          }, 2200);
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await refreshCurrentUser();
+
+            presenceChannel.track({
+              user_id: currentChatUser?.id || null,
+              name: getCurrentChatName(),
+              online_at: new Date().toISOString()
+            });
+          }
+        });
     }
 
     document.addEventListener("click", async (e) => {
@@ -1002,7 +965,7 @@
         closeChat();
       }
 
-      if (e.target.closest("#publicChatTab")) {
+      if (e.target.closest("#publicChatTab") || e.target.closest("#pinnedPublicChat")) {
         await loadPublicMessages();
       }
 
@@ -1010,25 +973,45 @@
         await loadPrivatePeople();
       }
 
+      if (e.target.closest("#back-chat")) {
+        await loadPrivatePeople();
+      }
+
+      if (e.target.closest("#cancelReply")) {
+        clearReply();
+      }
+
+      if (e.target.closest("#call-chat")) {
+        alert("Звонок можно включить отдельным модулем WebRTC. Сейчас добавлена кнопка под будущий вызов.");
+      }
+
       const personButton = e.target.closest(".klevby-private-person");
       if (personButton) {
         await openPrivateDialog(personButton.dataset.peerId, personButton.dataset.peerName);
       }
 
-      if (e.target.closest("#call-btn")) {
-        await startCall();
+      const replyButton = e.target.closest(".reply-message-btn");
+      if (replyButton) {
+        const row = replyButton.closest(".chat-message-row");
+        const messageData = findMessageDataFromRow(row);
+
+        if (messageData) {
+          setReplyTarget(
+            {
+              id: messageData.id,
+              content: messageData.content,
+              user_name: messageData.author,
+              sender_name: messageData.author
+            },
+            messageData.type,
+            messageData.isMine
+          );
+        }
       }
 
-      if (e.target.closest("#answer-call-btn")) {
-        await answerCall(activeCall);
-      }
-
-      if (e.target.closest("#decline-call-btn")) {
-        await declineCall();
-      }
-
-      if (e.target.closest("#end-call-btn")) {
-        await endCall(true);
+      const deleteButton = e.target.closest(".delete-message-btn");
+      if (deleteButton) {
+        await deleteMessage(deleteButton.dataset.type, deleteButton.dataset.id);
       }
     });
 
@@ -1039,6 +1022,10 @@
         e.preventDefault();
         send();
       }
+    };
+
+    input.oninput = () => {
+      sendTypingSignal();
     };
 
     publicSubscription = chatDb
@@ -1066,10 +1053,22 @@
         async (payload) => {
           await refreshCurrentUser();
 
+          const msg = payload.new;
+          const myId = String(currentChatUser?.id || "");
+
+          if (!myId) return;
+
+          const isForMe = String(msg.receiver_id) === myId;
+          const isFromMe = String(msg.sender_id) === myId;
+
+          if (isForMe && (activeMode !== "private" || !selectedPeer || String(selectedPeer.id) !== String(msg.sender_id))) {
+            unreadPrivateCount += 1;
+            updateUnreadBadge();
+            playBubbleSound();
+          }
+
           if (!currentChatUser || activeMode !== "private" || !selectedPeer) return;
 
-          const msg = payload.new;
-          const myId = String(currentChatUser.id);
           const peerId = String(selectedPeer.id);
 
           const belongsToDialog =
@@ -1085,41 +1084,6 @@
         }
       )
       .subscribe();
-
-    callsSubscription = chatDb
-      .channel("calls_channel")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "calls" },
-        async (payload) => {
-          await handleCallChange(payload.new);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "calls" },
-        async (payload) => {
-          await handleCallChange(payload.new);
-        }
-      )
-      .subscribe();
-
-    iceSubscription = chatDb
-      .channel("call_ice_candidates_channel")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "call_ice_candidates" },
-        async (payload) => {
-          await handleIceCandidateRow(payload.new);
-        }
-      )
-      .subscribe();
-
-    window.addEventListener("beforeunload", () => {
-      if (activeCall) {
-        endCall(true);
-      }
-    });
   }
 
   function injectExtraChatStyles() {
@@ -1128,6 +1092,108 @@
     const style = document.createElement("style");
     style.id = "klevby-chat-extra-styles";
     style.textContent = `
+      #chat-header,
+      .klevby-chat-header {
+        gap: 10px !important;
+      }
+
+      .klevby-chat-head-main {
+        min-width: 0;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .klevby-chat-avatar {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 30% 10%, rgba(87,230,178,0.28), transparent 44%),
+          rgba(255,255,255,0.075);
+        border: 1px solid rgba(255,255,255,0.10);
+        color: #d7ffe8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        font-weight: 900;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+
+      .klevby-chat-title-wrap {
+        min-width: 0;
+      }
+
+      .klevby-chat-title,
+      .klevby-chat-subtitle {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .klevby-chat-back,
+      .klevby-chat-call {
+        flex: 0 0 38px;
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 50%;
+        background: rgba(255,255,255,0.055);
+        color: rgba(255,255,255,0.82);
+        cursor: pointer;
+        font-size: 28px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .klevby-chat-call {
+        font-size: 18px;
+        color: #03150c;
+        background: linear-gradient(135deg, #57e6b2, #28c990);
+        border-color: rgba(87,230,178,0.28);
+      }
+
+      .klevby-chat-pinned {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        background: rgba(87,230,178,0.075);
+        color: #f4fbf7;
+        cursor: pointer;
+      }
+
+      .klevby-pinned-icon {
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        border-radius: 12px;
+        background: rgba(87,230,178,0.14);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .klevby-pinned-title {
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.15;
+      }
+
+      .klevby-pinned-text {
+        margin-top: 2px;
+        color: rgba(244,251,247,0.56);
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
       #chat-input-area,
       .klevby-chat-inputbar {
         align-items: center !important;
@@ -1149,119 +1215,6 @@
         margin: 0 !important;
       }
 
-      .klevby-chat-heading {
-        min-width: 0;
-        flex: 1;
-      }
-
-      .klevby-chat-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex: 0 0 auto;
-      }
-
-      .klevby-call-btn {
-        width: 40px;
-        height: 40px;
-        border: 0;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #57e6b2, #28c990);
-        color: #03150c;
-        font-size: 18px;
-        font-weight: 900;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 10px 26px rgba(87, 230, 178, 0.22);
-        transition: 0.2s ease;
-      }
-
-      .klevby-call-btn:hover {
-        transform: scale(1.04);
-        filter: brightness(1.04);
-      }
-
-      .klevby-call-btn.hidden {
-        display: none !important;
-      }
-
-      .klevby-call-panel {
-        padding: 12px 14px;
-        background:
-          radial-gradient(circle at 10% 0%, rgba(87,230,178,0.14), transparent 40%),
-          rgba(255,255,255,0.045);
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      .klevby-call-panel.hidden {
-        display: none !important;
-      }
-
-      .klevby-call-title {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.1;
-        font-weight: 900;
-      }
-
-      .klevby-call-status {
-        margin-top: 3px;
-        color: rgba(244,251,247,0.62);
-        font-size: 12px;
-        line-height: 1.2;
-        font-weight: 700;
-      }
-
-      .klevby-call-actions {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-      }
-
-      .klevby-call-accept,
-      .klevby-call-decline,
-      .klevby-call-end {
-        min-height: 36px;
-        padding: 0 12px;
-        border: 0;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 900;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-
-      .klevby-call-accept {
-        background: linear-gradient(135deg, #57e6b2, #28c990);
-        color: #03150c;
-      }
-
-      .klevby-call-decline,
-      .klevby-call-end {
-        background: rgba(228,88,88,0.92);
-        color: #ffffff;
-      }
-
-      .klevby-call-accept.hidden,
-      .klevby-call-decline.hidden,
-      .klevby-call-end.hidden {
-        display: none !important;
-      }
-
-      #remoteAudio {
-        width: 0;
-        height: 0;
-        opacity: 0;
-        pointer-events: none;
-        position: absolute;
-      }
-
       .klevby-chat-tabs {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1272,6 +1225,7 @@
       }
 
       .klevby-chat-tab {
+        position: relative;
         min-height: 38px;
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 14px;
@@ -1288,6 +1242,22 @@
         border-color: rgba(87,230,178,0.28);
       }
 
+      .klevby-unread-badge {
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: #e45858;
+        color: #fff;
+        font-size: 10px;
+        line-height: 18px;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 5px;
+      }
+
       .klevby-private-people {
         display: flex;
         gap: 8px;
@@ -1299,6 +1269,7 @@
       }
 
       .klevby-private-person {
+        position: relative;
         flex: 0 0 auto;
         min-height: 42px;
         padding: 6px 10px;
@@ -1328,6 +1299,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        font-size: 13px;
+        font-weight: 900;
       }
 
       .klevby-private-name {
@@ -1337,20 +1310,207 @@
         white-space: nowrap;
       }
 
+      .klevby-private-status {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.20);
+      }
+
+      .klevby-private-status.online {
+        background: #57e6b2;
+        box-shadow: 0 0 10px rgba(87,230,178,0.65);
+      }
+
+      .klevby-date-divider {
+        align-self: center;
+        margin: 8px 0;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        color: rgba(244,251,247,0.64);
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .chat-message-row {
+        align-items: flex-end;
+        gap: 7px;
+      }
+
+      .klevby-message-avatar {
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 30% 10%, rgba(87,230,178,0.24), transparent 44%),
+          rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #d7ffe8;
+        font-size: 12px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .my-message-row .klevby-message-avatar {
+        background: rgba(40,201,144,0.22);
+        color: #03150c;
+      }
+
+      .chat-message-bubble {
+        position: relative;
+      }
+
+      .klevby-message-reply {
+        margin: 2px 0 7px;
+        padding: 7px 9px;
+        border-left: 3px solid rgba(3,21,12,0.30);
+        border-radius: 10px;
+        background: rgba(255,255,255,0.16);
+        color: inherit;
+        opacity: 0.86;
+        font-size: 12px;
+        line-height: 1.3;
+        font-weight: 800;
+        max-height: 52px;
+        overflow: hidden;
+      }
+
+      .other-message .klevby-message-reply {
+        border-left-color: rgba(87,230,178,0.55);
+        background: rgba(87,230,178,0.10);
+      }
+
+      .klevby-message-footer {
+        margin-top: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 5px;
+      }
+
+      .chat-message-time {
+        margin-top: 0 !important;
+      }
+
+      .klevby-checks {
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 900;
+        opacity: 0.68;
+      }
+
+      .klevby-message-actions {
+        position: absolute;
+        top: -12px;
+        right: 8px;
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.18s ease;
+      }
+
+      .chat-message-bubble:hover .klevby-message-actions {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .klevby-message-action {
+        width: 24px;
+        height: 24px;
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 50%;
+        background: rgba(5,14,16,0.90);
+        color: #f4fbf7;
+        font-size: 12px;
+        font-weight: 900;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .klevby-message-action:hover {
+        background: rgba(87,230,178,0.22);
+      }
+
+      .klevby-reply-preview {
+        display: grid;
+        grid-template-columns: 4px 1fr 34px;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 10px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        background: rgba(87,230,178,0.08);
+      }
+
+      .klevby-reply-line {
+        width: 4px;
+        height: 36px;
+        border-radius: 999px;
+        background: #57e6b2;
+      }
+
+      .klevby-reply-body {
+        min-width: 0;
+      }
+
+      .klevby-reply-author {
+        color: #d7ffe8;
+        font-size: 12px;
+        line-height: 1.2;
+        font-weight: 900;
+      }
+
+      .klevby-reply-text {
+        margin-top: 2px;
+        color: rgba(244,251,247,0.62);
+        font-size: 12px;
+        line-height: 1.2;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .klevby-reply-cancel {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 50%;
+        background: rgba(255,255,255,0.055);
+        color: rgba(255,255,255,0.74);
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
       @media (max-width: 768px) {
-        .klevby-call-panel {
-          align-items: flex-start;
-          flex-direction: column;
+        .klevby-message-actions {
+          opacity: 1;
+          pointer-events: auto;
+          top: -10px;
         }
 
-        .klevby-call-actions {
-          width: 100%;
+        .klevby-message-avatar {
+          width: 24px;
+          height: 24px;
+          flex-basis: 24px;
+          font-size: 10px;
         }
 
-        .klevby-call-accept,
-        .klevby-call-decline,
-        .klevby-call-end {
-          flex: 1;
+        .klevby-chat-call,
+        .klevby-chat-back {
+          width: 36px;
+          height: 36px;
+          flex-basis: 36px;
         }
       }
     `;
