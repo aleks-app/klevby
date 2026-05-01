@@ -12,13 +12,41 @@
 
   function setupChat(chatDb) {
     let currentChatUser = null;
+    let chatReady = false;
 
-    chatDb.auth.getUser().then(({ data }) => {
-      currentChatUser = data?.user || null;
-    });
+    const guestNameKey = "klevby_chat_guest_name";
+    const sentLocalMessages = new Set();
+
+    function getGuestName() {
+      let name = localStorage.getItem(guestNameKey);
+
+      if (!name) {
+        name = "Рыбак-" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem(guestNameKey, name);
+      }
+
+      return name;
+    }
+
+    async function refreshCurrentUser() {
+      try {
+        const { data } = await chatDb.auth.getUser();
+        currentChatUser = data?.user || null;
+        chatReady = true;
+        return currentChatUser;
+      } catch (error) {
+        console.warn("Не удалось проверить пользователя чата:", error);
+        currentChatUser = null;
+        chatReady = true;
+        return null;
+      }
+    }
+
+    refreshCurrentUser();
 
     chatDb.auth.onAuthStateChange((_event, session) => {
       currentChatUser = session?.user || null;
+      chatReady = true;
     });
 
     const chatHTML = `
@@ -81,6 +109,44 @@
       }
     }
 
+    function getCurrentChatName() {
+      const userEmail = currentChatUser?.email || "";
+
+      if (userEmail) {
+        return userEmail.split("@")[0];
+      }
+
+      return getGuestName();
+    }
+
+    function getLocalMessageKey(message) {
+      return `${message.user_name || ""}__${message.content || ""}`;
+    }
+
+    function isMyMessage(message) {
+      const myUserId = currentChatUser?.id || null;
+      const messageUserId = message.user_id || null;
+
+      if (myUserId && messageUserId && String(messageUserId) === String(myUserId)) {
+        return true;
+      }
+
+      const localName = getCurrentChatName();
+      const messageName = message.user_name || "";
+
+      if (!messageUserId && messageName && messageName === localName) {
+        return true;
+      }
+
+      const localKey = getLocalMessageKey(message);
+
+      if (sentLocalMessages.has(localKey)) {
+        return true;
+      }
+
+      return false;
+    }
+
     function playBubbleSound() {
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -116,9 +182,7 @@
     function renderMessage(message) {
       if (!messagesContainer || !message) return;
 
-      const myUserId = currentChatUser?.id || null;
-      const messageUserId = message.user_id || null;
-      const isMine = myUserId && messageUserId && String(messageUserId) === String(myUserId);
+      const isMine = isMyMessage(message);
 
       const row = document.createElement("div");
       row.className = `chat-message-row ${isMine ? "my-message-row" : "other-message-row"}`;
@@ -146,6 +210,12 @@
     }
 
     async function loadMessages() {
+      if (!chatReady) {
+        await refreshCurrentUser();
+      } else {
+        await refreshCurrentUser();
+      }
+
       clearMessages();
 
       const { data, error } = await chatDb
@@ -180,11 +250,12 @@
       const val = input.value.trim();
       if (!val) return;
 
+      await refreshCurrentUser();
+
       sendBtn.disabled = true;
 
       const userId = currentChatUser?.id || null;
-      const userEmail = currentChatUser?.email || "";
-      const userName = userEmail ? userEmail.split("@")[0] : "Рыбак";
+      const userName = getCurrentChatName();
 
       const payload = {
         user_name: userName,
@@ -194,6 +265,8 @@
       if (userId) {
         payload.user_id = userId;
       }
+
+      sentLocalMessages.add(`${userName}__${val}`);
 
       const { error } = await chatDb
         .from("messages")
@@ -209,12 +282,17 @@
 
       input.value = "";
       playBubbleSound();
+
+      setTimeout(() => {
+        sentLocalMessages.delete(`${userName}__${val}`);
+      }, 30000);
     }
 
-    function openChat() {
+    async function openChat() {
       modal.classList.remove("hidden");
       modal.classList.add("open");
-      loadMessages();
+
+      await loadMessages();
 
       setTimeout(() => {
         input.focus();
@@ -250,7 +328,11 @@
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
+        async (payload) => {
+          if (!chatReady) {
+            await refreshCurrentUser();
+          }
+
           const emptyState = messagesContainer.querySelector(".chat-empty-state");
 
           if (emptyState) {
