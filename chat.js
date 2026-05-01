@@ -23,6 +23,18 @@
     let lastRenderedDateKey = "";
     let unreadPrivateCount = 0;
 
+    let peerConnection = null;
+    let localStream = null;
+    let currentCallId = null;
+    let currentCallRole = null;
+    let pendingIncomingCall = null;
+    let callsSubscription = null;
+    let iceSubscription = null;
+    let pendingLocalIceCandidates = [];
+    let pendingRemoteIceCandidates = [];
+    let addedIceCandidateIds = new Set();
+    let callAnswerApplied = false;
+
     const onlineUsers = new Map();
     const guestNameKey = "klevby_chat_guest_name";
     const sentLocalMessages = new Set();
@@ -54,11 +66,13 @@
 
     refreshCurrentUser().then(() => {
       setupPresence();
+      setupCallRealtime();
     });
 
     chatDb.auth.onAuthStateChange((_event, session) => {
       currentChatUser = session?.user || null;
       setupPresence();
+      setupCallRealtime();
     });
 
     const chatHTML = `
@@ -79,6 +93,26 @@
 
             <button id="call-chat" class="klevby-chat-call hidden" type="button" title="Позвонить">☎</button>
             <button id="close-chat" class="klevby-chat-close">&times;</button>
+          </div>
+
+          <div id="callStatusBar" class="klevby-call-status-bar hidden">
+            <div>
+              <div class="klevby-call-status-title" id="callStatusTitle">Звонок</div>
+              <div class="klevby-call-status-text" id="callStatusText">Подключение...</div>
+            </div>
+            <button id="endCallBtn" class="klevby-call-end" type="button">Завершить</button>
+          </div>
+
+          <div id="incomingCallPanel" class="klevby-incoming-call hidden">
+            <div class="klevby-incoming-icon">☎</div>
+            <div class="klevby-incoming-info">
+              <div class="klevby-incoming-title" id="incomingCallTitle">Входящий звонок</div>
+              <div class="klevby-incoming-text" id="incomingCallText">Рыбак звонит тебе</div>
+            </div>
+            <div class="klevby-incoming-actions">
+              <button id="acceptCallBtn" class="klevby-call-accept" type="button">Ответить</button>
+              <button id="rejectCallBtn" class="klevby-call-reject" type="button">Сбросить</button>
+            </div>
           </div>
 
           <div class="klevby-chat-pinned" id="pinnedPublicChat" type="button">
@@ -147,6 +181,16 @@
     const replyText = document.getElementById("replyText");
     const cancelReply = document.getElementById("cancelReply");
     const privateUnreadBadge = document.getElementById("privateUnreadBadge");
+    const remoteAudio = document.getElementById("remoteAudio");
+    const callStatusBar = document.getElementById("callStatusBar");
+    const callStatusTitle = document.getElementById("callStatusTitle");
+    const callStatusText = document.getElementById("callStatusText");
+    const incomingCallPanel = document.getElementById("incomingCallPanel");
+    const incomingCallTitle = document.getElementById("incomingCallTitle");
+    const incomingCallText = document.getElementById("incomingCallText");
+    const acceptCallBtn = document.getElementById("acceptCallBtn");
+    const rejectCallBtn = document.getElementById("rejectCallBtn");
+    const endCallBtn = document.getElementById("endCallBtn");
 
     function escapeHtml(text) {
       return String(text || "")
@@ -155,6 +199,14 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function cssEscape(value) {
+      if (window.CSS && typeof window.CSS.escape === "function") {
+        return window.CSS.escape(value);
+      }
+
+      return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "\\$&");
     }
 
     function getMessageTime(createdAt) {
@@ -832,7 +884,7 @@
         return;
       }
 
-      const row = messagesContainer.querySelector(`[data-message-id="${CSS.escape(id)}"][data-message-type="${type}"]`);
+      const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="${type}"]`);
       if (row) row.remove();
     }
 
@@ -956,6 +1008,537 @@
         });
     }
 
+    function showCallStatus(title, text) {
+      callStatusTitle.textContent = title;
+      callStatusText.textContent = text;
+      callStatusBar.classList.remove("hidden");
+    }
+
+    function hideCallStatus() {
+      callStatusBar.classList.add("hidden");
+      callStatusTitle.textContent = "Звонок";
+      callStatusText.textContent = "Подключение...";
+    }
+
+    function showIncomingCall(call) {
+      pendingIncomingCall = call;
+
+      modal.classList.remove("hidden");
+      modal.classList.add("open");
+
+      incomingCallTitle.textContent = "Входящий звонок";
+      incomingCallText.textContent = `${call.caller_name || "Рыбак"} звонит тебе`;
+      incomingCallPanel.classList.remove("hidden");
+      playBubbleSound();
+    }
+
+    function hideIncomingCall() {
+      incomingCallPanel.classList.add("hidden");
+      incomingCallTitle.textContent = "Входящий звонок";
+      incomingCallText.textContent = "Рыбак звонит тебе";
+      pendingIncomingCall = null;
+    }
+
+    function ensureWebRtcSupport() {
+      return Boolean(
+        window.RTCPeerConnection &&
+        navigator.mediaDevices &&
+        navigator.mediaDevices.getUserMedia
+      );
+    }
+
+    async function getLocalAudioStream() {
+      if (localStream) return localStream;
+
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+
+      return localStream;
+    }
+
+    function createPeerConnection() {
+      if (peerConnection) {
+        try {
+          peerConnection.close();
+        } catch (error) {
+          console.warn("Не удалось закрыть старый PeerConnection:", error);
+        }
+      }
+
+      callAnswerApplied = false;
+      pendingRemoteIceCandidates = [];
+      addedIceCandidateIds = new Set();
+
+      peerConnection = new RTCPeerConnection({
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" }
+        ]
+      });
+
+      peerConnection.onicecandidate = async (event) => {
+        if (event.candidate) {
+          await sendIceCandidate(event.candidate);
+        }
+      };
+
+      peerConnection.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+          remoteAudio.srcObject = event.streams[0];
+          remoteAudio.play().catch(() => {});
+        }
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        const state = peerConnection?.connectionState || "";
+
+        if (state === "connected") {
+          showCallStatus("Идёт звонок", selectedPeer ? `Разговор с ${selectedPeer.name}` : "Соединение установлено");
+        }
+
+        if (state === "disconnected") {
+          showCallStatus("Звонок", "Связь прерывается...");
+        }
+
+        if (state === "failed") {
+          showCallStatus("Звонок завершён", "Соединение не удалось установить");
+          setTimeout(() => endCall(false), 800);
+        }
+
+        if (state === "closed") {
+          hideCallStatus();
+        }
+      };
+
+      peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection?.iceConnectionState || "";
+
+        if (state === "failed") {
+          showCallStatus("Звонок", "Проблема с соединением");
+        }
+      };
+
+      return peerConnection;
+    }
+
+    async function attachLocalTracks() {
+      const stream = await getLocalAudioStream();
+      stream.getTracks().forEach((track) => {
+        const alreadyAdded = peerConnection
+          .getSenders()
+          .some((sender) => sender.track && sender.track.id === track.id);
+
+        if (!alreadyAdded) {
+          peerConnection.addTrack(track, stream);
+        }
+      });
+    }
+
+    async function sendIceCandidate(candidate) {
+      const userId = currentChatUser?.id || null;
+      const candidateJson = typeof candidate.toJSON === "function" ? candidate.toJSON() : candidate;
+
+      if (!userId) return;
+
+      if (!currentCallId) {
+        pendingLocalIceCandidates.push(candidateJson);
+        return;
+      }
+
+      const { error } = await chatDb
+        .from("call_ice_candidates")
+        .insert([{
+          call_id: currentCallId,
+          user_id: userId,
+          candidate: candidateJson
+        }]);
+
+      if (error) {
+        console.error("ICE candidate insert error:", error);
+      }
+    }
+
+    async function flushPendingLocalIceCandidates() {
+      if (!currentCallId || !currentChatUser || !pendingLocalIceCandidates.length) return;
+
+      const candidates = pendingLocalIceCandidates.splice(0).map((candidate) => ({
+        call_id: currentCallId,
+        user_id: currentChatUser.id,
+        candidate
+      }));
+
+      const { error } = await chatDb
+        .from("call_ice_candidates")
+        .insert(candidates);
+
+      if (error) {
+        console.error("ICE candidates flush error:", error);
+      }
+    }
+
+    async function addRemoteIceCandidate(candidateRow) {
+      if (!candidateRow || !candidateRow.candidate || !peerConnection) return;
+      if (!currentChatUser) return;
+      if (String(candidateRow.user_id) === String(currentChatUser.id)) return;
+
+      const candidateId = String(candidateRow.id || JSON.stringify(candidateRow.candidate));
+      if (addedIceCandidateIds.has(candidateId)) return;
+      addedIceCandidateIds.add(candidateId);
+
+      if (!peerConnection.remoteDescription) {
+        pendingRemoteIceCandidates.push(candidateRow);
+        return;
+      }
+
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidateRow.candidate));
+      } catch (error) {
+        console.warn("Не удалось добавить ICE candidate:", error);
+      }
+    }
+
+    async function flushPendingRemoteIceCandidates() {
+      if (!peerConnection || !peerConnection.remoteDescription) return;
+
+      const queue = [...pendingRemoteIceCandidates];
+      pendingRemoteIceCandidates = [];
+
+      for (const item of queue) {
+        await addRemoteIceCandidate(item);
+      }
+    }
+
+    async function loadExistingIceCandidates(callId) {
+      if (!callId) return;
+
+      const { data, error } = await chatDb
+        .from("call_ice_candidates")
+        .select("*")
+        .eq("call_id", callId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.warn("Не удалось загрузить ICE candidates:", error);
+        return;
+      }
+
+      for (const item of data || []) {
+        await addRemoteIceCandidate(item);
+      }
+    }
+
+    async function startCall() {
+      await refreshCurrentUser();
+
+      if (!currentChatUser) {
+        alert("Для звонка нужно войти на сайт.");
+        return;
+      }
+
+      if (activeMode !== "private" || !selectedPeer) {
+        alert("Сначала выбери собеседника в личке.");
+        return;
+      }
+
+      if (!ensureWebRtcSupport()) {
+        alert("Твой браузер не поддерживает звонки WebRTC.");
+        return;
+      }
+
+      if (currentCallId) {
+        alert("Звонок уже идёт.");
+        return;
+      }
+
+      try {
+        currentCallRole = "caller";
+        pendingLocalIceCandidates = [];
+
+        showCallStatus("Исходящий звонок", `Звоним ${selectedPeer.name}...`);
+
+        const pc = createPeerConnection();
+        await attachLocalTracks();
+
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: false
+        });
+
+        await pc.setLocalDescription(offer);
+
+        const { data, error } = await chatDb
+          .from("calls")
+          .insert([{
+            caller_id: currentChatUser.id,
+            receiver_id: selectedPeer.id,
+            caller_name: getCurrentChatName(),
+            status: "ringing",
+            offer: pc.localDescription.toJSON ? pc.localDescription.toJSON() : pc.localDescription
+          }])
+          .select("*")
+          .single();
+
+        if (error) {
+          console.error(error);
+          alert("Не получилось начать звонок. Проверь таблицы calls и RLS.");
+          await cleanupCall(false);
+          return;
+        }
+
+        currentCallId = data.id;
+        await flushPendingLocalIceCandidates();
+      } catch (error) {
+        console.error("startCall error:", error);
+        alert("Не получилось начать звонок. Разреши доступ к микрофону.");
+        await cleanupCall(false);
+      }
+    }
+
+    async function answerCall() {
+      await refreshCurrentUser();
+
+      if (!currentChatUser) {
+        alert("Для звонка нужно войти на сайт.");
+        return;
+      }
+
+      if (!pendingIncomingCall) {
+        return;
+      }
+
+      if (!ensureWebRtcSupport()) {
+        alert("Твой браузер не поддерживает звонки WebRTC.");
+        return;
+      }
+
+      const call = pendingIncomingCall;
+
+      try {
+        currentCallId = call.id;
+        currentCallRole = "receiver";
+        pendingLocalIceCandidates = [];
+
+        hideIncomingCall();
+        showCallStatus("Входящий звонок", `Соединяем с ${call.caller_name || "рыбаком"}...`);
+
+        const pc = createPeerConnection();
+        await attachLocalTracks();
+
+        await pc.setRemoteDescription(new RTCSessionDescription(call.offer));
+        await flushPendingRemoteIceCandidates();
+        await loadExistingIceCandidates(call.id);
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        const { error } = await chatDb
+          .from("calls")
+          .update({
+            status: "answered",
+            answer: pc.localDescription.toJSON ? pc.localDescription.toJSON() : pc.localDescription
+          })
+          .eq("id", call.id);
+
+        if (error) {
+          console.error(error);
+          alert("Не получилось ответить на звонок.");
+          await cleanupCall(false);
+          return;
+        }
+
+        await flushPendingLocalIceCandidates();
+        showCallStatus("Идёт звонок", `Разговор с ${call.caller_name || "рыбаком"}`);
+      } catch (error) {
+        console.error("answerCall error:", error);
+        alert("Не получилось ответить на звонок. Разреши доступ к микрофону.");
+        await cleanupCall(true);
+      }
+    }
+
+    async function rejectCall() {
+      if (!pendingIncomingCall) return;
+
+      const callId = pendingIncomingCall.id;
+      hideIncomingCall();
+
+      try {
+        await chatDb
+          .from("calls")
+          .update({ status: "rejected" })
+          .eq("id", callId);
+      } catch (error) {
+        console.warn("rejectCall error:", error);
+      }
+
+      await cleanupCall(false);
+    }
+
+    async function endCall(updateRemote = true) {
+      const callId = currentCallId || pendingIncomingCall?.id || null;
+
+      if (updateRemote && callId) {
+        try {
+          await chatDb
+            .from("calls")
+            .update({ status: "ended" })
+            .eq("id", callId);
+        } catch (error) {
+          console.warn("endCall update error:", error);
+        }
+      }
+
+      await cleanupCall(false);
+    }
+
+    async function cleanupCall() {
+      hideIncomingCall();
+      hideCallStatus();
+
+      if (peerConnection) {
+        try {
+          peerConnection.onicecandidate = null;
+          peerConnection.ontrack = null;
+          peerConnection.onconnectionstatechange = null;
+          peerConnection.oniceconnectionstatechange = null;
+          peerConnection.close();
+        } catch (error) {
+          console.warn("PeerConnection close error:", error);
+        }
+      }
+
+      peerConnection = null;
+
+      if (localStream) {
+        localStream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+      }
+
+      localStream = null;
+
+      if (remoteAudio) {
+        remoteAudio.srcObject = null;
+      }
+
+      currentCallId = null;
+      currentCallRole = null;
+      pendingIncomingCall = null;
+      pendingLocalIceCandidates = [];
+      pendingRemoteIceCandidates = [];
+      addedIceCandidateIds = new Set();
+      callAnswerApplied = false;
+    }
+
+    async function handleCallInsert(call) {
+      await refreshCurrentUser();
+
+      if (!currentChatUser || !call) return;
+
+      const myId = String(currentChatUser.id);
+
+      if (String(call.receiver_id) === myId && call.status === "ringing") {
+        if (currentCallId) {
+          await chatDb
+            .from("calls")
+            .update({ status: "busy" })
+            .eq("id", call.id);
+          return;
+        }
+
+        showIncomingCall(call);
+      }
+    }
+
+    async function handleCallUpdate(call) {
+      await refreshCurrentUser();
+
+      if (!currentChatUser || !call) return;
+
+      const myId = String(currentChatUser.id);
+      const isMyCall =
+        String(call.caller_id) === myId ||
+        String(call.receiver_id) === myId;
+
+      if (!isMyCall) return;
+
+      if (pendingIncomingCall && String(pendingIncomingCall.id) === String(call.id)) {
+        if (["ended", "rejected", "cancelled", "busy"].includes(call.status)) {
+          hideIncomingCall();
+        }
+      }
+
+      if (!currentCallId || String(call.id) !== String(currentCallId)) return;
+
+      if (["ended", "rejected", "cancelled", "busy"].includes(call.status)) {
+        showCallStatus("Звонок завершён", call.status === "busy" ? "Собеседник занят" : "Соединение завершено");
+        setTimeout(() => cleanupCall(false), 700);
+        return;
+      }
+
+      if (
+        currentCallRole === "caller" &&
+        call.status === "answered" &&
+        call.answer &&
+        peerConnection &&
+        !callAnswerApplied
+      ) {
+        try {
+          callAnswerApplied = true;
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(call.answer));
+          await flushPendingRemoteIceCandidates();
+          await loadExistingIceCandidates(call.id);
+          showCallStatus("Идёт звонок", selectedPeer ? `Разговор с ${selectedPeer.name}` : "Соединение установлено");
+        } catch (error) {
+          console.error("set answer error:", error);
+          await cleanupCall(true);
+        }
+      }
+    }
+
+    async function handleIceInsert(candidateRow) {
+      if (!candidateRow || !currentCallId) return;
+      if (String(candidateRow.call_id) !== String(currentCallId)) return;
+      await addRemoteIceCandidate(candidateRow);
+    }
+
+    function setupCallRealtime() {
+      if (callsSubscription && iceSubscription) return;
+
+      callsSubscription = chatDb
+        .channel("klevby_calls_channel")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "calls" },
+          async (payload) => {
+            await handleCallInsert(payload.new);
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "calls" },
+          async (payload) => {
+            await handleCallUpdate(payload.new);
+          }
+        )
+        .subscribe();
+
+      iceSubscription = chatDb
+        .channel("klevby_call_ice_channel")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "call_ice_candidates" },
+          async (payload) => {
+            await handleIceInsert(payload.new);
+          }
+        )
+        .subscribe();
+    }
+
     document.addEventListener("click", async (e) => {
       if (e.target.closest("#nav-chat") || e.target.closest("#chat-desktop-btn")) {
         openChat();
@@ -982,7 +1565,19 @@
       }
 
       if (e.target.closest("#call-chat")) {
-        alert("Звонок можно включить отдельным модулем WebRTC. Сейчас добавлена кнопка под будущий вызов.");
+        await startCall();
+      }
+
+      if (e.target.closest("#acceptCallBtn")) {
+        await answerCall();
+      }
+
+      if (e.target.closest("#rejectCallBtn")) {
+        await rejectCall();
+      }
+
+      if (e.target.closest("#endCallBtn")) {
+        await endCall(true);
       }
 
       const personButton = e.target.closest(".klevby-private-person");
@@ -1059,7 +1654,6 @@
           if (!myId) return;
 
           const isForMe = String(msg.receiver_id) === myId;
-          const isFromMe = String(msg.sender_id) === myId;
 
           if (isForMe && (activeMode !== "private" || !selectedPeer || String(selectedPeer.id) !== String(msg.sender_id))) {
             unreadPrivateCount += 1;
@@ -1156,6 +1750,106 @@
         color: #03150c;
         background: linear-gradient(135deg, #57e6b2, #28c990);
         border-color: rgba(87,230,178,0.28);
+      }
+
+      .klevby-call-status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        background: rgba(87,230,178,0.09);
+      }
+
+      .klevby-call-status-title {
+        color: #d7ffe8;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.15;
+      }
+
+      .klevby-call-status-text {
+        margin-top: 2px;
+        color: rgba(244,251,247,0.62);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .klevby-call-end,
+      .klevby-call-reject {
+        min-height: 34px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(228,88,88,0.94);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .klevby-incoming-call {
+        display: grid;
+        grid-template-columns: 42px 1fr;
+        gap: 10px;
+        padding: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        background:
+          radial-gradient(circle at 10% 0%, rgba(87,230,178,0.16), transparent 40%),
+          rgba(255,255,255,0.045);
+      }
+
+      .klevby-incoming-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #57e6b2, #28c990);
+        color: #03150c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 900;
+        box-shadow: 0 12px 30px rgba(87,230,178,0.20);
+      }
+
+      .klevby-incoming-info {
+        min-width: 0;
+      }
+
+      .klevby-incoming-title {
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 900;
+        line-height: 1.2;
+      }
+
+      .klevby-incoming-text {
+        margin-top: 3px;
+        color: rgba(244,251,247,0.62);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .klevby-incoming-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .klevby-call-accept {
+        min-height: 38px;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #57e6b2, #28c990);
+        color: #03150c;
+        font-size: 13px;
+        font-weight: 900;
+        cursor: pointer;
       }
 
       .klevby-chat-pinned {
