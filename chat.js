@@ -14,14 +14,18 @@
     let currentChatUser = null;
     let activeMode = "public";
     let selectedPeer = null;
+
     let publicSubscription = null;
     let privateSubscription = null;
     let presenceChannel = null;
     let typingTimer = null;
     let typingSendTimer = null;
+
     let replyTarget = null;
-    let lastRenderedDateKey = "";
     let unreadPrivateCount = 0;
+
+    let lastRenderedDateKey = "";
+    let lastRenderedMessageMeta = null;
 
     let peerConnection = null;
     let localStream = null;
@@ -77,27 +81,27 @@
     });
 
     const chatHTML = `
-      <div id="chat-desktop-btn" title="Открыть чат">💬</div>
+      <div id="chat-desktop-btn" class="klevby-chat-launcher" title="Открыть чат">💬</div>
 
       <div id="klevby-chat-modal" class="hidden">
         <div id="chat-window" class="klevby-chat-window">
           <div id="chat-header" class="klevby-chat-header">
-            <button id="back-chat" class="klevby-chat-back hidden" type="button">‹</button>
+            <button id="back-chat" class="klevby-chat-back hidden" type="button" aria-label="Назад">‹</button>
 
             <div class="klevby-chat-head-main">
               <div class="klevby-chat-avatar" id="chatAvatar">🎣</div>
               <div class="klevby-chat-title-wrap">
-                <div class="klevby-chat-title" id="chatTitle">Чат рыбаков 🎣</div>
+                <div class="klevby-chat-title" id="chatTitle">Чат рыбаков</div>
                 <div class="klevby-chat-subtitle" id="chatSubtitle">Общий разговор Klevby</div>
               </div>
             </div>
 
             <button id="call-chat" class="klevby-chat-call hidden" type="button" title="Позвонить">☎</button>
-            <button id="close-chat" class="klevby-chat-close" type="button">&times;</button>
+            <button id="close-chat" class="klevby-chat-close" type="button" aria-label="Закрыть">×</button>
           </div>
 
           <div id="callStatusBar" class="klevby-call-status-bar hidden">
-            <div>
+            <div class="klevby-call-status-info">
               <div class="klevby-call-status-title" id="callStatusTitle">Звонок</div>
               <div class="klevby-call-status-text" id="callStatusText">Подключение...</div>
             </div>
@@ -116,15 +120,15 @@
             </div>
           </div>
 
-          <div class="klevby-chat-pinned" id="pinnedPublicChat" type="button">
-            <div class="klevby-pinned-icon">📌</div>
-            <div>
-              <div class="klevby-pinned-title">Общий чат закреплён</div>
-              <div class="klevby-pinned-text">Быстрый доступ к разговору всех рыбаков</div>
-            </div>
-          </div>
+          <button class="klevby-chat-pinned" id="pinnedPublicChat" type="button">
+            <span class="klevby-pinned-icon">📌</span>
+            <span class="klevby-pinned-copy">
+              <span class="klevby-pinned-title">Общий чат закреплён</span>
+              <span class="klevby-pinned-text">Быстрый доступ к разговору всех рыбаков</span>
+            </span>
+          </button>
 
-          <div class="klevby-chat-tabs">
+          <div class="klevby-chat-tabs" role="tablist">
             <button id="publicChatTab" class="klevby-chat-tab active" type="button">Общий чат</button>
             <button id="privateChatTab" class="klevby-chat-tab" type="button">
               Личка <span id="privateUnreadBadge" class="klevby-unread-badge hidden">0</span>
@@ -134,6 +138,11 @@
           <div id="privateChatPeople" class="klevby-private-people hidden"></div>
 
           <div id="chat-messages" class="klevby-chat-messages"></div>
+
+          <div id="messageContextMenu" class="klevby-message-menu hidden">
+            <button id="contextReplyBtn" type="button">Ответить</button>
+            <button id="contextDeleteBtn" type="button">Удалить</button>
+          </div>
 
           <div id="replyPreview" class="klevby-reply-preview hidden">
             <div class="klevby-reply-line"></div>
@@ -145,6 +154,7 @@
           </div>
 
           <div id="chat-input-area" class="klevby-chat-inputbar">
+            <button id="attach-btn" class="klevby-chat-attach" type="button" title="Вложение">＋</button>
             <input
               type="text"
               id="message-input"
@@ -193,6 +203,12 @@
     const acceptCallBtn = document.getElementById("acceptCallBtn");
     const rejectCallBtn = document.getElementById("rejectCallBtn");
     const endCallBtn = document.getElementById("endCallBtn");
+    const messageContextMenu = document.getElementById("messageContextMenu");
+    const contextReplyBtn = document.getElementById("contextReplyBtn");
+    const contextDeleteBtn = document.getElementById("contextDeleteBtn");
+
+    let contextMessageData = null;
+    let longPressTimer = null;
 
     function escapeHtml(text) {
       return String(text || "")
@@ -222,6 +238,12 @@
       } catch {
         return "";
       }
+    }
+
+    function getTimestamp(createdAt) {
+      if (!createdAt) return Date.now();
+      const time = new Date(createdAt).getTime();
+      return Number.isFinite(time) ? time : Date.now();
     }
 
     function getDateKey(createdAt) {
@@ -266,6 +288,7 @@
       if (!key || key === lastRenderedDateKey) return;
 
       lastRenderedDateKey = key;
+      lastRenderedMessageMeta = null;
 
       const divider = document.createElement("div");
       divider.className = "klevby-date-divider";
@@ -274,8 +297,9 @@
       messagesContainer.appendChild(divider);
     }
 
-    function resetDateDividers() {
+    function resetRenderState() {
       lastRenderedDateKey = "";
+      lastRenderedMessageMeta = null;
     }
 
     function getInitials(name) {
@@ -389,7 +413,8 @@
     function clearMessages() {
       if (!messagesContainer) return;
       messagesContainer.innerHTML = "";
-      resetDateDividers();
+      resetRenderState();
+      hideMessageMenu();
     }
 
     function scrollChatToBottom() {
@@ -433,6 +458,7 @@
       replyAuthor.textContent = "Ответ: " + author;
       replyText.textContent = message.content || "";
       replyPreview.classList.remove("hidden");
+      hideMessageMenu();
       input.focus();
     }
 
@@ -475,31 +501,67 @@
       };
     }
 
+    function shouldGroupWithPrevious(meta) {
+      if (!lastRenderedMessageMeta) return false;
+      if (lastRenderedMessageMeta.type !== meta.type) return false;
+      if (lastRenderedMessageMeta.authorKey !== meta.authorKey) return false;
+      if (lastRenderedMessageMeta.isMine !== meta.isMine) return false;
+
+      const diff = Math.abs(meta.timeStamp - lastRenderedMessageMeta.timeStamp);
+      return diff <= 5 * 60 * 1000;
+    }
+
+    function updatePreviousGroupClass(groupedWithPrevious) {
+      if (!groupedWithPrevious) return;
+
+      const rows = messagesContainer.querySelectorAll(".chat-message-row");
+      const previousRow = rows[rows.length - 1];
+
+      if (previousRow) {
+        previousRow.classList.add("grouped-with-next");
+      }
+    }
+
     function renderMessageActions(message, type, isMine) {
       const id = message.id ? escapeHtml(message.id) : "";
 
       return `
-        <div class="klevby-message-actions">
-          <button class="klevby-message-action reply-message-btn" type="button" data-type="${type}" data-id="${id}">↩</button>
-          ${isMine && id ? `<button class="klevby-message-action delete-message-btn" type="button" data-type="${type}" data-id="${id}">🗑</button>` : ""}
+        <div class="klevby-message-actions" aria-hidden="true">
+          <button class="klevby-message-action reply-message-btn" type="button" data-type="${type}" data-id="${id}" title="Ответить">↩</button>
+          ${isMine && id ? `<button class="klevby-message-action delete-message-btn" type="button" data-type="${type}" data-id="${id}" title="Удалить">🗑</button>` : ""}
         </div>
       `;
     }
 
-    function renderPublicMessage(message) {
-      if (!messagesContainer || !message) return;
-
+    function buildMessageRow({ message, type, isMine, author, authorKey }) {
       renderDateDivider(message.created_at);
 
-      const isMine = isMyPublicMessage(message);
-      const author = isMine ? "Вы" : (message.user_name || "Рыбак");
       const time = getMessageTime(message.created_at);
       const parsed = parseReplyContent(message.content || "");
+      const timeStamp = getTimestamp(message.created_at);
+
+      const meta = {
+        type,
+        authorKey,
+        isMine,
+        timeStamp
+      };
+
+      const groupedWithPrevious = shouldGroupWithPrevious(meta);
+      updatePreviousGroupClass(groupedWithPrevious);
 
       const row = document.createElement("div");
-      row.className = `chat-message-row ${isMine ? "my-message-row" : "other-message-row"}`;
+      row.className = [
+        "chat-message-row",
+        isMine ? "my-message-row" : "other-message-row",
+        groupedWithPrevious ? "grouped-with-prev" : "first-in-group"
+      ].join(" ");
+
       row.dataset.messageId = message.id || "";
-      row.dataset.messageType = "public";
+      row.dataset.messageType = type;
+      row.dataset.author = author;
+      row.dataset.content = parsed.mainText || "";
+      row.dataset.isMine = isMine ? "1" : "0";
 
       const avatar = document.createElement("div");
       avatar.className = "klevby-message-avatar";
@@ -509,19 +571,39 @@
       bubble.className = `chat-message-bubble ${isMine ? "my-message" : "other-message"}`;
 
       bubble.innerHTML = `
-        <div class="chat-message-author">${escapeHtml(author)}</div>
+        ${!groupedWithPrevious ? `<div class="chat-message-author">${escapeHtml(author)}</div>` : ""}
         ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
         <div class="chat-message-text">${escapeHtml(parsed.mainText || "")}</div>
         <div class="klevby-message-footer">
           ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
           ${isMine ? `<span class="klevby-checks">✓✓</span>` : ""}
         </div>
-        ${renderMessageActions(message, "public", isMine)}
+        ${renderMessageActions(message, type, isMine)}
       `;
 
       if (!isMine) row.appendChild(avatar);
       row.appendChild(bubble);
       if (isMine) row.appendChild(avatar);
+
+      lastRenderedMessageMeta = meta;
+
+      return row;
+    }
+
+    function renderPublicMessage(message) {
+      if (!messagesContainer || !message) return;
+
+      const isMine = isMyPublicMessage(message);
+      const author = isMine ? "Вы" : (message.user_name || "Рыбак");
+      const authorKey = message.user_id || message.user_name || author;
+
+      const row = buildMessageRow({
+        message,
+        type: "public",
+        isMine,
+        author,
+        authorKey: String(authorKey)
+      });
 
       messagesContainer.appendChild(row);
       scrollChatToBottom();
@@ -530,42 +612,83 @@
     function renderPrivateMessage(message) {
       if (!messagesContainer || !message) return;
 
-      renderDateDivider(message.created_at);
-
       const isMine = isMyPrivateMessage(message);
       const author = isMine ? "Вы" : (message.sender_name || selectedPeer?.name || "Рыбак");
-      const time = getMessageTime(message.created_at);
-      const parsed = parseReplyContent(message.content || "");
+      const authorKey = message.sender_id || author;
 
-      const row = document.createElement("div");
-      row.className = `chat-message-row ${isMine ? "my-message-row" : "other-message-row"}`;
-      row.dataset.messageId = message.id || "";
-      row.dataset.messageType = "private";
-
-      const avatar = document.createElement("div");
-      avatar.className = "klevby-message-avatar";
-      avatar.textContent = getInitials(author);
-
-      const bubble = document.createElement("div");
-      bubble.className = `chat-message-bubble ${isMine ? "my-message" : "other-message"}`;
-
-      bubble.innerHTML = `
-        <div class="chat-message-author">${escapeHtml(author)}</div>
-        ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
-        <div class="chat-message-text">${escapeHtml(parsed.mainText || "")}</div>
-        <div class="klevby-message-footer">
-          ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
-          ${isMine ? `<span class="klevby-checks">✓✓</span>` : ""}
-        </div>
-        ${renderMessageActions(message, "private", isMine)}
-      `;
-
-      if (!isMine) row.appendChild(avatar);
-      row.appendChild(bubble);
-      if (isMine) row.appendChild(avatar);
+      const row = buildMessageRow({
+        message,
+        type: "private",
+        isMine,
+        author,
+        authorKey: String(authorKey)
+      });
 
       messagesContainer.appendChild(row);
       scrollChatToBottom();
+    }
+
+    function renderMessageList(data, renderFn) {
+      clearMessages();
+
+      (data || []).forEach((message) => {
+        renderFn(message);
+      });
+
+      scrollChatToBottom();
+    }
+
+    function findMessageDataFromRow(row) {
+      if (!row) return null;
+
+      const type = row.dataset.messageType || "public";
+      const id = row.dataset.messageId || "";
+      const author = row.dataset.author || row.querySelector(".chat-message-author")?.textContent || "Рыбак";
+      const text = row.dataset.content || row.querySelector(".chat-message-text")?.textContent || "";
+      const isMine = row.dataset.isMine === "1" || row.classList.contains("my-message-row");
+
+      return {
+        id,
+        type,
+        author,
+        content: text,
+        isMine
+      };
+    }
+
+    function showMessageMenu(row) {
+      const data = findMessageDataFromRow(row);
+      if (!data) return;
+
+      contextMessageData = data;
+
+      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
+
+      messageContextMenu.classList.remove("hidden");
+
+      const rect = row.getBoundingClientRect();
+      const menuWidth = 170;
+      const menuHeight = 92;
+
+      let left = Math.min(Math.max(12, rect.left + rect.width / 2 - menuWidth / 2), window.innerWidth - menuWidth - 12);
+      let top = rect.top - menuHeight - 8;
+
+      if (top < 12) {
+        top = rect.bottom + 8;
+      }
+
+      messageContextMenu.style.left = `${left}px`;
+      messageContextMenu.style.top = `${top}px`;
+    }
+
+    function hideMessageMenu() {
+      contextMessageData = null;
+
+      if (!messageContextMenu) return;
+
+      messageContextMenu.classList.add("hidden");
+      messageContextMenu.style.left = "";
+      messageContextMenu.style.top = "";
     }
 
     async function loadPublicMessages() {
@@ -583,7 +706,7 @@
       pinnedPublicChat.classList.remove("hidden");
 
       chatAvatar.textContent = "🎣";
-      chatTitle.textContent = "Чат рыбаков 🎣";
+      chatTitle.textContent = "Чат рыбаков";
       chatSubtitle.textContent = "Общий разговор Klevby";
       input.placeholder = "Напиши сообщение...";
 
@@ -605,9 +728,7 @@
         return;
       }
 
-      clearMessages();
-      data.forEach(renderPublicMessage);
-      scrollChatToBottom();
+      renderMessageList(data, renderPublicMessage);
     }
 
     async function loadPrivatePeople() {
@@ -752,9 +873,7 @@
         return;
       }
 
-      clearMessages();
-      data.forEach(renderPrivateMessage);
-      scrollChatToBottom();
+      renderMessageList(data, renderPrivateMessage);
     }
 
     async function sendPublicMessage() {
@@ -895,24 +1014,8 @@
 
       const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="${type}"]`);
       if (row) row.remove();
-    }
 
-    function findMessageDataFromRow(row) {
-      if (!row) return null;
-
-      const type = row.dataset.messageType || "public";
-      const id = row.dataset.messageId || "";
-      const author = row.querySelector(".chat-message-author")?.textContent || "Рыбак";
-      const text = row.querySelector(".chat-message-text")?.textContent || "";
-      const isMine = row.classList.contains("my-message-row");
-
-      return {
-        id,
-        type,
-        author,
-        content: text,
-        isMine
-      };
+      hideMessageMenu();
     }
 
     async function openChat() {
@@ -935,6 +1038,7 @@
       modal.classList.remove("open");
       modal.classList.add("hidden");
       clearReply();
+      hideMessageMenu();
       unlockChatPage();
     }
 
@@ -1561,7 +1665,11 @@
         openChat();
       }
 
-      if (e.target.id === "close-chat" || e.target.id === "klevby-chat-modal") {
+      if (e.target.id === "close-chat") {
+        closeChat();
+      }
+
+      if (e.target.id === "klevby-chat-modal") {
         closeChat();
       }
 
@@ -1597,6 +1705,31 @@
         await endCall(true);
       }
 
+      if (e.target.closest("#contextReplyBtn")) {
+        if (contextMessageData) {
+          setReplyTarget(
+            {
+              id: contextMessageData.id,
+              content: contextMessageData.content,
+              user_name: contextMessageData.author,
+              sender_name: contextMessageData.author
+            },
+            contextMessageData.type,
+            contextMessageData.isMine
+          );
+        }
+      }
+
+      if (e.target.closest("#contextDeleteBtn")) {
+        if (contextMessageData) {
+          await deleteMessage(contextMessageData.type, contextMessageData.id);
+        }
+      }
+
+      if (!e.target.closest(".klevby-message-menu") && !e.target.closest(".chat-message-row")) {
+        hideMessageMenu();
+      }
+
       const personButton = e.target.closest(".klevby-private-person");
       if (personButton) {
         await openPrivateDialog(personButton.dataset.peerId, personButton.dataset.peerName);
@@ -1625,6 +1758,33 @@
       if (deleteButton) {
         await deleteMessage(deleteButton.dataset.type, deleteButton.dataset.id);
       }
+    });
+
+    messagesContainer.addEventListener("pointerdown", (e) => {
+      const row = e.target.closest(".chat-message-row");
+      if (!row) return;
+
+      clearTimeout(longPressTimer);
+
+      longPressTimer = setTimeout(() => {
+        showMessageMenu(row);
+      }, 520);
+    });
+
+    messagesContainer.addEventListener("pointerup", () => {
+      clearTimeout(longPressTimer);
+    });
+
+    messagesContainer.addEventListener("pointermove", () => {
+      clearTimeout(longPressTimer);
+    });
+
+    messagesContainer.addEventListener("contextmenu", (e) => {
+      const row = e.target.closest(".chat-message-row");
+      if (!row) return;
+
+      e.preventDefault();
+      showMessageMenu(row);
     });
 
     sendBtn.onclick = send;
@@ -1669,6 +1829,17 @@
           renderPublicMessage(payload.new);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "messages" },
+        async (payload) => {
+          const id = payload.old?.id;
+          if (!id) return;
+
+          const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="public"]`);
+          if (row) row.remove();
+        }
+      )
       .subscribe();
 
     privateSubscription = chatDb
@@ -1708,6 +1879,17 @@
           renderPrivateMessage(msg);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "private_messages" },
+        async (payload) => {
+          const id = payload.old?.id;
+          if (!id) return;
+
+          const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="private"]`);
+          if (row) row.remove();
+        }
+      )
       .subscribe();
   }
 
@@ -1718,6 +1900,7 @@
     updateViewportVars();
 
     window.addEventListener("resize", updateViewportVars, { passive: true });
+
     window.addEventListener("orientationchange", () => {
       setTimeout(updateViewportVars, 250);
     }, { passive: true });
@@ -1725,6 +1908,7 @@
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
         updateViewportVars();
+
         const messages = document.getElementById("chat-messages");
         if (messages) {
           requestAnimationFrame(() => {
@@ -1764,6 +1948,25 @@
     style.textContent = `
       .hidden {
         display: none !important;
+      }
+
+      #chat-desktop-btn,
+      .klevby-chat-launcher {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #57e6b2, #28c990);
+        color: #03150c;
+        font-size: 26px;
+        cursor: pointer;
+        z-index: 9998;
+        box-shadow: 0 18px 42px rgba(40,201,144,0.28);
       }
 
       #chat-header,
@@ -1811,28 +2014,38 @@
       }
 
       .klevby-chat-back,
-      .klevby-chat-call {
-        flex: 0 0 42px;
-        width: 42px;
-        height: 42px;
+      .klevby-chat-call,
+      .klevby-chat-close,
+      .klevby-chat-attach {
         border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 50%;
+        border-radius: 999px;
         background: rgba(255,255,255,0.055);
         color: rgba(255,255,255,0.82);
         cursor: pointer;
-        font-size: 30px;
-        line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
       }
 
+      .klevby-chat-back,
+      .klevby-chat-call,
+      .klevby-chat-close {
+        flex: 0 0 38px;
+        width: 38px;
+        height: 38px;
+        font-size: 24px;
+        line-height: 1;
+      }
+
       .klevby-chat-call {
-        font-size: 19px;
+        font-size: 18px;
         color: #57e6b2;
         background: rgba(87,230,178,0.10);
         border-color: rgba(87,230,178,0.20);
-        box-shadow: 0 0 22px rgba(87,230,178,0.10);
+      }
+
+      .klevby-chat-close {
+        font-size: 22px;
       }
 
       .klevby-call-status-bar {
@@ -1840,7 +2053,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 10px 12px;
+        padding: 8px 12px;
         border-bottom: 1px solid rgba(255,255,255,0.08);
         background: rgba(87,230,178,0.09);
       }
@@ -1862,7 +2075,7 @@
 
       .klevby-call-end,
       .klevby-call-reject {
-        min-height: 34px;
+        min-height: 32px;
         padding: 0 12px;
         border: 0;
         border-radius: 999px;
@@ -1875,9 +2088,9 @@
 
       .klevby-incoming-call {
         display: grid;
-        grid-template-columns: 42px 1fr;
+        grid-template-columns: 38px 1fr;
         gap: 10px;
-        padding: 12px;
+        padding: 10px 12px;
         border-bottom: 1px solid rgba(255,255,255,0.08);
         background:
           radial-gradient(circle at 10% 0%, rgba(87,230,178,0.16), transparent 40%),
@@ -1885,17 +2098,16 @@
       }
 
       .klevby-incoming-icon {
-        width: 42px;
-        height: 42px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         background: linear-gradient(135deg, #57e6b2, #28c990);
         color: #03150c;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 900;
-        box-shadow: 0 12px 30px rgba(87,230,178,0.20);
       }
 
       .klevby-incoming-info {
@@ -1925,7 +2137,7 @@
       }
 
       .klevby-call-accept {
-        min-height: 38px;
+        min-height: 36px;
         border: 0;
         border-radius: 999px;
         background: linear-gradient(135deg, #57e6b2, #28c990);
@@ -1940,16 +2152,18 @@
         align-items: center;
         gap: 10px;
         padding: 10px 12px;
+        border: 0;
         border-bottom: 1px solid rgba(255,255,255,0.07);
-        background: rgba(87,230,178,0.075);
+        background: rgba(87,230,178,0.065);
         color: #f4fbf7;
         cursor: pointer;
+        text-align: left;
       }
 
       .klevby-pinned-icon {
-        flex: 0 0 32px;
-        width: 32px;
-        height: 32px;
+        flex: 0 0 30px;
+        width: 30px;
+        height: 30px;
         border-radius: 12px;
         background: rgba(87,230,178,0.14);
         display: flex;
@@ -1957,13 +2171,20 @@
         justify-content: center;
       }
 
+      .klevby-pinned-copy {
+        min-width: 0;
+        display: block;
+      }
+
       .klevby-pinned-title {
+        display: block;
         font-size: 13px;
         font-weight: 900;
         line-height: 1.15;
       }
 
       .klevby-pinned-text {
+        display: block;
         margin-top: 2px;
         color: rgba(244,251,247,0.56);
         font-size: 11px;
@@ -1992,31 +2213,38 @@
         margin: 0 !important;
       }
 
+      .klevby-chat-attach {
+        flex: 0 0 38px;
+        width: 38px;
+        height: 38px;
+        font-size: 22px;
+        line-height: 1;
+      }
+
       .klevby-chat-tabs {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        padding: 10px;
+        gap: 6px;
+        padding: 8px;
         background: rgba(255,255,255,0.025);
         border-bottom: 1px solid rgba(255,255,255,0.07);
       }
 
       .klevby-chat-tab {
         position: relative;
-        min-height: 38px;
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 14px;
-        background: rgba(255,255,255,0.055);
-        color: rgba(244,251,247,0.62);
+        min-height: 36px;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: rgba(244,251,247,0.58);
         font-size: 13px;
         font-weight: 800;
         cursor: pointer;
       }
 
       .klevby-chat-tab.active {
-        background: linear-gradient(135deg, #57e6b2, #28c990);
-        color: #03150c;
-        border-color: rgba(87,230,178,0.28);
+        background: rgba(87,230,178,0.18);
+        color: #d7ffe8;
       }
 
       .klevby-unread-badge {
@@ -2038,7 +2266,7 @@
       .klevby-private-people {
         display: flex;
         gap: 8px;
-        padding: 10px;
+        padding: 8px 10px;
         overflow-x: auto;
         border-bottom: 1px solid rgba(255,255,255,0.07);
         background: rgba(255,255,255,0.025);
@@ -2048,7 +2276,7 @@
       .klevby-private-person {
         position: relative;
         flex: 0 0 auto;
-        min-height: 42px;
+        min-height: 40px;
         padding: 6px 10px;
         border-radius: 999px;
         border: 1px solid rgba(255,255,255,0.08);
@@ -2088,8 +2316,8 @@
       }
 
       .klevby-private-status {
-        width: 9px;
-        height: 9px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: rgba(255,255,255,0.20);
       }
@@ -2102,21 +2330,24 @@
       .klevby-date-divider {
         align-self: center;
         margin: 10px 0;
-        padding: 6px 13px;
+        padding: 5px 12px;
         border-radius: 999px;
-        background: rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.075);
         border: 1px solid rgba(255,255,255,0.08);
-        color: rgba(244,251,247,0.76);
+        color: rgba(244,251,247,0.72);
         font-size: 12px;
         font-weight: 800;
         line-height: 1;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
       }
 
       .chat-message-row {
         align-items: flex-end;
         gap: 7px;
+        margin-top: 6px;
+      }
+
+      .chat-message-row.grouped-with-prev {
+        margin-top: 2px;
       }
 
       .klevby-message-avatar {
@@ -2136,13 +2367,22 @@
         justify-content: center;
       }
 
+      .chat-message-row.grouped-with-prev .klevby-message-avatar {
+        visibility: hidden;
+      }
+
       .my-message-row .klevby-message-avatar {
         background: rgba(40,201,144,0.22);
-        color: #03150c;
+        color: #d7ffe8;
       }
 
       .chat-message-bubble {
         position: relative;
+      }
+
+      .chat-message-row.grouped-with-prev .chat-message-bubble {
+        border-top-left-radius: 14px;
+        border-top-right-radius: 14px;
       }
 
       .klevby-message-reply {
@@ -2166,7 +2406,7 @@
       }
 
       .klevby-message-footer {
-        margin-top: 5px;
+        margin-top: 4px;
         display: flex;
         align-items: center;
         justify-content: flex-end;
@@ -2217,8 +2457,35 @@
         -webkit-backdrop-filter: blur(12px);
       }
 
-      .klevby-message-action:hover {
-        background: rgba(87,230,178,0.22);
+      .klevby-message-menu {
+        position: fixed;
+        z-index: 1000001;
+        width: 170px;
+        padding: 6px;
+        border-radius: 16px;
+        background: rgba(12, 24, 27, 0.96);
+        border: 1px solid rgba(255,255,255,0.10);
+        box-shadow: 0 18px 46px rgba(0,0,0,0.42);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .klevby-message-menu button {
+        width: 100%;
+        min-height: 38px;
+        border: 0;
+        border-radius: 11px;
+        background: transparent;
+        color: #f4fbf7;
+        font-size: 14px;
+        font-weight: 800;
+        text-align: left;
+        padding: 0 10px;
+        cursor: pointer;
+      }
+
+      .klevby-message-menu button:hover {
+        background: rgba(87,230,178,0.12);
       }
 
       .klevby-reply-preview {
@@ -2303,28 +2570,22 @@
           left: 0 !important;
           right: 0 !important;
           bottom: auto !important;
-
           width: 100vw !important;
           height: var(--klevby-vvh, 100dvh) !important;
           max-width: none !important;
           max-height: none !important;
-
           padding: 0 !important;
           margin: 0 !important;
-
           background:
             radial-gradient(circle at 80% 8%, rgba(87,230,178,0.16), transparent 30%),
             radial-gradient(circle at 20% 0%, rgba(88,183,255,0.08), transparent 34%),
             #020b0c !important;
-
           border: 0 !important;
           border-radius: 0 !important;
           overflow: hidden !important;
           z-index: 999999 !important;
-
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
-
           transform: none !important;
           overscroll-behavior: none !important;
           touch-action: none !important;
@@ -2337,32 +2598,25 @@
           left: 0 !important;
           right: 0 !important;
           bottom: auto !important;
-
           width: 100vw !important;
           height: var(--klevby-vvh, 100dvh) !important;
           min-width: 100vw !important;
           min-height: 0 !important;
           max-width: none !important;
           max-height: none !important;
-
           margin: 0 !important;
           padding: 0 !important;
-
           border-radius: 0 !important;
           border: 0 !important;
           box-shadow: none !important;
-
           display: grid !important;
           grid-template-rows: auto auto auto auto 1fr auto auto !important;
-
           overflow: hidden !important;
           transform: none !important;
-
           background:
             radial-gradient(circle at 75% 18%, rgba(87,230,178,0.14), transparent 32%),
             radial-gradient(circle at 10% 0%, rgba(87,230,178,0.08), transparent 28%),
             linear-gradient(180deg, #061719 0%, #020909 46%, #010505 100%) !important;
-
           overscroll-behavior: none !important;
         }
 
@@ -2370,102 +2624,95 @@
         #chat-header {
           position: relative !important;
           z-index: 40 !important;
-
-          min-height: 92px !important;
+          min-height: 74px !important;
           height: auto !important;
           flex: 0 0 auto !important;
-
-          padding: calc(18px + env(safe-area-inset-top)) 18px 14px !important;
+          padding: calc(10px + env(safe-area-inset-top)) 14px 10px !important;
           margin: 0 !important;
-
           background:
             radial-gradient(circle at 70% 0%, rgba(87,230,178,0.11), transparent 38%),
-            rgba(3, 15, 16, 0.86) !important;
-
+            rgba(3, 15, 16, 0.88) !important;
           border-radius: 0 !important;
-          border-top: 0 !important;
-          border-left: 0 !important;
-          border-right: 0 !important;
+          border: 0 !important;
           border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-
           backdrop-filter: blur(22px) !important;
           -webkit-backdrop-filter: blur(22px) !important;
           box-shadow: 0 8px 22px rgba(0,0,0,0.24) !important;
-
           transform: none !important;
         }
 
         #close-chat,
         .klevby-chat-close {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
+          width: 34px !important;
+          height: 34px !important;
+          flex: 0 0 34px !important;
+          font-size: 20px !important;
+          background: rgba(255,255,255,0.055) !important;
         }
 
         .klevby-chat-title {
-          font-size: 20px !important;
+          font-size: 18px !important;
           line-height: 1.08 !important;
-          letter-spacing: -0.35px !important;
+          letter-spacing: -0.25px !important;
         }
 
         .klevby-chat-subtitle {
-          margin-top: 5px !important;
-          font-size: 13px !important;
+          margin-top: 4px !important;
+          font-size: 12px !important;
         }
 
         .klevby-chat-avatar {
-          width: 48px !important;
-          height: 48px !important;
-          flex: 0 0 48px !important;
-          font-size: 20px !important;
+          width: 40px !important;
+          height: 40px !important;
+          flex: 0 0 40px !important;
+          font-size: 18px !important;
         }
 
         .klevby-chat-pinned {
           position: relative !important;
           z-index: 30 !important;
-          padding: 12px 18px !important;
-          background: rgba(87,230,178,0.075) !important;
+          padding: 9px 14px !important;
+          background: rgba(87,230,178,0.055) !important;
           flex: 0 0 auto !important;
         }
 
         .klevby-chat-tabs {
           position: relative !important;
           z-index: 30 !important;
-          padding: 12px 18px !important;
-          gap: 12px !important;
+          padding: 8px 12px !important;
+          gap: 6px !important;
           flex: 0 0 auto !important;
         }
 
         .klevby-chat-tab {
-          min-height: 54px !important;
-          border-radius: 22px !important;
-          font-size: 16px !important;
+          min-height: 42px !important;
+          border-radius: 16px !important;
+          font-size: 14px !important;
         }
 
         .klevby-private-people {
           position: relative !important;
           z-index: 30 !important;
-          padding: 12px 18px !important;
-          gap: 10px !important;
+          padding: 8px 12px !important;
+          gap: 8px !important;
           flex: 0 0 auto !important;
-          max-height: 76px !important;
+          max-height: 64px !important;
           overflow-x: auto !important;
           overflow-y: hidden !important;
           -webkit-overflow-scrolling: touch !important;
         }
 
         .klevby-private-person {
-          min-height: 50px !important;
-          padding: 7px 14px !important;
+          min-height: 44px !important;
+          padding: 6px 12px !important;
           border-radius: 999px !important;
-          font-size: 15px !important;
+          font-size: 14px !important;
         }
 
         .klevby-private-avatar {
-          width: 34px !important;
-          height: 34px !important;
-          font-size: 15px !important;
+          width: 30px !important;
+          height: 30px !important;
+          font-size: 14px !important;
         }
 
         #callStatusBar,
@@ -2481,20 +2728,15 @@
         .klevby-chat-messages {
           position: relative !important;
           z-index: 1 !important;
-
           flex: 1 1 auto !important;
           min-height: 0 !important;
           height: auto !important;
-
-          padding: 16px 18px 18px !important;
+          padding: 12px 12px 16px !important;
           margin: 0 !important;
-          gap: 12px !important;
-
+          gap: 0 !important;
           overflow-y: auto !important;
           overflow-x: hidden !important;
-
           background: transparent !important;
-
           -webkit-overflow-scrolling: touch !important;
           overscroll-behavior: contain !important;
           touch-action: pan-y !important;
@@ -2512,67 +2754,58 @@
         .klevby-chat-inputbar {
           position: relative !important;
           z-index: 50 !important;
-
           flex: 0 0 auto !important;
-
-          min-height: calc(88px + env(safe-area-inset-bottom)) !important;
-          padding: 12px 14px calc(12px + env(safe-area-inset-bottom)) !important;
+          min-height: calc(74px + env(safe-area-inset-bottom)) !important;
+          padding: 9px 10px calc(9px + env(safe-area-inset-bottom)) !important;
           margin: 0 !important;
-
           display: flex !important;
           align-items: center !important;
-          gap: 12px !important;
-
+          gap: 8px !important;
           border-radius: 0 !important;
-          border-left: 0 !important;
-          border-right: 0 !important;
-          border-bottom: 0 !important;
+          border: 0 !important;
           border-top: 1px solid rgba(255,255,255,0.08) !important;
-
           background:
             linear-gradient(180deg, rgba(3,15,16,0.72), rgba(3,15,16,0.94)) !important;
-
           backdrop-filter: blur(22px) !important;
           -webkit-backdrop-filter: blur(22px) !important;
           box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.32) !important;
-
           transform: none !important;
+        }
+
+        .klevby-chat-attach {
+          width: 42px !important;
+          height: 42px !important;
+          flex: 0 0 42px !important;
         }
 
         #message-input,
         .klevby-chat-input {
-          height: 58px !important;
-          min-height: 58px !important;
-          max-height: 58px !important;
-          line-height: 58px !important;
-          padding: 0 20px !important;
-          border-radius: 26px !important;
-          font-size: 17px !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
+          line-height: 48px !important;
+          padding: 0 16px !important;
+          border-radius: 20px !important;
+          font-size: 16px !important;
           background: rgba(255,255,255,0.075) !important;
           border: 1px solid rgba(255,255,255,0.10) !important;
           color: #ffffff !important;
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,0.05),
-            0 10px 28px rgba(0,0,0,0.18) !important;
           transform: none !important;
         }
 
         #send-btn,
         .klevby-chat-send {
-          width: 58px !important;
-          height: 58px !important;
-          min-width: 58px !important;
-          min-height: 58px !important;
-          max-width: 58px !important;
-          max-height: 58px !important;
-          flex: 0 0 58px !important;
+          width: 48px !important;
+          height: 48px !important;
+          min-width: 48px !important;
+          min-height: 48px !important;
+          max-width: 48px !important;
+          max-height: 48px !important;
+          flex: 0 0 48px !important;
           border-radius: 50% !important;
-          font-size: 23px !important;
+          font-size: 21px !important;
           background: linear-gradient(135deg, #57e6b2, #28c990) !important;
           color: #03150c !important;
-          box-shadow:
-            0 14px 34px rgba(87,230,178,0.24),
-            inset 0 1px 0 rgba(255,255,255,0.20) !important;
           transform: none !important;
         }
 
@@ -2580,10 +2813,18 @@
           max-width: 82% !important;
         }
 
+        .chat-message-author {
+          font-size: 12px !important;
+          margin-bottom: 3px !important;
+        }
+
+        .chat-message-text {
+          font-size: 15px !important;
+          line-height: 1.35 !important;
+        }
+
         .klevby-message-actions {
-          opacity: 1;
-          pointer-events: auto;
-          top: -10px;
+          display: none !important;
         }
 
         .klevby-message-avatar {
@@ -2595,115 +2836,23 @@
 
         .klevby-chat-call,
         .klevby-chat-back {
-          width: 40px;
-          height: 40px;
-          flex-basis: 40px;
-        }
-
-        .klevby-dialog-screen::before {
-          content: "";
-          position: absolute;
-          inset: 118px 0 88px;
-          pointer-events: none;
-          opacity: 0.11;
-          background-image:
-            radial-gradient(circle at 20% 20%, rgba(87,230,178,0.18) 0 1px, transparent 2px),
-            radial-gradient(circle at 70% 30%, rgba(255,255,255,0.10) 0 1px, transparent 2px);
-          background-size: 58px 58px, 82px 82px;
-        }
-
-        .klevby-dialog-screen #chat-header,
-        .klevby-dialog-screen .klevby-chat-header {
-          min-height: 118px !important;
-          padding: calc(30px + env(safe-area-inset-top)) 24px 18px !important;
-          background:
-            radial-gradient(circle at 70% 0%, rgba(87,230,178,0.14), transparent 38%),
-            rgba(3, 15, 16, 0.82) !important;
-          border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-          backdrop-filter: blur(22px) !important;
-          -webkit-backdrop-filter: blur(22px) !important;
+          width: 36px;
+          height: 36px;
+          flex-basis: 36px;
         }
 
         .klevby-dialog-screen .klevby-chat-pinned,
         .klevby-dialog-screen .klevby-chat-tabs,
-        .klevby-dialog-screen .klevby-private-people,
-        .klevby-dialog-screen #close-chat {
+        .klevby-dialog-screen .klevby-private-people {
           display: none !important;
         }
 
         .klevby-dialog-screen #back-chat {
           display: flex !important;
-          width: 52px !important;
-          height: 52px !important;
-          flex: 0 0 52px !important;
-          font-size: 42px !important;
-          color: #57e6b2 !important;
-          background: rgba(255,255,255,0.055) !important;
-          border-color: rgba(255,255,255,0.08) !important;
         }
 
         .klevby-dialog-screen #call-chat {
           display: flex !important;
-          width: 52px !important;
-          height: 52px !important;
-          flex: 0 0 52px !important;
-          font-size: 22px !important;
-          color: #57e6b2 !important;
-          background: rgba(87,230,178,0.10) !important;
-          border-color: rgba(87,230,178,0.20) !important;
-          box-shadow: 0 0 22px rgba(87,230,178,0.12) !important;
-        }
-
-        .klevby-dialog-screen .klevby-chat-head-main {
-          gap: 14px !important;
-        }
-
-        .klevby-dialog-screen .klevby-chat-avatar {
-          width: 58px !important;
-          height: 58px !important;
-          flex: 0 0 58px !important;
-          font-size: 24px !important;
-          background: linear-gradient(135deg, #57e6b2, #28c990) !important;
-          color: #03150c !important;
-          border-color: rgba(87,230,178,0.28) !important;
-          box-shadow: 0 14px 32px rgba(87,230,178,0.18) !important;
-        }
-
-        .klevby-dialog-screen .klevby-chat-title {
-          font-size: 24px !important;
-          line-height: 1.05 !important;
-          letter-spacing: -0.4px !important;
-        }
-
-        .klevby-dialog-screen .klevby-chat-subtitle {
-          margin-top: 6px !important;
-          font-size: 16px !important;
-          color: #57e6b2 !important;
-        }
-
-        .klevby-dialog-screen #chat-messages,
-        .klevby-dialog-screen .klevby-chat-messages {
-          position: relative;
-          flex: 1 1 auto !important;
-          min-height: 0 !important;
-          padding: 22px 18px 22px !important;
-          gap: 14px !important;
-          background: transparent !important;
-        }
-
-        .klevby-dialog-screen .chat-empty-state {
-          background: rgba(255,255,255,0.055) !important;
-          border: 1px solid rgba(255,255,255,0.08) !important;
-          border-radius: 22px !important;
-          max-width: 310px !important;
-          padding: 18px 20px !important;
-          font-size: 15px !important;
-          color: rgba(244,251,247,0.72) !important;
-        }
-
-        .klevby-dialog-screen .chat-message-row {
-          gap: 8px !important;
-          align-items: flex-end !important;
         }
 
         .klevby-dialog-screen .klevby-message-avatar {
@@ -2711,119 +2860,7 @@
         }
 
         .klevby-dialog-screen .chat-message-bubble {
-          max-width: 76% !important;
-          padding: 13px 15px 10px !important;
-          border-radius: 24px !important;
-          box-shadow: 0 14px 34px rgba(0,0,0,0.24) !important;
-        }
-
-        .klevby-dialog-screen .other-message {
-          background:
-            linear-gradient(135deg, rgba(255,255,255,0.105), rgba(255,255,255,0.055)) !important;
-          border: 1px solid rgba(255,255,255,0.09) !important;
-          color: #f4fbf7 !important;
-          border-radius: 24px 24px 24px 5px !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-        }
-
-        .klevby-dialog-screen .my-message {
-          background:
-            linear-gradient(135deg, rgba(87,230,178,0.62), rgba(40,201,144,0.48)) !important;
-          color: #eafff5 !important;
-          border: 1px solid rgba(87,230,178,0.28) !important;
-          border-radius: 24px 24px 5px 24px !important;
-          box-shadow:
-            0 14px 36px rgba(40,201,144,0.18),
-            inset 0 1px 0 rgba(255,255,255,0.12) !important;
-        }
-
-        .klevby-dialog-screen .my-message .chat-message-author,
-        .klevby-dialog-screen .my-message .chat-message-text,
-        .klevby-dialog-screen .my-message .chat-message-time,
-        .klevby-dialog-screen .my-message .klevby-checks {
-          color: #eafff5 !important;
-        }
-
-        .klevby-dialog-screen .chat-message-author {
-          margin-bottom: 4px !important;
-          font-size: 12px !important;
-          opacity: 0.66 !important;
-        }
-
-        .klevby-dialog-screen .chat-message-text {
-          font-size: 18px !important;
-          line-height: 1.35 !important;
-          font-weight: 600 !important;
-        }
-
-        .klevby-dialog-screen .chat-message-time,
-        .klevby-dialog-screen .klevby-checks {
-          font-size: 13px !important;
-          opacity: 0.62 !important;
-        }
-
-        .klevby-dialog-screen .klevby-date-divider {
-          margin: 16px 0 !important;
-          padding: 7px 14px !important;
-          font-size: 14px !important;
-          background: rgba(255,255,255,0.075) !important;
-          color: rgba(244,251,247,0.84) !important;
-        }
-
-        .klevby-dialog-screen .klevby-message-actions {
-          top: -13px !important;
-          right: 10px !important;
-          opacity: 0.78 !important;
-          pointer-events: auto !important;
-        }
-
-        .klevby-dialog-screen .klevby-message-action {
-          width: 27px !important;
-          height: 27px !important;
-          font-size: 13px !important;
-          background: rgba(4,14,15,0.86) !important;
-        }
-
-        .klevby-dialog-screen #chat-input-area,
-        .klevby-dialog-screen .klevby-chat-inputbar {
-          min-height: calc(96px + env(safe-area-inset-bottom)) !important;
-          padding: 14px 14px calc(14px + env(safe-area-inset-bottom)) !important;
-          gap: 12px !important;
-        }
-
-        .klevby-dialog-screen #message-input,
-        .klevby-dialog-screen .klevby-chat-input {
-          height: 60px !important;
-          min-height: 60px !important;
-          max-height: 60px !important;
-          line-height: 60px !important;
-          padding: 0 20px !important;
-          border-radius: 28px !important;
-          font-size: 18px !important;
-        }
-
-        .klevby-dialog-screen #message-input::placeholder,
-        .klevby-dialog-screen .klevby-chat-input::placeholder {
-          color: rgba(255,255,255,0.34) !important;
-        }
-
-        .klevby-dialog-screen #send-btn,
-        .klevby-dialog-screen .klevby-chat-send {
-          width: 60px !important;
-          height: 60px !important;
-          min-width: 60px !important;
-          min-height: 60px !important;
-          max-width: 60px !important;
-          max-height: 60px !important;
-          flex: 0 0 60px !important;
-          border-radius: 50% !important;
-          font-size: 24px !important;
-        }
-
-        .klevby-dialog-screen .klevby-reply-preview {
-          background: rgba(87,230,178,0.10) !important;
-          border-top: 1px solid rgba(255,255,255,0.08) !important;
+          max-width: 78% !important;
         }
       }
     `;
