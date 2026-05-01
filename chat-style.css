@@ -1,17 +1,22 @@
 /* =====================================================
-   Klevby Chat — mobile fullscreen final clean fix
+   Klevby Chat — iOS fullscreen final fix
    Полная версия chat-style.css
    ===================================================== */
 
 @media (max-width: 768px) {
   html,
   body {
+    width: 100% !important;
+    min-width: 100% !important;
     overflow-x: hidden !important;
+    overscroll-behavior: none !important;
+    -webkit-text-size-adjust: 100% !important;
   }
 
   body:has(#klevby-chat-modal.open) {
     overflow: hidden !important;
     position: fixed !important;
+    inset: 0 !important;
     width: 100% !important;
     height: 100dvh !important;
   }
@@ -32,6 +37,9 @@
     height: 100vh !important;
     height: 100dvh !important;
 
+    max-width: none !important;
+    max-height: none !important;
+
     padding: 0 !important;
     margin: 0 !important;
 
@@ -39,6 +47,7 @@
     justify-content: stretch !important;
 
     background: #03090a !important;
+
     border: 0 !important;
     border-radius: 0 !important;
 
@@ -47,6 +56,9 @@
 
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+
+    overscroll-behavior: none !important;
+    touch-action: pan-y !important;
   }
 
   #chat-window,
@@ -60,6 +72,7 @@
 
     max-width: none !important;
     max-height: none !important;
+
     min-width: 100vw !important;
     min-height: 100vh !important;
     min-height: 100dvh !important;
@@ -71,8 +84,8 @@
     border-radius: 0 !important;
     box-shadow: none !important;
 
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-rows: auto auto auto auto 1fr auto auto !important;
 
     overflow: hidden !important;
 
@@ -80,11 +93,14 @@
       radial-gradient(circle at 15% 0%, rgba(87, 230, 178, 0.11), transparent 34%),
       radial-gradient(circle at 90% 5%, rgba(88, 183, 255, 0.08), transparent 36%),
       linear-gradient(180deg, #061315 0%, #03090a 100%) !important;
+
+    overscroll-behavior: none !important;
   }
 
   #chat-header,
   .klevby-chat-header {
     position: relative !important;
+    z-index: 40 !important;
 
     min-height: auto !important;
     height: auto !important;
@@ -95,8 +111,9 @@
       12px
       14px !important;
 
+    margin: 0 !important;
+
     flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
 
     border-radius: 0 !important;
     border-top: 0 !important;
@@ -108,7 +125,6 @@
       rgba(13, 28, 31, 0.96) !important;
 
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24) !important;
-    z-index: 40 !important;
   }
 
   .klevby-chat-head-main {
@@ -133,14 +149,17 @@
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+
     width: 0 !important;
     height: 0 !important;
     min-width: 0 !important;
     min-height: 0 !important;
     max-width: 0 !important;
     max-height: 0 !important;
-    margin: 0 !important;
+
     padding: 0 !important;
+    margin: 0 !important;
+
     border: 0 !important;
     overflow: hidden !important;
   }
@@ -149,17 +168,24 @@
   .klevby-chat-pinned,
   .chat-pinned,
   .pinned-chat {
+    position: relative !important;
+    z-index: 30 !important;
+
     flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
     padding: 10px 14px !important;
+    margin: 0 !important;
+
     border-radius: 0 !important;
   }
 
   .klevby-chat-tabs {
+    position: relative !important;
+    z-index: 30 !important;
+
     flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
     padding: 9px 10px !important;
     gap: 8px !important;
+    margin: 0 !important;
   }
 
   .klevby-chat-tab {
@@ -169,26 +195,40 @@
   }
 
   .klevby-private-people {
+    position: relative !important;
+    z-index: 30 !important;
+
     flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
     padding: 9px 10px !important;
+    margin: 0 !important;
+
     max-height: 66px !important;
+
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+
+    -webkit-overflow-scrolling: touch !important;
   }
 
   #callStatusBar,
-  #incomingCallPanel,
   .klevby-call-status-bar,
+  #incomingCallPanel,
   .klevby-incoming-call {
+    position: relative !important;
+    z-index: 35 !important;
     flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
   }
 
   #chat-messages,
   .klevby-chat-messages {
+    position: relative !important;
+
     flex: 1 1 auto !important;
     min-height: 0 !important;
+    height: auto !important;
 
-    padding: 12px 12px 96px !important;
+    padding: 12px 12px 18px !important;
+    margin: 0 !important;
 
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -198,13 +238,16 @@
       rgba(2, 9, 10, 0.88) !important;
 
     -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
   }
 
   #replyPreview,
   .klevby-reply-preview {
-    flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
+    position: relative !important;
     z-index: 45 !important;
+
+    flex: 0 0 auto !important;
+    margin: 0 !important;
   }
 
   #chat-input-area,
@@ -213,14 +256,13 @@
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-
     z-index: 50 !important;
 
     flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
 
     min-height: calc(76px + env(safe-area-inset-bottom)) !important;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
 
     display: flex !important;
     align-items: center !important;
@@ -248,16 +290,21 @@
     padding: 0 16px !important;
 
     border-radius: 20px !important;
+
     line-height: 54px !important;
     font-size: 16px !important;
+
+    transform: none !important;
   }
 
   #send-btn,
   .klevby-chat-send {
     width: 54px !important;
     height: 54px !important;
+
     min-width: 54px !important;
     min-height: 54px !important;
+
     max-width: 54px !important;
     max-height: 54px !important;
 
@@ -271,9 +318,15 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+
+    transform: none !important;
   }
 
   .chat-message-bubble {
     max-width: 82% !important;
+  }
+
+  .chat-message-row {
+    max-width: 100% !important;
   }
 }
