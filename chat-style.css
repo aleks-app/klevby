@@ -1,12 +1,12 @@
 /* =====================================================
-   Klevby Chat — MOBILE REAL FULLSCREEN FIX
-   Вставить в самый конец chat-style.css
+   Klevby Chat — mobile fullscreen final fix
+   Полная чистая версия chat-style.css
    ===================================================== */
 
 @media (max-width: 768px) {
   html,
   body {
-    overflow-x: hidden;
+    overflow-x: hidden !important;
   }
 
   #klevby-chat-modal.open {
@@ -31,7 +31,7 @@
     align-items: stretch !important;
     justify-content: stretch !important;
 
-    background: rgba(0, 0, 0, 0.98) !important;
+    background: #03090a !important;
     border: 0 !important;
     border-radius: 0 !important;
 
@@ -40,6 +40,10 @@
 
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  #klevby-chat-modal.hidden {
+    display: none !important;
   }
 
   #chat-window,
@@ -92,12 +96,38 @@
 
     border-radius: 0 !important;
     border-top: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
 
     background:
       radial-gradient(circle at 0% 0%, rgba(87, 230, 178, 0.13), transparent 40%),
       rgba(13, 28, 31, 0.96) !important;
 
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24) !important;
+  }
+
+  #close-chat,
+  .klevby-chat-close {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 0 !important;
+    max-height: 0 !important;
+    flex: 0 0 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .klevby-chat-head-main {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
   }
 
   .klevby-chat-title {
@@ -111,21 +141,13 @@
     line-height: 1.2 !important;
   }
 
-  #close-chat,
-  .klevby-chat-close {
-    width: 42px !important;
-    height: 42px !important;
-    min-width: 42px !important;
-    min-height: 42px !important;
-    flex: 0 0 42px !important;
-  }
-
   .klevby-pinned-chat,
   .klevby-chat-pinned,
   .chat-pinned,
   .pinned-chat {
     flex: 0 0 auto !important;
     padding: 10px 14px !important;
+    border-radius: 0 !important;
   }
 
   .klevby-chat-tabs {
@@ -176,6 +198,8 @@
 
     border-radius: 0 !important;
     border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
 
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.055)),
