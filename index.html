@@ -301,7 +301,7 @@
 
     nav { display: none; }
 
-    .nav-btn, .main-btn, .small-btn, .filter-reset, .install-btn, .install-close, .mobile-tab-btn, .burger-btn, .mobile-menu-item, .post-modal-close, .post-modal-write { appearance: none; }
+    .nav-btn, .main-btn, .small-btn, .filter-reset, .install-btn, .install-close, .mobile-tab-btn, .burger-btn, .mobile-menu-item, .post-modal-close, .post-modal-write, .home-float-btn { appearance: none; }
 
     .nav-btn {
       box-sizing: border-box;
@@ -439,6 +439,64 @@
     .mobile-menu-item:active { transform: scale(0.98); }
 
     .mobile-tabbar, .mobile-weather-title { display: none; }
+
+    .home-float-btn {
+      position: fixed;
+      top: 84px;
+      right: 18px;
+      z-index: 1250;
+      min-height: 42px;
+      padding: 0 15px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-top-color: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(87,230,178,0.18), transparent 42%),
+        rgba(13, 28, 31, 0.82);
+      color: #f4fbf7;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.1px;
+      cursor: pointer;
+      box-shadow:
+        0 14px 34px rgba(0,0,0,0.34),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-10px) scale(0.96);
+      transition:
+        opacity 0.24s ease,
+        visibility 0.24s ease,
+        transform 0.24s ease,
+        background 0.24s ease,
+        border-color 0.24s ease;
+    }
+
+    .home-float-btn.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .home-float-btn:hover {
+      background:
+        radial-gradient(circle at 20% 0%, rgba(87,230,178,0.24), transparent 42%),
+        rgba(18, 38, 42, 0.90);
+      border-color: rgba(87,230,178,0.24);
+      transform: translateY(-1px) scale(1.01);
+      box-shadow:
+        0 18px 40px rgba(0,0,0,0.40),
+        0 0 22px rgba(87,230,178,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.10);
+    }
+
+    .home-float-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
 
     html.pwa-standalone .pwa-install-trigger,
     html.pwa-standalone .install-nav-btn,
@@ -841,6 +899,41 @@
       header { position: relative; top: auto; padding: 12px 0 4px; background: transparent; }
       .logo { font-size: 23px; line-height: 1; padding-top: 0; font-weight: 800 !important; }
 
+      .home-float-btn {
+        top: auto;
+        right: 18px;
+        bottom: calc(96px + env(safe-area-inset-bottom));
+        width: 50px;
+        height: 50px;
+        min-height: 50px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at 30% 10%, rgba(87,230,178,0.22), transparent 44%),
+          rgba(13, 28, 31, 0.84);
+      }
+
+      .home-float-btn::before {
+        content: "⌂";
+        font-size: 27px;
+        line-height: 1;
+        font-weight: 900;
+        color: #f4fbf7;
+        transform: translateY(-1px);
+      }
+
+      .home-float-btn:hover {
+        transform: translateY(0) scale(1);
+      }
+
+      .home-float-btn.show {
+        transform: translateY(0) scale(1);
+      }
+
       .mobile-tabbar {
         position: fixed;
         left: 10px;
@@ -997,6 +1090,13 @@
       #postsSection .card-body { padding: 0; }
       #postsSection .tag:nth-child(n+4) { display: none; }
       .post-modal-image { height: 245px; }
+      .home-float-btn {
+        right: 14px;
+        bottom: calc(94px + env(safe-area-inset-bottom));
+        width: 48px;
+        height: 48px;
+        min-height: 48px;
+      }
     }
   </style>
 </head>
@@ -1241,6 +1341,8 @@
     <div class="footer">Klevby.com — рыбалка в Беларуси 🎣</div>
   </main>
 
+  <button id="homeFloatBtn" class="home-float-btn" onclick="goHomeTop()" aria-label="Вернуться на главную">⌂ Главная</button>
+
   <div id="resetModal" class="modal-bg hidden">
     <div class="modal">
       <h2>Новый пароль</h2>
@@ -1400,6 +1502,31 @@
       window.open(TELEGRAM_GROUP, "_blank");
     }
 
+    function updateHomeFloatButton() {
+      const btn = document.getElementById("homeFloatBtn");
+      const homeSection = document.getElementById("homeSection");
+
+      if (!btn || !homeSection) return;
+
+      const isNotHome = homeSection.classList.contains("hidden");
+      const isScrolledDown = window.scrollY > 300;
+
+      btn.classList.toggle("show", isNotHome || isScrolledDown);
+    }
+
+    function goHomeTop() {
+      setMobileTabActive(0);
+      showSection("home");
+
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        updateHomeFloatButton();
+      }, 80);
+    }
+
+    window.addEventListener("scroll", updateHomeFloatButton, { passive: true });
+    window.addEventListener("resize", updateHomeFloatButton);
+
     function showSection(section) {
       document.getElementById("homeSection").classList.toggle("hidden", section !== "home");
       document.getElementById("marketSection").classList.toggle("hidden", section !== "market");
@@ -1415,6 +1542,8 @@
         setTimeout(() => window.klevbyReloadMap(), 300);
       }
 
+      setTimeout(updateHomeFloatButton, 80);
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -1428,6 +1557,8 @@
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "start" });
         }
+
+        setTimeout(updateHomeFloatButton, 120);
       }, 80);
     }
 
@@ -1870,6 +2001,7 @@
       }
 
       list.innerHTML = filtered.map(cardHtml).join("");
+      setTimeout(updateHomeFloatButton, 80);
     }
 
     function cardHtml(post) {
@@ -2099,6 +2231,7 @@
       document.getElementById("formTitle").innerText = "Редактировать объявление";
       document.getElementById("cancelEditBtn").classList.remove("hidden");
       document.getElementById("createPanel").scrollIntoView({ behavior: "smooth" });
+      setTimeout(updateHomeFloatButton, 120);
     }
 
     function cancelEdit() {
@@ -2310,6 +2443,7 @@
       initInstallPrompt();
       registerPwaServiceWorker();
       await initAuth();
+      updateHomeFloatButton();
     });
   </script>
 
