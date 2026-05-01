@@ -1195,6 +1195,40 @@
         display: none;
       }
     }
+
+    .app-splash {
+      min-height: 100vh;
+      min-height: 100svh;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+    }
+
+    @media (max-width: 900px) {
+      .app-splash {
+        align-items: center;
+        justify-content: center;
+      }
+
+      .splash-logo {
+        height: auto;
+        min-width: 0;
+        width: 100%;
+        transform: translateY(-7vh);
+        font-size: clamp(52px, 15vw, 72px);
+        text-align: center;
+      }
+
+      .splash-logo::after {
+        bottom: -14px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .splash-logo {
+        transform: translateY(-6vh);
+        font-size: clamp(48px, 15vw, 64px);
+      }
+    }
   </style>
 </head>
 
