@@ -58,13 +58,7 @@
             <button id="close-chat" class="klevby-chat-close" type="button" aria-label="Закрыть">×</button>
           </div>
 
-          <button class="klevby-chat-pinned" id="pinnedPublicChat" type="button">
-            <span class="klevby-pinned-icon">📌</span>
-            <span class="klevby-pinned-copy">
-              <span class="klevby-pinned-title">Общий чат закреплён</span>
-              <span class="klevby-pinned-text">Быстрый доступ к разговору всех рыбаков</span>
-            </span>
-          </button>
+          
 
           <div class="klevby-chat-tabs" role="tablist">
             <button id="publicChatTab" class="klevby-chat-tab active" type="button">Общий чат</button>
@@ -92,8 +86,7 @@
           </div>
 
           <div id="chat-input-area" class="klevby-chat-inputbar">
-            <button id="attach-btn" class="klevby-chat-attach" type="button" title="Вложение">＋</button>
-            <input
+                        <input
               type="text"
               id="message-input"
               class="klevby-chat-input"
@@ -651,7 +644,7 @@
       privateTab.classList.remove("active");
       privatePeople.classList.add("hidden");
       backBtn.classList.add("hidden");
-      pinnedPublicChat.classList.remove("hidden");
+      if (pinnedPublicChat) pinnedPublicChat.classList.remove("hidden");
 
       chatAvatar.textContent = "🎣";
       chatTitle.textContent = "Чат рыбаков";
@@ -692,7 +685,7 @@
       privateTab.classList.add("active");
       privatePeople.classList.remove("hidden");
       backBtn.classList.add("hidden");
-      pinnedPublicChat.classList.add("hidden");
+      if (pinnedPublicChat) pinnedPublicChat.classList.add("hidden");
 
       chatAvatar.textContent = "✉";
       chatTitle.textContent = "Личные сообщения";
@@ -793,7 +786,7 @@
       input.placeholder = "Напиши личное сообщение...";
 
       backBtn.classList.remove("hidden");
-      pinnedPublicChat.classList.add("hidden");
+      if (pinnedPublicChat) pinnedPublicChat.classList.add("hidden");
 
       document.querySelectorAll(".klevby-private-person").forEach((button) => {
         button.classList.toggle("active", String(button.dataset.peerId) === String(peerId));
@@ -1414,6 +1407,7 @@
       }
 
       .klevby-chat-pinned {
+        display: none !important;
         height: 30px !important;
         min-height: 30px !important;
         padding: 0 12px !important;
@@ -1847,6 +1841,7 @@
 
       #attach-btn,
       .klevby-chat-attach {
+        display: none !important;
         width: 34px !important;
         height: 34px !important;
         flex: 0 0 34px !important;
@@ -1986,6 +1981,7 @@
         }
 
         .klevby-chat-pinned {
+        display: none !important;
           height: 28px !important;
           min-height: 28px !important;
           padding: 0 10px !important;
