@@ -22,6 +22,8 @@
     });
 
     const chatHTML = `
+      <div id="chat-desktop-btn" title="Открыть чат">💬</div>
+
       <div id="klevby-chat-modal" class="hidden">
         <div id="chat-window" class="klevby-chat-window">
           <div id="chat-header" class="klevby-chat-header">
@@ -68,6 +70,7 @@
 
     function getMessageTime(createdAt) {
       if (!createdAt) return "";
+
       try {
         return new Date(createdAt).toLocaleTimeString("ru-RU", {
           hour: "2-digit",
@@ -89,22 +92,22 @@
         const gain = audioCtx.createGain();
 
         oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(520, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.08);
+        oscillator.frequency.setValueAtTime(420, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.09);
 
         gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.13);
+        gain.gain.exponentialRampToValueAtTime(0.22, audioCtx.currentTime + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
 
         oscillator.connect(gain);
         gain.connect(audioCtx.destination);
 
         oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + 0.14);
+        oscillator.stop(audioCtx.currentTime + 0.16);
 
         setTimeout(() => {
           audioCtx.close();
-        }, 250);
+        }, 260);
       } catch (error) {
         console.warn("Звук чата не сработал:", error);
       }
@@ -208,17 +211,28 @@
       playBubbleSound();
     }
 
+    function openChat() {
+      modal.classList.remove("hidden");
+      modal.classList.add("open");
+      loadMessages();
+
+      setTimeout(() => {
+        input.focus();
+      }, 150);
+    }
+
+    function closeChat() {
+      modal.classList.remove("open");
+      modal.classList.add("hidden");
+    }
+
     document.addEventListener("click", (e) => {
-      if (e.target.closest("#nav-chat")) {
-        modal.classList.remove("hidden");
-        modal.classList.add("open");
-        loadMessages();
-        setTimeout(() => input.focus(), 150);
+      if (e.target.closest("#nav-chat") || e.target.closest("#chat-desktop-btn")) {
+        openChat();
       }
 
       if (e.target.id === "close-chat" || e.target.id === "klevby-chat-modal") {
-        modal.classList.remove("open");
-        modal.classList.add("hidden");
+        closeChat();
       }
     });
 
@@ -238,7 +252,10 @@
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const emptyState = messagesContainer.querySelector(".chat-empty-state");
-          if (emptyState) clearMessages();
+
+          if (emptyState) {
+            clearMessages();
+          }
 
           renderMessage(payload.new);
         }
