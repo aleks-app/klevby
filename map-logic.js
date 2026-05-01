@@ -331,10 +331,23 @@
         cursor: pointer;
       }
 
+      .klevby-balloon-btn.route {
+        background: linear-gradient(135deg, #58b7ff, #42d986);
+        color: #03150c !important;
+        margin-right: 6px;
+      }
+
       .klevby-balloon-btn.delete {
         background: #e45858;
         color: #ffffff !important;
-        margin-left: 6px;
+        margin-left: 0;
+      }
+
+      .klevby-balloon-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
       }
 
       @media (max-width: 520px) {
@@ -788,12 +801,41 @@
     return "islands#darkGreenDotIcon";
   }
 
+  function getRouteUrl(lat, lng) {
+    const safeLat = encodeURIComponent(String(lat));
+    const safeLng = encodeURIComponent(String(lng));
+
+    const isMobile = /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+    if (isMobile) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${safeLat},${safeLng}&travelmode=driving`;
+    }
+
+    return `https://yandex.by/maps/?rtext=~${safeLat},${safeLng}&rtt=auto`;
+  }
+
   function getFishingSpotBalloonHtml(spot) {
     const name = escapeHtml(spot.name || "Точка ловли");
     const fish = escapeHtml(spot.fish || "Не указано");
     const description = escapeHtml(spot.description || "Описание не указано");
     const spotType = escapeHtml(spot.spot_type || "Место ловли");
     const safeId = escapeHtml(JSON.stringify(String(spot.id || "")));
+
+    const lat = Number(spot.lat);
+    const lng = Number(spot.lng);
+
+    const routeButton = Number.isFinite(lat) && Number.isFinite(lng)
+      ? `
+        <a
+          class="klevby-balloon-btn route"
+          href="${escapeHtml(getRouteUrl(lat, lng))}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🧭 Маршрут
+        </a>
+      `
+      : "";
 
     const deleteButton = `
       <button
@@ -822,7 +864,10 @@
           ${description}
         </div>
 
-        ${deleteButton}
+        <div class="klevby-balloon-actions">
+          ${routeButton}
+          ${deleteButton}
+        </div>
       </div>
     `;
   }
@@ -854,7 +899,7 @@
         const placemark = new ymaps.Placemark(
           coords,
           {
-            balloonContent: getPostBalloonHtml(post),
+            balloonContent: getPostBalloonHtml(post, coords),
             hintContent: escapeHtml((post.name || "Рыбак") + " — " + post.city)
           },
           {
@@ -893,7 +938,7 @@
     return coords;
   }
 
-  function getPostBalloonHtml(post) {
+  function getPostBalloonHtml(post, coords) {
     const name = escapeHtml(post.name || "Без имени");
     const city = escapeHtml(post.city || "Город не указан");
     const fishingType = escapeHtml(post.fishing_type || "Тип ловли не указан");
@@ -904,6 +949,19 @@
       ? `
         <a href="https://t.me/${escapeHtml(tg)}" target="_blank" class="klevby-balloon-btn">
           Написать в Telegram
+        </a>
+      `
+      : "";
+
+    const routeButton = coords && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1]))
+      ? `
+        <a
+          href="${escapeHtml(getRouteUrl(coords[0], coords[1]))}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="klevby-balloon-btn route"
+        >
+          🧭 Маршрут
         </a>
       `
       : "";
@@ -926,7 +984,10 @@
           ${text}
         </div>
 
-        ${telegramButton}
+        <div class="klevby-balloon-actions">
+          ${routeButton}
+          ${telegramButton}
+        </div>
       </div>
     `;
   }
