@@ -1,16 +1,5 @@
-Внеси изменения в предоставленный ниже код регистрации. Мне нужно добавить новое поле для ввода — «Отображаемое имя пользователя на сайте» (Username/Nickname).
-
-Требования:
-
-Добавь поле в HTML-форму (с соответствующим label и input).
-
-Обнови логику обработки данных (PHP/Node.js/Python — в зависимости от кода), чтобы это имя сохранялось в базу данных или отправлялось по назначению.
-
-Если это требуется, укажи, какие изменения нужно внести в структуру таблицы базы данных (SQL-запрос).
-
-Важно: Не давай пояснений и кусков кода. Выведи полный, готовый к копированию код всего файла, чтобы я мог просто заменить старый код на новый.
-
-Код для редактирования:<!DOCTYPE html>
+```html
+<!DOCTYPE html>
 <html lang="ru" class="">
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -762,6 +751,7 @@
     .panel h2 { margin: 0 0 18px; font-size: 25px; letter-spacing: -0.5px; font-weight: 800 !important; color: var(--text); }
 
     input, textarea, select { width: 100%; border: 1px solid rgba(255,255,255,0.08); outline: none; border-radius: var(--radius-ui); padding: 14px 15px; font-size: 16px; margin: 6px 0; background: rgba(255,255,255,0.07); color: var(--text); transition: 0.22s ease; font-weight: 500; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+    label.auth-label { display: block; margin: 10px 0 2px; color: rgba(244,251,247,0.76); font-size: 13px; font-weight: 800; }
     select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, rgba(244,251,247,0.65) 50%), linear-gradient(135deg, rgba(244,251,247,0.65) 50%, transparent 50%); background-position: calc(100% - 20px) calc(50% - 3px), calc(100% - 14px) calc(50% - 3px); background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding-right: 42px; }
     select option { background: #101a20; color: var(--text); }
     input::placeholder, textarea::placeholder { color: rgba(245,245,245,0.38); }
@@ -1452,8 +1442,16 @@
     <section id="authSection" class="hidden">
       <div class="panel">
         <h2>Вход на сайт</h2>
-        <input id="emailInput" type="email" placeholder="Email" />
-        <input id="passwordInput" type="password" placeholder="Пароль" />
+
+        <label class="auth-label" for="usernameInput">Отображаемое имя пользователя на сайте</label>
+        <input id="usernameInput" type="text" placeholder="Например: Рыбак_Минск" autocomplete="nickname" maxlength="32" />
+
+        <label class="auth-label" for="emailInput">Email</label>
+        <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
+
+        <label class="auth-label" for="passwordInput">Пароль</label>
+        <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="current-password" />
+
         <div class="actions">
           <button class="small-btn blue" onclick="login()">Войти</button>
           <button class="small-btn gray" onclick="register()">Регистрация</button>
@@ -1608,6 +1606,28 @@
 
     function getOwnerId() {
       return currentUser ? currentUser.id : null;
+    }
+
+    function cleanDisplayName(value) {
+      return String(value || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 32);
+    }
+
+    function getUserDisplayName() {
+      if (!currentUser) return "";
+
+      const meta = currentUser.user_metadata || {};
+
+      return cleanDisplayName(
+        meta.username ||
+        meta.nickname ||
+        meta.display_name ||
+        meta.name ||
+        meta.full_name ||
+        ""
+      );
     }
 
     function showStatus(message, isError = false) {
@@ -1834,13 +1854,19 @@
     function fillAuthorLocal() {
       const savedName = localStorage.getItem("klevby_author_name") || "";
       const savedTelegram = localStorage.getItem("klevby_author_telegram") || "";
+      const profileName = getUserDisplayName();
 
-      if (savedName && !document.getElementById("nameInput").value) {
-        document.getElementById("nameInput").value = savedName;
+      if ((savedName || profileName) && !document.getElementById("nameInput").value) {
+        document.getElementById("nameInput").value = savedName || profileName;
       }
 
       if (savedTelegram && !document.getElementById("telegramInput").value) {
         document.getElementById("telegramInput").value = savedTelegram;
+      }
+
+      const usernameInput = document.getElementById("usernameInput");
+      if (usernameInput && profileName && !usernameInput.value) {
+        usernameInput.value = profileName;
       }
     }
 
@@ -1953,6 +1979,7 @@
       }
 
       updateAuthStatus();
+      fillAuthorLocal();
       await loadPosts();
     }
 
@@ -1961,33 +1988,76 @@
       if (!status) return;
 
       if (currentUser) {
-        status.textContent = "Ты вошёл: " + currentUser.email + (isAdmin() ? " | Админ включён" : "");
+        const displayName = getUserDisplayName();
+        status.textContent =
+          "Ты вошёл: " +
+          currentUser.email +
+          (displayName ? " | Имя на сайте: " + displayName : "") +
+          (isAdmin() ? " | Админ включён" : "");
       } else {
         status.textContent = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
       }
     }
 
     async function register() {
+      const username = cleanDisplayName(document.getElementById("usernameInput").value);
       const email = document.getElementById("emailInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
 
-      if (!email || !password) {
-        return alert("Введи email и пароль.");
+      if (!username || !email || !password) {
+        return alert("Введи отображаемое имя, email и пароль.");
       }
 
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (username.length < 2) {
+        return alert("Отображаемое имя должно быть минимум 2 символа.");
+      }
+
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            nickname: username,
+            display_name: username
+          }
+        }
+      });
 
       if (error) {
         return alert("Не удалось зарегистрироваться: " + error.message);
       }
 
       currentUser = data?.user || null;
+
+      if (currentUser) {
+        const updateResult = await supabaseClient.auth.updateUser({
+          data: {
+            username,
+            nickname: username,
+            display_name: username
+          }
+        });
+
+        if (!updateResult.error) {
+          currentUser = updateResult.data?.user || currentUser;
+        }
+      }
+
+      localStorage.setItem("klevby_author_name", username);
+
+      const nameInput = document.getElementById("nameInput");
+      if (nameInput && !nameInput.value) {
+        nameInput.value = username;
+      }
+
       updateAuthStatus();
       alert("Регистрация выполнена. Если придёт письмо — подтверди почту.");
       await loadPosts();
     }
 
     async function login() {
+      const username = cleanDisplayName(document.getElementById("usernameInput")?.value || "");
       const email = document.getElementById("emailInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
 
@@ -2002,7 +2072,24 @@
       }
 
       currentUser = data.user;
+
+      if (username) {
+        const updateResult = await supabaseClient.auth.updateUser({
+          data: {
+            username,
+            nickname: username,
+            display_name: username
+          }
+        });
+
+        if (!updateResult.error) {
+          currentUser = updateResult.data?.user || currentUser;
+          localStorage.setItem("klevby_author_name", username);
+        }
+      }
+
       updateAuthStatus();
+      fillAuthorLocal();
       await loadPosts();
       showSection("home");
     }
@@ -2639,3 +2726,4 @@
   <script src="market-logic.js" defer></script>
 </body>
 </html>
+```
