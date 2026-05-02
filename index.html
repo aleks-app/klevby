@@ -874,8 +874,38 @@
 
     @media (max-width: 900px) {
       body { padding-bottom: 92px; }
-      header { position: relative; top: auto; padding: 12px 0 4px; background: transparent; }
-      .logo { font-size: 23px; line-height: 1; padding-top: 0; font-weight: 800 !important; }
+
+      header {
+        position: relative;
+        top: auto;
+        padding: calc(env(safe-area-inset-top) + 18px) 0 8px;
+        background: transparent;
+        z-index: 2000;
+      }
+
+      .header-inner {
+        align-items: center;
+      }
+
+      .mobile-menu-wrap {
+        margin-top: 0;
+        z-index: 2100;
+      }
+
+      .burger-btn {
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+      }
+
+      .logo {
+        font-size: 23px;
+        line-height: 1;
+        padding-top: 0;
+        font-weight: 800 !important;
+        position: relative;
+        z-index: 2100;
+      }
 
       .home-float-btn {
         top: auto;
@@ -1024,8 +1054,8 @@
 
     @media (max-width: 520px) {
       .wrap { width: 92%; }
-      header { padding: 10px 0 4px; }
-      .logo { font-size: 22px; font-weight: 800 !important; }
+      header { padding: calc(env(safe-area-inset-top) + 18px) 0 8px; }
+      .logo { font-size: 22px; font-weight: 800 !important; position: relative; z-index: 2100; }
       .hero { margin: 6px 0 14px; padding: 16px; gap: 12px; min-height: 405px; }
       .hero h1 { font-size: 36px; font-weight: 800 !important; }
       .hero p { font-size: 15.5px; }
