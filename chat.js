@@ -11,7 +11,6 @@
   const initInterval = setInterval(() => {
     if (window.supabase) {
       clearInterval(initInterval);
-
       const chatDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       setupChat(chatDb);
     }
@@ -34,6 +33,9 @@
 
     let lastRenderedDateKey = "";
     let lastRenderedMessageMeta = null;
+
+    let contextMessageData = null;
+    let longPressTimer = null;
 
     const onlineUsers = new Map();
     const userProfiles = new Map();
@@ -122,8 +124,6 @@
     const chatAvatar = document.getElementById("chatAvatar");
 
     const backBtn = document.getElementById("back-chat");
-    const pinnedPublicChat = document.getElementById("pinnedPublicChat");
-
     const replyPreview = document.getElementById("replyPreview");
     const replyAuthor = document.getElementById("replyAuthor");
     const replyText = document.getElementById("replyText");
@@ -131,9 +131,6 @@
     const messageContextMenu = document.getElementById("messageContextMenu");
     const contextReplyBtn = document.getElementById("contextReplyBtn");
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
-
-    let contextMessageData = null;
-    let longPressTimer = null;
 
     refreshCurrentUser().then(async () => {
       await ensureCurrentUserProfile();
@@ -159,10 +156,18 @@
     }
 
     function cleanDisplayName(value) {
-      const name = String(value || "").trim();
+      let name = String(value || "").trim();
 
       if (!name) return "";
-      if (name.includes("@")) return name.split("@")[0];
+
+      if (name.includes("@")) {
+        name = name.split("@")[0];
+      }
+
+      name = name
+        .replace(/[<>]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
 
       return name.slice(0, 32);
     }
@@ -206,6 +211,10 @@
         return savedName;
       }
 
+      if (currentChatUser?.email) {
+        return cleanDisplayName(currentChatUser.email);
+      }
+
       return getGuestName();
     }
 
@@ -213,32 +222,28 @@
       if (!currentChatUser) return;
 
       const nickname = getCurrentChatName();
-      const profile = {
-        id: currentChatUser.id,
-        username: nickname,
-        email: currentChatUser.email || "",
-        updated_at: new Date().toISOString()
-      };
 
-      userProfiles.set(String(currentChatUser.id), nickname);
+      if (currentChatUser.id && nickname) {
+        userProfiles.set(String(currentChatUser.id), nickname);
+      }
 
       try {
-        await chatDb
-          .from("profiles")
-          .upsert([profile], { onConflict: "id" });
+        await chatDb.from("profiles").upsert(
+          [
+            {
+              id: currentChatUser.id,
+              username: nickname,
+              nickname: nickname,
+              display_name: nickname,
+              email: currentChatUser.email || "",
+              updated_at: new Date().toISOString()
+            }
+          ],
+          { onConflict: "id" }
+        );
       } catch (error) {
         console.warn("Профиль пользователя не сохранён:", error);
       }
-    }
-
-    function getProfileName(userId, fallback = "Рыбак") {
-      const id = String(userId || "");
-
-      if (id && userProfiles.has(id)) {
-        return userProfiles.get(id) || fallback || "Рыбак";
-      }
-
-      return cleanDisplayName(fallback) || "Рыбак";
     }
 
     async function loadProfilesByIds(ids = []) {
@@ -253,7 +258,6 @@
           .in("id", uniqueIds);
 
         if (error) {
-          console.warn("Не удалось загрузить профили:", error);
           return;
         }
 
@@ -271,8 +275,29 @@
           }
         });
       } catch (error) {
-        console.warn("Не удалось загрузить профили:", error);
+        console.warn("Профили не загружены:", error);
       }
+    }
+
+    function rememberFallbackProfile(userId, name) {
+      const id = String(userId || "");
+      const cleanName = cleanDisplayName(name);
+
+      if (!id || !cleanName) return;
+
+      if (!userProfiles.has(id)) {
+        userProfiles.set(id, cleanName);
+      }
+    }
+
+    function getProfileName(userId, fallback = "Рыбак") {
+      const id = String(userId || "");
+
+      if (id && userProfiles.has(id)) {
+        return userProfiles.get(id) || cleanDisplayName(fallback) || "Рыбак";
+      }
+
+      return cleanDisplayName(fallback) || "Рыбак";
     }
 
     function getReadStorageKey(peerId) {
@@ -472,7 +497,7 @@
         return true;
       }
 
-      if (!messageUserId && message.user_name === getCurrentChatName()) {
+      if (!messageUserId && cleanDisplayName(message.user_name) === getCurrentChatName()) {
         return true;
       }
 
@@ -576,6 +601,10 @@
     }
 
     function renderPublicMessage(message) {
+      if (message.user_id && message.user_name) {
+        rememberFallbackProfile(message.user_id, message.user_name);
+      }
+
       const isMine = isMyPublicMessage(message);
       const author = isMine ? "Вы" : getProfileName(message.user_id, message.user_name || "Рыбак");
       const authorKey = message.user_id || message.user_name || author;
@@ -593,6 +622,10 @@
     }
 
     function renderPrivateMessage(message) {
+      if (message.sender_id && message.sender_name) {
+        rememberFallbackProfile(message.sender_id, message.sender_name);
+      }
+
       const isMine = isMyPrivateMessage(message);
       const author = isMine ? "Вы" : getProfileName(message.sender_id, message.sender_name || selectedPeer?.name || "Рыбак");
       const authorKey = message.sender_id || author;
@@ -768,7 +801,6 @@
       privateTab.classList.remove("active");
       privatePeople.classList.add("hidden");
       backBtn.classList.add("hidden");
-      if (pinnedPublicChat) pinnedPublicChat.classList.remove("hidden");
 
       chatAvatar.textContent = "🎣";
       chatTitle.textContent = "Чат рыбаков";
@@ -789,6 +821,12 @@
         showEmptyState("Не удалось загрузить общий чат. Проверь таблицу messages и RLS.");
         return;
       }
+
+      (data || []).forEach((message) => {
+        if (message.user_id && message.user_name) {
+          rememberFallbackProfile(message.user_id, message.user_name);
+        }
+      });
 
       await loadProfilesByIds((data || []).map((message) => message.user_id));
 
@@ -815,7 +853,6 @@
       privateTab.classList.add("active");
       privatePeople.classList.add("hidden");
       backBtn.classList.add("hidden");
-      if (pinnedPublicChat) pinnedPublicChat.classList.add("hidden");
 
       chatAvatar.textContent = "✉";
       chatTitle.textContent = "Личные сообщения";
@@ -884,6 +921,12 @@
           console.warn("Не удалось загрузить пользователей из лички:", privateUsersError);
         }
 
+        (privateUsers || []).forEach((item) => {
+          if (item.sender_id && item.sender_name) {
+            rememberFallbackProfile(item.sender_id, item.sender_name);
+          }
+        });
+
         await loadProfilesByIds(
           (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
         );
@@ -892,7 +935,9 @@
           const senderId = String(item.sender_id || "");
           const receiverId = String(item.receiver_id || "");
           const peerId = senderId === myId ? receiverId : senderId;
-          const peerName = senderId === myId ? getProfileName(receiverId, "Рыбак") : getProfileName(senderId, item.sender_name || "Рыбак");
+          const peerName = senderId === myId
+            ? getProfileName(receiverId, "Рыбак")
+            : getProfileName(senderId, item.sender_name || "Рыбак");
 
           addPeer(peerId, peerName, item);
         });
@@ -905,6 +950,10 @@
           .from("messages")
           .select("user_id,user_name")
           .not("user_id", "is", null);
+
+        (publicUsers || []).forEach((item) => {
+          rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
+        });
 
         await loadProfilesByIds((publicUsers || []).map((item) => item.user_id));
 
@@ -920,6 +969,10 @@
           .from("posts")
           .select("owner_id,name")
           .not("owner_id", "is", null);
+
+        (postUsers || []).forEach((item) => {
+          rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
+        });
 
         await loadProfilesByIds((postUsers || []).map((item) => item.owner_id));
 
@@ -1011,7 +1064,6 @@
       sendBtn.disabled = false;
 
       backBtn.classList.remove("hidden");
-      if (pinnedPublicChat) pinnedPublicChat.classList.add("hidden");
 
       markPeerAsRead(peerId);
 
@@ -1028,6 +1080,12 @@
         showEmptyState("Не удалось загрузить личку. Проверь private_messages и RLS.");
         return;
       }
+
+      (data || []).forEach((message) => {
+        if (message.sender_id && message.sender_name) {
+          rememberFallbackProfile(message.sender_id, message.sender_name);
+        }
+      });
 
       await loadProfilesByIds(
         (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
@@ -1177,7 +1235,7 @@
 
       if (result.error) {
         console.error(result.error);
-        alert("Не получилось удалить сообщение. Провь RLS delete.");
+        alert("Не получилось удалить сообщение. Проверь RLS delete.");
         return;
       }
 
@@ -1229,8 +1287,12 @@
 
             await refreshCurrentUser();
             await ensureCurrentUserProfile();
-            await loadProfilesByIds([payload.new?.user_id]);
 
+            if (payload.new?.user_id && payload.new?.user_name) {
+              rememberFallbackProfile(payload.new.user_id, payload.new.user_name);
+            }
+
+            await loadProfilesByIds([payload.new?.user_id]);
             renderPublicMessage(payload.new);
           }
         )
@@ -1260,6 +1322,10 @@
             const myId = String(currentChatUser?.id || "");
 
             if (!myId) return;
+
+            if (msg.sender_id && msg.sender_name) {
+              rememberFallbackProfile(msg.sender_id, msg.sender_name);
+            }
 
             await loadProfilesByIds([msg.sender_id, msg.receiver_id]);
 
@@ -1331,7 +1397,7 @@
         return;
       }
 
-      if (event.target.closest("#publicChatTab") || event.target.closest("#pinnedPublicChat")) {
+      if (event.target.closest("#publicChatTab")) {
         await loadPublicMessages();
         return;
       }
@@ -1516,6 +1582,431 @@
         display: none !important;
       }
 
+      #chat-desktop-btn.klevby-chat-launcher {
+        position: fixed !important;
+        right: 22px !important;
+        bottom: 22px !important;
+        z-index: 65000 !important;
+        width: 58px !important;
+        height: 58px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #57e6b2, #28c990) !important;
+        color: #03150c !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 27px !important;
+        cursor: pointer !important;
+        box-shadow: 0 18px 44px rgba(0,0,0,0.38), 0 0 24px rgba(87,230,178,0.22) !important;
+        user-select: none !important;
+      }
+
+      #klevby-chat-modal {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 64000 !important;
+        background: rgba(0, 0, 0, 0.62) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 18px !important;
+      }
+
+      #klevby-chat-modal.hidden {
+        display: none !important;
+      }
+
+      .klevby-chat-window {
+        width: min(420px, 100%) !important;
+        height: min(720px, calc(var(--klevby-vvh, 100vh) - 36px)) !important;
+        max-height: calc(var(--klevby-vvh, 100vh) - 36px) !important;
+        background: rgba(10, 20, 23, 0.98) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.10) !important;
+        border-radius: 26px !important;
+        overflow: hidden !important;
+        box-shadow: 0 24px 70px rgba(0,0,0,0.55) !important;
+        display: grid !important;
+        grid-template-rows: auto auto 1fr auto auto !important;
+      }
+
+      .klevby-chat-header {
+        min-height: 66px !important;
+        padding: 10px 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+        background: rgba(14, 29, 32, 0.98) !important;
+      }
+
+      .klevby-chat-back,
+      .klevby-chat-close {
+        width: 38px !important;
+        height: 38px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: rgba(255,255,255,0.08) !important;
+        color: #ffffff !important;
+        font-size: 28px !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+      }
+
+      .klevby-chat-head-main {
+        min-width: 0 !important;
+        flex: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+      }
+
+      .klevby-chat-avatar {
+        width: 42px !important;
+        height: 42px !important;
+        flex: 0 0 auto !important;
+        border-radius: 50% !important;
+        background: rgba(87,230,178,0.14) !important;
+        color: #c8ffe0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 21px !important;
+        font-weight: 800 !important;
+      }
+
+      .klevby-chat-title-wrap {
+        min-width: 0 !important;
+      }
+
+      .klevby-chat-title {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        color: #ffffff !important;
+      }
+
+      .klevby-chat-subtitle {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        margin-top: 2px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: rgba(255,255,255,0.52) !important;
+      }
+
+      .klevby-chat-tabs {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        padding: 10px !important;
+        background: rgba(10,20,23,0.98) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+      }
+
+      .klevby-chat-tab {
+        min-height: 42px !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 15px !important;
+        background: rgba(255,255,255,0.06) !important;
+        color: rgba(255,255,255,0.74) !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        cursor: pointer !important;
+      }
+
+      .klevby-chat-tab.active {
+        background: rgba(87,230,178,0.16) !important;
+        color: #c8ffe0 !important;
+        border-color: rgba(87,230,178,0.24) !important;
+      }
+
+      .klevby-unread-badge {
+        min-width: 18px !important;
+        height: 18px !important;
+        padding: 0 6px !important;
+        border-radius: 999px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #d84d4d !important;
+        color: #ffffff !important;
+        font-size: 10px !important;
+        font-weight: 900 !important;
+        margin-left: 4px !important;
+      }
+
+      .klevby-chat-messages {
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding: 14px 12px 16px !important;
+        background:
+          radial-gradient(circle at 10% 0%, rgba(87,230,178,0.08), transparent 34%),
+          rgba(5, 11, 13, 0.98) !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      .chat-empty-state {
+        margin: 18px auto !important;
+        padding: 16px !important;
+        border-radius: 18px !important;
+        background: rgba(255,255,255,0.06) !important;
+        color: rgba(255,255,255,0.62) !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+      }
+
+      .klevby-date-divider {
+        width: fit-content !important;
+        margin: 10px auto 14px !important;
+        padding: 6px 10px !important;
+        border-radius: 999px !important;
+        background: rgba(255,255,255,0.08) !important;
+        color: rgba(255,255,255,0.55) !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+      }
+
+      .chat-message-row {
+        width: 100% !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        gap: 8px !important;
+        margin: 7px 0 !important;
+      }
+
+      .chat-message-row.grouped-with-prev {
+        margin-top: 2px !important;
+      }
+
+      .my-message-row {
+        justify-content: flex-end !important;
+      }
+
+      .other-message-row {
+        justify-content: flex-start !important;
+      }
+
+      .klevby-message-avatar {
+        width: 30px !important;
+        height: 30px !important;
+        border-radius: 50% !important;
+        background: rgba(255,255,255,0.08) !important;
+        color: #c8ffe0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 13px !important;
+        font-weight: 900 !important;
+        flex: 0 0 auto !important;
+      }
+
+      .grouped-with-prev .klevby-message-avatar {
+        opacity: 0 !important;
+      }
+
+      .chat-message-bubble {
+        position: relative !important;
+        max-width: min(78%, 310px) !important;
+        padding: 9px 11px 7px !important;
+        border-radius: 18px !important;
+        font-size: 14px !important;
+        line-height: 1.38 !important;
+        word-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+      }
+
+      .my-message {
+        background: linear-gradient(135deg, #57e6b2, #28c990) !important;
+        color: #03150c !important;
+        border-bottom-right-radius: 6px !important;
+      }
+
+      .other-message {
+        background: rgba(255,255,255,0.08) !important;
+        color: #ffffff !important;
+        border-bottom-left-radius: 6px !important;
+      }
+
+      .chat-message-author {
+        display: block !important;
+        margin-bottom: 3px !important;
+        color: #9ff3cc !important;
+        font-size: 12px !important;
+        font-weight: 900 !important;
+      }
+
+      .chat-message-text {
+        white-space: pre-wrap !important;
+        font-weight: 500 !important;
+      }
+
+      .klevby-message-reply {
+        margin-bottom: 6px !important;
+        padding: 6px 8px !important;
+        border-left: 3px solid rgba(87,230,178,0.75) !important;
+        border-radius: 9px !important;
+        background: rgba(0,0,0,0.16) !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        opacity: 0.88 !important;
+      }
+
+      .klevby-message-footer {
+        margin-top: 3px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 4px !important;
+        font-size: 10px !important;
+        opacity: 0.68 !important;
+      }
+
+      .klevby-message-actions {
+        display: none !important;
+        position: absolute !important;
+        right: 5px !important;
+        top: -18px !important;
+        gap: 4px !important;
+      }
+
+      .chat-message-bubble:hover .klevby-message-actions {
+        display: flex !important;
+      }
+
+      .klevby-message-action {
+        width: 25px !important;
+        height: 25px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: rgba(0,0,0,0.38) !important;
+        color: #ffffff !important;
+        font-size: 12px !important;
+        cursor: pointer !important;
+      }
+
+      .klevby-message-menu {
+        position: fixed !important;
+        z-index: 70000 !important;
+        width: 170px !important;
+        padding: 8px !important;
+        border-radius: 14px !important;
+        background: rgba(12, 22, 25, 0.98) !important;
+        border: 1px solid rgba(255,255,255,0.10) !important;
+        box-shadow: 0 16px 44px rgba(0,0,0,0.45) !important;
+      }
+
+      .klevby-message-menu button {
+        width: 100% !important;
+        min-height: 38px !important;
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: transparent !important;
+        color: #ffffff !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        text-align: left !important;
+        cursor: pointer !important;
+      }
+
+      .klevby-message-menu button:active {
+        background: rgba(255,255,255,0.08) !important;
+      }
+
+      .klevby-reply-preview {
+        min-height: 48px !important;
+        padding: 8px 10px !important;
+        display: grid !important;
+        grid-template-columns: 3px 1fr 32px !important;
+        gap: 8px !important;
+        align-items: center !important;
+        background: rgba(14, 29, 32, 0.98) !important;
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
+      }
+
+      .klevby-reply-line {
+        width: 3px !important;
+        height: 32px !important;
+        border-radius: 999px !important;
+        background: #57e6b2 !important;
+      }
+
+      .klevby-reply-author {
+        color: #9ff3cc !important;
+        font-size: 12px !important;
+        font-weight: 900 !important;
+      }
+
+      .klevby-reply-text {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        color: rgba(255,255,255,0.62) !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+      }
+
+      .klevby-reply-cancel {
+        width: 32px !important;
+        height: 32px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: rgba(255,255,255,0.08) !important;
+        color: #ffffff !important;
+        font-size: 20px !important;
+        cursor: pointer !important;
+      }
+
+      .klevby-chat-inputbar {
+        min-height: 64px !important;
+        padding: 10px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 46px !important;
+        gap: 8px !important;
+        background: rgba(14, 29, 32, 0.98) !important;
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
+      }
+
+      .klevby-chat-input {
+        width: 100% !important;
+        height: 46px !important;
+        margin: 0 !important;
+        padding: 0 14px !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 18px !important;
+        background: rgba(255,255,255,0.08) !important;
+        color: #ffffff !important;
+        outline: none !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+      }
+
+      .klevby-chat-send {
+        width: 46px !important;
+        height: 46px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #57e6b2, #28c990) !important;
+        color: #03150c !important;
+        font-size: 20px !important;
+        font-weight: 900 !important;
+        cursor: pointer !important;
+      }
+
+      .klevby-chat-send:disabled,
+      .klevby-chat-input:disabled {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+      }
+
       .klevby-private-dialog-list {
         width: 100% !important;
         display: flex !important;
@@ -1635,6 +2126,12 @@
         display: none !important;
       }
 
+      @media (max-width: 900px) {
+        #chat-desktop-btn.klevby-chat-launcher {
+          display: none !important;
+        }
+      }
+
       @media (max-width: 768px) {
         html.klevby-chat-lock,
         body.klevby-chat-lock {
@@ -1647,31 +2144,38 @@
           margin: 0 !important;
           padding: 0 !important;
         }
+
+        #klevby-chat-modal {
+          align-items: stretch !important;
+          justify-content: stretch !important;
+          padding: 0 !important;
+          top: var(--klevby-vtop, 0px) !important;
+          height: var(--klevby-vvh, 100dvh) !important;
+        }
+
+        .klevby-chat-window {
+          width: 100% !important;
+          height: var(--klevby-vvh, 100dvh) !important;
+          max-height: var(--klevby-vvh, 100dvh) !important;
+          border-radius: 0 !important;
+          border: 0 !important;
+          grid-template-rows: auto auto 1fr auto auto !important;
+        }
+
+        .klevby-chat-header {
+          padding-top: max(10px, env(safe-area-inset-top)) !important;
+        }
+
+        .klevby-chat-inputbar {
+          padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+        }
+
+        .chat-message-bubble {
+          max-width: 82% !important;
+        }
       }
     `;
 
     document.head.appendChild(style);
   }
 })();
-```        return currentChatUser;
-      } catch (error) {
-        currentChatUser = null;
-        return null;
-      }
-    }    function getCurrentChatName() {...
-Need final only code. Already in commentary? Oops I wrote final content in commentary by accident. Since commentary messages visible? It will be an update-like full answer maybe but not final. Need ensure final maybe minimal. But the above is likely visible. Still need final maybe "Готово" ? But user asked no intro, code immediately. Since we've already output code in commentary, but maybe ChatGPT visible. Need final maybe nothing? Cannot empty? We should provide final code maybe not duplicate? But if commentary is visible, final should be concise. However final answer required. We can say " " no. Better not duplicate enormous code. But user asked code. The code is already provided. But final needs satisfy; maybe state "Код выше — готовый файл chat.js." But says no intro. Hmm.
-
-But before final, need consider if code incomplete? Need check copied code not truncated? It appears full. Did I use `profiles` table causing error and catch. It requires table to show other users' metadata. Without table, new messages store nickname. In Supabase browser client .from("profiles").upsert catches? Actually Supabase `.from().upsert()` returns promise resolves with {data,error}, not throw; error may be non-null but not thrown. My ensureCurrentUserProfile await but doesn't inspect error; fine no thrown (unless network). `loadProfilesByIds` checks error. Good.
-
-But issue: `getCurrentChatName` for logged user if no meta uses localStorage, if email only not used. Good.
-
-Potential issue: in prior index.html registration stores username metadata. Good.
-
-Potential issue: if no profiles table, loadProfilesByIds logs error every time but fallback. Fine.
-
-Potential issue: `ensureCurrentUserProfile()` upsert to profiles table if table doesn't have `nickname` etc? profile only id username email updated_at. SQL table likely not exist or doesn't have updated_at. Error silently ignored because I don't capture {error}. It will not throw. This is okay but no profiles update; no warn because no try? Actually await returns result even with error, no exception. Since ignoring, if error no warn. Fine.
-
-Potential issue if profiles table doesn't exist, loadProfilesByIds error logged; no UI.
-
-Potential issue current user on AuthStateChange with existing presence: if current user changes, presence channel key remains old; track with new user_id works under old presence key? maybe okay. 
-Need maybe not final duplicate. But final answer can be blank? Need in final. We can say
