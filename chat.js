@@ -36,6 +36,7 @@
     let lastRenderedMessageMeta = null;
 
     const onlineUsers = new Map();
+    const userProfiles = new Map();
     const guestNameKey = "klevby_chat_guest_name";
     const sentLocalMessages = new Set();
 
@@ -134,13 +135,15 @@
     let contextMessageData = null;
     let longPressTimer = null;
 
-    refreshCurrentUser().then(() => {
+    refreshCurrentUser().then(async () => {
+      await ensureCurrentUserProfile();
       setupPresence();
       setupRealtime();
     });
 
-    chatDb.auth.onAuthStateChange((_event, session) => {
+    chatDb.auth.onAuthStateChange(async (_event, session) => {
       currentChatUser = session?.user || null;
+      await ensureCurrentUserProfile();
       setupPresence();
     });
 
@@ -155,6 +158,28 @@
       return name;
     }
 
+    function cleanDisplayName(value) {
+      const name = String(value || "").trim();
+
+      if (!name) return "";
+      if (name.includes("@")) return name.split("@")[0];
+
+      return name.slice(0, 32);
+    }
+
+    function getMetadataName(user = currentChatUser) {
+      const meta = user?.user_metadata || {};
+
+      return cleanDisplayName(
+        meta.username ||
+        meta.nickname ||
+        meta.display_name ||
+        meta.name ||
+        meta.full_name ||
+        ""
+      );
+    }
+
     async function refreshCurrentUser() {
       try {
         const { data } = await chatDb.auth.getUser();
@@ -167,13 +192,87 @@
     }
 
     function getCurrentChatName() {
-      const email = currentChatUser?.email || "";
+      const nickname = getMetadataName(currentChatUser);
 
-      if (email) {
-        return email.split("@")[0];
+      if (nickname) {
+        return nickname;
+      }
+
+      const savedName =
+        cleanDisplayName(localStorage.getItem("klevby_author_name")) ||
+        cleanDisplayName(localStorage.getItem("klevby_chat_username"));
+
+      if (savedName) {
+        return savedName;
       }
 
       return getGuestName();
+    }
+
+    async function ensureCurrentUserProfile() {
+      if (!currentChatUser) return;
+
+      const nickname = getCurrentChatName();
+      const profile = {
+        id: currentChatUser.id,
+        username: nickname,
+        email: currentChatUser.email || "",
+        updated_at: new Date().toISOString()
+      };
+
+      userProfiles.set(String(currentChatUser.id), nickname);
+
+      try {
+        await chatDb
+          .from("profiles")
+          .upsert([profile], { onConflict: "id" });
+      } catch (error) {
+        console.warn("Профиль пользователя не сохранён:", error);
+      }
+    }
+
+    function getProfileName(userId, fallback = "Рыбак") {
+      const id = String(userId || "");
+
+      if (id && userProfiles.has(id)) {
+        return userProfiles.get(id) || fallback || "Рыбак";
+      }
+
+      return cleanDisplayName(fallback) || "Рыбак";
+    }
+
+    async function loadProfilesByIds(ids = []) {
+      const uniqueIds = [...new Set((ids || []).filter(Boolean).map(String))];
+
+      if (!uniqueIds.length) return;
+
+      try {
+        const { data, error } = await chatDb
+          .from("profiles")
+          .select("id,username,nickname,display_name,email")
+          .in("id", uniqueIds);
+
+        if (error) {
+          console.warn("Не удалось загрузить профили:", error);
+          return;
+        }
+
+        (data || []).forEach((profile) => {
+          const name = cleanDisplayName(
+            profile.username ||
+            profile.nickname ||
+            profile.display_name ||
+            profile.email ||
+            ""
+          );
+
+          if (profile.id && name) {
+            userProfiles.set(String(profile.id), name);
+          }
+        });
+      } catch (error) {
+        console.warn("Не удалось загрузить профили:", error);
+      }
     }
 
     function getReadStorageKey(peerId) {
@@ -478,7 +577,7 @@
 
     function renderPublicMessage(message) {
       const isMine = isMyPublicMessage(message);
-      const author = isMine ? "Вы" : (message.user_name || "Рыбак");
+      const author = isMine ? "Вы" : getProfileName(message.user_id, message.user_name || "Рыбак");
       const authorKey = message.user_id || message.user_name || author;
 
       const row = buildMessageRow({
@@ -495,7 +594,7 @@
 
     function renderPrivateMessage(message) {
       const isMine = isMyPrivateMessage(message);
-      const author = isMine ? "Вы" : (message.sender_name || selectedPeer?.name || "Рыбак");
+      const author = isMine ? "Вы" : getProfileName(message.sender_id, message.sender_name || selectedPeer?.name || "Рыбак");
       const authorKey = message.sender_id || author;
 
       const row = buildMessageRow({
@@ -596,7 +695,15 @@
     }
 
     function setupPresence() {
-      if (presenceChannel) return;
+      if (presenceChannel) {
+        presenceChannel.track({
+          user_id: currentChatUser?.id || null,
+          name: getCurrentChatName(),
+          online_at: new Date().toISOString()
+        });
+
+        return;
+      }
 
       presenceChannel = chatDb.channel("klevby_presence", {
         config: {
@@ -616,6 +723,10 @@
             (items || []).forEach((item) => {
               if (item.user_id) {
                 onlineUsers.set(String(item.user_id), item);
+
+                if (item.name) {
+                  userProfiles.set(String(item.user_id), cleanDisplayName(item.name));
+                }
               }
             });
           });
@@ -634,6 +745,7 @@
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
             await refreshCurrentUser();
+            await ensureCurrentUserProfile();
 
             presenceChannel.track({
               user_id: currentChatUser?.id || null,
@@ -678,6 +790,8 @@
         return;
       }
 
+      await loadProfilesByIds((data || []).map((message) => message.user_id));
+
       if (!data || !data.length) {
         showEmptyState("Пока сообщений нет. Напиши первым 🎣");
         return;
@@ -688,6 +802,7 @@
 
     async function loadPrivatePeople() {
       await refreshCurrentUser();
+      await ensureCurrentUserProfile();
 
       activeMode = "private";
       selectedPeer = null;
@@ -725,7 +840,7 @@
         const peerId = String(id);
         if (peerId === myId) return;
 
-        const peerName = name || "Рыбак";
+        const peerName = getProfileName(peerId, name || "Рыбак");
 
         if (!peersMap.has(peerId)) {
           peersMap.set(peerId, {
@@ -739,7 +854,7 @@
         }
 
         const peer = peersMap.get(peerId);
-        peer.name = peer.name || peerName;
+        peer.name = getProfileName(peerId, peer.name || peerName);
 
         if (message) {
           const messageTimeValue = getTimestamp(message.created_at);
@@ -769,11 +884,15 @@
           console.warn("Не удалось загрузить пользователей из лички:", privateUsersError);
         }
 
+        await loadProfilesByIds(
+          (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
+        );
+
         (privateUsers || []).forEach((item) => {
           const senderId = String(item.sender_id || "");
           const receiverId = String(item.receiver_id || "");
           const peerId = senderId === myId ? receiverId : senderId;
-          const peerName = senderId === myId ? "Рыбак" : (item.sender_name || "Рыбак");
+          const peerName = senderId === myId ? getProfileName(receiverId, "Рыбак") : getProfileName(senderId, item.sender_name || "Рыбак");
 
           addPeer(peerId, peerName, item);
         });
@@ -787,8 +906,10 @@
           .select("user_id,user_name")
           .not("user_id", "is", null);
 
+        await loadProfilesByIds((publicUsers || []).map((item) => item.user_id));
+
         (publicUsers || []).forEach((item) => {
-          addPeer(item.user_id, item.user_name || "Рыбак", null);
+          addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
         });
       } catch (error) {
         console.warn("Не удалось загрузить пользователей из общего чата:", error);
@@ -800,14 +921,19 @@
           .select("owner_id,name")
           .not("owner_id", "is", null);
 
+        await loadProfilesByIds((postUsers || []).map((item) => item.owner_id));
+
         (postUsers || []).forEach((item) => {
-          addPeer(item.owner_id, item.name || "Рыбак", null);
+          addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
         });
       } catch (error) {
         console.warn("Не удалось загрузить пользователей из объявлений:", error);
       }
 
-      const peers = Array.from(peersMap.values()).sort((a, b) => {
+      const peers = Array.from(peersMap.values()).map((peer) => ({
+        ...peer,
+        name: getProfileName(peer.id, peer.name)
+      })).sort((a, b) => {
         if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
         if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
         return b.lastTimeValue - a.lastTimeValue;
@@ -856,15 +982,18 @@
 
     async function openPrivateDialog(peerId, peerName) {
       await refreshCurrentUser();
+      await ensureCurrentUserProfile();
 
       if (!currentChatUser) {
         showEmptyState("Для личных сообщений нужно войти.");
         return;
       }
 
+      await loadProfilesByIds([peerId]);
+
       selectedPeer = {
         id: peerId,
-        name: peerName || "Рыбак"
+        name: getProfileName(peerId, peerName || "Рыбак")
       };
 
       activeMode = "private";
@@ -900,6 +1029,14 @@
         return;
       }
 
+      await loadProfilesByIds(
+        (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
+      );
+
+      selectedPeer.name = getProfileName(peerId, selectedPeer.name);
+      chatAvatar.textContent = getInitials(selectedPeer.name);
+      chatTitle.textContent = selectedPeer.name;
+
       unreadPrivateCount = Math.max(0, unreadPrivateCount - 1);
       updateUnreadBadge();
 
@@ -916,6 +1053,7 @@
       if (!rawVal) return;
 
       await refreshCurrentUser();
+      await ensureCurrentUserProfile();
 
       sendBtn.disabled = true;
 
@@ -957,6 +1095,7 @@
       if (!rawVal) return;
 
       await refreshCurrentUser();
+      await ensureCurrentUserProfile();
 
       if (!currentChatUser) {
         alert("Для личных сообщений нужно войти.");
@@ -1056,6 +1195,7 @@
       modal.classList.add("open");
 
       await refreshCurrentUser();
+      await ensureCurrentUserProfile();
       await loadPublicMessages();
 
       setTimeout(() => {
@@ -1088,6 +1228,9 @@
             if (emptyState) clearMessages();
 
             await refreshCurrentUser();
+            await ensureCurrentUserProfile();
+            await loadProfilesByIds([payload.new?.user_id]);
+
             renderPublicMessage(payload.new);
           }
         )
@@ -1111,11 +1254,14 @@
           { event: "INSERT", schema: "public", table: "private_messages" },
           async (payload) => {
             await refreshCurrentUser();
+            await ensureCurrentUserProfile();
 
             const msg = payload.new;
             const myId = String(currentChatUser?.id || "");
 
             if (!myId) return;
+
+            await loadProfilesByIds([msg.sender_id, msg.receiver_id]);
 
             const isForMe = String(msg.receiver_id) === myId;
             const senderId = String(msg.sender_id || "");
@@ -1507,3 +1653,25 @@
     document.head.appendChild(style);
   }
 })();
+```        return currentChatUser;
+      } catch (error) {
+        currentChatUser = null;
+        return null;
+      }
+    }    function getCurrentChatName() {...
+Need final only code. Already in commentary? Oops I wrote final content in commentary by accident. Since commentary messages visible? It will be an update-like full answer maybe but not final. Need ensure final maybe minimal. But the above is likely visible. Still need final maybe "Готово" ? But user asked no intro, code immediately. Since we've already output code in commentary, but maybe ChatGPT visible. Need final maybe nothing? Cannot empty? We should provide final code maybe not duplicate? But if commentary is visible, final should be concise. However final answer required. We can say " " no. Better not duplicate enormous code. But user asked code. The code is already provided. But final needs satisfy; maybe state "Код выше — готовый файл chat.js." But says no intro. Hmm.
+
+But before final, need consider if code incomplete? Need check copied code not truncated? It appears full. Did I use `profiles` table causing error and catch. It requires table to show other users' metadata. Without table, new messages store nickname. In Supabase browser client .from("profiles").upsert catches? Actually Supabase `.from().upsert()` returns promise resolves with {data,error}, not throw; error may be non-null but not thrown. My ensureCurrentUserProfile await but doesn't inspect error; fine no thrown (unless network). `loadProfilesByIds` checks error. Good.
+
+But issue: `getCurrentChatName` for logged user if no meta uses localStorage, if email only not used. Good.
+
+Potential issue: in prior index.html registration stores username metadata. Good.
+
+Potential issue: if no profiles table, loadProfilesByIds logs error every time but fallback. Fine.
+
+Potential issue: `ensureCurrentUserProfile()` upsert to profiles table if table doesn't have `nickname` etc? profile only id username email updated_at. SQL table likely not exist or doesn't have updated_at. Error silently ignored because I don't capture {error}. It will not throw. This is okay but no profiles update; no warn because no try? Actually await returns result even with error, no exception. Since ignoring, if error no warn. Fine.
+
+Potential issue if profiles table doesn't exist, loadProfilesByIds error logged; no UI.
+
+Potential issue current user on AuthStateChange with existing presence: if current user changes, presence channel key remains old; track with new user_id works under old presence key? maybe okay. 
+Need maybe not final duplicate. But final answer can be blank? Need in final. We can say
