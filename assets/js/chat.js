@@ -9,10 +9,32 @@
   window.__klevbyChatLoaded = true;
 
   const initInterval = setInterval(() => {
+    const mainClient =
+      window.klevbySupabase ||
+      window.supabaseClient ||
+      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null);
+
+    if (mainClient) {
+      clearInterval(initInterval);
+      setupChat(mainClient);
+      return;
+    }
+
     if (window.supabase) {
       clearInterval(initInterval);
 
-      const chatDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const chatDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storageKey: "sb-oecdshvozssadztcokog-auth-token"
+        },
+        global: {
+          fetch: (...args) => fetch(...args)
+        }
+      });
+
       setupChat(chatDb);
     }
   }, 300);
@@ -143,11 +165,60 @@
       setupRealtime();
     });
 
-    chatDb.auth.onAuthStateChange(async (_event, session) => {
-      currentChatUser = session?.user || null;
+    if (chatDb.auth && typeof chatDb.auth.onAuthStateChange === "function") {
+      chatDb.auth.onAuthStateChange(async (_event, session) => {
+        currentChatUser =
+          session?.user ||
+          getUserFromMainSite() ||
+          currentChatUser ||
+          null;
+
+        await ensureCurrentUserProfile();
+        setupPresence();
+      });
+    }
+
+    window.addEventListener("klevby-auth-changed", async (event) => {
+      currentChatUser =
+        event?.detail?.user ||
+        getUserFromMainSite() ||
+        currentChatUser ||
+        null;
+
       await ensureCurrentUserProfile();
-      setupPresence();
+
+      if (activeMode === "private" && modal && modal.classList.contains("open")) {
+        if (selectedPeer) {
+          await openPrivateDialog(selectedPeer.id, selectedPeer.name);
+        } else {
+          await loadPrivatePeople();
+        }
+      }
     });
+
+    function getMainSupabaseClient() {
+      return (
+        window.klevbySupabase ||
+        window.supabaseClient ||
+        (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
+        chatDb
+      );
+    }
+
+    function getUserFromMainSite() {
+      const fromGetter =
+        typeof window.klevbyGetCurrentUser === "function"
+          ? window.klevbyGetCurrentUser()
+          : null;
+
+      return (
+        fromGetter ||
+        window.klevbyCurrentUser ||
+        window.currentUser ||
+        window.klevbyUser ||
+        null
+      );
+    }
 
     function getGuestName() {
       let name = localStorage.getItem(guestNameKey);
@@ -191,14 +262,71 @@
     }
 
     async function refreshCurrentUser() {
-      try {
-        const { data } = await chatDb.auth.getUser();
-        currentChatUser = data?.user || null;
+      const mainUser = getUserFromMainSite();
+
+      if (mainUser && mainUser.id) {
+        currentChatUser = mainUser;
         return currentChatUser;
-      } catch (error) {
-        currentChatUser = null;
-        return null;
       }
+
+      const mainClient = getMainSupabaseClient();
+
+      try {
+        if (mainClient?.auth && typeof mainClient.auth.getUser === "function") {
+          const { data } = await mainClient.auth.getUser();
+
+          if (data?.user) {
+            currentChatUser = data.user;
+
+            window.klevbyCurrentUser = currentChatUser;
+            window.currentUser = currentChatUser;
+            window.klevbyUser = currentChatUser;
+
+            return currentChatUser;
+          }
+        }
+      } catch (error) {
+        console.warn("Не удалось получить пользователя из основного клиента:", error);
+      }
+
+      try {
+        if (chatDb?.auth && typeof chatDb.auth.getSession === "function") {
+          const { data } = await chatDb.auth.getSession();
+
+          if (data?.session?.user) {
+            currentChatUser = data.session.user;
+
+            window.klevbyCurrentUser = currentChatUser;
+            window.currentUser = currentChatUser;
+            window.klevbyUser = currentChatUser;
+
+            return currentChatUser;
+          }
+        }
+      } catch (error) {
+        console.warn("Не удалось получить session пользователя:", error);
+      }
+
+      try {
+        if (chatDb?.auth && typeof chatDb.auth.getUser === "function") {
+          const { data } = await chatDb.auth.getUser();
+
+          if (data?.user) {
+            currentChatUser = data.user;
+
+            window.klevbyCurrentUser = currentChatUser;
+            window.currentUser = currentChatUser;
+            window.klevbyUser = currentChatUser;
+
+            return currentChatUser;
+          }
+        }
+      } catch (error) {
+        console.warn("Не удалось получить пользователя из chatDb:", error);
+      }
+
+      currentChatUser = getUserFromMainSite() || null;
+      return currentChatUser;
     }
 
     function getCurrentChatName() {
@@ -224,6 +352,8 @@
     }
 
     async function ensureCurrentUserProfile() {
+      await refreshCurrentUser();
+
       if (!currentChatUser) return;
 
       const nickname = getCurrentChatName();
@@ -233,7 +363,7 @@
       }
 
       try {
-        await chatDb.from("profiles").upsert(
+        await getMainSupabaseClient().from("profiles").upsert(
           [
             {
               id: currentChatUser.id,
@@ -257,7 +387,7 @@
       if (!uniqueIds.length) return;
 
       try {
-        const { data, error } = await chatDb
+        const { data, error } = await getMainSupabaseClient()
           .from("profiles")
           .select("id,nickname,username,display_name,email")
           .in("id", uniqueIds);
@@ -746,7 +876,7 @@
         return;
       }
 
-      presenceChannel = chatDb.channel("klevby_presence", {
+      presenceChannel = getMainSupabaseClient().channel("klevby_presence", {
         config: {
           presence: {
             key: currentChatUser?.id || getGuestName()
@@ -819,14 +949,42 @@
 
       clearMessages();
 
-      const { data, error } = await chatDb
-        .from("messages")
-        .select("*")
-        .order("created_at", { ascending: true });
+      let data = null;
+      let error = null;
+
+      try {
+        const result = await getMainSupabaseClient()
+          .from("messages")
+          .select("*")
+          .order("created_at", { ascending: true });
+
+        data = result.data;
+        error = result.error;
+      } catch (queryError) {
+        error = queryError;
+      }
 
       if (error) {
         console.error("Ошибка загрузки общего чата:", error);
-        showEmptyState("Не удалось загрузить общий чат. Проверь таблицу messages и RLS.");
+
+        try {
+          await refreshCurrentUser();
+
+          const retry = await getMainSupabaseClient()
+            .from("messages")
+            .select("*")
+            .order("created_at", { ascending: true });
+
+          data = retry.data;
+          error = retry.error;
+        } catch (retryError) {
+          error = retryError;
+        }
+      }
+
+      if (error) {
+        console.error("Повторная ошибка загрузки общего чата:", error);
+        showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
         return;
       }
 
@@ -919,7 +1077,7 @@
       }
 
       try {
-        const { data: privateUsers, error: privateUsersError } = await chatDb
+        const { data: privateUsers, error: privateUsersError } = await getMainSupabaseClient()
           .from("private_messages")
           .select("sender_id,receiver_id,sender_name,content,created_at")
           .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
@@ -954,7 +1112,7 @@
       }
 
       try {
-        const { data: publicUsers } = await chatDb
+        const { data: publicUsers } = await getMainSupabaseClient()
           .from("messages")
           .select("user_id,user_name")
           .not("user_id", "is", null);
@@ -973,7 +1131,7 @@
       }
 
       try {
-        const { data: postUsers } = await chatDb
+        const { data: postUsers } = await getMainSupabaseClient()
           .from("posts")
           .select("owner_id,name")
           .not("owner_id", "is", null);
@@ -1077,7 +1235,7 @@
 
       clearMessages();
 
-      const { data, error } = await chatDb
+      const { data, error } = await getMainSupabaseClient()
         .from("private_messages")
         .select("*")
         .or(`and(sender_id.eq.${currentChatUser.id},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${currentChatUser.id})`)
@@ -1138,7 +1296,7 @@
 
       sentLocalMessages.add(`${userName}__${content}`);
 
-      const { error } = await chatDb.from("messages").insert([payload]);
+      const { error } = await getMainSupabaseClient().from("messages").insert([payload]);
 
       sendBtn.disabled = false;
 
@@ -1182,7 +1340,7 @@
         content: buildMessageContent(rawVal)
       };
 
-      const { error } = await chatDb.from("private_messages").insert([payload]);
+      const { error } = await getMainSupabaseClient().from("private_messages").insert([payload]);
 
       sendBtn.disabled = false;
 
@@ -1220,20 +1378,20 @@
           return;
         }
 
-        result = await chatDb
+        result = await getMainSupabaseClient()
           .from("private_messages")
           .delete()
           .eq("id", id)
           .eq("sender_id", currentChatUser.id);
       } else {
         if (currentChatUser) {
-          result = await chatDb
+          result = await getMainSupabaseClient()
             .from("messages")
             .delete()
             .eq("id", id)
             .eq("user_id", currentChatUser.id);
         } else {
-          result = await chatDb
+          result = await getMainSupabaseClient()
             .from("messages")
             .delete()
             .eq("id", id)
@@ -1268,7 +1426,7 @@
       await Promise.all(
         channels.map(async (channel) => {
           try {
-            await chatDb.removeChannel(channel);
+            await getMainSupabaseClient().removeChannel(channel);
           } catch (error) {
             console.warn("Не удалось удалить старый realtime channel:", error);
           }
@@ -1364,7 +1522,7 @@
     function setupRealtime() {
       if (publicSubscription || privateSubscription) return;
 
-      publicSubscription = chatDb
+      publicSubscription = getMainSupabaseClient()
         .channel("klevby_public_messages")
         .on(
           "postgres_changes",
@@ -1399,7 +1557,7 @@
         )
         .subscribe();
 
-      privateSubscription = chatDb
+      privateSubscription = getMainSupabaseClient()
         .channel("klevby_private_messages")
         .on(
           "postgres_changes",
