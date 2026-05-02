@@ -1690,10 +1690,41 @@
 
   function updateViewportVars() {
     const vv = window.visualViewport;
-    const height = vv ? vv.height : window.innerHeight;
-    const width = vv ? vv.width : window.innerWidth;
-    const offsetTop = vv ? vv.offsetTop : 0;
-    const offsetLeft = vv ? vv.offsetLeft : 0;
+
+    let height = vv ? vv.height : window.innerHeight;
+    let width = vv ? vv.width : window.innerWidth;
+    let offsetTop = vv ? vv.offsetTop : 0;
+    let offsetLeft = vv ? vv.offsetLeft : 0;
+
+    const lastGoodHeight = Number(document.documentElement.dataset.klevbyGoodHeight || "0");
+    const lastGoodWidth = Number(document.documentElement.dataset.klevbyGoodWidth || "0");
+
+    if (!Number.isFinite(height) || height < 420) {
+      height = lastGoodHeight || window.innerHeight || screen.height || 720;
+    }
+
+    if (!Number.isFinite(width) || width < 280) {
+      width = lastGoodWidth || window.innerWidth || screen.width || 390;
+    }
+
+    if (!Number.isFinite(height) || height < 420) {
+      height = 720;
+    }
+
+    if (!Number.isFinite(width) || width < 280) {
+      width = 390;
+    }
+
+    if (!Number.isFinite(offsetTop) || offsetTop < 0) {
+      offsetTop = 0;
+    }
+
+    if (!Number.isFinite(offsetLeft) || offsetLeft < 0) {
+      offsetLeft = 0;
+    }
+
+    document.documentElement.dataset.klevbyGoodHeight = String(height);
+    document.documentElement.dataset.klevbyGoodWidth = String(width);
 
     document.documentElement.style.setProperty("--klevby-vvh", `${height}px`);
     document.documentElement.style.setProperty("--klevby-vvw", `${width}px`);
