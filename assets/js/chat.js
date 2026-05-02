@@ -38,6 +38,10 @@
     let contextMessageData = null;
     let longPressTimer = null;
 
+    let klevbyResumeTimer = null;
+    let klevbyResumeInProgress = false;
+    let klevbyLastResumeAt = 0;
+
     const onlineUsers = new Map();
     const userProfiles = new Map();
     const guestNameKey = "klevby_chat_guest_name";
@@ -1249,6 +1253,87 @@
       hideMessageMenu();
     }
 
+    async function cleanupRealtimeConnections() {
+      const channels = [
+        publicSubscription,
+        privateSubscription,
+        presenceChannel
+      ].filter(Boolean);
+
+      publicSubscription = null;
+      privateSubscription = null;
+      presenceChannel = null;
+      onlineUsers.clear();
+
+      await Promise.all(
+        channels.map(async (channel) => {
+          try {
+            await chatDb.removeChannel(channel);
+          } catch (error) {
+            console.warn("Не удалось удалить старый realtime channel:", error);
+          }
+        })
+      );
+    }
+
+    async function reconnectRealtimeConnections() {
+      await cleanupRealtimeConnections();
+      setupPresence();
+      setupRealtime();
+    }
+
+    async function reloadChatAfterResume(reason = "resume") {
+      const now = Date.now();
+
+      if (klevbyResumeInProgress) return;
+      if (now - klevbyLastResumeAt < 1200) return;
+
+      klevbyResumeInProgress = true;
+      klevbyLastResumeAt = now;
+
+      try {
+        updateViewportVars();
+
+        await refreshCurrentUser();
+        await ensureCurrentUserProfile();
+        await reconnectRealtimeConnections();
+
+        const isChatOpen = modal && modal.classList.contains("open");
+
+        if (!isChatOpen) {
+          return;
+        }
+
+        const savedMode = activeMode;
+        const savedPeer = selectedPeer ? { ...selectedPeer } : null;
+
+        if (savedMode === "private" && savedPeer) {
+          await openPrivateDialog(savedPeer.id, savedPeer.name);
+        } else if (savedMode === "private") {
+          await loadPrivatePeople();
+        } else {
+          await loadPublicMessages();
+        }
+
+        setTimeout(() => {
+          updateViewportVars();
+          scrollChatToBottom();
+        }, 150);
+      } catch (error) {
+        console.warn("Не удалось восстановить чат после возврата в приложение:", reason, error);
+      } finally {
+        klevbyResumeInProgress = false;
+      }
+    }
+
+    function scheduleChatResume(reason = "resume") {
+      clearTimeout(klevbyResumeTimer);
+
+      klevbyResumeTimer = setTimeout(() => {
+        reloadChatAfterResume(reason);
+      }, 300);
+    }
+
     async function openChat() {
       updateViewportVars();
       lockChatPage();
@@ -1258,6 +1343,7 @@
 
       await refreshCurrentUser();
       await ensureCurrentUserProfile();
+      await reconnectRealtimeConnections();
       await loadPublicMessages();
 
       setTimeout(() => {
@@ -1384,6 +1470,24 @@
         )
         .subscribe();
     }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        scheduleChatResume("visibilitychange");
+      }
+    });
+
+    window.addEventListener("pageshow", () => {
+      scheduleChatResume("pageshow");
+    });
+
+    window.addEventListener("focus", () => {
+      scheduleChatResume("focus");
+    });
+
+    window.addEventListener("online", () => {
+      scheduleChatResume("online");
+    });
 
     document.addEventListener("click", async (event) => {
       if (event.target.closest("#nav-chat") || event.target.closest("#chat-desktop-btn")) {
