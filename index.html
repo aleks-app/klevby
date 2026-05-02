@@ -1148,6 +1148,7 @@
           <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
           <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои объявления</button>
           <button class="mobile-menu-item pwa-install-trigger" onclick="handleInstallClick(); closeMobileMenu()">📱 Приложение</button>
+          <button class="mobile-menu-item" onclick="forceAppUpdate(); closeMobileMenu()">🔄 Обновить приложение</button>
           <button class="mobile-menu-item" onclick="showSection('auth'); closeMobileMenu()">Вход</button>
         </div>
       </div>
@@ -2797,12 +2798,58 @@
       }
     }
 
+    async function forceAppUpdate() {
+      try {
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        }
+
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+
+          await Promise.all(
+            registrations.map(async (registration) => {
+              try {
+                await registration.update();
+
+                if (registration.waiting) {
+                  registration.waiting.postMessage({ type: "SKIP_WAITING" });
+                }
+              } catch (error) {
+                console.warn("Не удалось обновить Service Worker:", error);
+              }
+            })
+          );
+        }
+      } catch (error) {
+        console.warn("Ошибка обновления приложения:", error);
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("update", Date.now().toString());
+      window.location.replace(url.toString());
+    }
+
     async function registerPwaServiceWorker() {
       if (!("serviceWorker" in navigator)) return;
       if (!window.isSecureContext) return;
 
       try {
-        await navigator.serviceWorker.register("/sw.js");
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          updateViaCache: "none"
+        });
+
+        await registration.update();
+
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        navigator.serviceWorker.addEventListener("controllerchange", function () {
+          console.log("Klevby Service Worker обновлён.");
+        });
+
         console.log("Klevby Service Worker зарегистрирован: /sw.js");
       } catch (error) {
         console.warn("Service Worker не зарегистрирован. Проверь, что файл /sw.js лежит в корневой папке сайта.", error);
