@@ -60,6 +60,7 @@
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ponds.css">
 
   <script>
     (function markStandaloneEarly() {
@@ -1418,13 +1419,127 @@
     </section>
 
     <section id="pondsSection" class="hidden">
-      <div class="panel">
-        <h2>Платные пруды Беларуси</h2>
-        <p style="color:rgba(245,245,245,0.66);line-height:1.6;font-weight:500;">Собираем базу лучших водоемов Беларуси. Скоро здесь будут все подробности и цены.</p>
-        <div class="ponds-grid">
-          <div class="pond"><h3>Пруд возле Минска</h3><p>Карп, карась, амур. Цена уточняется. Можно добавить контакты владельца.</p></div>
-          <div class="pond"><h3>Платник Гомельская область</h3><p>Рыбалка по записи. Есть беседки, отдых, платная ловля.</p></div>
-          <div class="pond"><h3>Платный водоём Брест</h3><p>Подходит для семейного отдыха и рыбалки на карпа.</p></div>
+      <div class="ponds-shell">
+        <div class="ponds-hero">
+          <div>
+            <div class="ponds-badge">💧 Платная рыбалка</div>
+            <h2>Платные пруды Беларуси</h2>
+            <p>
+              Каталог платных водоёмов: цены, рыба, контакты, фото и координаты.
+              Раздел загружается из Supabase.
+            </p>
+          </div>
+
+          <div class="ponds-hero-card">
+            <div class="ponds-hero-price">BYN</div>
+            <div class="ponds-hero-text">Цены, рыба и контакты в одном месте</div>
+          </div>
+        </div>
+
+        <div id="pondsAdminPanel" class="ponds-admin-panel hidden">
+          <div class="ponds-admin-head">
+            <div>
+              <h3 id="pondFormTitle">Добавить платный пруд</h3>
+              <p>Эта форма видна только админу.</p>
+            </div>
+
+            <button id="pondCancelEditBtn" class="ponds-btn ponds-btn-muted hidden" type="button">
+              Отмена
+            </button>
+          </div>
+
+          <form id="pondForm" class="ponds-form">
+            <div class="ponds-form-group">
+              <h4>Основная информация</h4>
+
+              <div class="ponds-form-grid">
+                <label>
+                  <span>Название</span>
+                  <input id="pondNameInput" type="text" placeholder="Например: Пруд возле Минска" required>
+                </label>
+
+                <label>
+                  <span>Город / область</span>
+                  <input id="pondCityInput" type="text" placeholder="Минск, Брестская область..." required>
+                </label>
+
+                <label>
+                  <span>Цена</span>
+                  <input id="pondPriceInput" type="text" placeholder="Например: 25 BYN / день">
+                </label>
+
+                <label>
+                  <span>Виды рыб</span>
+                  <input id="pondFishInput" type="text" placeholder="Карп, карась, амур, щука">
+                </label>
+              </div>
+
+              <label>
+                <span>Описание</span>
+                <textarea id="pondDescriptionInput" placeholder="Условия рыбалки, правила, беседки, ночёвка, запуск рыбы..."></textarea>
+              </label>
+            </div>
+
+            <div class="ponds-form-group">
+              <h4>Медиа и Гео</h4>
+
+              <div class="ponds-form-grid">
+                <label>
+                  <span>Фото URL</span>
+                  <input id="pondPhotoInput" type="url" placeholder="https://...">
+                </label>
+
+                <label>
+                  <span>Latitude</span>
+                  <input id="pondLatInput" type="number" step="any" placeholder="53.9006">
+                </label>
+
+                <label>
+                  <span>Longitude</span>
+                  <input id="pondLngInput" type="number" step="any" placeholder="27.5590">
+                </label>
+
+                <label class="ponds-check-label">
+                  <input id="pondActiveInput" type="checkbox" checked>
+                  <span>Показывать на сайте</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="ponds-form-group">
+              <h4>Контакты</h4>
+
+              <div class="ponds-form-grid">
+                <label>
+                  <span>Контакты</span>
+                  <input id="pondContactsInput" type="text" placeholder="Телефон, Telegram, сайт">
+                </label>
+              </div>
+            </div>
+
+            <div class="ponds-form-actions">
+              <button id="pondSaveBtn" class="ponds-btn ponds-btn-primary" type="submit">
+                Сохранить пруд
+              </button>
+
+              <div id="pondFormMessage" class="ponds-form-message"></div>
+            </div>
+          </form>
+        </div>
+
+        <div class="ponds-toolbar">
+          <div>
+            <h3>Каталог водоёмов</h3>
+            <p id="pondsStatus">Загрузка платных прудов...</p>
+          </div>
+
+          <input id="pondsSearchInput" class="ponds-search" type="text" placeholder="Поиск: Минск, карп, амур...">
+        </div>
+
+        <div id="pondsGrid" class="ponds-grid">
+          <div class="ponds-skeleton"></div>
+          <div class="ponds-skeleton"></div>
+          <div class="ponds-skeleton"></div>
         </div>
       </div>
     </section>
@@ -1457,6 +1572,7 @@
           <button class="small-btn yellow" onclick="sendRecovery()">Сбросить пароль</button>
           <button class="small-btn red" onclick="logout()">Выйти</button>
         </div>
+
         <div id="authStatus" class="auth-status">Проверяем вход...</div>
       </div>
     </section>
@@ -1569,6 +1685,11 @@
     window.addEventListener("load", hideAppSplash);
     setTimeout(hideAppSplash, 5200);
 
+    function syncGlobalAuthState() {
+      window.klevbyCurrentUser = currentUser;
+      window.klevbyIsCurrentUserAdmin = isAdmin();
+    }
+
     function initSupabase() {
       if (!window.supabase) {
         showStatus("Supabase не загрузился. Обнови страницу.", true);
@@ -1576,6 +1697,19 @@
       }
 
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      window.klevbySupabase = supabaseClient;
+      window.klevbyGetSupabase = function () {
+        return supabaseClient;
+      };
+      window.klevbyGetCurrentUser = function () {
+        return currentUser;
+      };
+      window.klevbyIsAdmin = function () {
+        return isAdmin();
+      };
+      window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
+
       return true;
     }
 
@@ -1686,6 +1820,10 @@
 
       if (section === "market" && typeof window.klevbyLoadMarket === "function") {
         window.klevbyLoadMarket();
+      }
+
+      if (section === "ponds" && typeof window.klevbyLoadPonds === "function") {
+        window.klevbyLoadPonds();
       }
 
       if (section === "map" && typeof window.klevbyReloadMap === "function") {
@@ -1977,6 +2115,7 @@
     async function initAuth() {
       const { data } = await supabaseClient.auth.getUser();
       currentUser = data?.user || null;
+      syncGlobalAuthState();
 
       if (window.location.hash.includes("access_token")) {
         document.getElementById("resetModal").classList.remove("hidden");
@@ -1985,6 +2124,10 @@
       updateAuthStatus();
       fillAuthorLocal();
       await loadPosts();
+
+      if (typeof window.klevbyLoadPonds === "function") {
+        window.klevbyLoadPonds();
+      }
     }
 
     function updateAuthStatus() {
@@ -2033,6 +2176,7 @@
       }
 
       currentUser = data?.user || null;
+      syncGlobalAuthState();
 
       if (currentUser) {
         const updateResult = await supabaseClient.auth.updateUser({
@@ -2045,6 +2189,7 @@
 
         if (!updateResult.error) {
           currentUser = updateResult.data?.user || currentUser;
+          syncGlobalAuthState();
         }
       }
 
@@ -2059,6 +2204,10 @@
       updateAuthStatus();
       alert("Регистрация выполнена. Если придёт письмо — подтверди почту.");
       await loadPosts();
+
+      if (typeof window.klevbyLoadPonds === "function") {
+        window.klevbyLoadPonds();
+      }
     }
 
     async function login() {
@@ -2077,6 +2226,7 @@
       }
 
       currentUser = data.user;
+      syncGlobalAuthState();
 
       if (nickname) {
         const updateResult = await supabaseClient.auth.updateUser({
@@ -2089,6 +2239,7 @@
 
         if (!updateResult.error) {
           currentUser = updateResult.data?.user || currentUser;
+          syncGlobalAuthState();
           localStorage.setItem("klevby_author_name", nickname);
           localStorage.setItem("klevby_chat_username", nickname);
         }
@@ -2097,14 +2248,25 @@
       updateAuthStatus();
       fillAuthorLocal();
       await loadPosts();
+
+      if (typeof window.klevbyLoadPonds === "function") {
+        window.klevbyLoadPonds();
+      }
+
       showSection("home");
     }
 
     async function logout() {
       await supabaseClient.auth.signOut();
       currentUser = null;
+      syncGlobalAuthState();
       updateAuthStatus();
       await loadPosts();
+
+      if (typeof window.klevbyLoadPonds === "function") {
+        window.klevbyLoadPonds();
+      }
+
       alert("Ты вышел.");
     }
 
@@ -2730,5 +2892,6 @@
   <script src="chat.js" defer></script>
   <script src="map-logic.js" defer></script>
   <script src="market-logic.js" defer></script>
+  <script src="ponds.js" defer></script>
 </body>
 </html>
