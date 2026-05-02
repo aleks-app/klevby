@@ -2,6 +2,8 @@
   const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
   const SUPABASE_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
 
+  let klevbyChatLockedScrollY = 0;
+
   if (window.__klevbyChatLoaded) {
     return;
   }
@@ -471,7 +473,10 @@
 
       replyPreview.classList.remove("hidden");
       hideMessageMenu();
-      input.focus();
+
+      requestAnimationFrame(() => {
+        input.focus();
+      });
     }
 
     function buildMessageContent(value) {
@@ -1248,6 +1253,7 @@
     async function openChat() {
       updateViewportVars();
       lockChatPage();
+      setChatKeyboardState(false);
 
       modal.classList.remove("hidden");
       modal.classList.add("open");
@@ -1268,6 +1274,7 @@
 
       clearReply();
       hideMessageMenu();
+      setChatKeyboardState(false);
       unlockChatPage();
     }
 
@@ -1383,6 +1390,8 @@
 
     document.addEventListener("click", async (event) => {
       if (event.target.closest("#nav-chat") || event.target.closest("#chat-desktop-btn")) {
+        event.preventDefault();
+        event.stopPropagation();
         await openChat();
         return;
       }
@@ -1463,6 +1472,22 @@
       }
     });
 
+    document.addEventListener(
+      "touchmove",
+      (event) => {
+        if (!isMobileChatScreen()) return;
+        if (!modal.classList.contains("open")) return;
+
+        const canScrollMessages = event.target.closest("#chat-messages");
+        const isInputArea = event.target.closest("#chat-input-area");
+
+        if (!canScrollMessages && !isInputArea) {
+          event.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+
     messagesContainer.addEventListener("pointerdown", (event) => {
       const row = event.target.closest(".chat-message-row");
       if (!row) return;
@@ -1500,17 +1525,46 @@
     });
 
     input.addEventListener("focus", () => {
+      setChatKeyboardState(true);
       updateViewportVars();
 
       setTimeout(() => {
         updateViewportVars();
         scrollChatToBottom();
-      }, 250);
+      }, 80);
+
+      setTimeout(() => {
+        updateViewportVars();
+        scrollChatToBottom();
+      }, 280);
+
+      setTimeout(() => {
+        updateViewportVars();
+        scrollChatToBottom();
+      }, 520);
     });
 
     input.addEventListener("blur", () => {
-      setTimeout(updateViewportVars, 150);
+      setTimeout(() => {
+        setChatKeyboardState(false);
+        updateViewportVars();
+      }, 180);
     });
+  }
+
+  function isMobileChatScreen() {
+    return window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  function setChatKeyboardState(isOpen) {
+    const modal = document.getElementById("klevby-chat-modal");
+
+    document.documentElement.classList.toggle("klevby-chat-keyboard-open", Boolean(isOpen));
+    document.body.classList.toggle("klevby-chat-keyboard-open", Boolean(isOpen));
+
+    if (modal) {
+      modal.classList.toggle("klevby-keyboard-open", Boolean(isOpen));
+    }
   }
 
   function setupViewportFix() {
@@ -1520,12 +1574,29 @@
 
     updateViewportVars();
 
-    window.addEventListener("resize", updateViewportVars, { passive: true });
+    window.addEventListener(
+      "resize",
+      () => {
+        updateViewportVars();
+
+        const modal = document.getElementById("klevby-chat-modal");
+        const messages = document.getElementById("chat-messages");
+
+        if (modal && modal.classList.contains("open") && messages) {
+          requestAnimationFrame(() => {
+            messages.scrollTop = messages.scrollHeight;
+          });
+        }
+      },
+      { passive: true }
+    );
 
     window.addEventListener(
       "orientationchange",
       () => {
+        setTimeout(updateViewportVars, 80);
         setTimeout(updateViewportVars, 250);
+        setTimeout(updateViewportVars, 520);
       },
       { passive: true }
     );
@@ -1536,9 +1607,10 @@
         () => {
           updateViewportVars();
 
+          const modal = document.getElementById("klevby-chat-modal");
           const messages = document.getElementById("chat-messages");
 
-          if (messages) {
+          if (modal && modal.classList.contains("open") && messages) {
             requestAnimationFrame(() => {
               messages.scrollTop = messages.scrollHeight;
             });
@@ -1547,27 +1619,81 @@
         { passive: true }
       );
 
-      window.visualViewport.addEventListener("scroll", updateViewportVars, { passive: true });
+      window.visualViewport.addEventListener(
+        "scroll",
+        () => {
+          updateViewportVars();
+
+          const modal = document.getElementById("klevby-chat-modal");
+          const messages = document.getElementById("chat-messages");
+
+          if (modal && modal.classList.contains("open") && messages) {
+            requestAnimationFrame(() => {
+              messages.scrollTop = messages.scrollHeight;
+            });
+          }
+        },
+        { passive: true }
+      );
     }
   }
 
   function updateViewportVars() {
     const vv = window.visualViewport;
     const height = vv ? vv.height : window.innerHeight;
+    const width = vv ? vv.width : window.innerWidth;
     const offsetTop = vv ? vv.offsetTop : 0;
+    const offsetLeft = vv ? vv.offsetLeft : 0;
 
     document.documentElement.style.setProperty("--klevby-vvh", `${height}px`);
+    document.documentElement.style.setProperty("--klevby-vvw", `${width}px`);
     document.documentElement.style.setProperty("--klevby-vtop", `${offsetTop}px`);
+    document.documentElement.style.setProperty("--klevby-vleft", `${offsetLeft}px`);
   }
 
   function lockChatPage() {
+    updateViewportVars();
+
     document.documentElement.classList.add("klevby-chat-lock");
     document.body.classList.add("klevby-chat-lock");
+
+    if (!isMobileChatScreen()) return;
+
+    klevbyChatLockedScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+
+    document.documentElement.classList.add("klevby-chat-mobile-lock");
+    document.body.classList.add("klevby-chat-mobile-lock");
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${klevbyChatLockedScrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
   }
 
   function unlockChatPage() {
+    const shouldRestoreMobileScroll = document.body.classList.contains("klevby-chat-mobile-lock");
+
     document.documentElement.classList.remove("klevby-chat-lock");
     document.body.classList.remove("klevby-chat-lock");
+    document.documentElement.classList.remove("klevby-chat-mobile-lock");
+    document.body.classList.remove("klevby-chat-mobile-lock");
+    document.documentElement.classList.remove("klevby-chat-keyboard-open");
+    document.body.classList.remove("klevby-chat-keyboard-open");
+
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+
+    if (shouldRestoreMobileScroll) {
+      window.scrollTo(0, klevbyChatLockedScrollY || 0);
+    }
+
+    klevbyChatLockedScrollY = 0;
   }
 
   function injectExtraChatStyles() {
@@ -2134,40 +2260,120 @@
 
       @media (max-width: 768px) {
         html.klevby-chat-lock,
-        body.klevby-chat-lock {
+        html.klevby-chat-mobile-lock {
           overflow: hidden !important;
           overscroll-behavior: none !important;
-          position: fixed !important;
-          inset: 0 !important;
-          width: 100% !important;
-          height: var(--klevby-vvh, 100dvh) !important;
-          margin: 0 !important;
-          padding: 0 !important;
+          height: 100% !important;
+          background: #050b0d !important;
+        }
+
+        body.klevby-chat-lock,
+        body.klevby-chat-mobile-lock {
+          overflow: hidden !important;
+          overscroll-behavior: none !important;
+          touch-action: none !important;
+          background: #050b0d !important;
+        }
+
+        body.klevby-chat-mobile-lock header,
+        body.klevby-chat-mobile-lock main,
+        body.klevby-chat-mobile-lock .mobile-tabbar,
+        body.klevby-chat-mobile-lock #homeFloatBtn,
+        body.klevby-chat-mobile-lock #installBanner,
+        body.klevby-chat-mobile-lock #iosInstallModal,
+        body.klevby-chat-mobile-lock #resetModal,
+        body.klevby-chat-mobile-lock #postModal {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+
+        body.klevby-chat-keyboard-open .mobile-tabbar,
+        body.klevby-chat-keyboard-open #homeFloatBtn {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
 
         #klevby-chat-modal {
+          position: fixed !important;
+          left: var(--klevby-vleft, 0px) !important;
+          top: var(--klevby-vtop, 0px) !important;
+          right: auto !important;
+          bottom: auto !important;
+          width: var(--klevby-vvw, 100vw) !important;
+          height: var(--klevby-vvh, 100dvh) !important;
+          min-height: var(--klevby-vvh, 100dvh) !important;
+          max-height: var(--klevby-vvh, 100dvh) !important;
+          z-index: 2147483000 !important;
           align-items: stretch !important;
           justify-content: stretch !important;
           padding: 0 !important;
-          top: var(--klevby-vtop, 0px) !important;
-          height: var(--klevby-vvh, 100dvh) !important;
+          background: #050b0d !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          overflow: hidden !important;
+          touch-action: none !important;
+        }
+
+        #klevby-chat-modal.open {
+          display: flex !important;
         }
 
         .klevby-chat-window {
+          position: relative !important;
           width: 100% !important;
           height: var(--klevby-vvh, 100dvh) !important;
+          min-height: var(--klevby-vvh, 100dvh) !important;
           max-height: var(--klevby-vvh, 100dvh) !important;
           border-radius: 0 !important;
           border: 0 !important;
-          grid-template-rows: auto auto 1fr auto auto !important;
+          background: #050b0d !important;
+          box-shadow: none !important;
+          grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
+          overflow: hidden !important;
         }
 
         .klevby-chat-header {
+          flex: 0 0 auto !important;
           padding-top: max(10px, env(safe-area-inset-top)) !important;
+          background: #0e1d20 !important;
+          z-index: 3 !important;
+        }
+
+        .klevby-chat-tabs {
+          flex: 0 0 auto !important;
+          background: #0a1417 !important;
+          z-index: 2 !important;
+        }
+
+        .klevby-chat-messages {
+          min-height: 0 !important;
+          height: auto !important;
+          background: #050b0d !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          touch-action: pan-y !important;
+          padding-bottom: 18px !important;
+        }
+
+        .klevby-reply-preview {
+          flex: 0 0 auto !important;
+          background: #0e1d20 !important;
+          z-index: 3 !important;
         }
 
         .klevby-chat-inputbar {
+          flex: 0 0 auto !important;
           padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+          background: #0e1d20 !important;
+          z-index: 4 !important;
+        }
+
+        #klevby-chat-modal.klevby-keyboard-open .klevby-chat-inputbar {
+          padding-bottom: 10px !important;
         }
 
         .chat-message-bubble {
