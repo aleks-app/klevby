@@ -177,8 +177,8 @@
       const meta = user?.user_metadata || {};
 
       return cleanDisplayName(
-        meta.username ||
         meta.nickname ||
+        meta.username ||
         meta.display_name ||
         meta.name ||
         meta.full_name ||
@@ -205,8 +205,8 @@
       }
 
       const savedName =
-        cleanDisplayName(localStorage.getItem("klevby_author_name")) ||
-        cleanDisplayName(localStorage.getItem("klevby_chat_username"));
+        cleanDisplayName(localStorage.getItem("klevby_chat_username")) ||
+        cleanDisplayName(localStorage.getItem("klevby_author_name"));
 
       if (savedName) {
         return savedName;
@@ -233,8 +233,8 @@
           [
             {
               id: currentChatUser.id,
-              username: nickname,
               nickname: nickname,
+              username: nickname,
               display_name: nickname,
               email: currentChatUser.email || "",
               updated_at: new Date().toISOString()
@@ -255,7 +255,7 @@
       try {
         const { data, error } = await chatDb
           .from("profiles")
-          .select("id,username,nickname,display_name,email")
+          .select("id,nickname,username,display_name,email")
           .in("id", uniqueIds);
 
         if (error) {
@@ -264,8 +264,8 @@
 
         (data || []).forEach((profile) => {
           const name = cleanDisplayName(
-            profile.username ||
             profile.nickname ||
+            profile.username ||
             profile.display_name ||
             profile.email ||
             ""
@@ -1239,7 +1239,7 @@
 
       if (result.error) {
         console.error("Ошибка удаления сообщения:", result.error);
-        alert("Не получилось удалить сообщение. Провь RLS delete.");
+        alert("Не получилось удалить сообщение. Проверь RLS delete.");
         return;
       }
 
