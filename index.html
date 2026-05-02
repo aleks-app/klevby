@@ -80,7 +80,7 @@
         name: "Klevby — Рыбалка в Беларуси",
         short_name: "Klevby",
         description: "Карта клева и поиск напарника на рыбалку в Беларуси",
-        start_url: "./index.html",
+        start_url: "./index.html?v=10",
         scope: "./",
         display: "standalone",
         orientation: "portrait",
@@ -2656,10 +2656,30 @@
       if (!window.isSecureContext) return;
 
       try {
-        await navigator.serviceWorker.register("/sw.js");
-        console.log("Klevby Service Worker зарегистрирован: /sw.js");
+        const CACHE_VERSION = "klevby-chat-fix-v10";
+        const savedVersion = localStorage.getItem("klevby_cache_version");
+
+        if (savedVersion !== CACHE_VERSION) {
+          localStorage.setItem("klevby_cache_version", CACHE_VERSION);
+
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+          }
+
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.update()));
+        }
+
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          updateViaCache: "none"
+        });
+
+        await registration.update();
+
+        console.log("Klevby Service Worker обновлён: /sw.js");
       } catch (error) {
-        console.warn("Service Worker не зарегистрирован. Проверь, что файл /sw.js лежит в корневой папке сайта.", error);
+        console.warn("Service Worker не зарегистрирован или не обновлён.", error);
       }
     }
 
@@ -2678,10 +2698,10 @@
     });
   </script>
 
-  <link rel="stylesheet" href="chat-style.css">
-  <script src="chat.js" defer></script>
-  <script src="map-logic.js" defer></script>
-  <script src="market-logic.js" defer></script>
+  <link rel="stylesheet" href="chat-style.css?v=10">
+  <script src="chat.js?v=10" defer></script>
+  <script src="map-logic.js?v=10" defer></script>
+  <script src="market-logic.js?v=10" defer></script>
 </body>
 </html>
 ```
