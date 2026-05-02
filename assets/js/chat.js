@@ -151,8 +151,6 @@
     const chatAvatar = document.getElementById("chatAvatar");
 
     const backBtn = document.getElementById("back-chat");
-    const headerActionBtn = document.getElementById("close-chat");
-
     const replyPreview = document.getElementById("replyPreview");
     const replyAuthor = document.getElementById("replyAuthor");
     const replyText = document.getElementById("replyText");
@@ -165,7 +163,6 @@
       await ensureCurrentUserProfile();
       setupPresence();
       setupRealtime();
-      updateHeaderActionButton();
     });
 
     if (chatDb.auth && typeof chatDb.auth.onAuthStateChange === "function") {
@@ -178,7 +175,6 @@
 
         await ensureCurrentUserProfile();
         setupPresence();
-        updateHeaderActionButton();
       });
     }
 
@@ -198,8 +194,6 @@
           await loadPrivatePeople();
         }
       }
-
-      updateHeaderActionButton();
     });
 
     function getMainSupabaseClient() {
@@ -224,67 +218,6 @@
         window.klevbyUser ||
         null
       );
-    }
-
-    function isPrivateDialogOpen() {
-      return Boolean(activeMode === "private" && selectedPeer && selectedPeer.id);
-    }
-
-    function updateHeaderActionButton() {
-      if (!headerActionBtn) return;
-
-      if (isPrivateDialogOpen()) {
-        headerActionBtn.textContent = "📞";
-        headerActionBtn.setAttribute("aria-label", "Позвонить");
-        headerActionBtn.setAttribute("title", "Позвонить");
-        headerActionBtn.classList.add("klevby-chat-call-btn");
-        headerActionBtn.classList.remove("klevby-chat-close-mode");
-      } else {
-        headerActionBtn.textContent = "×";
-        headerActionBtn.setAttribute("aria-label", "Закрыть");
-        headerActionBtn.setAttribute("title", "Закрыть");
-        headerActionBtn.classList.remove("klevby-chat-call-btn");
-        headerActionBtn.classList.add("klevby-chat-close-mode");
-      }
-    }
-
-    async function handleHeaderAction() {
-      if (!isPrivateDialogOpen()) {
-        closeChat();
-        return;
-      }
-
-      await refreshCurrentUser();
-
-      if (!currentChatUser) {
-        alert("Для звонка нужно войти в аккаунт.");
-        return;
-      }
-
-      if (!selectedPeer || !selectedPeer.id) {
-        alert("Сначала открой личную переписку с человеком.");
-        return;
-      }
-
-      const callPayload = {
-        me: {
-          id: currentChatUser.id,
-          name: getCurrentChatName(),
-          email: currentChatUser.email || ""
-        },
-        peer: {
-          id: selectedPeer.id,
-          name: selectedPeer.name || "Рыбак"
-        },
-        supabase: getMainSupabaseClient()
-      };
-
-      if (window.KlevbyCalls && typeof window.KlevbyCalls.startCall === "function") {
-        window.KlevbyCalls.startCall(callPayload);
-        return;
-      }
-
-      alert("Кнопка звонка готова. Следующим шагом подключим файл calls.js и сделаем настоящий вызов.");
     }
 
     function getGuestName() {
@@ -1014,7 +947,6 @@
       input.disabled = false;
       sendBtn.disabled = false;
 
-      updateHeaderActionButton();
       clearMessages();
 
       let data = null;
@@ -1095,7 +1027,6 @@
       input.disabled = true;
       sendBtn.disabled = true;
 
-      updateHeaderActionButton();
       clearMessages();
 
       if (!currentChatUser) {
@@ -1300,7 +1231,6 @@
 
       backBtn.classList.remove("hidden");
 
-      updateHeaderActionButton();
       markPeerAsRead(peerId);
 
       clearMessages();
@@ -1330,7 +1260,6 @@
       selectedPeer.name = getProfileName(peerId, selectedPeer.name);
       chatAvatar.textContent = getInitials(selectedPeer.name);
       chatTitle.textContent = selectedPeer.name;
-      updateHeaderActionButton();
 
       unreadPrivateCount = Math.max(0, unreadPrivateCount - 1);
       updateUnreadBadge();
@@ -1544,8 +1473,6 @@
           await loadPublicMessages();
         }
 
-        updateHeaderActionButton();
-
         setTimeout(() => {
           updateViewportVars();
           scrollChatToBottom();
@@ -1576,8 +1503,6 @@
       await ensureCurrentUserProfile();
       await reconnectRealtimeConnections();
       await loadPublicMessages();
-
-      updateHeaderActionButton();
 
       setTimeout(() => {
         updateViewportVars();
@@ -1733,7 +1658,7 @@
       if (event.target.id === "close-chat" || event.target.closest("#close-chat")) {
         event.preventDefault();
         event.stopPropagation();
-        await handleHeaderAction();
+        closeChat();
         return;
       }
 
@@ -2060,21 +1985,6 @@
         font-size: 28px !important;
         line-height: 1 !important;
         cursor: pointer !important;
-      }
-
-      .klevby-chat-close.klevby-chat-call-btn {
-        background: rgba(87,230,178,0.15) !important;
-        color: #c8ffe0 !important;
-        font-size: 20px !important;
-        box-shadow: 0 0 22px rgba(87,230,178,0.18) !important;
-      }
-
-      .klevby-chat-close.klevby-chat-call-btn:active {
-        transform: scale(0.96) !important;
-      }
-
-      .klevby-chat-close.klevby-chat-close-mode {
-        font-size: 28px !important;
       }
 
       .klevby-chat-head-main {
