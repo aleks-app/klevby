@@ -1,0 +1,495 @@
+.ponds-shell {
+  margin: 14px 0 44px;
+}
+
+.ponds-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 26px;
+  margin: 14px 0;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(87, 230, 178, 0.18), transparent 36%),
+    radial-gradient(circle at 95% 10%, rgba(88, 183, 255, 0.13), transparent 34%),
+    linear-gradient(135deg, rgba(7, 20, 22, 0.92), rgba(10, 30, 27, 0.86));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ponds-hero h2 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -1.2px;
+  font-weight: 800;
+}
+
+.ponds-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: rgba(244, 251, 247, 0.68);
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.ponds-admin-panel {
+  margin: 14px 0;
+  padding: 22px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(87, 230, 178, 0.13), transparent 34%),
+    rgba(13, 28, 31, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ponds-admin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.ponds-admin-kicker {
+  width: fit-content;
+  margin-bottom: 7px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(87, 230, 178, 0.12);
+  color: #c8ffe0;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.ponds-admin-head h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  font-weight: 800;
+}
+
+.ponds-admin-reset,
+.ponds-cancel-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(244, 251, 247, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ponds-form {
+  display: grid;
+  gap: 14px;
+}
+
+.ponds-fieldset {
+  margin: 0;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ponds-fieldset legend {
+  padding: 0 8px;
+  color: #9ff3cc;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ponds-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ponds-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.ponds-form label span {
+  color: rgba(244, 251, 247, 0.72);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ponds-form input,
+.ponds-form textarea,
+.ponds-form select {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f4fbf7;
+  outline: none;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ponds-form textarea {
+  min-height: 112px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.ponds-form input::placeholder,
+.ponds-form textarea::placeholder {
+  color: rgba(244, 251, 247, 0.36);
+}
+
+.ponds-form input:focus,
+.ponds-form textarea:focus,
+.ponds-form select:focus {
+  border-color: rgba(87, 230, 178, 0.38);
+  box-shadow: 0 0 0 4px rgba(87, 230, 178, 0.10);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.ponds-full {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+}
+
+.ponds-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ponds-save-btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #57e6b2, #28c990);
+  color: #03150c;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(87, 230, 178, 0.22);
+}
+
+.ponds-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ponds-status {
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: rgba(87, 230, 178, 0.10);
+  color: #c8ffe0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ponds-status-error {
+  background: rgba(228, 88, 88, 0.12);
+  color: #ffd2d2;
+}
+
+.ponds-grid-modern {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.pond-card {
+  overflow: hidden;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(87, 230, 178, 0.10), transparent 34%),
+    rgba(13, 28, 31, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.pond-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(87, 230, 178, 0.18);
+  box-shadow: 0 22px 62px rgba(0, 0, 0, 0.42);
+}
+
+.pond-card-image {
+  position: relative;
+  height: 190px;
+  background-size: cover;
+  background-position: center;
+}
+
+.pond-card-price {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  max-width: calc(100% - 28px);
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #57e6b2, #28c990);
+  color: #03150c;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 900;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+}
+
+.pond-card-city {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  width: fit-content;
+  max-width: calc(100% - 28px);
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pond-card-body {
+  padding: 18px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.pond-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pond-card h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 21px;
+  line-height: 1.18;
+  letter-spacing: -0.35px;
+  font-weight: 900;
+}
+
+.pond-card-status {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(87, 230, 178, 0.12);
+  color: #c8ffe0;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.pond-card p {
+  margin: 0 0 14px;
+  color: rgba(244, 251, 247, 0.68);
+  font-size: 14px;
+  line-height: 1.56;
+  font-weight: 500;
+}
+
+.pond-card-fish {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 14px;
+}
+
+.pond-card-fish span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  color: rgba(244, 251, 247, 0.78);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.pond-card-info {
+  display: grid;
+  gap: 7px;
+  margin-top: auto;
+  color: rgba(244, 251, 247, 0.58);
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.pond-card-actions {
+  margin-top: 14px;
+}
+
+.pond-card-actions a,
+.pond-card-actions button {
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(87, 230, 178, 0.22);
+  border-radius: 16px;
+  background: rgba(87, 230, 178, 0.12);
+  color: #c8ffe0;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pond-card-actions button:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
+.pond-card-admin {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pond-card-admin button {
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(244, 251, 247, 0.76);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pond-card-admin button:last-child {
+  background: rgba(228, 88, 88, 0.13);
+  color: #ffd2d2;
+  border-color: rgba(228, 88, 88, 0.18);
+}
+
+.ponds-empty,
+.ponds-loading-card {
+  min-height: 190px;
+  padding: 26px;
+  border-radius: 28px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: rgba(13, 28, 31, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(244, 251, 247, 0.66);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+}
+
+.ponds-empty-icon {
+  font-size: 38px;
+  margin-bottom: 8px;
+}
+
+.ponds-empty h3 {
+  margin: 0 0 6px;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.ponds-empty p {
+  margin: 0;
+  color: rgba(244, 251, 247, 0.58);
+}
+
+.ponds-loader {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #57e6b2;
+  animation: pondsSpin 0.8s linear infinite;
+}
+
+@keyframes pondsSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1050px) {
+  .ponds-grid-modern {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ponds-hero {
+    padding: 22px 16px;
+    border-radius: 26px;
+  }
+
+  .ponds-admin-panel {
+    padding: 18px;
+    border-radius: 26px;
+  }
+
+  .ponds-admin-head {
+    flex-direction: column;
+  }
+
+  .ponds-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ponds-grid-modern {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .pond-card {
+    min-height: auto;
+    border-radius: 26px;
+  }
+
+  .pond-card-image {
+    height: 178px;
+  }
+
+  .pond-card-admin {
+    grid-template-columns: 1fr;
+  }
+
+  .ponds-form-actions {
+    flex-direction: column;
+  }
+
+  .ponds-save-btn,
+  .ponds-cancel-btn {
+    width: 100%;
+  }
+}
