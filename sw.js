@@ -1,16 +1,20 @@
-const CACHE_NAME = "klevby-cache-v2-2026-05-02";
+const CACHE_NAME = "klevby-cache-v3-assets-2026-05-02";
 
 const APP_FILES = [
   "/",
   "/index.html",
-  "/chat.js",
-  "/chat-style.css",
-  "/map-logic.js",
-  "/market-logic.js",
-  "/ponds.js",
-  "/ponds.css",
-  "/klevby-icon-512.png",
-  "/narach-bg.webp"
+
+  "/assets/css/main.css",
+  "/assets/css/ponds.css",
+  "/assets/css/chat-style.css",
+
+  "/assets/js/chat.js",
+  "/assets/js/map-logic.js",
+  "/assets/js/market-logic.js",
+  "/assets/js/ponds.js",
+
+  "/assets/img/klevby-icon-512.png",
+  "/assets/img/narach-bg.webp"
 ];
 
 self.addEventListener("install", (event) => {
@@ -25,13 +29,15 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name !== CACHE_NAME)
+            .map((name) => caches.delete(name))
+        );
+      })
+      .then(() => self.clients.claim())
   );
 });
 
