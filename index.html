@@ -22,15 +22,15 @@
   <meta property="og:url" content="https://klevby.com/" />
   <meta property="og:title" content="Klevby — Карта клева и поиск напарника на рыбалку в Беларуси" />
   <meta property="og:description" content="Карта клева, точки рыбалки, отчеты, барахолка снастей и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
-  <meta property="og:image" content="https://klevby.com/narach-bg.webp" />
-  <meta property="og:image:secure_url" content="https://klevby.com/narach-bg.webp" />
+  <meta property="og:image" content="https://klevby.com/assets/img/narach-bg.webp" />
+  <meta property="og:image:secure_url" content="https://klevby.com/assets/img/narach-bg.webp" />
   <meta property="og:image:type" content="image/webp" />
   <meta property="og:image:alt" content="Klevby — рыбалка в Беларуси, карта клева и поиск напарника" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Klevby — Карта клева и поиск напарника на рыбалку в Беларуси" />
   <meta name="twitter:description" content="Карта клева, точки рыбалки, отчеты, барахолка снастей и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
-  <meta name="twitter:image" content="https://klevby.com/narach-bg.webp" />
+  <meta name="twitter:image" content="https://klevby.com/assets/img/narach-bg.webp" />
 
   <meta name="theme-color" content="#000000" />
   <meta name="background-color" content="#000000" />
@@ -39,10 +39,10 @@
   <meta name="apple-mobile-web-app-title" content="Klevby" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="icon" type="image/png" sizes="512x512" href="klevby-icon-512.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="klevby-icon-512.png">
-  <link rel="shortcut icon" type="image/png" href="klevby-icon-512.png">
-  <link rel="apple-touch-icon" href="klevby-icon-512.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/img/klevby-icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/img/klevby-icon-512.png">
+  <link rel="shortcut icon" type="image/png" href="assets/img/klevby-icon-512.png">
+  <link rel="apple-touch-icon" href="assets/img/klevby-icon-512.png">
   <link rel="manifest" id="pwaManifest" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,6 +54,7 @@
 
   <link rel="stylesheet" href="assets/css/main.css">
   <link rel="stylesheet" href="assets/css/ponds.css">
+  <link rel="stylesheet" href="assets/css/chat-style.css">
 
   <script>
     (function markStandaloneEarly() {
@@ -67,7 +68,7 @@
     })();
 
     (function createInlineManifest() {
-      const iconUrl = "klevby-icon-512.png";
+      const iconUrl = "assets/img/klevby-icon-512.png";
 
       const manifest = {
         name: "Klevby",
@@ -1862,10 +1863,9 @@
     });
   </script>
 
-  <link rel="stylesheet" href="chat-style.css">
-  <script src="chat.js" defer></script>
-  <script src="map-logic.js" defer></script>
-  <script src="market-logic.js" defer></script>
-  <script src="ponds.js" defer></script>
+  <script src="assets/js/chat.js" defer></script>
+  <script src="assets/js/map-logic.js" defer></script>
+  <script src="assets/js/market-logic.js" defer></script>
+  <script src="assets/js/ponds.js" defer></script>
 </body>
 </html>
