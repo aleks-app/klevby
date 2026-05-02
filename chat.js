@@ -176,6 +176,19 @@
       return getGuestName();
     }
 
+    function getReadStorageKey(peerId) {
+      const myId = currentChatUser?.id || "guest";
+      return `klevby_private_read_${myId}_${peerId}`;
+    }
+
+    function getPeerReadTime(peerId) {
+      return Number(localStorage.getItem(getReadStorageKey(peerId)) || "0");
+    }
+
+    function markPeerAsRead(peerId) {
+      localStorage.setItem(getReadStorageKey(peerId), String(Date.now()));
+    }
+
     function escapeHtml(text) {
       return String(text || "")
         .replaceAll("&", "&amp;")
@@ -582,19 +595,6 @@
       privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
     }
 
-    function removeUnreadFromPeer(peerId) {
-      const button = privatePeople?.querySelector(`[data-peer-id="${cssEscape(peerId)}"]`);
-
-      if (button) {
-        const dot = button.querySelector(".klevby-private-unread-dot");
-        button.classList.remove("has-unread");
-        if (dot) dot.remove();
-      }
-
-      unreadPrivateCount = Math.max(0, unreadPrivateCount - 1);
-      updateUnreadBadge();
-    }
-
     function setupPresence() {
       if (presenceChannel) return;
 
@@ -622,7 +622,7 @@
 
           updateSelectedPeerStatus();
 
-          document.querySelectorAll(".klevby-private-person").forEach((button) => {
+          document.querySelectorAll(".klevby-private-dialog-item").forEach((button) => {
             const peerId = button.dataset.peerId;
             const dot = button.querySelector(".klevby-private-status");
 
@@ -650,6 +650,7 @@
       clearReply();
 
       chatWindow.classList.remove("klevby-dialog-screen");
+      chatWindow.classList.remove("klevby-private-list-screen");
 
       publicTab.classList.add("active");
       privateTab.classList.remove("active");
@@ -661,6 +662,8 @@
       chatTitle.textContent = "Чат рыбаков";
       chatSubtitle.textContent = "Общий разговор Klevby";
       input.placeholder = "Напиши сообщение...";
+      input.disabled = false;
+      sendBtn.disabled = false;
 
       clearMessages();
 
@@ -691,20 +694,22 @@
       clearReply();
 
       chatWindow.classList.remove("klevby-dialog-screen");
+      chatWindow.classList.add("klevby-private-list-screen");
 
       publicTab.classList.remove("active");
       privateTab.classList.add("active");
-      privatePeople.classList.remove("hidden");
+      privatePeople.classList.add("hidden");
       backBtn.classList.add("hidden");
       if (pinnedPublicChat) pinnedPublicChat.classList.add("hidden");
 
       chatAvatar.textContent = "✉";
       chatTitle.textContent = "Личные сообщения";
-      chatSubtitle.textContent = currentChatUser ? "Выбери собеседника" : "Для лички нужен вход";
-      input.placeholder = "Выбери собеседника...";
+      chatSubtitle.textContent = currentChatUser ? "Выбери диалог" : "Для лички нужен вход";
+      input.placeholder = "Выбери диалог...";
+      input.disabled = true;
+      sendBtn.disabled = true;
 
       clearMessages();
-      privatePeople.innerHTML = "";
 
       if (!currentChatUser) {
         showEmptyState("Чтобы пользоваться личными сообщениями, войди или зарегистрируйся на сайте.");
@@ -714,7 +719,7 @@
       const myId = String(currentChatUser.id);
       const peersMap = new Map();
 
-      function addPeer(id, name, hasUnread = false) {
+      function addPeer(id, name, message = null) {
         if (!id) return;
 
         const peerId = String(id);
@@ -726,19 +731,37 @@
           peersMap.set(peerId, {
             id: peerId,
             name: peerName,
-            hasUnread: Boolean(hasUnread)
+            lastMessage: "",
+            lastTime: "",
+            lastTimeValue: 0,
+            unreadCount: 0
           });
-        } else {
-          const old = peersMap.get(peerId);
-          old.name = old.name || peerName;
-          old.hasUnread = old.hasUnread || Boolean(hasUnread);
+        }
+
+        const peer = peersMap.get(peerId);
+        peer.name = peer.name || peerName;
+
+        if (message) {
+          const messageTimeValue = getTimestamp(message.created_at);
+          const isIncoming = String(message.receiver_id || "") === myId && String(message.sender_id || "") === peerId;
+          const readTime = getPeerReadTime(peerId);
+
+          if (messageTimeValue >= peer.lastTimeValue) {
+            peer.lastMessage = message.content || "";
+            peer.lastTime = getMessageTime(message.created_at);
+            peer.lastTimeValue = messageTimeValue;
+          }
+
+          if (isIncoming && messageTimeValue > readTime) {
+            peer.unreadCount += 1;
+          }
         }
       }
 
       try {
         const { data: privateUsers, error: privateUsersError } = await chatDb
           .from("private_messages")
-          .select("sender_id,receiver_id,sender_name,created_at")
+          .select("sender_id,receiver_id,sender_name,content,created_at")
           .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
           .order("created_at", { ascending: false });
 
@@ -749,12 +772,10 @@
         (privateUsers || []).forEach((item) => {
           const senderId = String(item.sender_id || "");
           const receiverId = String(item.receiver_id || "");
-          const isIncoming = receiverId === myId && senderId !== myId;
-
           const peerId = senderId === myId ? receiverId : senderId;
           const peerName = senderId === myId ? "Рыбак" : (item.sender_name || "Рыбак");
 
-          addPeer(peerId, peerName, isIncoming);
+          addPeer(peerId, peerName, item);
         });
       } catch (error) {
         console.warn("Не удалось загрузить пользователей из private_messages:", error);
@@ -767,7 +788,7 @@
           .not("user_id", "is", null);
 
         (publicUsers || []).forEach((item) => {
-          addPeer(item.user_id, item.user_name || "Рыбак", false);
+          addPeer(item.user_id, item.user_name || "Рыбак", null);
         });
       } catch (error) {
         console.warn("Не удалось загрузить пользователей из общего чата:", error);
@@ -780,19 +801,19 @@
           .not("owner_id", "is", null);
 
         (postUsers || []).forEach((item) => {
-          addPeer(item.owner_id, item.name || "Рыбак", false);
+          addPeer(item.owner_id, item.name || "Рыбак", null);
         });
       } catch (error) {
         console.warn("Не удалось загрузить пользователей из объявлений:", error);
       }
 
       const peers = Array.from(peersMap.values()).sort((a, b) => {
-        if (a.hasUnread && !b.hasUnread) return -1;
-        if (!a.hasUnread && b.hasUnread) return 1;
-        return String(a.name).localeCompare(String(b.name), "ru");
+        if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
+        if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
+        return b.lastTimeValue - a.lastTimeValue;
       });
 
-      unreadPrivateCount = peers.filter(peer => peer.hasUnread).length;
+      unreadPrivateCount = peers.reduce((sum, peer) => sum + peer.unreadCount, 0);
       updateUnreadBadge();
 
       if (!peers.length) {
@@ -800,23 +821,37 @@
         return;
       }
 
-      privatePeople.innerHTML = peers.map(peer => `
-        <button class="klevby-private-person ${peer.hasUnread ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
-          <span class="klevby-private-avatar">${escapeHtml(getInitials(peer.name))}</span>
-          <span class="klevby-private-name">${escapeHtml(peer.name)}</span>
-          ${peer.hasUnread ? `<span class="klevby-private-unread-dot">1</span>` : ""}
-          <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
-        </button>
-      `).join("");
+      const list = document.createElement("div");
+      list.className = "klevby-private-dialog-list";
 
-      const firstUnreadPeer = peers.find(peer => peer.hasUnread);
+      list.innerHTML = peers.map(peer => {
+        const preview = peer.lastMessage
+          ? parseReplyContent(peer.lastMessage).mainText
+          : "Нажми, чтобы открыть переписку";
 
-      if (firstUnreadPeer) {
-        await openPrivateDialog(firstUnreadPeer.id, firstUnreadPeer.name);
-        return;
-      }
+        return `
+          <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
+            <span class="klevby-private-dialog-avatar">${escapeHtml(getInitials(peer.name))}</span>
 
-      showEmptyState("Выбери рыбака сверху, чтобы открыть личную переписку.");
+            <span class="klevby-private-dialog-main">
+              <span class="klevby-private-dialog-top">
+                <span class="klevby-private-dialog-name">${escapeHtml(peer.name)}</span>
+                <span class="klevby-private-dialog-time">${escapeHtml(peer.lastTime || "")}</span>
+              </span>
+
+              <span class="klevby-private-dialog-bottom">
+                <span class="klevby-private-dialog-preview">${escapeHtml(preview)}</span>
+                ${peer.unreadCount > 0 ? `<span class="klevby-private-unread-dot">${escapeHtml(peer.unreadCount)}</span>` : ""}
+              </span>
+            </span>
+
+            <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
+          </button>
+        `;
+      }).join("");
+
+      clearMessages();
+      messagesContainer.appendChild(list);
     }
 
     async function openPrivateDialog(peerId, peerName) {
@@ -832,7 +867,10 @@
         name: peerName || "Рыбак"
       };
 
+      activeMode = "private";
+
       chatWindow.classList.add("klevby-dialog-screen");
+      chatWindow.classList.remove("klevby-private-list-screen");
 
       clearReply();
 
@@ -840,15 +878,13 @@
       chatTitle.textContent = selectedPeer.name;
       chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
       input.placeholder = "Напиши личное сообщение...";
+      input.disabled = false;
+      sendBtn.disabled = false;
 
       backBtn.classList.remove("hidden");
       if (pinnedPublicChat) pinnedPublicChat.classList.add("hidden");
 
-      document.querySelectorAll(".klevby-private-person").forEach((button) => {
-        button.classList.toggle("active", String(button.dataset.peerId) === String(peerId));
-      });
-
-      removeUnreadFromPeer(peerId);
+      markPeerAsRead(peerId);
 
       clearMessages();
 
@@ -863,6 +899,9 @@
         showEmptyState("Не удалось загрузить личку. Проверь private_messages и RLS.");
         return;
       }
+
+      unreadPrivateCount = Math.max(0, unreadPrivateCount - 1);
+      updateUnreadBadge();
 
       if (!data || !data.length) {
         showEmptyState("Личных сообщений пока нет. Напиши первым.");
@@ -950,6 +989,7 @@
 
       input.value = "";
       clearReply();
+      markPeerAsRead(selectedPeer.id);
     }
 
     async function send() {
@@ -998,7 +1038,7 @@
 
       if (result.error) {
         console.error(result.error);
-        alert("Не получилось удалить сообщение. Проверь RLS delete.");
+        alert("Не получилось удалить сообщение. Провь RLS delete.");
         return;
       }
 
@@ -1095,24 +1135,6 @@
                 await loadPrivatePeople();
                 return;
               }
-
-              if (privatePeople && !privatePeople.classList.contains("hidden")) {
-                const existingButton = privatePeople.querySelector(`[data-peer-id="${cssEscape(senderId)}"]`);
-
-                if (existingButton) {
-                  existingButton.classList.add("has-unread");
-
-                  if (!existingButton.querySelector(".klevby-private-unread-dot")) {
-                    const dot = document.createElement("span");
-                    dot.className = "klevby-private-unread-dot";
-                    dot.textContent = "1";
-                    existingButton.insertBefore(dot, existingButton.querySelector(".klevby-private-status"));
-                  }
-                } else {
-                  await loadPrivatePeople();
-                  return;
-                }
-              }
             }
 
             if (!currentChatUser || activeMode !== "private" || !selectedPeer) return;
@@ -1124,6 +1146,8 @@
               (String(msg.sender_id) === peerId && String(msg.receiver_id) === myId);
 
             if (!belongsToDialog) return;
+
+            markPeerAsRead(peerId);
 
             const emptyState = messagesContainer.querySelector(".chat-empty-state");
             if (emptyState) clearMessages();
@@ -1195,10 +1219,10 @@
         return;
       }
 
-      const personButton = event.target.closest(".klevby-private-person");
+      const dialogButton = event.target.closest(".klevby-private-dialog-item");
 
-      if (personButton) {
-        await openPrivateDialog(personButton.dataset.peerId, personButton.dataset.peerName);
+      if (dialogButton) {
+        await openPrivateDialog(dialogButton.dataset.peerId, dialogButton.dataset.peerName);
         return;
       }
 
@@ -1346,15 +1370,98 @@
         display: none !important;
       }
 
-      .klevby-private-person.has-unread {
-        background: rgba(216, 77, 77, 0.18) !important;
+      .klevby-private-dialog-list {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        padding: 4px 0 !important;
+      }
+
+      .klevby-private-dialog-item {
+        width: 100% !important;
+        min-height: 72px !important;
+        padding: 10px 12px !important;
+        border: 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+        background: transparent !important;
+        color: #ffffff !important;
+        display: grid !important;
+        grid-template-columns: 46px 1fr auto !important;
+        align-items: center !important;
+        gap: 10px !important;
+        cursor: pointer !important;
+        text-align: left !important;
+      }
+
+      .klevby-private-dialog-item:active {
+        background: rgba(255, 255, 255, 0.06) !important;
+      }
+
+      .klevby-private-dialog-item.has-unread {
+        background: rgba(216, 77, 77, 0.10) !important;
+      }
+
+      .klevby-private-dialog-avatar {
+        width: 46px !important;
+        height: 46px !important;
+        border-radius: 50% !important;
+        background: #1b2b28 !important;
+        color: #b8f5d6 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+      }
+
+      .klevby-private-dialog-main {
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 5px !important;
+      }
+
+      .klevby-private-dialog-top,
+      .klevby-private-dialog-bottom {
+        min-width: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+      }
+
+      .klevby-private-dialog-name {
+        min-width: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
         color: #ffffff !important;
       }
 
+      .klevby-private-dialog-time {
+        flex: 0 0 auto !important;
+        font-size: 11px !important;
+        color: rgba(255, 255, 255, 0.42) !important;
+        font-weight: 600 !important;
+      }
+
+      .klevby-private-dialog-preview {
+        min-width: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        font-size: 12px !important;
+        color: rgba(255, 255, 255, 0.52) !important;
+        font-weight: 500 !important;
+      }
+
       .klevby-private-unread-dot {
-        min-width: 17px !important;
-        height: 17px !important;
-        padding: 0 5px !important;
+        min-width: 18px !important;
+        height: 18px !important;
+        padding: 0 6px !important;
         border-radius: 999px !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -1362,8 +1469,24 @@
         background: #d84d4d !important;
         color: #ffffff !important;
         font-size: 10px !important;
-        line-height: 17px !important;
+        line-height: 18px !important;
         font-weight: 800 !important;
+        flex: 0 0 auto !important;
+      }
+
+      .klevby-private-status {
+        width: 8px !important;
+        height: 8px !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.18) !important;
+      }
+
+      .klevby-private-status.online {
+        background: #49d69b !important;
+      }
+
+      .klevby-private-list-screen #chat-input-area {
+        display: none !important;
       }
 
       @media (max-width: 768px) {
