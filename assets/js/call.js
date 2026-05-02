@@ -23,14 +23,12 @@
     return $("#chat-window");
   }
 
-  function getCloseButton() {
-    return $("#close-chat");
+  function getChatHeader() {
+    return $("#chat-header");
   }
 
-  function getPeerName() {
-    const title = $("#chatTitle");
-    const name = title ? title.textContent.trim() : "";
-    return name || "Собеседник";
+  function getCloseButton() {
+    return $("#close-chat");
   }
 
   function isChatOpen() {
@@ -46,6 +44,12 @@
       chatWindow.classList.contains("klevby-dialog-screen") &&
       isChatOpen()
     );
+  }
+
+  function getPeerName() {
+    const title = $("#chatTitle");
+    const name = title ? title.textContent.trim() : "";
+    return name || "Собеседник";
   }
 
   function safeStopEvent(event) {
@@ -80,64 +84,108 @@
     return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   }
 
-  function removeExtraCallButtons() {
-    const oldExtraBtn = $("#klevby-call-btn");
-    if (oldExtraBtn) {
-      oldExtraBtn.remove();
-    }
+  function ensureCloseButtonNormal() {
+    const closeButton = getCloseButton();
+    if (!closeButton) return;
 
-    document.querySelectorAll(".klevby-call-btn").forEach((button) => {
-      if (button.id !== "close-chat") {
+    closeButton.type = "button";
+    closeButton.textContent = "×";
+    closeButton.setAttribute("aria-label", "Закрыть");
+    closeButton.setAttribute("title", "Закрыть");
+  }
+
+  function removeWrongCallButtons() {
+    const header = getChatHeader();
+    if (!header) return;
+
+    const buttons = Array.from(header.querySelectorAll("button"));
+
+    buttons.forEach((button) => {
+      if (!button) return;
+      if (button.id === "klevby-call-btn") return;
+      if (button.id === "close-chat") return;
+      if (button.id === "back-chat") return;
+
+      const text = String(button.textContent || "").trim();
+      const id = String(button.id || "").toLowerCase();
+      const cls = String(button.className || "").toLowerCase();
+      const aria = String(button.getAttribute("aria-label") || "").toLowerCase();
+      const title = String(button.getAttribute("title") || "").toLowerCase();
+
+      const looksLikeCallButton =
+        text.includes("📞") ||
+        text.includes("☎") ||
+        text.includes("📱") ||
+        id.includes("call") ||
+        id.includes("phone") ||
+        cls.includes("call") ||
+        cls.includes("phone") ||
+        aria.includes("звон") ||
+        aria.includes("вызов") ||
+        aria.includes("call") ||
+        aria.includes("phone") ||
+        title.includes("звон") ||
+        title.includes("вызов") ||
+        title.includes("call") ||
+        title.includes("phone");
+
+      if (looksLikeCallButton) {
         button.remove();
       }
     });
   }
 
-  function updateHeaderButton() {
+  function ensureCallButton() {
+    const header = getChatHeader();
     const closeButton = getCloseButton();
-    if (!closeButton) return;
 
-    removeExtraCallButtons();
+    if (!header || !closeButton) return;
 
-    closeButton.type = "button";
+    ensureCloseButtonNormal();
+    removeWrongCallButtons();
+
+    let callButton = $("#klevby-call-btn");
+
+    if (!callButton) {
+      callButton = document.createElement("button");
+      callButton.id = "klevby-call-btn";
+      callButton.className = "klevby-call-btn hidden";
+      callButton.type = "button";
+      callButton.textContent = "📞";
+      callButton.setAttribute("aria-label", "Позвонить");
+      callButton.setAttribute("title", "Позвонить");
+
+      closeButton.insertAdjacentElement("beforebegin", callButton);
+    }
 
     if (isPrivateDialogOpen()) {
-      closeButton.textContent = "📞";
-      closeButton.setAttribute("aria-label", "Позвонить");
-      closeButton.setAttribute("title", "Позвонить");
-      closeButton.classList.add("klevby-call-mode");
-      closeButton.classList.remove("klevby-close-mode");
+      callButton.classList.remove("hidden");
     } else {
-      closeButton.textContent = "×";
-      closeButton.setAttribute("aria-label", "Закрыть");
-      closeButton.setAttribute("title", "Закрыть");
-      closeButton.classList.remove("klevby-call-mode");
-      closeButton.classList.add("klevby-close-mode");
+      callButton.classList.add("hidden");
     }
   }
 
-  function scheduleHeaderUpdate() {
+  function scheduleUpdate() {
     clearTimeout(updateTimer);
 
     updateTimer = setTimeout(() => {
-      updateHeaderButton();
+      ensureCallButton();
     }, 80);
   }
 
   function injectCallStyles() {
     const oldStyle = $("#klevby-call-styles");
-    if (oldStyle) {
-      oldStyle.remove();
-    }
+    if (oldStyle) oldStyle.remove();
 
     const style = document.createElement("style");
     style.id = "klevby-call-styles";
 
     style.textContent = `
-      #close-chat.klevby-call-mode {
+      #klevby-call-btn.klevby-call-btn {
         width: 44px !important;
         height: 44px !important;
         min-width: 44px !important;
+        flex: 0 0 auto !important;
         border: 0 !important;
         border-radius: 50% !important;
         background: rgba(87, 230, 178, 0.18) !important;
@@ -151,22 +199,15 @@
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28), 0 0 22px rgba(87, 230, 178, 0.18) !important;
         -webkit-tap-highlight-color: transparent !important;
         user-select: none !important;
+        margin-left: 6px !important;
       }
 
-      #close-chat.klevby-call-mode:active {
+      #klevby-call-btn.klevby-call-btn:active {
         transform: scale(0.94) !important;
       }
 
-      #close-chat.klevby-close-mode {
-        width: 38px !important;
-        height: 38px !important;
-        border: 0 !important;
-        border-radius: 50% !important;
-        background: rgba(255,255,255,0.08) !important;
-        color: #ffffff !important;
-        font-size: 28px !important;
-        line-height: 1 !important;
-        cursor: pointer !important;
+      #klevby-call-btn.hidden {
+        display: none !important;
       }
 
       .klevby-call-overlay {
@@ -509,7 +550,7 @@
       showSmallToast("Вызов завершён");
     }
 
-    scheduleHeaderUpdate();
+    scheduleUpdate();
   }
 
   function bindEndCallButton() {
@@ -579,9 +620,9 @@
       return;
     }
 
-    const closeButton = event.target.closest("#close-chat");
+    const callButton = event.target.closest("#klevby-call-btn");
 
-    if (closeButton && isPrivateDialogOpen()) {
+    if (callButton) {
       safeStopEvent(event);
       openCallOverlay();
       return;
@@ -596,14 +637,6 @@
       closeCallOverlay(true);
       return;
     }
-
-    const closeButton = event.target.closest("#close-chat");
-
-    if (closeButton && isPrivateDialogOpen()) {
-      safeStopEvent(event);
-      openCallOverlay();
-      return;
-    }
   }
 
   function handleKeydown(event) {
@@ -616,7 +649,7 @@
     if (document.visibilityState === "hidden") {
       closeCallOverlay(false);
     } else {
-      scheduleHeaderUpdate();
+      scheduleUpdate();
     }
   }
 
@@ -624,7 +657,7 @@
     if (!document.body || observer) return;
 
     observer = new MutationObserver(function () {
-      scheduleHeaderUpdate();
+      scheduleUpdate();
     });
 
     observer.observe(document.body, {
@@ -639,20 +672,20 @@
     if (watchInterval) return;
 
     watchInterval = setInterval(() => {
-      updateHeaderButton();
+      ensureCallButton();
     }, 500);
   }
 
   function initCallFeature() {
     injectCallStyles();
-    updateHeaderButton();
+    ensureCallButton();
     startObserver();
     startWatcher();
 
-    window.addEventListener("klevby-auth-changed", scheduleHeaderUpdate);
-    window.addEventListener("pageshow", scheduleHeaderUpdate);
-    window.addEventListener("focus", scheduleHeaderUpdate);
-    window.addEventListener("online", scheduleHeaderUpdate);
+    window.addEventListener("klevby-auth-changed", scheduleUpdate);
+    window.addEventListener("pageshow", scheduleUpdate);
+    window.addEventListener("focus", scheduleUpdate);
+    window.addEventListener("online", scheduleUpdate);
   }
 
   document.addEventListener("click", handleDocumentClick, true);
