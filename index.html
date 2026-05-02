@@ -451,22 +451,30 @@
 
     <section id="authSection" class="hidden">
       <div class="panel">
-        <h2>Вход на сайт</h2>
+        <h2 id="authTitle">Создать профиль рыбака</h2>
+        <p id="authSubtitle" style="margin-top:-8px;color:rgba(244,251,247,0.66);font-weight:600;">
+          Никнейм будет виден в объявлениях и чате. Почта нужна для входа и подтверждения аккаунта.
+        </p>
 
-        <label class="auth-label" for="usernameInput">Nickname</label>
-        <input id="usernameInput" type="text" placeholder="Например: Klevby_Minsk" autocomplete="nickname" maxlength="32" />
+        <label id="usernameLabel" class="auth-label" for="usernameInput">Nickname</label>
+        <input id="usernameInput" type="text" placeholder="Например: alex822alex" autocomplete="nickname" maxlength="32" />
 
         <label class="auth-label" for="emailInput">Email</label>
         <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
 
         <label class="auth-label" for="passwordInput">Пароль</label>
-        <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="current-password" />
+        <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="new-password" />
 
         <div class="actions">
-          <button class="small-btn blue" onclick="login()">Войти</button>
-          <button class="small-btn gray" onclick="register()">Регистрация</button>
+          <button id="authCreateBtn" class="small-btn green" onclick="register()">Создать профиль</button>
+          <button id="authLoginBtn" class="small-btn blue hidden" onclick="login()">Войти</button>
           <button class="small-btn yellow" onclick="sendRecovery()">Сбросить пароль</button>
           <button class="small-btn red" onclick="logout()">Выйти</button>
+        </div>
+
+        <div id="authSwitchText" class="auth-status" style="margin-top:16px;">
+          Уже есть аккаунт?
+          <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
         </div>
 
         <div id="authStatus" class="auth-status">Проверяем вход...</div>
@@ -563,6 +571,7 @@
     let installBannerShown = false;
     let activeModalPost = null;
     let postModalCloseTimer = null;
+    let authMode = "register";
 
     const splashStartedAt = Date.now();
 
@@ -760,6 +769,10 @@
 
       syncGlobalAuthState();
 
+      if (section === "auth") {
+        setAuthMode(currentUser ? "login" : authMode);
+      }
+
       if (section === "market" && typeof window.klevbyLoadMarket === "function") {
         window.klevbyLoadMarket();
       }
@@ -949,7 +962,7 @@
       }
 
       const usernameInput = document.getElementById("usernameInput");
-      if (usernameInput && profileName && !usernameInput.value) {
+      if (usernameInput && profileName && !usernameInput.value && authMode === "register") {
         usernameInput.value = profileName;
       }
     }
@@ -1054,6 +1067,47 @@
       }
     }
 
+    function setAuthMode(mode) {
+      authMode = mode === "login" ? "login" : "register";
+
+      const title = document.getElementById("authTitle");
+      const subtitle = document.getElementById("authSubtitle");
+      const usernameLabel = document.getElementById("usernameLabel");
+      const usernameInput = document.getElementById("usernameInput");
+      const passwordInput = document.getElementById("passwordInput");
+      const createBtn = document.getElementById("authCreateBtn");
+      const loginBtn = document.getElementById("authLoginBtn");
+      const switchText = document.getElementById("authSwitchText");
+
+      if (!title || !subtitle || !usernameLabel || !usernameInput || !passwordInput || !createBtn || !loginBtn || !switchText) return;
+
+      if (authMode === "login") {
+        title.textContent = "Войти в профиль";
+        subtitle.textContent = "Войди через email и пароль. Никнейм подтянется из профиля.";
+        usernameLabel.classList.add("hidden");
+        usernameInput.classList.add("hidden");
+        passwordInput.setAttribute("autocomplete", "current-password");
+        createBtn.classList.add("hidden");
+        loginBtn.classList.remove("hidden");
+        switchText.innerHTML = `
+          Нет аккаунта?
+          <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать профиль</button>
+        `;
+      } else {
+        title.textContent = "Создать профиль рыбака";
+        subtitle.textContent = "Никнейм будет виден в объявлениях и чате. Почта нужна для входа и подтверждения аккаунта.";
+        usernameLabel.classList.remove("hidden");
+        usernameInput.classList.remove("hidden");
+        passwordInput.setAttribute("autocomplete", "new-password");
+        createBtn.classList.remove("hidden");
+        loginBtn.classList.add("hidden");
+        switchText.innerHTML = `
+          Уже есть аккаунт?
+          <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
+        `;
+      }
+    }
+
     async function initAuth() {
       const { data } = await supabaseClient.auth.getUser();
       currentUser = data?.user || null;
@@ -1064,6 +1118,7 @@
         document.getElementById("resetModal").classList.remove("hidden");
       }
 
+      setAuthMode(currentUser ? "login" : "register");
       updateAuthStatus();
       fillAuthorLocal();
       await loadPosts();
@@ -1082,7 +1137,7 @@
           (nickname ? " | Nickname: " + nickname : "") +
           (isAdmin() ? " | Админ включён" : "");
       } else {
-        status.textContent = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
+        status.textContent = "Ты не вошёл. Чтобы создать объявление — создай профиль или войди.";
       }
     }
 
@@ -1099,6 +1154,10 @@
         return alert("Nickname должен быть минимум 2 символа.");
       }
 
+      if (password.length < 6) {
+        return alert("Пароль должен быть минимум 6 символов.");
+      }
+
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -1112,7 +1171,7 @@
       });
 
       if (error) {
-        return alert("Не удалось зарегистрироваться: " + error.message);
+        return alert("Не удалось создать профиль: " + error.message);
       }
 
       currentUser = data?.user || null;
@@ -1142,13 +1201,13 @@
       }
 
       updateAuthStatus();
-      alert("Регистрация выполнена. Если придёт письмо — подтверди почту.");
+      alert("Профиль создан. Если придёт письмо — подтверди почту, потом войди в аккаунт.");
       await loadPosts();
       reloadPondsIfReady();
+      showSection("home");
     }
 
     async function login() {
-      const nickname = cleanDisplayName(document.getElementById("usernameInput")?.value || "");
       const email = document.getElementById("emailInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
 
@@ -1165,21 +1224,11 @@
       currentUser = data.user;
       syncGlobalAuthState();
 
-      if (nickname) {
-        const updateResult = await supabaseClient.auth.updateUser({
-          data: {
-            nickname,
-            username: nickname,
-            display_name: nickname
-          }
-        });
+      const nickname = getUserNickname();
 
-        if (!updateResult.error) {
-          currentUser = updateResult.data?.user || currentUser;
-          localStorage.setItem("klevby_author_name", nickname);
-          localStorage.setItem("klevby_chat_username", nickname);
-          syncGlobalAuthState();
-        }
+      if (nickname) {
+        localStorage.setItem("klevby_author_name", nickname);
+        localStorage.setItem("klevby_chat_username", nickname);
       }
 
       updateAuthStatus();
@@ -1194,6 +1243,7 @@
       currentUser = null;
       syncGlobalAuthState();
       updateAuthStatus();
+      setAuthMode("register");
       await loadPosts();
       reloadPondsIfReady();
       alert("Ты вышел.");
@@ -1519,7 +1569,7 @@
 
       if (!currentUser) {
         showSection("auth");
-        alert("Сначала войди или зарегистрируйся. Так объявления будут защищены от удаления чужими людьми.");
+        alert("Сначала создай профиль или войди. Так объявления будут защищены от удаления чужими людьми.");
         return;
       }
 
@@ -1852,6 +1902,7 @@
       const ok = initSupabase();
       if (!ok) return;
 
+      setAuthMode("register");
       fillAuthorLocal();
       updateBiteForecast(752);
       fetchWeather();
