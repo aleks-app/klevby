@@ -19,10 +19,6 @@
     return document.querySelector(selector);
   }
 
-  function $all(selector) {
-    return Array.from(document.querySelectorAll(selector));
-  }
-
   function getChatWindow() {
     return $("#chat-window");
   }
@@ -35,99 +31,13 @@
     return $("#close-chat");
   }
 
+  function getCallButton() {
+    return $("#klevby-call-btn");
+  }
+
   function isPrivateDialogOpen() {
     const chatWindow = getChatWindow();
     return Boolean(chatWindow && chatWindow.classList.contains("klevby-dialog-screen"));
-  }
-
-  function getPeerName() {
-    const title = $("#chatTitle");
-    const name = title ? title.textContent.trim() : "";
-    return name || "Собеседник";
-  }
-
-  function safeStopEvent(event) {
-    if (!event) return;
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (typeof event.stopImmediatePropagation === "function") {
-      event.stopImmediatePropagation();
-    }
-  }
-
-  function escapeHtml(text) {
-    return String(text || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function getInitial(name) {
-    const clean = String(name || "С").trim();
-    return (clean[0] || "С").toUpperCase();
-  }
-
-  function formatCallTime(seconds) {
-    const min = Math.floor(seconds / 60);
-    const sec = seconds % 60;
-
-    return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  }
-
-  function removeOldCallButtons() {
-    const header = getChatHeader();
-    if (!header) return;
-
-    const buttons = Array.from(header.querySelectorAll("button"));
-
-    buttons.forEach((button) => {
-      if (!button) return;
-
-      if (button.id === "klevby-call-btn") return;
-      if (button.id === "back-chat") return;
-
-      const text = String(button.textContent || "").trim();
-      const id = String(button.id || "").toLowerCase();
-      const cls = String(button.className || "").toLowerCase();
-      const aria = String(button.getAttribute("aria-label") || "").toLowerCase();
-      const title = String(button.getAttribute("title") || "").toLowerCase();
-
-      const isCloseButton = button.id === "close-chat";
-
-      const looksLikeCallButton =
-        text.includes("📞") ||
-        text.includes("☎") ||
-        text.includes("📱") ||
-        text.includes("📲") ||
-        id.includes("call") ||
-        id.includes("phone") ||
-        cls.includes("call") ||
-        cls.includes("phone") ||
-        aria.includes("звон") ||
-        aria.includes("вызов") ||
-        aria.includes("call") ||
-        aria.includes("phone") ||
-        title.includes("звон") ||
-        title.includes("вызов") ||
-        title.includes("call") ||
-        title.includes("phone");
-
-      if (looksLikeCallButton && !isCloseButton) {
-        button.remove();
-      }
-    });
-  }
-
-  function restoreCloseButton() {
-    const closeButton = getCloseButton();
-    if (!closeButton) return;
-
-    closeButton.type = "button";
-    closeButton.setAttribute("aria-label", "Закрыть");
-    closeButton.textContent = "×";
   }
 
   function ensureCallButton() {
@@ -138,24 +48,22 @@
     try {
       const header = getChatHeader();
       const closeButton = getCloseButton();
+      const callButton = getCallButton();
 
       if (!header || !closeButton) return;
 
       restoreCloseButton();
-      removeOldCallButtons();
-
-      let callButton = $("#klevby-call-btn");
 
       if (!callButton) {
-        callButton = document.createElement("button");
-        callButton.id = "klevby-call-btn";
-        callButton.className = "klevby-call-btn hidden";
-        callButton.type = "button";
-        callButton.setAttribute("aria-label", "Позвонить");
-        callButton.setAttribute("title", "Позвонить");
-        callButton.textContent = "📞";
-
-        closeButton.insertAdjacentElement("beforebegin", callButton);
+        const newCallButton = document.createElement("button");
+        newCallButton.id = "klevby-call-btn";
+        newCallButton.className = "klevby-call-btn hidden";
+        newCallButton.type = "button";
+        newCallButton.setAttribute("aria-label", "Позвонить");
+        newCallButton.setAttribute("title", "Позвонить");
+        newCallButton.textContent = "📞";
+        
+        closeButton.insertAdjacentElement("beforebegin", newCallButton);
       }
 
       updateCallButtonVisibility();
@@ -165,7 +73,7 @@
   }
 
   function updateCallButtonVisibility() {
-    const callButton = $("#klevby-call-btn");
+    const callButton = getCallButton();
     const closeButton = getCloseButton();
 
     if (!callButton || !closeButton) return;
@@ -181,13 +89,13 @@
     }
   }
 
-  function scheduleButtonUpdate() {
-    clearTimeout(observerUpdateTimer);
+  function restoreCloseButton() {
+    const closeButton = getCloseButton();
+    if (!closeButton) return;
 
-    observerUpdateTimer = setTimeout(() => {
-      ensureCallButton();
-      updateCallButtonVisibility();
-    }, 120);
+    closeButton.type = "button";
+    closeButton.setAttribute("aria-label", "Закрыть");
+    closeButton.textContent = "×";
   }
 
   function injectCallStyles() {
@@ -581,4 +489,72 @@
 
     endButton.addEventListener("click", endHandler, true);
     endButton.addEventListener("pointerup", endHandler, true);
-    endButton.addEventListener("touchend", end
+    endButton.addEventListener("touchend", endHandler, true);
+  }
+
+  function openCallOverlay() {
+    if (!isPrivateDialogOpen()) return;
+
+    const peerName = getPeerName();
+
+    closeCallOverlay(false);
+
+    callOverlay = document.createElement("div");
+    callOverlay.id = "klevbyCallOverlay";
+    callOverlay.className = "klevby-call-overlay";
+
+    callOverlay.innerHTML = `
+      <div class="klevby-call-card">
+        <div class="klevby-call-avatar-wrap">
+          <div class="klevby-call-pulse"></div>
+          <div class="klevby-call-pulse"></div>
+          <div class="klevby-call-avatar">${escapeHtml(getInitial(peerName))}</div>
+        </div>
+
+        <div class="klevby-call-name">${escapeHtml(peerName)}</div>
+        <div class="klevby-call-status">Идёт вызов...</div>
+        <div id="klevbyCallTimer" class="klevby-call-timer">00:00</div>
+
+        <div class="klevby-call-actions">
+          <button id="klevbyEndCallBtn" class="klevby-call-end" type="button" aria-label="Сбросить вызов">✕</button>
+        </div>
+
+        <div class="klevby-call-hint">
+          Сейчас это тестовый звонок: экран вызова, гудок и сброс. Настоящий голосовой вызов подключим отдельным этапом.
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(callOverlay);
+
+    document.documentElement.classList.add("klevby-chat-lock");
+    document.body.classList.add("klevby-chat-lock");
+
+    bindEndCallButton();
+    startTimer();
+    startRingSound();
+  }
+
+  function handleDocumentClick(event) {
+    const endCallButton = event.target.closest("#klevbyEndCallBtn");
+
+    if (endCallButton) {
+      safeStopEvent(event);
+      closeCallOverlay(true);
+      return;
+    }
+
+    const callButton = event.target.closest("#klevby-call-btn");
+
+    if (callButton) {
+      safeStopEvent(event);
+
+      if (!isPrivateDialogOpen()) {
+        return;
+      }
+
+      openCallOverlay();
+    }
+  }
+
+ 
