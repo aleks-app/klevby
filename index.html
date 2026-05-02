@@ -1327,7 +1327,7 @@
         <h2 id="formTitle">Создать выезд</h2>
 
         <div class="form-row">
-          <input id="nameInput" placeholder="Имя" />
+          <input id="nameInput" placeholder="Nickname / имя на сайте" />
           <input id="cityInput" placeholder="Город отправления" />
         </div>
 
@@ -1442,8 +1442,8 @@
       <div class="panel">
         <h2>Вход на сайт</h2>
 
-        <label class="auth-label" for="usernameInput">Отображаемое имя пользователя на сайте</label>
-        <input id="usernameInput" type="text" placeholder="Например: Рыбак_Минск" autocomplete="nickname" maxlength="32" />
+        <label class="auth-label" for="usernameInput">Nickname</label>
+        <input id="usernameInput" type="text" placeholder="Например: Klevby_Minsk" autocomplete="nickname" maxlength="32" />
 
         <label class="auth-label" for="emailInput">Email</label>
         <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
@@ -1610,23 +1610,28 @@
     function cleanDisplayName(value) {
       return String(value || "")
         .trim()
+        .replace(/[<>]/g, "")
         .replace(/\s+/g, " ")
         .slice(0, 32);
     }
 
-    function getUserDisplayName() {
+    function getUserNickname() {
       if (!currentUser) return "";
 
       const meta = currentUser.user_metadata || {};
 
       return cleanDisplayName(
-        meta.username ||
         meta.nickname ||
+        meta.username ||
         meta.display_name ||
         meta.name ||
         meta.full_name ||
         ""
       );
+    }
+
+    function getUserDisplayName() {
+      return getUserNickname();
     }
 
     function showStatus(message, isError = false) {
@@ -1987,11 +1992,11 @@
       if (!status) return;
 
       if (currentUser) {
-        const displayName = getUserDisplayName();
+        const nickname = getUserNickname();
         status.textContent =
           "Ты вошёл: " +
           currentUser.email +
-          (displayName ? " | Имя на сайте: " + displayName : "") +
+          (nickname ? " | Nickname: " + nickname : "") +
           (isAdmin() ? " | Админ включён" : "");
       } else {
         status.textContent = "Ты не вошёл. Чтобы создать объявление — войди или зарегистрируйся.";
@@ -1999,16 +2004,16 @@
     }
 
     async function register() {
-      const username = cleanDisplayName(document.getElementById("usernameInput").value);
+      const nickname = cleanDisplayName(document.getElementById("usernameInput").value);
       const email = document.getElementById("emailInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
 
-      if (!username || !email || !password) {
-        return alert("Введи отображаемое имя, email и пароль.");
+      if (!nickname || !email || !password) {
+        return alert("Введи Nickname, email и пароль.");
       }
 
-      if (username.length < 2) {
-        return alert("Отображаемое имя должно быть минимум 2 символа.");
+      if (nickname.length < 2) {
+        return alert("Nickname должен быть минимум 2 символа.");
       }
 
       const { data, error } = await supabaseClient.auth.signUp({
@@ -2016,9 +2021,9 @@
         password,
         options: {
           data: {
-            username,
-            nickname: username,
-            display_name: username
+            nickname,
+            username: nickname,
+            display_name: nickname
           }
         }
       });
@@ -2032,9 +2037,9 @@
       if (currentUser) {
         const updateResult = await supabaseClient.auth.updateUser({
           data: {
-            username,
-            nickname: username,
-            display_name: username
+            nickname,
+            username: nickname,
+            display_name: nickname
           }
         });
 
@@ -2043,11 +2048,12 @@
         }
       }
 
-      localStorage.setItem("klevby_author_name", username);
+      localStorage.setItem("klevby_author_name", nickname);
+      localStorage.setItem("klevby_chat_username", nickname);
 
       const nameInput = document.getElementById("nameInput");
       if (nameInput && !nameInput.value) {
-        nameInput.value = username;
+        nameInput.value = nickname;
       }
 
       updateAuthStatus();
@@ -2056,7 +2062,7 @@
     }
 
     async function login() {
-      const username = cleanDisplayName(document.getElementById("usernameInput")?.value || "");
+      const nickname = cleanDisplayName(document.getElementById("usernameInput")?.value || "");
       const email = document.getElementById("emailInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
 
@@ -2072,18 +2078,19 @@
 
       currentUser = data.user;
 
-      if (username) {
+      if (nickname) {
         const updateResult = await supabaseClient.auth.updateUser({
           data: {
-            username,
-            nickname: username,
-            display_name: username
+            nickname,
+            username: nickname,
+            display_name: nickname
           }
         });
 
         if (!updateResult.error) {
           currentUser = updateResult.data?.user || currentUser;
-          localStorage.setItem("klevby_author_name", username);
+          localStorage.setItem("klevby_author_name", nickname);
+          localStorage.setItem("klevby_chat_username", nickname);
         }
       }
 
@@ -2426,7 +2433,7 @@
       }
 
       if (!name || !city || !destination || !tripTime || !text) {
-        showFormMessage("Заполни имя, город, куда едешь, когда и описание.", true);
+        showFormMessage("Заполни Nickname, город, куда едешь, когда и описание.", true);
         return;
       }
 
