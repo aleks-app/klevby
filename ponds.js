@@ -1,44 +1,35 @@
 (function () {
   const ADMIN_EMAIL = "al822alex@gmail.com";
-  const TABLE_NAME = "paid_ponds";
+  const TABLE_NAME = "ponds";
 
-  let pondsDb = null;
-  let pondsCurrentUser = null;
   let ponds = [];
   let editingPondId = null;
   let initialized = false;
 
-  function waitForMainApp() {
-    const timer = setInterval(async () => {
-      if (window.klevbySupabaseClient) {
-        clearInterval(timer);
-        pondsDb = window.klevbySupabaseClient;
-        pondsCurrentUser = window.klevbyCurrentUser || null;
-        initPondsModule();
-      }
-    }, 250);
+  function getSupabase() {
+    return (
+      window.klevbySupabase ||
+      window.supabaseClient ||
+      null
+    );
   }
 
-  function initPondsModule() {
-    if (initialized) return;
-    initialized = true;
-
-    window.klevbyLoadPonds = loadPonds;
-
-    window.addEventListener("klevby-auth-changed", function (event) {
-      pondsCurrentUser = event.detail?.user || null;
-      renderAdminBlock();
-      renderPonds();
-    });
-
-    document.addEventListener("click", handlePondsClick);
-    document.addEventListener("submit", handlePondFormSubmit);
-
-    loadPonds();
+  function getCurrentUser() {
+    return (
+      window.klevbyCurrentUser ||
+      window.currentUser ||
+      window.klevbyUser ||
+      null
+    );
   }
 
   function isAdmin() {
-    return pondsCurrentUser && pondsCurrentUser.email === ADMIN_EMAIL;
+    const user = getCurrentUser();
+    return Boolean(user && String(user.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  }
+
+  function $(id) {
+    return document.getElementById(id);
   }
 
   function escapeHtml(value) {
@@ -50,462 +41,365 @@
       .replaceAll("'", "&#039;");
   }
 
-  function cleanText(value) {
-    return String(value || "").trim();
+  function normalize(value) {
+    return String(value || "").toLowerCase().trim();
   }
 
-  function parseFishTypes(value) {
-    return String(value || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  function formatFishTypes(value) {
-    if (Array.isArray(value)) {
-      return value.filter(Boolean).join(", ");
-    }
-
-    return String(value || "");
-  }
-
-  function normalizePond(row) {
-    return {
-      id: row.id,
-      title: row.title || row.name || "",
-      city: row.city || "",
-      description: row.description || "",
-      price: row.price || "",
-      fish_types: Array.isArray(row.fish_types) ? row.fish_types : [],
-      contacts: row.contacts || "",
-      photo_url: row.photo_url || "",
-      lat: row.lat ?? "",
-      lng: row.lng ?? "",
-      is_active: Boolean(row.is_active),
-      created_at: row.created_at || ""
-    };
-  }
-
-  function getRoot() {
-    return document.getElementById("paidPondsRoot");
-  }
-
-  function getAdminRoot() {
-    return document.getElementById("paidPondsAdminRoot");
-  }
-
-  function getStatusRoot() {
-    return document.getElementById("paidPondsStatus");
-  }
-
-  function setStatus(message, isError = false) {
-    const status = getStatusRoot();
+  function setStatus(message, isError) {
+    const status = $("pondsStatus");
     if (!status) return;
 
-    status.textContent = message || "";
-    status.classList.toggle("ponds-status-error", Boolean(isError));
-    status.classList.toggle("hidden", !message);
+    status.textContent = message;
+    status.style.color = isError ? "#ffd2d2" : "";
   }
 
-  async function loadPonds() {
-    if (!pondsDb) return;
+  function setFormMessage(message, isError) {
+    const el = $("pondFormMessage");
+    if (!el) return;
 
-    const root = getRoot();
-    if (root) {
-      root.innerHTML = `
-        <div class="ponds-loading-card">
-          <div class="ponds-loader"></div>
-          <div>Загрузка платных прудов...</div>
-        </div>
-      `;
-    }
-
-    renderAdminBlock();
-
-    const { data, error } = await pondsDb
-      .from(TABLE_NAME)
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Ошибка загрузки платных прудов:", error);
-      if (root) {
-        root.innerHTML = `
-          <div class="ponds-empty">
-            Не удалось загрузить платные пруды. Проверь таблицу paid_ponds и RLS.
-          </div>
-        `;
-      }
-      return;
-    }
-
-    ponds = (data || []).map(normalizePond);
-    renderPonds();
+    el.textContent = message || "";
+    el.style.color = isError ? "#ffd2d2" : "";
   }
 
-  function renderAdminBlock() {
-    const adminRoot = getAdminRoot();
-    if (!adminRoot) return;
+  function showAdminPanel() {
+    const panel = $("pondsAdminPanel");
+    if (!panel) return;
 
-    if (!isAdmin()) {
-      adminRoot.innerHTML = "";
-      return;
-    }
-
-    adminRoot.innerHTML = `
-      <div class="ponds-admin-panel">
-        <div class="ponds-admin-head">
-          <div>
-            <div class="ponds-admin-kicker">Админ-панель</div>
-            <h3>Добавить платный пруд</h3>
-          </div>
-          <button class="ponds-admin-reset" type="button" data-pond-action="reset-form">
-            Очистить
-          </button>
-        </div>
-
-        <form id="paidPondForm" class="ponds-form">
-          <input type="hidden" id="pondIdInput" />
-
-          <fieldset class="ponds-fieldset">
-            <legend>Основная информация</legend>
-
-            <div class="ponds-form-grid">
-              <label>
-                <span>Название</span>
-                <input id="pondTitleInput" type="text" placeholder="Например: Пруд Рыбное место" required />
-              </label>
-
-              <label>
-                <span>Город / район</span>
-                <input id="pondCityInput" type="text" placeholder="Минск, Дзержинск, Брест..." required />
-              </label>
-
-              <label>
-                <span>Цена</span>
-                <input id="pondPriceInput" type="text" placeholder="Например: 25 BYN / день" required />
-              </label>
-
-              <label>
-                <span>Виды рыб</span>
-                <input id="pondFishInput" type="text" placeholder="Карп, карась, амур, щука" />
-              </label>
-            </div>
-
-            <label class="ponds-full">
-              <span>Описание</span>
-              <textarea id="pondDescriptionInput" placeholder="Условия рыбалки, беседки, запуск рыбы, правила..." required></textarea>
-            </label>
-          </fieldset>
-
-          <fieldset class="ponds-fieldset">
-            <legend>Медиа и Гео</legend>
-
-            <div class="ponds-form-grid">
-              <label>
-                <span>Фото URL</span>
-                <input id="pondPhotoInput" type="url" placeholder="https://..." />
-              </label>
-
-              <label>
-                <span>Широта LAT</span>
-                <input id="pondLatInput" type="number" step="any" placeholder="53.9006" />
-              </label>
-
-              <label>
-                <span>Долгота LNG</span>
-                <input id="pondLngInput" type="number" step="any" placeholder="27.5590" />
-              </label>
-
-              <label class="ponds-toggle-label">
-                <span>Статус</span>
-                <select id="pondStatusInput">
-                  <option value="true">Активен</option>
-                  <option value="false">Скрыт</option>
-                </select>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset class="ponds-fieldset">
-            <legend>Контакты</legend>
-
-            <div class="ponds-form-grid">
-              <label class="ponds-full">
-                <span>Контакты владельца</span>
-                <input id="pondContactsInput" type="text" placeholder="Телефон, Telegram, сайт или Instagram" />
-              </label>
-            </div>
-          </fieldset>
-
-          <div class="ponds-form-actions">
-            <button class="ponds-save-btn" type="submit" id="pondSaveBtn">
-              Сохранить пруд
-            </button>
-            <button class="ponds-cancel-btn hidden" type="button" id="pondCancelEditBtn" data-pond-action="reset-form">
-              Отмена редактирования
-            </button>
-          </div>
-
-          <div id="paidPondsStatus" class="ponds-status hidden"></div>
-        </form>
-      </div>
-    `;
+    panel.classList.toggle("hidden", !isAdmin());
   }
 
-  function renderPonds() {
-    const root = getRoot();
-    if (!root) return;
-
-    if (!ponds.length) {
-      root.innerHTML = `
-        <div class="ponds-empty">
-          <div class="ponds-empty-icon">🌊</div>
-          <h3>Платные пруды скоро появятся</h3>
-          <p>Админ может добавить первый водоём через форму выше.</p>
-        </div>
-      `;
-      return;
-    }
-
-    root.innerHTML = `
-      <div class="ponds-grid-modern">
-        ${ponds.map(pondCardHtml).join("")}
-      </div>
-    `;
+  function getFallbackImage() {
+    return "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80";
   }
 
   function pondCardHtml(pond) {
-    const fish = Array.isArray(pond.fish_types) ? pond.fish_types : [];
-    const image = pond.photo_url || "narach-bg.webp";
-    const mapLink =
-      pond.lat && pond.lng
-        ? `https://www.google.com/maps?q=${encodeURIComponent(pond.lat)},${encodeURIComponent(pond.lng)}`
-        : "";
+    const canManage = isAdmin();
+    const image = pond.photo_url || pond.photo || pond.image_url || getFallbackImage();
+    const title = pond.name || "Платный пруд";
+    const city = pond.city || pond.region || "";
+    const price = pond.price || "";
+    const fish = pond.fish || pond.fish_types || "";
+    const contacts = pond.contacts || pond.contact || "";
+    const description = pond.description || "";
+    const lat = pond.lat || pond.latitude || "";
+    const lng = pond.lng || pond.longitude || "";
+    const hasCoords = lat && lng;
 
-    const adminActions = isAdmin()
+    const mapButton = hasCoords
+      ? `<button class="ponds-btn ponds-btn-muted" type="button" onclick="window.open('https://www.google.com/maps?q=${encodeURIComponent(lat + ',' + lng)}','_blank')">Открыть карту</button>`
+      : "";
+
+    const adminButtons = canManage
       ? `
-        <div class="pond-card-admin">
-          <button type="button" data-pond-action="edit" data-pond-id="${escapeHtml(pond.id)}">Редактировать</button>
-          <button type="button" data-pond-action="delete" data-pond-id="${escapeHtml(pond.id)}">Удалить</button>
-        </div>
+        <button class="ponds-btn ponds-btn-muted" type="button" onclick="window.klevbyEditPond('${pond.id}')">Редактировать</button>
+        <button class="ponds-btn ponds-btn-danger" type="button" onclick="window.klevbyDeletePond('${pond.id}')">Удалить</button>
       `
       : "";
 
     return `
-      <article class="pond-card">
-        <div class="pond-card-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.68)), url('${escapeHtml(image)}');">
-          <div class="pond-card-price">${escapeHtml(pond.price || "Цена по запросу")}</div>
-          <div class="pond-card-city">📍 ${escapeHtml(pond.city || "Беларусь")}</div>
-        </div>
+      <article class="ponds-card">
+        <div class="ponds-card-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.45)), url('${escapeHtml(image)}');"></div>
 
-        <div class="pond-card-body">
-          <div class="pond-card-top">
-            <h3>${escapeHtml(pond.title || "Платный пруд")}</h3>
-            <span class="pond-card-status">Открыт</span>
+        <div class="ponds-card-body">
+          <div class="ponds-card-top">
+            <div>
+              <h3>${escapeHtml(title)}</h3>
+              ${city ? `<p class="ponds-card-city">📍 ${escapeHtml(city)}</p>` : ""}
+            </div>
+
+            ${price ? `<div class="ponds-card-price">${escapeHtml(price)}</div>` : ""}
           </div>
 
-          <p>${escapeHtml(pond.description || "Описание скоро появится.")}</p>
-
-          <div class="pond-card-fish">
-            ${
-              fish.length
-                ? fish.map(item => `<span>${escapeHtml(item)}</span>`).join("")
-                : `<span>Рыба уточняется</span>`
-            }
+          <div class="ponds-tags">
+            ${fish ? `<span>${escapeHtml(fish)}</span>` : ""}
+            ${contacts ? `<span>☎ ${escapeHtml(contacts)}</span>` : ""}
+            ${hasCoords ? `<span>🗺️ Координаты</span>` : ""}
           </div>
 
-          <div class="pond-card-info">
-            ${pond.contacts ? `<div>☎️ ${escapeHtml(pond.contacts)}</div>` : ""}
-            ${pond.lat && pond.lng ? `<div>🧭 ${escapeHtml(pond.lat)}, ${escapeHtml(pond.lng)}</div>` : ""}
-          </div>
+          ${description ? `<p class="ponds-card-description">${escapeHtml(description)}</p>` : ""}
 
-          <div class="pond-card-actions">
-            ${
-              mapLink
-                ? `<a href="${mapLink}" target="_blank" rel="noopener">Открыть карту</a>`
-                : `<button type="button" disabled>Карта не указана</button>`
-            }
+          <div class="ponds-card-actions">
+            ${mapButton}
+            ${adminButtons}
           </div>
-
-          ${adminActions}
         </div>
       </article>
     `;
   }
 
-  function getFormPayload() {
-    const title = cleanText(document.getElementById("pondTitleInput")?.value);
-    const city = cleanText(document.getElementById("pondCityInput")?.value);
-    const description = cleanText(document.getElementById("pondDescriptionInput")?.value);
-    const price = cleanText(document.getElementById("pondPriceInput")?.value);
-    const fishTypes = parseFishTypes(document.getElementById("pondFishInput")?.value);
-    const contacts = cleanText(document.getElementById("pondContactsInput")?.value);
-    const photoUrl = cleanText(document.getElementById("pondPhotoInput")?.value);
-    const latRaw = cleanText(document.getElementById("pondLatInput")?.value);
-    const lngRaw = cleanText(document.getElementById("pondLngInput")?.value);
-    const isActive = document.getElementById("pondStatusInput")?.value === "true";
+  function renderPonds() {
+    const grid = $("pondsGrid");
+    const searchInput = $("pondsSearchInput");
 
-    if (!title || !city || !description || !price) {
-      throw new Error("Заполни название, город, описание и цену.");
+    if (!grid) return;
+
+    const search = normalize(searchInput ? searchInput.value : "");
+
+    let filtered = ponds.slice();
+
+    if (!isAdmin()) {
+      filtered = filtered.filter((pond) => pond.is_active !== false);
     }
 
+    if (search) {
+      filtered = filtered.filter((pond) => {
+        return (
+          normalize(pond.name).includes(search) ||
+          normalize(pond.city).includes(search) ||
+          normalize(pond.region).includes(search) ||
+          normalize(pond.price).includes(search) ||
+          normalize(pond.fish).includes(search) ||
+          normalize(pond.fish_types).includes(search) ||
+          normalize(pond.contacts).includes(search) ||
+          normalize(pond.description).includes(search)
+        );
+      });
+    }
+
+    showAdminPanel();
+
+    if (!filtered.length) {
+      grid.innerHTML = `<div class="ponds-empty">Пока платных прудов нет.</div>`;
+      setStatus(isAdmin() ? "Можно добавить первый платный пруд через форму выше." : "Пока водоёмы не добавлены.");
+      return;
+    }
+
+    grid.innerHTML = filtered.map(pondCardHtml).join("");
+    setStatus(`Найдено водоёмов: ${filtered.length}`);
+  }
+
+  async function loadPonds() {
+    const supabase = getSupabase();
+
+    showAdminPanel();
+
+    if (!supabase) {
+      setStatus("Supabase ещё не готов. Обновляем подключение...", true);
+      setTimeout(loadPonds, 700);
+      return;
+    }
+
+    const grid = $("pondsGrid");
+    if (grid) {
+      grid.innerHTML = `
+        <div class="ponds-skeleton"></div>
+        <div class="ponds-skeleton"></div>
+        <div class="ponds-skeleton"></div>
+      `;
+    }
+
+    setStatus("Загрузка платных прудов...");
+
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Ошибка загрузки ponds:", error);
+
+      if (grid) {
+        grid.innerHTML = `
+          <div class="ponds-empty">
+            Не удалось загрузить платные пруды. Проверь таблицу <b>${TABLE_NAME}</b> в Supabase и RLS-права.
+          </div>
+        `;
+      }
+
+      setStatus("Ошибка загрузки. Скорее всего нет таблицы ponds или закрыт доступ RLS.", true);
+      return;
+    }
+
+    ponds = data || [];
+    renderPonds();
+  }
+
+  function getFormPayload() {
+    const latValue = $("pondLatInput") ? $("pondLatInput").value.trim() : "";
+    const lngValue = $("pondLngInput") ? $("pondLngInput").value.trim() : "";
+
     return {
-      title,
-      city,
-      description,
-      price,
-      fish_types: fishTypes,
-      contacts,
-      photo_url: photoUrl,
-      lat: latRaw ? Number(latRaw) : null,
-      lng: lngRaw ? Number(lngRaw) : null,
-      is_active: isActive
+      name: $("pondNameInput").value.trim(),
+      city: $("pondCityInput").value.trim(),
+      price: $("pondPriceInput").value.trim(),
+      fish: $("pondFishInput").value.trim(),
+      description: $("pondDescriptionInput").value.trim(),
+      photo_url: $("pondPhotoInput").value.trim(),
+      lat: latValue ? Number(latValue) : null,
+      lng: lngValue ? Number(lngValue) : null,
+      contacts: $("pondContactsInput").value.trim(),
+      is_active: $("pondActiveInput").checked
     };
   }
 
-  async function handlePondFormSubmit(event) {
-    if (event.target?.id !== "paidPondForm") return;
+  function clearForm() {
+    editingPondId = null;
 
+    if ($("pondFormTitle")) $("pondFormTitle").textContent = "Добавить платный пруд";
+    if ($("pondCancelEditBtn")) $("pondCancelEditBtn").classList.add("hidden");
+
+    if ($("pondNameInput")) $("pondNameInput").value = "";
+    if ($("pondCityInput")) $("pondCityInput").value = "";
+    if ($("pondPriceInput")) $("pondPriceInput").value = "";
+    if ($("pondFishInput")) $("pondFishInput").value = "";
+    if ($("pondDescriptionInput")) $("pondDescriptionInput").value = "";
+    if ($("pondPhotoInput")) $("pondPhotoInput").value = "";
+    if ($("pondLatInput")) $("pondLatInput").value = "";
+    if ($("pondLngInput")) $("pondLngInput").value = "";
+    if ($("pondContactsInput")) $("pondContactsInput").value = "";
+    if ($("pondActiveInput")) $("pondActiveInput").checked = true;
+
+    setFormMessage("");
+  }
+
+  async function handleFormSubmit(event) {
     event.preventDefault();
 
     if (!isAdmin()) {
-      alert("Добавлять платные пруды может только админ.");
+      setFormMessage("Добавлять пруды может только админ.", true);
       return;
     }
 
-    const saveBtn = document.getElementById("pondSaveBtn");
-
-    try {
-      setStatus("");
-      if (saveBtn) saveBtn.disabled = true;
-
-      const payload = getFormPayload();
-
-      let result;
-
-      if (editingPondId) {
-        result = await pondsDb
-          .from(TABLE_NAME)
-          .update(payload)
-          .eq("id", editingPondId);
-      } else {
-        result = await pondsDb
-          .from(TABLE_NAME)
-          .insert([payload]);
-      }
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      resetForm();
-      setStatus(editingPondId ? "Пруд обновлён." : "Пруд добавлен.");
-      await loadPonds();
-    } catch (error) {
-      console.error("Ошибка сохранения пруда:", error);
-      setStatus(error.message || "Не получилось сохранить пруд.", true);
-    } finally {
-      if (saveBtn) saveBtn.disabled = false;
+    const supabase = getSupabase();
+    if (!supabase) {
+      setFormMessage("Supabase ещё не готов. Обнови страницу.", true);
+      return;
     }
+
+    const payload = getFormPayload();
+
+    if (!payload.name || !payload.city) {
+      setFormMessage("Заполни название и город / область.", true);
+      return;
+    }
+
+    setFormMessage("Сохраняем...");
+
+    let result;
+
+    if (editingPondId) {
+      result = await supabase
+        .from(TABLE_NAME)
+        .update(payload)
+        .eq("id", editingPondId);
+    } else {
+      result = await supabase
+        .from(TABLE_NAME)
+        .insert([payload]);
+    }
+
+    if (result.error) {
+      console.error("Ошибка сохранения ponds:", result.error);
+      setFormMessage("Не получилось сохранить. Проверь таблицу ponds и RLS-права.", true);
+      return;
+    }
+
+    setFormMessage(editingPondId ? "Пруд обновлён." : "Пруд добавлен.");
+    clearForm();
+    await loadPonds();
   }
 
-  async function handlePondsClick(event) {
-    const button = event.target.closest("[data-pond-action]");
-    if (!button) return;
+  window.klevbyEditPond = function (id) {
+    if (!isAdmin()) return;
 
-    const action = button.dataset.pondAction;
-    const id = button.dataset.pondId;
-
-    if (action === "reset-form") {
-      resetForm();
-      return;
-    }
-
-    if (!isAdmin()) {
-      alert("Это действие доступно только админу.");
-      return;
-    }
-
-    if (action === "edit") {
-      startEditPond(id);
-      return;
-    }
-
-    if (action === "delete") {
-      await deletePond(id);
-    }
-  }
-
-  function startEditPond(id) {
     const pond = ponds.find((item) => String(item.id) === String(id));
     if (!pond) return;
 
-    editingPondId = pond.id;
+    editingPondId = id;
 
-    document.getElementById("pondIdInput").value = pond.id || "";
-    document.getElementById("pondTitleInput").value = pond.title || "";
-    document.getElementById("pondCityInput").value = pond.city || "";
-    document.getElementById("pondDescriptionInput").value = pond.description || "";
-    document.getElementById("pondPriceInput").value = pond.price || "";
-    document.getElementById("pondFishInput").value = formatFishTypes(pond.fish_types);
-    document.getElementById("pondContactsInput").value = pond.contacts || "";
-    document.getElementById("pondPhotoInput").value = pond.photo_url || "";
-    document.getElementById("pondLatInput").value = pond.lat || "";
-    document.getElementById("pondLngInput").value = pond.lng || "";
-    document.getElementById("pondStatusInput").value = pond.is_active ? "true" : "false";
+    if ($("pondFormTitle")) $("pondFormTitle").textContent = "Редактировать платный пруд";
+    if ($("pondCancelEditBtn")) $("pondCancelEditBtn").classList.remove("hidden");
 
-    const saveBtn = document.getElementById("pondSaveBtn");
-    const cancelBtn = document.getElementById("pondCancelEditBtn");
+    $("pondNameInput").value = pond.name || "";
+    $("pondCityInput").value = pond.city || pond.region || "";
+    $("pondPriceInput").value = pond.price || "";
+    $("pondFishInput").value = pond.fish || pond.fish_types || "";
+    $("pondDescriptionInput").value = pond.description || "";
+    $("pondPhotoInput").value = pond.photo_url || pond.photo || pond.image_url || "";
+    $("pondLatInput").value = pond.lat || pond.latitude || "";
+    $("pondLngInput").value = pond.lng || pond.longitude || "";
+    $("pondContactsInput").value = pond.contacts || pond.contact || "";
+    $("pondActiveInput").checked = pond.is_active !== false;
 
-    if (saveBtn) saveBtn.textContent = "Сохранить изменения";
-    if (cancelBtn) cancelBtn.classList.remove("hidden");
-
-    const adminPanel = document.querySelector(".ponds-admin-panel");
-    if (adminPanel) {
-      adminPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    const panel = $("pondsAdminPanel");
+    if (panel) {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }
+  };
 
-  async function deletePond(id) {
-    if (!id) return;
+  window.klevbyDeletePond = async function (id) {
+    if (!isAdmin()) return;
 
-    if (!confirm("Удалить платный пруд? Это действие нельзя отменить.")) {
+    if (!confirm("Удалить платный пруд?")) return;
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      alert("Supabase ещё не готов.");
       return;
     }
 
-    const { error } = await pondsDb
+    const { error } = await supabase
       .from(TABLE_NAME)
       .delete()
       .eq("id", id);
 
     if (error) {
-      console.error("Ошибка удаления пруда:", error);
-      alert("Не получилось удалить пруд. Проверь RLS delete для paid_ponds.");
+      console.error("Ошибка удаления ponds:", error);
+      alert("Не получилось удалить. Проверь RLS-права.");
       return;
     }
 
-    ponds = ponds.filter((item) => String(item.id) !== String(id));
-    renderPonds();
+    await loadPonds();
+  };
+
+  function bindEvents() {
+    const form = $("pondForm");
+    const search = $("pondsSearchInput");
+    const cancel = $("pondCancelEditBtn");
+
+    if (form && !form.dataset.bound) {
+      form.dataset.bound = "true";
+      form.addEventListener("submit", handleFormSubmit);
+    }
+
+    if (search && !search.dataset.bound) {
+      search.dataset.bound = "true";
+      search.addEventListener("input", renderPonds);
+    }
+
+    if (cancel && !cancel.dataset.bound) {
+      cancel.dataset.bound = "true";
+      cancel.addEventListener("click", clearForm);
+    }
   }
 
-  function resetForm() {
-    editingPondId = null;
+  function initPonds() {
+    if (initialized) {
+      showAdminPanel();
+      return;
+    }
 
-    const form = document.getElementById("paidPondForm");
-    if (form) form.reset();
-
-    const idInput = document.getElementById("pondIdInput");
-    const saveBtn = document.getElementById("pondSaveBtn");
-    const cancelBtn = document.getElementById("pondCancelEditBtn");
-
-    if (idInput) idInput.value = "";
-    if (saveBtn) saveBtn.textContent = "Сохранить пруд";
-    if (cancelBtn) cancelBtn.classList.add("hidden");
-
-    setStatus("");
+    initialized = true;
+    bindEvents();
+    showAdminPanel();
+    loadPonds();
   }
 
-  waitForMainApp();
+  window.klevbyLoadPonds = loadPonds;
+  window.klevbyInitPonds = initPonds;
+  window.loadPonds = loadPonds;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    bindEvents();
+    showAdminPanel();
+
+    setTimeout(initPonds, 300);
+    setTimeout(loadPonds, 1000);
+  });
+
+  window.addEventListener("klevby-auth-changed", function () {
+    bindEvents();
+    showAdminPanel();
+    loadPonds();
+  });
 })();
