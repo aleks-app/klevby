@@ -137,13 +137,14 @@ function initSupabase() {
   };
 
   if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      currentUser = session?.user || null;
-      authReady = true;
-
-      if (_event === "SIGNED_OUT") {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
         currentUser = null;
+      } else if (session && session.user) {
+        currentUser = session.user;
       }
+
+      authReady = true;
 
       syncGlobalAuthState();
 
