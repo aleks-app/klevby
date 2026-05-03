@@ -546,6 +546,7 @@
   <script>
     const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
+    const SUPABASE_STORAGE_KEY = "sb-oecdshvozssadztcokog-auth-token";
     const TELEGRAM_GROUP = "https://t.me/+W6eAuefzcJwwODEy";
     const ADMIN_EMAIL = "al822alex@gmail.com";
     const WEATHER_API_KEY = "2b08e3fec07f3dd6a25cf6862ab4b030";
@@ -572,6 +573,10 @@
     let activeModalPost = null;
     let postModalCloseTimer = null;
     let authMode = "register";
+    let authRestoreTimer = null;
+    let authRestoreInProgress = false;
+    let lastAuthRestoreAt = 0;
+    let authReady = false;
 
     const splashStartedAt = Date.now();
 
@@ -645,7 +650,18 @@
         return false;
       }
 
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storageKey: SUPABASE_STORAGE_KEY,
+          flowType: "pkce"
+        },
+        global: {
+          fetch: (...args) => fetch(...args)
+        }
+      });
 
       window.klevbySupabase = supabaseClient;
       window.supabaseClient = supabaseClient;
@@ -661,6 +677,23 @@
       window.klevbyIsAdmin = function () {
         return isAdmin();
       };
+
+      if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
+        supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+          currentUser = session?.user || currentUser || null;
+          authReady = true;
+
+          if (!session?.user && _event === "SIGNED_OUT") {
+            currentUser = null;
+          }
+
+          syncGlobalAuthState();
+          updateAuthStatus();
+          fillAuthorLocal();
+          renderPosts();
+          reloadPondsIfReady();
+        });
+      }
 
       syncGlobalAuthState();
       return true;
@@ -771,6 +804,7 @@
 
       if (section === "auth") {
         setAuthMode(currentUser ? "login" : authMode);
+        scheduleAuthRestore("open_auth", false);
       }
 
       if (section === "market" && typeof window.klevbyLoadMarket === "function") {
@@ -1108,11 +1142,99 @@
       }
     }
 
-    async function initAuth() {
-      const { data } = await supabaseClient.auth.getUser();
-      currentUser = data?.user || null;
+    async function restoreAuthState(reason = "manual", reloadData = false) {
+      if (!supabaseClient || authRestoreInProgress) return currentUser;
 
-      syncGlobalAuthState();
+      const now = Date.now();
+
+      if (reason !== "init" && now - lastAuthRestoreAt < 900) {
+        return currentUser;
+      }
+
+      authRestoreInProgress = true;
+      lastAuthRestoreAt = now;
+
+      const previousUserId = currentUser?.id || null;
+
+      try {
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+
+        if (sessionError) {
+          console.warn("Не удалось получить Supabase session:", sessionError);
+        }
+
+        let restoredUser = sessionData?.session?.user || null;
+
+        if (!restoredUser) {
+          const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+
+          if (userError) {
+            console.warn("Не удалось получить Supabase user:", userError);
+          }
+
+          restoredUser = userData?.user || null;
+        }
+
+        currentUser = restoredUser;
+        authReady = true;
+
+        syncGlobalAuthState();
+        updateAuthStatus();
+        fillAuthorLocal();
+
+        const newUserId = currentUser?.id || null;
+        const userChanged = previousUserId !== newUserId;
+
+        if (reloadData || userChanged) {
+          await loadPosts();
+          reloadPondsIfReady();
+        } else {
+          renderPosts();
+          reloadPondsIfReady();
+        }
+
+        return currentUser;
+      } catch (error) {
+        console.warn("Ошибка восстановления входа:", reason, error);
+        authReady = true;
+        syncGlobalAuthState();
+        updateAuthStatus();
+        return currentUser;
+      } finally {
+        authRestoreInProgress = false;
+      }
+    }
+
+    function scheduleAuthRestore(reason = "resume", reloadData = false) {
+      clearTimeout(authRestoreTimer);
+
+      authRestoreTimer = setTimeout(() => {
+        restoreAuthState(reason, reloadData);
+      }, 250);
+    }
+
+    function setupAuthResumeHandlers() {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          scheduleAuthRestore("visibilitychange", true);
+        }
+      });
+
+      window.addEventListener("pageshow", () => {
+        scheduleAuthRestore("pageshow", true);
+      });
+
+      window.addEventListener("focus", () => {
+        scheduleAuthRestore("focus", false);
+      });
+
+      window.addEventListener("online", () => {
+        scheduleAuthRestore("online", true);
+      });
+    }
+
+    async function initAuth() {
+      await restoreAuthState("init", false);
 
       if (window.location.hash.includes("access_token")) {
         document.getElementById("resetModal").classList.remove("hidden");
@@ -1128,6 +1250,11 @@
     function updateAuthStatus() {
       const status = document.getElementById("authStatus");
       if (!status) return;
+
+      if (!authReady) {
+        status.textContent = "Проверяем вход...";
+        return;
+      }
 
       if (currentUser) {
         const nickname = getUserNickname();
@@ -1175,6 +1302,7 @@
       }
 
       currentUser = data?.user || null;
+      authReady = true;
       syncGlobalAuthState();
 
       if (currentUser) {
@@ -1202,7 +1330,7 @@
 
       updateAuthStatus();
       alert("Профиль создан. Если придёт письмо — подтверди почту, потом войди в аккаунт.");
-      await loadPosts();
+      await restoreAuthState("register", true);
       reloadPondsIfReady();
       showSection("home");
     }
@@ -1222,6 +1350,7 @@
       }
 
       currentUser = data.user;
+      authReady = true;
       syncGlobalAuthState();
 
       const nickname = getUserNickname();
@@ -1231,9 +1360,9 @@
         localStorage.setItem("klevby_chat_username", nickname);
       }
 
+      await restoreAuthState("login", true);
       updateAuthStatus();
       fillAuthorLocal();
-      await loadPosts();
       reloadPondsIfReady();
       showSection("home");
     }
@@ -1241,6 +1370,7 @@
     async function logout() {
       await supabaseClient.auth.signOut();
       currentUser = null;
+      authReady = true;
       syncGlobalAuthState();
       updateAuthStatus();
       setAuthMode("register");
@@ -1557,6 +1687,10 @@
     });
 
     async function savePost() {
+      if (!authReady) {
+        await restoreAuthState("before_save", false);
+      }
+
       const name = document.getElementById("nameInput").value.trim();
       const city = document.getElementById("cityInput").value.trim();
       const destination = document.getElementById("destinationInput").value.trim();
@@ -1566,6 +1700,10 @@
       const seats = document.getElementById("seatsInput").value.trim();
       const text = document.getElementById("textInput").value.trim();
       const telegram = cleanTelegram(document.getElementById("telegramInput").value);
+
+      if (!currentUser) {
+        await restoreAuthState("save_post_retry", false);
+      }
 
       if (!currentUser) {
         showSection("auth");
@@ -1902,6 +2040,7 @@
       const ok = initSupabase();
       if (!ok) return;
 
+      setupAuthResumeHandlers();
       setAuthMode("register");
       fillAuthorLocal();
       updateBiteForecast(752);
@@ -1915,9 +2054,9 @@
   </script>
 
   <script src="assets/js/chat.js?v=20260503-1" defer></script>
-<script src="assets/js/call.js?v=20260503-1" defer></script>
-<script src="assets/js/map-logic.js?v=20260503-1" defer></script>
-<script src="assets/js/market-logic.js?v=20260503-1" defer></script>
-<script src="assets/js/ponds.js?v=20260503-1" defer></script>
+  <script src="assets/js/call.js?v=20260503-1" defer></script>
+  <script src="assets/js/map-logic.js?v=20260503-1" defer></script>
+  <script src="assets/js/market-logic.js?v=20260503-1" defer></script>
+  <script src="assets/js/ponds.js?v=20260503-1" defer></script>
 </body>
 </html>
