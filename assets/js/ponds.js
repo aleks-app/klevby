@@ -6,16 +6,25 @@
   let editingPondId = null;
   let initialized = false;
 
+  let pondsLoadPromise = null;
+  let pondsLoadTimer = null;
+  let lastPondsLoadAt = 0;
+
+  const PONDS_LOAD_THROTTLE_MS = 1800;
+  const PONDS_RETRY_DELAY_MS = 1200;
+
   function getSupabase() {
     return (
       window.klevbySupabase ||
       window.supabaseClient ||
+      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
       null
     );
   }
 
   function getCurrentUser() {
     return (
+      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
       window.klevbyCurrentUser ||
       window.currentUser ||
       window.klevbyUser ||
@@ -43,6 +52,14 @@
 
   function normalize(value) {
     return String(value || "").toLowerCase().trim();
+  }
+
+  function isAuthLockError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+    return (
+      message.includes("lock") &&
+      message.includes("auth-token")
+    );
   }
 
   function setStatus(message, isError) {
@@ -86,13 +103,13 @@
     const hasCoords = lat && lng;
 
     const mapButton = hasCoords
-      ? `<button class="ponds-btn ponds-btn-muted" type="button" onclick="window.open('https://www.google.com/maps?q=${encodeURIComponent(lat + ',' + lng)}','_blank')">Открыть карту</button>`
+      ? `<button class="ponds-btn ponds-btn-muted" type="button" onclick="window.open('https://www.google.com/maps?q=${encodeURIComponent(lat + "," + lng)}','_blank')">Открыть карту</button>`
       : "";
 
     const adminButtons = canManage
       ? `
-        <button class="ponds-btn ponds-btn-muted" type="button" onclick="window.klevbyEditPond('${pond.id}')">Редактировать</button>
-        <button class="ponds-btn ponds-btn-danger" type="button" onclick="window.klevbyDeletePond('${pond.id}')">Удалить</button>
+        <button class="ponds-btn ponds-btn-muted" type="button" onclick="window.klevbyEditPond('${escapeHtml(pond.id)}')">Редактировать</button>
+        <button class="ponds-btn ponds-btn-danger" type="button" onclick="window.klevbyDeletePond('${escapeHtml(pond.id)}')">Удалить</button>
       `
       : "";
 
@@ -168,50 +185,124 @@
     setStatus(`Найдено водоёмов: ${filtered.length}`);
   }
 
-  async function loadPonds() {
-    const supabase = getSupabase();
+  function scheduleLoadPonds(delay = 500, force = false) {
+    clearTimeout(pondsLoadTimer);
+
+    pondsLoadTimer = setTimeout(() => {
+      loadPonds({ force }).catch((error) => {
+        console.warn("Klevby ponds: отложенная загрузка не удалась:", error);
+      });
+    }, delay);
+  }
+
+  async function loadPonds(options = {}) {
+    const force = Boolean(options.force);
+    const retry = Number(options.retry || 0);
+    const now = Date.now();
 
     showAdminPanel();
 
-    if (!supabase) {
-      setStatus("Supabase ещё не готов. Обновляем подключение...", true);
-      setTimeout(loadPonds, 700);
-      return;
+    if (!force && pondsLoadPromise) {
+      return pondsLoadPromise;
     }
 
-    const grid = $("pondsGrid");
-    if (grid) {
-      grid.innerHTML = `
-        <div class="ponds-skeleton"></div>
-        <div class="ponds-skeleton"></div>
-        <div class="ponds-skeleton"></div>
-      `;
+    if (!force && now - lastPondsLoadAt < PONDS_LOAD_THROTTLE_MS) {
+      return pondsLoadPromise || Promise.resolve(ponds);
     }
 
-    setStatus("Загрузка платных прудов...");
+    pondsLoadPromise = (async function () {
+      lastPondsLoadAt = Date.now();
 
-    const { data, error } = await supabase
-      .from(TABLE_NAME)
-      .select("*")
-      .order("created_at", { ascending: false });
+      const supabase = getSupabase();
 
-    if (error) {
-      console.error("Ошибка загрузки ponds:", error);
+      if (!supabase) {
+        setStatus("Supabase ещё не готов. Пробуем подключиться...", false);
+        scheduleLoadPonds(700, true);
+        return ponds;
+      }
 
-      if (grid) {
+      const grid = $("pondsGrid");
+
+      if (grid && !ponds.length) {
         grid.innerHTML = `
-          <div class="ponds-empty">
-            Не удалось загрузить платные пруды. Проверь таблицу <b>${TABLE_NAME}</b> в Supabase и RLS-права.
-          </div>
+          <div class="ponds-skeleton"></div>
+          <div class="ponds-skeleton"></div>
+          <div class="ponds-skeleton"></div>
         `;
       }
 
-      setStatus("Ошибка загрузки. Скорее всего нет таблицы ponds или закрыт доступ RLS.", true);
-      return;
-    }
+      setStatus("Загрузка платных прудов...");
 
-    ponds = data || [];
-    renderPonds();
+      let result;
+
+      try {
+        result = await supabase
+          .from(TABLE_NAME)
+          .select("*")
+          .order("created_at", { ascending: false });
+      } catch (error) {
+        if (isAuthLockError(error) && retry < 2) {
+          console.warn("Klevby ponds: Supabase Auth занят, повторяем загрузку:", error);
+          setStatus("Подключение занято, повторяем загрузку прудов...", false);
+          scheduleLoadPonds(PONDS_RETRY_DELAY_MS, true);
+          return ponds;
+        }
+
+        console.error("Ошибка загрузки ponds:", error);
+
+        if (grid && !ponds.length) {
+          grid.innerHTML = `
+            <div class="ponds-empty">
+              Не удалось загрузить платные пруды. Проверь таблицу <b>${TABLE_NAME}</b> в Supabase и RLS-права.
+            </div>
+          `;
+        }
+
+        setStatus("Ошибка загрузки платных прудов.", true);
+        return ponds;
+      }
+
+      const { data, error } = result;
+
+      if (error) {
+        if (isAuthLockError(error) && retry < 2) {
+          console.warn("Klevby ponds: Supabase Auth занят, повторяем загрузку:", error);
+          setStatus("Подключение занято, повторяем загрузку прудов...", false);
+
+          setTimeout(() => {
+            loadPonds({ force: true, retry: retry + 1 }).catch((loadError) => {
+              console.warn("Klevby ponds: повторная загрузка не удалась:", loadError);
+            });
+          }, PONDS_RETRY_DELAY_MS);
+
+          return ponds;
+        }
+
+        console.error("Ошибка загрузки ponds:", error);
+
+        if (grid && !ponds.length) {
+          grid.innerHTML = `
+            <div class="ponds-empty">
+              Не удалось загрузить платные пруды. Проверь таблицу <b>${TABLE_NAME}</b> в Supabase и RLS-права.
+            </div>
+          `;
+        }
+
+        setStatus("Ошибка загрузки. Скорее всего нет таблицы ponds или закрыт доступ RLS.", true);
+        return ponds;
+      }
+
+      ponds = data || [];
+      renderPonds();
+
+      return ponds;
+    })();
+
+    try {
+      return await pondsLoadPromise;
+    } finally {
+      pondsLoadPromise = null;
+    }
   }
 
   function getFormPayload() {
@@ -296,7 +387,7 @@
 
     setFormMessage(editingPondId ? "Пруд обновлён." : "Пруд добавлен.");
     clearForm();
-    await loadPonds();
+    await loadPonds({ force: true });
   }
 
   window.klevbyEditPond = function (id) {
@@ -349,7 +440,7 @@
       return;
     }
 
-    await loadPonds();
+    await loadPonds({ force: true });
   };
 
   function bindEvents() {
@@ -374,32 +465,34 @@
   }
 
   function initPonds() {
+    bindEvents();
+    showAdminPanel();
+
     if (initialized) {
-      showAdminPanel();
+      scheduleLoadPonds(500, false);
       return;
     }
 
     initialized = true;
-    bindEvents();
-    showAdminPanel();
-    loadPonds();
+    scheduleLoadPonds(650, false);
   }
 
-  window.klevbyLoadPonds = loadPonds;
+  window.klevbyLoadPonds = function () {
+    return loadPonds({ force: true });
+  };
+
   window.klevbyInitPonds = initPonds;
-  window.loadPonds = loadPonds;
+  window.loadPonds = window.klevbyLoadPonds;
 
   document.addEventListener("DOMContentLoaded", function () {
     bindEvents();
     showAdminPanel();
-
-    setTimeout(initPonds, 300);
-    setTimeout(loadPonds, 1000);
+    scheduleLoadPonds(900, false);
   });
 
   window.addEventListener("klevby-auth-changed", function () {
     bindEvents();
     showAdminPanel();
-    loadPonds();
+    scheduleLoadPonds(900, true);
   });
 })();
