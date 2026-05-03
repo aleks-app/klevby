@@ -5,7 +5,6 @@ const SUPABASE_ANON_KEY = KLEVB_CONFIG.SUPABASE_ANON_KEY || "";
 const SUPABASE_STORAGE_KEY = KLEVB_CONFIG.SUPABASE_STORAGE_KEY || "sb-klevby-auth-token";
 const TELEGRAM_GROUP = KLEVB_CONFIG.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
 const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
-const CARD_IMAGES = Array.isArray(KLEVB_CONFIG.CARD_IMAGES) ? KLEVB_CONFIG.CARD_IMAGES : [];
 
 window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
@@ -67,6 +66,9 @@ function syncGlobalAuthState() {
   window.klevbyIsCurrentUserAdmin = isAdmin();
   window.isKlevbyAdmin = isAdmin();
 
+  window.klevbyViewMode = viewMode;
+  window.klevbyAuthReady = authReady;
+
   window.dispatchEvent(new CustomEvent("klevby-auth-changed", {
     detail: {
       user: currentUser,
@@ -94,8 +96,15 @@ function reloadPondsIfReady() {
 }
 
 function initSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    showStatus("Supabase не настроен. Проверь assets/js/config.js.", true);
+    console.error("Klevby: SUPABASE_URL или SUPABASE_ANON_KEY пустые.");
+    return false;
+  }
+
   if (!window.supabase) {
     showStatus("Supabase не загрузился. Обнови страницу.", true);
+    console.error("Klevby: библиотека Supabase не загружена.");
     return false;
   }
 
@@ -129,10 +138,10 @@ function initSupabase() {
 
   if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-      currentUser = session?.user || currentUser || null;
+      currentUser = session?.user || null;
       authReady = true;
 
-      if (!session?.user && _event === "SIGNED_OUT") {
+      if (_event === "SIGNED_OUT") {
         currentUser = null;
       }
 
@@ -178,18 +187,6 @@ function openTelegram() {
   window.open(TELEGRAM_GROUP, "_blank");
 }
 
-window.addEventListener("scroll", () => {
-  if (typeof window.updateHomeFloatButton === "function") {
-    window.updateHomeFloatButton();
-  }
-}, { passive: true });
-
-window.addEventListener("resize", () => {
-  if (typeof window.updateHomeFloatButton === "function") {
-    window.updateHomeFloatButton();
-  }
-});
-
 function showSection(section) {
   const homeSection = document.getElementById("homeSection");
   const marketSection = document.getElementById("marketSection");
@@ -224,7 +221,9 @@ function showSection(section) {
   }
 
   if (section === "map" && typeof window.klevbyReloadMap === "function") {
-    setTimeout(() => window.klevbyReloadMap(), 300);
+    setTimeout(() => {
+      window.klevbyReloadMap();
+    }, 300);
   }
 
   setTimeout(() => {
@@ -237,8 +236,8 @@ function showSection(section) {
 }
 
 function setMode(mode) {
-  viewMode = mode;
-  window.klevbyViewMode = mode;
+  viewMode = mode === "mine" ? "mine" : "all";
+  window.klevbyViewMode = viewMode;
 
   showSection("home");
 
@@ -263,7 +262,16 @@ function resetFilters() {
   }
 }
 
-document.addEventListener("keydown", function(event) {
+function handleGlobalScrollOrResize() {
+  if (typeof window.updateHomeFloatButton === "function") {
+    window.updateHomeFloatButton();
+  }
+}
+
+window.addEventListener("scroll", handleGlobalScrollOrResize, { passive: true });
+window.addEventListener("resize", handleGlobalScrollOrResize);
+
+document.addEventListener("keydown", function (event) {
   if (event.key === "Escape" && typeof window.closePostModal === "function") {
     window.closePostModal();
   }
@@ -306,6 +314,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     await window.initAuth();
   } else {
     authReady = true;
+    syncGlobalAuthState();
 
     if (typeof window.loadPosts === "function") {
       await window.loadPosts();
@@ -316,3 +325,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     window.updateHomeFloatButton();
   }
 });
+
+window.isAdmin = isAdmin;
+window.syncGlobalAuthState = syncGlobalAuthState;
+window.reloadPondsIfReady = reloadPondsIfReady;
+window.initSupabase = initSupabase;
+window.showStatus = showStatus;
+window.showFormMessage = showFormMessage;
+window.openTelegram = openTelegram;
+window.showSection = showSection;
+window.setMode = setMode;
+window.resetFilters = resetFilters;
