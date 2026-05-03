@@ -1095,6 +1095,66 @@
       }
     }
 
+    async function sendPushToUser(receiverUserId, senderName, messageText) {
+      if (!receiverUserId) return;
+
+      try {
+        const shortText = String(messageText || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 120);
+
+        const body = {
+          user_id: String(receiverUserId),
+          title: "Klevby",
+          message: `${cleanDisplayName(senderName) || "Новое сообщение"}: ${shortText || "Новое личное сообщение"}`,
+          url: "https://klevby.com/"
+        };
+
+        const fnClient = getMainSupabaseClient();
+
+        if (fnClient?.functions && typeof fnClient.functions.invoke === "function") {
+          const { data, error } = await fnClient.functions.invoke("send-push", {
+            body
+          });
+
+          if (error) {
+            console.warn("Push через functions.invoke не отправлен:", error);
+          } else {
+            console.log("Klevby push отправлен:", data);
+            return;
+          }
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        let result = null;
+
+        try {
+          result = await response.json();
+        } catch (error) {
+          result = null;
+        }
+
+        if (!response.ok) {
+          console.warn("Push через fetch не отправлен:", response.status, result);
+          return;
+        }
+
+        console.log("Klevby push отправлен через fetch:", result);
+      } catch (error) {
+        console.warn("Push уведомление не отправлено:", error);
+      }
+    }
+
     function setupPresence() {
       if (presenceChannel) {
         presenceChannel.track({
@@ -1568,11 +1628,14 @@
 
       sendBtn.disabled = true;
 
+      const senderName = getCurrentChatName();
+      const messageContent = buildMessageContent(rawVal);
+
       const payload = {
         sender_id: currentChatUser.id,
         receiver_id: selectedPeer.id,
-        sender_name: getCurrentChatName(),
-        content: buildMessageContent(rawVal)
+        sender_name: senderName,
+        content: messageContent
       };
 
       const { error } = await getMainSupabaseClient().from("private_messages").insert([payload]);
@@ -1585,18 +1648,7 @@
         return;
       }
 
-      try {
-        await getMainSupabaseClient().functions.invoke("send-push", {
-          body: {
-            user_id: selectedPeer.id,
-            title: "Klevby",
-            message: `${getCurrentChatName()}: ${rawVal.slice(0, 80)}`,
-            url: "https://klevby.com/"
-          }
-        });
-      } catch (pushError) {
-        console.warn("Push уведомление не отправлено:", pushError);
-      }
+      await sendPushToUser(selectedPeer.id, senderName, rawVal);
 
       input.value = "";
       clearReply();
