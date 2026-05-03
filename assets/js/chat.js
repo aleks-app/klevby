@@ -1585,6 +1585,19 @@
         return;
       }
 
+      try {
+        await getMainSupabaseClient().functions.invoke("send-push", {
+          body: {
+            user_id: selectedPeer.id,
+            title: "Klevby",
+            message: `${getCurrentChatName()}: ${rawVal.slice(0, 80)}`,
+            url: "https://klevby.com/"
+          }
+        });
+      } catch (pushError) {
+        console.warn("Push уведомление не отправлено:", pushError);
+      }
+
       input.value = "";
       clearReply();
       markPeerAsRead(selectedPeer.id);
