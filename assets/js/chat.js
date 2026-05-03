@@ -65,6 +65,9 @@
     let klevbyResumeInProgress = false;
     let klevbyLastResumeAt = 0;
 
+    let chatNavigationToken = 0;
+    let chatLoading = false;
+
     const onlineUsers = new Map();
     const userProfiles = new Map();
     const guestNameKey = "klevby_chat_guest_name";
@@ -208,6 +211,45 @@
       await refreshPushButtonState();
       await saveExistingPushSubscriptionIfPossible();
     });
+
+    function beginChatNavigation() {
+      chatNavigationToken += 1;
+      setChatTabsLoading(true);
+      return chatNavigationToken;
+    }
+
+    function isStaleNavigation(token) {
+      return token !== chatNavigationToken;
+    }
+
+    function finishChatNavigation(token) {
+      if (!isStaleNavigation(token)) {
+        setChatTabsLoading(false);
+      }
+    }
+
+    function setChatTabsLoading(isLoading) {
+      chatLoading = Boolean(isLoading);
+
+      if (publicTab) {
+        publicTab.disabled = chatLoading;
+        publicTab.classList.toggle("loading", chatLoading);
+      }
+
+      if (privateTab) {
+        privateTab.disabled = chatLoading;
+        privateTab.classList.toggle("loading", chatLoading);
+      }
+
+      if (backBtn) {
+        backBtn.disabled = chatLoading;
+        backBtn.classList.toggle("loading", chatLoading);
+      }
+
+      if (chatWindow) {
+        chatWindow.classList.toggle("klevby-chat-loading", chatLoading);
+      }
+    }
 
     function syncSelectedPeerForCalls() {
       if (
@@ -1217,7 +1259,7 @@
         });
     }
 
-    async function loadPublicMessages() {
+    async function loadPublicMessages(navToken = beginChatNavigation()) {
       activeMode = "public";
       selectedPeer = null;
       clearReply();
@@ -1249,9 +1291,12 @@
           .select("*")
           .order("created_at", { ascending: true });
 
+        if (isStaleNavigation(navToken)) return;
+
         data = result.data;
         error = result.error;
       } catch (queryError) {
+        if (isStaleNavigation(navToken)) return;
         error = queryError;
       }
 
@@ -1261,21 +1306,29 @@
         try {
           await refreshCurrentUser();
 
+          if (isStaleNavigation(navToken)) return;
+
           const retry = await getMainSupabaseClient()
             .from("messages")
             .select("*")
             .order("created_at", { ascending: true });
 
+          if (isStaleNavigation(navToken)) return;
+
           data = retry.data;
           error = retry.error;
         } catch (retryError) {
+          if (isStaleNavigation(navToken)) return;
           error = retryError;
         }
       }
 
+      if (isStaleNavigation(navToken)) return;
+
       if (error) {
         console.error("Повторная ошибка загрузки общего чата:", error);
         showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
+        finishChatNavigation(navToken);
         return;
       }
 
@@ -1287,17 +1340,26 @@
 
       await loadProfilesByIds((data || []).map((message) => message.user_id));
 
+      if (isStaleNavigation(navToken)) return;
+
       if (!data || !data.length) {
         showEmptyState("Пока сообщений нет. Напиши первым 🎣");
+        finishChatNavigation(navToken);
         return;
       }
 
       renderMessageList(data, renderPublicMessage);
+      finishChatNavigation(navToken);
     }
 
-    async function loadPrivatePeople() {
+    async function loadPrivatePeople(navToken = beginChatNavigation()) {
       await refreshCurrentUser();
+
+      if (isStaleNavigation(navToken)) return;
+
       await ensureCurrentUserProfile();
+
+      if (isStaleNavigation(navToken)) return;
 
       activeMode = "private";
       selectedPeer = null;
@@ -1323,6 +1385,7 @@
 
       if (!currentChatUser) {
         showEmptyState("Чтобы пользоваться личными сообщениями, войди или зарегистрируйся на сайте.");
+        finishChatNavigation(navToken);
         return;
       }
 
@@ -1375,6 +1438,8 @@
           .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
           .order("created_at", { ascending: false });
 
+        if (isStaleNavigation(navToken)) return;
+
         if (privateUsersError) {
           console.warn("Не удалось загрузить пользователей из лички:", privateUsersError);
         }
@@ -1389,6 +1454,8 @@
           (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
         );
 
+        if (isStaleNavigation(navToken)) return;
+
         (privateUsers || []).forEach((item) => {
           const senderId = String(item.sender_id || "");
           const receiverId = String(item.receiver_id || "");
@@ -1400,6 +1467,7 @@
           addPeer(peerId, peerName, item);
         });
       } catch (error) {
+        if (isStaleNavigation(navToken)) return;
         console.warn("Не удалось загрузить пользователей из private_messages:", error);
       }
 
@@ -1409,16 +1477,21 @@
           .select("user_id,user_name")
           .not("user_id", "is", null);
 
+        if (isStaleNavigation(navToken)) return;
+
         (publicUsers || []).forEach((item) => {
           rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
         });
 
         await loadProfilesByIds((publicUsers || []).map((item) => item.user_id));
 
+        if (isStaleNavigation(navToken)) return;
+
         (publicUsers || []).forEach((item) => {
           addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
         });
       } catch (error) {
+        if (isStaleNavigation(navToken)) return;
         console.warn("Не удалось загрузить пользователей из общего чата:", error);
       }
 
@@ -1428,18 +1501,25 @@
           .select("owner_id,name")
           .not("owner_id", "is", null);
 
+        if (isStaleNavigation(navToken)) return;
+
         (postUsers || []).forEach((item) => {
           rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
         });
 
         await loadProfilesByIds((postUsers || []).map((item) => item.owner_id));
 
+        if (isStaleNavigation(navToken)) return;
+
         (postUsers || []).forEach((item) => {
           addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
         });
       } catch (error) {
+        if (isStaleNavigation(navToken)) return;
         console.warn("Не удалось загрузить пользователей из объявлений:", error);
       }
+
+      if (isStaleNavigation(navToken)) return;
 
       const peers = Array.from(peersMap.values()).map((peer) => ({
         ...peer,
@@ -1455,6 +1535,7 @@
 
       if (!peers.length) {
         showEmptyState("Пока нет собеседников. Пользователь должен быть автором объявления или написать в общий чат.");
+        finishChatNavigation(navToken);
         return;
       }
 
@@ -1489,18 +1570,27 @@
 
       clearMessages();
       messagesContainer.appendChild(list);
+      finishChatNavigation(navToken);
     }
 
-    async function openPrivateDialog(peerId, peerName) {
+    async function openPrivateDialog(peerId, peerName, navToken = beginChatNavigation()) {
       await refreshCurrentUser();
+
+      if (isStaleNavigation(navToken)) return;
+
       await ensureCurrentUserProfile();
+
+      if (isStaleNavigation(navToken)) return;
 
       if (!currentChatUser) {
         showEmptyState("Для личных сообщений нужно войти.");
+        finishChatNavigation(navToken);
         return;
       }
 
       await loadProfilesByIds([peerId]);
+
+      if (isStaleNavigation(navToken)) return;
 
       selectedPeer = {
         id: String(peerId),
@@ -1534,9 +1624,12 @@
         .or(`and(sender_id.eq.${currentChatUser.id},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${currentChatUser.id})`)
         .order("created_at", { ascending: true });
 
+      if (isStaleNavigation(navToken)) return;
+
       if (error) {
         console.error("Ошибка загрузки лички:", error);
         showEmptyState("Не удалось загрузить личку. Проверь private_messages и RLS.");
+        finishChatNavigation(navToken);
         return;
       }
 
@@ -1550,6 +1643,8 @@
         (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
       );
 
+      if (isStaleNavigation(navToken)) return;
+
       selectedPeer.name = getProfileName(peerId, selectedPeer.name);
       chatAvatar.textContent = getInitials(selectedPeer.name);
       chatTitle.textContent = selectedPeer.name;
@@ -1561,10 +1656,12 @@
 
       if (!data || !data.length) {
         showEmptyState("Личных сообщений пока нет. Напиши первым.");
+        finishChatNavigation(navToken);
         return;
       }
 
       renderMessageList(data, renderPrivateMessage);
+      finishChatNavigation(navToken);
     }
 
     async function sendPublicMessage() {
@@ -1701,7 +1798,7 @@
 
       if (result.error) {
         console.error("Ошибка удаления сообщения:", result.error);
-        alert("Не получилось удалить сообщение. Проверь RLS delete.");
+        alert("Не получилось удалить сообщение. Провь RLS delete.");
         return;
       }
 
@@ -1818,6 +1915,9 @@
     }
 
     function closeChat() {
+      chatNavigationToken += 1;
+      setChatTabsLoading(false);
+
       modal.classList.remove("open");
       modal.classList.add("hidden");
 
@@ -1982,6 +2082,15 @@
 
       if (event.target.id === "klevby-chat-modal") {
         closeChat();
+        return;
+      }
+
+      if (
+        chatLoading &&
+        event.target.closest("#publicChatTab, #privateChatTab, #back-chat, .klevby-private-dialog-item")
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
         return;
       }
 
@@ -2330,6 +2439,36 @@
       .klevby-chat-back:active,
       .klevby-push-btn:active {
         transform: scale(0.94) !important;
+      }
+
+      .klevby-chat-tab:disabled,
+      .klevby-chat-back:disabled {
+        opacity: 0.55 !important;
+        cursor: wait !important;
+        pointer-events: none !important;
+      }
+
+      .klevby-chat-tab.loading {
+        position: relative !important;
+      }
+
+      .klevby-chat-tab.loading::after {
+        content: "" !important;
+        width: 12px !important;
+        height: 12px !important;
+        margin-left: 6px !important;
+        border-radius: 50% !important;
+        border: 2px solid rgba(255,255,255,0.22) !important;
+        border-top-color: #c8ffe0 !important;
+        display: inline-block !important;
+        vertical-align: -2px !important;
+        animation: klevby-chat-spin 0.8s linear infinite !important;
+      }
+
+      @keyframes klevby-chat-spin {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       .klevby-chat-head-main {
@@ -2706,6 +2845,11 @@
         gap: 10px !important;
         cursor: pointer !important;
         text-align: left !important;
+      }
+
+      .klevby-chat-loading .klevby-private-dialog-item {
+        pointer-events: none !important;
+        opacity: 0.68 !important;
       }
 
       .klevby-private-dialog-item:active {
