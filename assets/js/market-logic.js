@@ -7,8 +7,11 @@
 
   let marketUserRefreshPromise = null;
   let marketLastUserRefreshAt = 0;
+  let marketLoadPromise = null;
+  let marketLoadTimer = null;
 
-  const MARKET_AUTH_REFRESH_THROTTLE_MS = 2500;
+  const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
+  const MARKET_LOAD_RETRY_DELAY_MS = 900;
 
   function getMainSupabaseClient() {
     return (
@@ -45,12 +48,21 @@
           return;
         }
 
-        if (tries > 80) {
+        if (tries > 100) {
           clearInterval(timer);
           reject(new Error("Основной Supabase client не найден"));
         }
       }, 100);
     });
+  }
+
+  function isAuthLockError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+
+    return (
+      message.includes("lock") &&
+      message.includes("auth-token")
+    );
   }
 
   function escapeHtml(value) {
@@ -418,36 +430,120 @@
     el.classList.toggle("error-line", isError);
   }
 
-  async function loadMarketItems() {
+  function scheduleMarketLoad(delay = MARKET_LOAD_RETRY_DELAY_MS, force = false) {
+    clearTimeout(marketLoadTimer);
+
+    marketLoadTimer = setTimeout(() => {
+      loadMarketItems({ force }).catch((error) => {
+        console.warn("Klevby барахолка: отложенная загрузка не удалась:", error);
+      });
+    }, delay);
+  }
+
+  async function loadMarketItems(options = {}) {
+    const force = Boolean(options.force);
+    const retry = Number(options.retry || 0);
+
     renderMarketBase();
 
+    if (!marketDb) {
+      marketDb = getMainSupabaseClient();
+    }
+
     const grid = document.getElementById("marketItemsGrid");
-    if (!grid || !marketDb) return;
 
-    showMarketStatus("Загрузка барахолки...");
+    if (!grid) return;
 
-    grid.innerHTML = `
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-    `;
-
-    await refreshMarketUser();
-
-    const result = await marketDb
-      .from("market_items")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (result.error) {
-      console.error(result.error);
-      showMarketStatus("Не удалось загрузить барахолку. Проверь таблицу market_items в Supabase.", true);
-      grid.innerHTML = `<div class="info-line error-line">Ошибка загрузки барахолки. Проверь таблицу market_items.</div>`;
+    if (!marketDb) {
+      showMarketStatus("Supabase ещё не готов. Повторяем загрузку барахолки...");
+      scheduleMarketLoad(800, true);
       return;
     }
 
-    marketItems = result.data || [];
-    renderMarketItems();
+    if (!force && marketLoadPromise) {
+      return marketLoadPromise;
+    }
+
+    marketLoadPromise = (async function () {
+      showMarketStatus("Загрузка барахолки...");
+
+      if (!marketItems.length) {
+        grid.innerHTML = `
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        `;
+      }
+
+      /*
+        ВАЖНО:
+        Здесь больше НЕ вызываем refreshMarketUser().
+        Барахолка должна грузить товары даже без проверки авторизации.
+        Пользователя проверяем только при сохранении/удалении.
+      */
+
+      let result;
+
+      try {
+        result = await marketDb
+          .from("market_items")
+          .select("*")
+          .order("created_at", { ascending: false });
+      } catch (error) {
+        if (isAuthLockError(error) && retry < 2) {
+          console.warn("Klevby барахолка: Supabase Auth занят, повторяем загрузку:", error);
+          showMarketStatus("Подключение занято, повторяем загрузку барахолки...");
+          setTimeout(() => {
+            loadMarketItems({ force: true, retry: retry + 1 }).catch(() => {});
+          }, MARKET_LOAD_RETRY_DELAY_MS);
+          return;
+        }
+
+        console.error("Ошибка загрузки барахолки:", error);
+        showMarketStatus("Не удалось загрузить барахолку. Попробуй обновить страницу.", true);
+
+        if (!marketItems.length) {
+          grid.innerHTML = `<div class="info-line error-line">Ошибка загрузки барахолки. Проверь интернет или Supabase.</div>`;
+        }
+
+        return;
+      }
+
+      if (result.error) {
+        if (isAuthLockError(result.error) && retry < 2) {
+          console.warn("Klevby барахолка: Supabase Auth занят, повторяем загрузку:", result.error);
+          showMarketStatus("Подключение занято, повторяем загрузку барахолки...");
+          setTimeout(() => {
+            loadMarketItems({ force: true, retry: retry + 1 }).catch(() => {});
+          }, MARKET_LOAD_RETRY_DELAY_MS);
+          return;
+        }
+
+        console.error(result.error);
+        showMarketStatus("Не удалось загрузить барахолку. Проверь таблицу market_items в Supabase.", true);
+
+        if (!marketItems.length) {
+          grid.innerHTML = `<div class="info-line error-line">Ошибка загрузки барахолки. Проверь таблицу market_items.</div>`;
+        }
+
+        return;
+      }
+
+      marketItems = result.data || [];
+
+      const mainUser = getMainUser();
+      if (mainUser && mainUser.id) {
+        marketUser = mainUser;
+      }
+
+      renderMarketItems();
+    })();
+
+    try {
+      return await marketLoadPromise;
+    } finally {
+      marketLoadPromise = null;
+    }
   }
 
   function renderMarketItems() {
@@ -581,7 +677,8 @@
       result = await marketDb
         .from("market_items")
         .update(payload)
-        .eq("id", editingMarketId);
+        .eq("id", editingMarketId)
+        .eq("owner_id", marketUser.id);
     } else {
       result = await marketDb
         .from("market_items")
@@ -603,15 +700,22 @@
 
     showMarketMessage(wasEditing ? "Товар обновлён." : "Товар добавлен.");
 
-    await loadMarketItems();
+    await loadMarketItems({ force: true });
   }
 
-  function editMarketItem(id) {
+  async function editMarketItem(id) {
+    await refreshMarketUser();
+
     const item = marketItems.find(function (x) {
       return String(x.id) === String(id);
     });
 
     if (!item) return;
+
+    if (!marketUser || String(item.owner_id || "") !== String(marketUser.id || "")) {
+      alert("Редактировать может только владелец товара.");
+      return;
+    }
 
     editingMarketId = id;
 
@@ -656,7 +760,7 @@
   }
 
   async function deleteMarketItem(id) {
-    await refreshMarketUser();
+    await refreshMarketUser({ force: true });
 
     if (!marketUser) {
       alert("Сначала войди в аккаунт.");
@@ -677,24 +781,32 @@
       return;
     }
 
-    await loadMarketItems();
+    await loadMarketItems({ force: true });
   }
 
   async function initMarket() {
     try {
       injectMarketStyles();
+      renderMarketBase();
 
-      marketDb = await waitForMarketClient();
+      marketDb = getMainSupabaseClient();
 
-      window.klevbyLoadMarket = loadMarketItems;
+      if (!marketDb) {
+        showMarketStatus("Supabase ещё не готов. Ждём подключение...");
+        marketDb = await waitForMarketClient();
+      }
+
+      window.klevbyLoadMarket = function () {
+        return loadMarketItems({ force: true });
+      };
+
       window.renderMarketItems = renderMarketItems;
       window.saveMarketItem = saveMarketItem;
       window.editMarketItem = editMarketItem;
       window.cancelMarketEdit = cancelMarketEdit;
       window.deleteMarketItem = deleteMarketItem;
 
-      renderMarketBase();
-      await loadMarketItems();
+      await loadMarketItems({ force: true });
 
       console.log("Klevby барахолка запущена.");
     } catch (error) {
@@ -706,6 +818,15 @@
       }
     }
   }
+
+  window.addEventListener("klevby-auth-changed", function () {
+    const mainUser = getMainUser();
+
+    if (mainUser && mainUser.id) {
+      marketUser = mainUser;
+      renderMarketItems();
+    }
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initMarket);
