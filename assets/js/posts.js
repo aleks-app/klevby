@@ -1,5 +1,117 @@
 function getOwnerId() {
-  return currentUser ? currentUser.id : null;
+  const user =
+    (typeof currentUser !== "undefined" && currentUser)
+      ? currentUser
+      : (window.currentUser || window.klevbyCurrentUser || null);
+
+  return user ? user.id : null;
+}
+
+function getPostsArray() {
+  if (typeof posts !== "undefined" && Array.isArray(posts)) {
+    return posts;
+  }
+
+  if (Array.isArray(window.posts)) {
+    return window.posts;
+  }
+
+  return [];
+}
+
+function setPostsArray(value) {
+  if (typeof posts !== "undefined") {
+    posts = Array.isArray(value) ? value : [];
+  }
+
+  window.posts = Array.isArray(value) ? value : [];
+}
+
+function getCurrentViewMode() {
+  if (typeof viewMode !== "undefined" && viewMode) {
+    return viewMode;
+  }
+
+  return window.klevbyViewMode || "all";
+}
+
+function getCurrentEditingId() {
+  if (typeof editingId !== "undefined") {
+    return editingId;
+  }
+
+  return window.klevbyEditingPostId || null;
+}
+
+function setCurrentEditingId(value) {
+  if (typeof editingId !== "undefined") {
+    editingId = value;
+  }
+
+  window.klevbyEditingPostId = value;
+}
+
+function getActiveModalPost() {
+  if (typeof activeModalPost !== "undefined") {
+    return activeModalPost;
+  }
+
+  return window.klevbyActiveModalPost || null;
+}
+
+function setActiveModalPost(value) {
+  if (typeof activeModalPost !== "undefined") {
+    activeModalPost = value;
+  }
+
+  window.klevbyActiveModalPost = value;
+}
+
+function getPostModalCloseTimer() {
+  if (typeof postModalCloseTimer !== "undefined") {
+    return postModalCloseTimer;
+  }
+
+  return window.klevbyPostModalCloseTimer || null;
+}
+
+function setPostModalCloseTimer(value) {
+  if (typeof postModalCloseTimer !== "undefined") {
+    postModalCloseTimer = value;
+  }
+
+  window.klevbyPostModalCloseTimer = value;
+}
+
+function getCardImagesSafe() {
+  const config = window.KLEVB_CONFIG || {};
+  const images = Array.isArray(config.CARD_IMAGES) ? config.CARD_IMAGES.filter(Boolean) : [];
+
+  if (images.length) {
+    return images;
+  }
+
+  return [
+    "assets/img/narach-bg.webp",
+    "assets/img/hero-fishing.webp",
+    "assets/img/klevby-icon-512.png"
+  ];
+}
+
+function getCurrentAuthReady() {
+  if (typeof authReady !== "undefined") {
+    return authReady;
+  }
+
+  return Boolean(window.authReady);
+}
+
+function getCurrentUserSafe() {
+  if (typeof currentUser !== "undefined" && currentUser) {
+    return currentUser;
+  }
+
+  return window.currentUser || window.klevbyCurrentUser || null;
 }
 
 function cleanTelegram(value) {
@@ -29,6 +141,10 @@ function escapeHtml(text) {
     .replaceAll("'", "&#039;");
 }
 
+function escapeAttr(text) {
+  return escapeHtml(text).replaceAll("`", "&#096;");
+}
+
 function getFishingTypeClass(type) {
   const t = normalizeText(type);
 
@@ -42,14 +158,20 @@ function getFishingTypeClass(type) {
 }
 
 function getCardImage(post) {
-  const key = String(post.id || post.created_at || post.name || Math.random());
+  const images = getCardImagesSafe();
+
+  if (!images.length) {
+    return "assets/img/klevby-icon-512.png";
+  }
+
+  const key = String(post?.id || post?.created_at || post?.name || "klevby");
   let sum = 0;
 
   for (let i = 0; i < key.length; i++) {
     sum += key.charCodeAt(i);
   }
 
-  return CARD_IMAGES[sum % CARD_IMAGES.length];
+  return images[Math.abs(sum) % images.length];
 }
 
 function saveAuthorLocal(name, telegram) {
@@ -69,13 +191,23 @@ async function loadPosts() {
     `;
   }
 
+  if (!supabaseClient) {
+    showStatus("Supabase ещё не готов. Обнови страницу.", true);
+
+    if (postsSection) {
+      postsSection.innerHTML = "";
+    }
+
+    return;
+  }
+
   const { data, error } = await supabaseClient
     .from("posts")
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error(error);
+    console.error("Ошибка загрузки posts:", error);
     showStatus("Не удалось загрузить объявления. Проверь таблицу posts и RLS.", true);
 
     if (postsSection) {
@@ -85,7 +217,7 @@ async function loadPosts() {
     return;
   }
 
-  posts = data || [];
+  setPostsArray(data || []);
   renderPosts();
 }
 
@@ -98,10 +230,11 @@ function renderPosts() {
   const selectedType = normalizeText(document.getElementById("typeSelect")?.value);
   const telegramOnly = document.getElementById("telegramOnly")?.checked;
   const ownerId = getOwnerId();
+  const mode = getCurrentViewMode();
 
-  let filtered = [...posts];
+  let filtered = [...getPostsArray()];
 
-  if (viewMode === "mine") {
+  if (mode === "mine") {
     filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
     showStatus("Сейчас показаны: мои объявления.");
   } else {
@@ -135,11 +268,19 @@ function renderPosts() {
 
   if (!filtered.length) {
     list.innerHTML = '<div class="info-line">Пока объявлений нет.</div>';
+
+    if (typeof window.updateHomeFloatButton === "function") {
+      setTimeout(window.updateHomeFloatButton, 80);
+    }
+
     return;
   }
 
   list.innerHTML = filtered.map(cardHtml).join("");
-  setTimeout(updateHomeFloatButton, 80);
+
+  if (typeof window.updateHomeFloatButton === "function") {
+    setTimeout(window.updateHomeFloatButton, 80);
+  }
 }
 
 function cardHtml(post) {
@@ -162,28 +303,33 @@ function cardHtml(post) {
   const tgButton = isFull
     ? `<button class="small-btn disabled" disabled onclick="event.stopPropagation()">Экипаж набран</button>`
     : tg
-      ? `<button class="small-btn green" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(tg)}','_blank')">Написать автору</button>`
+      ? `<button class="small-btn green" onclick="event.stopPropagation(); window.open('https://t.me/${escapeAttr(tg)}','_blank')">Написать автору</button>`
       : `<button class="small-btn green" onclick="event.stopPropagation(); openTelegram()">Написать в общий чат</button>`;
 
   const fullBtn = canManage
-    ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${post.id}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
+    ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${escapeAttr(post.id)}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
     : "";
 
   const editBtn = canManage
-    ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${post.id}')">Редактировать</button>`
+    ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${escapeAttr(post.id)}')">Редактировать</button>`
     : "";
 
   const deleteBtn = canManage
-    ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${post.id}')">Удалить</button>`
+    ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${escapeAttr(post.id)}')">Удалить</button>`
     : "";
 
   const date = post.created_at
-    ? new Date(post.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+    ? new Date(post.created_at).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
     : "";
 
   return `
-    <div class="card ${isFull ? "full" : ""}" onclick="openPostModal('${post.id}')">
-      <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${image}')"></div>
+    <div class="card ${isFull ? "full" : ""}" onclick="openPostModal('${escapeAttr(post.id)}')">
+      <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
       <div class="card-body">
         <div class="trip-title">
@@ -237,10 +383,10 @@ function cardHtml(post) {
 }
 
 function openPostModal(id) {
-  const post = posts.find(p => String(p.id) === String(id));
+  const post = getPostsArray().find(p => String(p.id) === String(id));
   if (!post) return;
 
-  activeModalPost = post;
+  setActiveModalPost(post);
 
   const modal = document.getElementById("postModal");
   const imageEl = document.getElementById("postModalImage");
@@ -255,7 +401,12 @@ function openPostModal(id) {
   const tg = cleanTelegram(post.telegram);
   const isFull = Boolean(post.crew_full);
   const date = post.created_at
-    ? new Date(post.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })
+    ? new Date(post.created_at).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "long",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
     : "";
   const fishingType = post.fishing_type || "";
   const destination = post.destination || post.city || "рыбалку";
@@ -284,7 +435,7 @@ function openPostModal(id) {
     writeBtn.disabled = false;
   }
 
-  clearTimeout(postModalCloseTimer);
+  clearTimeout(getPostModalCloseTimer());
   modal.classList.remove("hidden");
 
   requestAnimationFrame(() => {
@@ -300,10 +451,12 @@ function closePostModal() {
   modal.classList.remove("open");
   document.body.classList.remove("post-modal-open");
 
-  postModalCloseTimer = setTimeout(() => {
+  const timer = setTimeout(() => {
     modal.classList.add("hidden");
-    activeModalPost = null;
+    setActiveModalPost(null);
   }, 360);
+
+  setPostModalCloseTimer(timer);
 }
 
 function handlePostModalBackdrop(event) {
@@ -313,9 +466,10 @@ function handlePostModalBackdrop(event) {
 }
 
 function writePostAuthor() {
-  if (!activeModalPost) return;
+  const post = getActiveModalPost();
+  if (!post) return;
 
-  const tg = cleanTelegram(activeModalPost.telegram);
+  const tg = cleanTelegram(post.telegram);
 
   if (tg) {
     window.open(`https://t.me/${tg}`, "_blank");
@@ -325,25 +479,29 @@ function writePostAuthor() {
 }
 
 async function savePost() {
-  if (typeof window.restoreAuthState === "function" && !authReady) {
+  if (typeof window.restoreAuthState === "function" && !getCurrentAuthReady()) {
     await window.restoreAuthState("before_save", false);
   }
 
-  const name = document.getElementById("nameInput").value.trim();
-  const city = document.getElementById("cityInput").value.trim();
-  const destination = document.getElementById("destinationInput").value.trim();
-  const tripTime = document.getElementById("tripTimeInput").value.trim();
-  const fishingType = document.getElementById("fishingTypeInput").value.trim();
-  const transport = document.getElementById("transportInput").value.trim();
-  const seats = document.getElementById("seatsInput").value.trim();
-  const text = document.getElementById("textInput").value.trim();
-  const telegram = cleanTelegram(document.getElementById("telegramInput").value);
+  const user = getCurrentUserSafe();
 
-  if (typeof window.restoreAuthState === "function" && !currentUser) {
+  const name = document.getElementById("nameInput")?.value.trim() || "";
+  const city = document.getElementById("cityInput")?.value.trim() || "";
+  const destination = document.getElementById("destinationInput")?.value.trim() || "";
+  const tripTime = document.getElementById("tripTimeInput")?.value.trim() || "";
+  const fishingType = document.getElementById("fishingTypeInput")?.value.trim() || "";
+  const transport = document.getElementById("transportInput")?.value.trim() || "";
+  const seats = document.getElementById("seatsInput")?.value.trim() || "";
+  const text = document.getElementById("textInput")?.value.trim() || "";
+  const telegram = cleanTelegram(document.getElementById("telegramInput")?.value || "");
+
+  if (typeof window.restoreAuthState === "function" && !getCurrentUserSafe()) {
     await window.restoreAuthState("save_post_retry", false);
   }
 
-  if (!currentUser) {
+  const restoredUser = getCurrentUserSafe();
+
+  if (!restoredUser) {
     showSection("auth");
     alert("Сначала создай профиль или войди. Так объявления будут защищены от удаления чужими людьми.");
     return;
@@ -366,16 +524,17 @@ async function savePost() {
     seats,
     text,
     telegram,
-    owner_id: currentUser.id
+    owner_id: restoredUser.id
   };
 
   let result;
+  const activeEditingId = getCurrentEditingId();
 
-  if (editingId) {
+  if (activeEditingId) {
     result = await supabaseClient
       .from("posts")
       .update(payload)
-      .eq("id", editingId);
+      .eq("id", activeEditingId);
   } else {
     result = await supabaseClient
       .from("posts")
@@ -384,11 +543,11 @@ async function savePost() {
 
   if (result.error) {
     showFormMessage("Не получилось сохранить. Проверь поля destination, trip_time, transport, seats в таблице posts.", true);
-    console.error(result.error);
+    console.error("Ошибка сохранения posts:", result.error);
     return;
   }
 
-  const wasEditing = Boolean(editingId);
+  const wasEditing = Boolean(activeEditingId);
 
   clearForm();
 
@@ -396,9 +555,19 @@ async function savePost() {
     window.fillAuthorLocal();
   }
 
-  editingId = null;
-  document.getElementById("formTitle").innerText = "Создать выезд";
-  document.getElementById("cancelEditBtn").classList.add("hidden");
+  setCurrentEditingId(null);
+
+  const formTitle = document.getElementById("formTitle");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
+
+  if (formTitle) {
+    formTitle.innerText = "Создать выезд";
+  }
+
+  if (cancelEditBtn) {
+    cancelEditBtn.classList.add("hidden");
+  }
+
   showFormMessage(wasEditing ? "Выезд обновлён." : "Выезд создан.");
 
   await loadPosts();
@@ -409,50 +578,92 @@ async function savePost() {
 }
 
 function editPost(id) {
-  const post = posts.find(p => String(p.id) === String(id));
+  const post = getPostsArray().find(p => String(p.id) === String(id));
   if (!post) return;
 
-  editingId = id;
+  setCurrentEditingId(id);
 
-  document.getElementById("nameInput").value = post.name || "";
-  document.getElementById("cityInput").value = post.city || "";
-  document.getElementById("destinationInput").value = post.destination || "";
-  document.getElementById("tripTimeInput").value = post.trip_time || "";
-  document.getElementById("fishingTypeInput").value = post.fishing_type || "";
-  document.getElementById("transportInput").value = post.transport || "";
-  document.getElementById("seatsInput").value = post.seats || "";
-  document.getElementById("textInput").value = post.text || "";
-  document.getElementById("telegramInput").value = post.telegram || "";
+  const nameInput = document.getElementById("nameInput");
+  const cityInput = document.getElementById("cityInput");
+  const destinationInput = document.getElementById("destinationInput");
+  const tripTimeInput = document.getElementById("tripTimeInput");
+  const fishingTypeInput = document.getElementById("fishingTypeInput");
+  const transportInput = document.getElementById("transportInput");
+  const seatsInput = document.getElementById("seatsInput");
+  const textInput = document.getElementById("textInput");
+  const telegramInput = document.getElementById("telegramInput");
+  const formTitle = document.getElementById("formTitle");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
+  const createPanel = document.getElementById("createPanel");
 
-  document.getElementById("formTitle").innerText = "Редактировать выезд";
-  document.getElementById("cancelEditBtn").classList.remove("hidden");
-  document.getElementById("createPanel").scrollIntoView({ behavior: "smooth" });
-  setTimeout(updateHomeFloatButton, 120);
+  if (nameInput) nameInput.value = post.name || "";
+  if (cityInput) cityInput.value = post.city || "";
+  if (destinationInput) destinationInput.value = post.destination || "";
+  if (tripTimeInput) tripTimeInput.value = post.trip_time || "";
+  if (fishingTypeInput) fishingTypeInput.value = post.fishing_type || "";
+  if (transportInput) transportInput.value = post.transport || "";
+  if (seatsInput) seatsInput.value = post.seats || "";
+  if (textInput) textInput.value = post.text || "";
+  if (telegramInput) telegramInput.value = post.telegram || "";
+
+  if (formTitle) {
+    formTitle.innerText = "Редактировать выезд";
+  }
+
+  if (cancelEditBtn) {
+    cancelEditBtn.classList.remove("hidden");
+  }
+
+  if (createPanel) {
+    createPanel.scrollIntoView({ behavior: "smooth" });
+  }
+
+  if (typeof window.updateHomeFloatButton === "function") {
+    setTimeout(window.updateHomeFloatButton, 120);
+  }
 }
 
 function cancelEdit() {
-  editingId = null;
+  setCurrentEditingId(null);
   clearForm();
 
   if (typeof window.fillAuthorLocal === "function") {
     window.fillAuthorLocal();
   }
 
-  document.getElementById("formTitle").innerText = "Создать выезд";
-  document.getElementById("cancelEditBtn").classList.add("hidden");
+  const formTitle = document.getElementById("formTitle");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
+
+  if (formTitle) {
+    formTitle.innerText = "Создать выезд";
+  }
+
+  if (cancelEditBtn) {
+    cancelEditBtn.classList.add("hidden");
+  }
+
   showFormMessage("");
 }
 
 function clearForm() {
-  document.getElementById("nameInput").value = "";
-  document.getElementById("cityInput").value = "";
-  document.getElementById("destinationInput").value = "";
-  document.getElementById("tripTimeInput").value = "";
-  document.getElementById("fishingTypeInput").value = "";
-  document.getElementById("transportInput").value = "";
-  document.getElementById("seatsInput").value = "";
-  document.getElementById("textInput").value = "";
-  document.getElementById("telegramInput").value = "";
+  const ids = [
+    "nameInput",
+    "cityInput",
+    "destinationInput",
+    "tripTimeInput",
+    "fishingTypeInput",
+    "transportInput",
+    "seatsInput",
+    "textInput",
+    "telegramInput"
+  ];
+
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.value = "";
+    }
+  });
 }
 
 async function toggleCrewFull(id, value) {
@@ -463,7 +674,7 @@ async function toggleCrewFull(id, value) {
 
   if (error) {
     alert("Не получилось изменить статус. Проверь поле crew_full и RLS.");
-    console.error(error);
+    console.error("Ошибка crew_full:", error);
     return;
   }
 
@@ -480,7 +691,7 @@ async function deletePost(id) {
 
   if (error) {
     alert("Не получилось удалить. Удалять может только владелец объявления или админ.");
-    console.error(error);
+    console.error("Ошибка удаления posts:", error);
     return;
   }
 
@@ -492,9 +703,13 @@ async function deletePost(id) {
 }
 
 window.getOwnerId = getOwnerId;
+window.getPostsArray = getPostsArray;
+window.setPostsArray = setPostsArray;
+window.getCurrentViewMode = getCurrentViewMode;
 window.cleanTelegram = cleanTelegram;
 window.normalizeText = normalizeText;
 window.escapeHtml = escapeHtml;
+window.escapeAttr = escapeAttr;
 window.getFishingTypeClass = getFishingTypeClass;
 window.getCardImage = getCardImage;
 window.saveAuthorLocal = saveAuthorLocal;
