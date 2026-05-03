@@ -2060,3 +2060,248 @@
   <script src="assets/js/ponds.js?v=20260503-1" defer></script>
 </body>
 </html>
+<section id="forecastPanel" class="weather-panel">
+  <div class="cloud cloud-1"></div>
+  <div class="cloud cloud-2"></div>
+  <div class="rain-layer">
+    <span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span>
+  </div>
+
+  <div class="mobile-weather-title">
+    <div class="mobile-weather-city">Minsk</div>
+    <div class="mobile-weather-condition" id="mobileWeatherCondition">☀️ Солнце</div>
+  </div>
+
+  <div class="forecast-head">
+    <div>
+      <h2>Прогноз на сегодня</h2>
+      <p id="weatherStatus">Загружаем погоду для Минска...</p>
+    </div>
+    <button class="main-btn blue" onclick="showSection('map')">Открыть карту клева</button>
+  </div>
+
+  <div class="forecast-grid">
+    <div class="forecast-item">
+      <div class="forecast-icon" data-mobile-icon="🌡️">☀️</div>
+      <div class="forecast-label">Температура</div>
+      <div class="forecast-value" id="weatherTemp">—</div>
+    </div>
+    <div class="forecast-item">
+      <div class="forecast-icon" data-mobile-icon="💨">💨</div>
+      <div class="forecast-label">Ветер</div>
+      <div class="forecast-value" id="weatherWind">—</div>
+    </div>
+    <div class="forecast-item">
+      <div class="forecast-icon" data-mobile-icon="🧭">⌁</div>
+      <div class="forecast-label">Давление</div>
+      <div class="forecast-value" id="weatherPressure">—</div>
+    </div>
+    <div class="forecast-item">
+      <div class="forecast-icon" data-mobile-icon="🌕">◐</div>
+      <div class="forecast-label">Фаза луны</div>
+      <div class="forecast-value" id="weatherMoon">—</div>
+    </div>
+  </div>
+
+  <div class="bite-line bite-medium-line" id="biteForecast">Прогноз средний, нужно пробовать.</div>
+</section>
+
+<section id="statusLine" class="info-line">Загрузка объявлений...</section>
+
+<section class="panel" id="createPanel">
+  <h2 id="formTitle">Создать выезд</h2>
+
+  <div class="form-row">
+    <input id="nameInput" placeholder="Nickname / имя на сайте" />
+    <input id="cityInput" placeholder="Город отправления" />
+  </div>
+
+  <div class="form-row">
+    <input id="destinationInput" placeholder="Куда едешь: Минское море, Нарочь..." />
+    <input id="tripTimeInput" placeholder="Когда: завтра утром, в субботу..." />
+  </div>
+
+  <div class="form-row">
+    <select id="fishingTypeInput">
+      <option value="">Тип рыбалки</option>
+      <option value="Спиннинг">Спиннинг</option>
+      <option value="Фидер">Фидер</option>
+      <option value="Поплавок">Поплавок</option>
+      <option value="Карпфишинг">Карпфишинг</option>
+      <option value="Зимняя">Зимняя</option>
+    </select>
+
+    <select id="transportInput">
+      <option value="">Транспорт</option>
+      <option value="Есть машина">Есть машина</option>
+      <option value="Ищу место в машине">Ищу место в машине</option>
+      <option value="Есть лодка">Есть лодка</option>
+      <option value="Без транспорта">Без транспорта</option>
+    </select>
+  </div>
+
+  <input id="seatsInput" placeholder="Места: 1 свободное, 2 места, экипаж набран..." />
+  <textarea id="textInput" placeholder="Описание: детали выезда, снасти, лодка, опыт, что взять с собой"></textarea>
+  <input id="telegramInput" placeholder="Telegram username, @username или https://t.me/username" />
+
+  <div class="actions">
+    <button class="small-btn green" onclick="savePost()">Сохранить</button>
+    <button id="cancelEditBtn" class="small-btn gray hidden" onclick="cancelEdit()">Отмена</button>
+  </div>
+
+  <div id="formMessage" class="auth-status"></div>
+</section><section id="postsSection" class="grid">
+  <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+</section>
+
+<section id="marketSection" class="hidden">
+  <div class="market-hero">
+    <h2>Барахолка снастей</h2>
+    <p>Продажа и покупка рыболовных вещей: удилища, катушки, приманки, лодки, эхолоты и всё, что может пригодиться на рыбалке.</p>
+  </div>
+  <div class="panel market-shell">
+    <div id="marketRoot">
+      <div class="info-line">Загрузка барахолки...</div>
+    </div>
+  </div>
+</section>
+
+<section id="pondsSection" class="hidden">
+  <div class="ponds-shell">
+    <div class="ponds-hero">
+      <div>
+        <div class="ponds-badge">💧 Платная рыбалка</div>
+        <h2>Платные пруды Беларуси</h2>
+        <p>Каталог платных водоёмов: цены, рыба, контакты, фото и координаты.</p>
+      </div>
+
+      <div class="ponds-hero-card">
+        <div class="ponds-hero-price">BYN</div>
+        <div class="ponds-hero-text">Цены, рыба и контакты в одном месте</div>
+      </div>
+    </div>
+
+    <div id="pondsAdminPanel" class="ponds-admin-panel hidden">
+      <div class="ponds-admin-head">
+        <div>
+          <h3 id="pondFormTitle">Добавить платный пруд</h3>
+          <p>Эта форма видна только админу.</p>
+        </div>
+        <button id="pondCancelEditBtn" class="ponds-btn ponds-btn-muted hidden" type="button">
+          Отмена
+        </button>
+      </div>
+
+      <form id="pondForm" class="ponds-form">
+        <div class="ponds-form-group">
+          <h4>Основная информация</h4>
+          <div class="ponds-form-grid">
+            <label>
+              <span>Название</span>
+              <input id="pondNameInput" type="text" placeholder="Например: Пруд возле Минска" required>
+            </label>
+
+            <label>
+              <span>Город / область</span>
+              <input id="pondCityInput" type="text" placeholder="Минск, Брестская область..." required>
+            </label>
+
+            <label>
+              <span>Цена</span>
+              <input id="pondPriceInput" type="text" placeholder="Например: 25 BYN / день">
+            </label>
+
+            <label>
+              <span>Виды рыб</span>
+              <input id="pondFishInput" type="text" placeholder="Карп, карась, амур, щука">
+            </label>
+          </div>
+
+          <label>
+            <span>Описание</span>
+            <textarea id="pondDescriptionInput" placeholder="Условия рыбалки, правила, беседки, ночёвка, запуск рыбы..."></textarea>
+          </label>
+        </div>
+
+        <div class="ponds-form-group">
+          <h4>Медиа и Гео</h4>
+          <div class="ponds-form-grid">
+            <label>
+              <span>Фото URL</span>
+              <input id="pondPhotoInput" type="url" placeholder="https://...">
+            </label>
+
+            <label>
+              <span>Latitude</span>
+              <input id="pondLatInput" type="number" step="any" placeholder="53.9006">
+            </label>
+
+            <label>
+              <span>Longitude</span>
+              <input id="pondLngInput" type="number" step="any" placeholder="27.5590">
+            </label>
+
+            <label class="ponds-check-label">
+              <input id="pondActiveInput" type="checkbox" checked>
+              <span>Показывать на сайте</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="ponds-form-group">
+          <h4>Контакты</h4>
+          <div class="ponds-form-grid">
+            <label>
+              <span>Контакты</span>
+              <input id="pondContactsInput" type="text" placeholder="Телефон, Telegram, сайт">
+            </label>
+          </div>
+        </div>
+
+        <div class="ponds-form-actions">
+          <button id="pondSaveBtn" class="ponds-btn ponds-btn-primary" type="submit">
+            Сохранить пруд
+          </button>
+
+          <div id="pondFormMessage" class="ponds-form-message"></div>
+        </div>
+      </form>
+    </div>
+
+    <div class="ponds-toolbar">
+      <div>
+        <h3>Каталог водоёмов</h3>
+        <p id="pondsStatus">Загрузка платных прудов...</p>
+      </div>
+
+      <input id="pondsSearchInput" class="ponds-search" type="text" placeholder="Поиск: Минск, карп, амур...">
+    </div>
+
+    <div id="pondsGrid" class="ponds-grid">
+      <div class="ponds-skeleton"></div>
+      <div class="ponds-skeleton"></div>
+      <div class="ponds-skeleton"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Chat section -->
+<section id="chatSection">
+  <div class="chat-wrapper">
+    <div class="chat-header">
+      <span>Чат с рыбаками</span>
+      <button onclick="openTelegram()">Открыть Telegram</button>
+    </div>
+    <div class="chat-messages">
+      <p>Будьте активными на рыбалке!</p>
+    </div>
+  </div>
+</section>
+
+<script src="assets/js/chat.js?v=20260503-1" defer></script>
+<script src="assets/js/call.js?v=20260503-1" defer></script>
+<script src="assets/js/map-logic.js?v=20260503-1" defer></script>
+<script src="assets/js/market-logic.js?v=20260503-1" defer></script>
+<script src="assets/js/ponds.js?v=20260503-1" defer></script>
+</body>
+</html>
