@@ -1,22 +1,16 @@
+const KLEVB_CONFIG = window.KLEVB_CONFIG || {};
 
-    const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
-    const SUPABASE_STORAGE_KEY = "sb-oecdshvozssadztcokog-auth-token";
-    const TELEGRAM_GROUP = "https://t.me/+W6eAuefzcJwwODEy";
-    const ADMIN_EMAIL = "al822alex@gmail.com";
-    const WEATHER_API_KEY = "2b08e3fec07f3dd6a25cf6862ab4b030";
+const SUPABASE_URL = KLEVB_CONFIG.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = KLEVB_CONFIG.SUPABASE_ANON_KEY || "";
+const SUPABASE_STORAGE_KEY = KLEVB_CONFIG.SUPABASE_STORAGE_KEY || "sb-klevby-auth-token";
+const TELEGRAM_GROUP = KLEVB_CONFIG.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
+const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
+const WEATHER_API_KEY = KLEVB_CONFIG.WEATHER_API_KEY || "";
+const CARD_IMAGES = Array.isArray(KLEVB_CONFIG.CARD_IMAGES) ? KLEVB_CONFIG.CARD_IMAGES : [];
 
-    window.klevbyAdminEmail = ADMIN_EMAIL;
-    window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
-    window.ADMIN_EMAIL = ADMIN_EMAIL;
-
-    const CARD_IMAGES = [
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80"
-    ];
+window.klevbyAdminEmail = ADMIN_EMAIL;
+window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
+window.ADMIN_EMAIL = ADMIN_EMAIL;
 
     let supabaseClient = null;
     let posts = [];
