@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v3-assets-2026-05-02";
+const CACHE_NAME = "klevby-cache-v4-push-2026-05-03";
 
 const APP_FILES = [
   "/",
@@ -9,6 +9,7 @@ const APP_FILES = [
   "/assets/css/chat-style.css",
 
   "/assets/js/chat.js",
+  "/assets/js/call.js",
   "/assets/js/map-logic.js",
   "/assets/js/market-logic.js",
   "/assets/js/ponds.js",
@@ -74,6 +75,69 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(cacheFirst(request));
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (error) {
+    payload = {
+      title: "Klevby",
+      body: event.data ? event.data.text() : "Новое уведомление"
+    };
+  }
+
+  const title = payload.title || "Klevby";
+  const body = payload.body || "Новое уведомление";
+  const url = payload.url || "/";
+  const tag = payload.tag || "klevby-notification";
+
+  const options = {
+    body,
+    tag,
+    renotify: true,
+    icon: "/assets/img/klevby-icon-512.png",
+    badge: "/assets/img/klevby-icon-512.png",
+    data: {
+      url
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification?.data?.url || "/";
+  const fullUrl = new URL(targetUrl, self.location.origin).href;
+
+  event.waitUntil(
+    clients.matchAll({
+      type: "window",
+      includeUncontrolled: true
+    }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.location.origin) && "focus" in client) {
+          client.focus();
+
+          if ("navigate" in client) {
+            return client.navigate(fullUrl);
+          }
+
+          return;
+        }
+      }
+
+      if (clients.openWindow) {
+        return clients.openWindow(fullUrl);
+      }
+    })
+  );
 });
 
 async function networkFirst(request) {
