@@ -1,8 +1,14 @@
+let postsLoadPromise = null;
+let postsLoadRetryTimer = null;
+
+const POSTS_LOAD_RETRY_DELAY_MS = 900;
+const POSTS_MAX_RETRIES = 3;
+
 function getOwnerId() {
   const user =
     (typeof currentUser !== "undefined" && currentUser)
       ? currentUser
-      : (window.currentUser || window.klevbyCurrentUser || null);
+      : (window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null);
 
   return user ? user.id : null;
 }
@@ -12,7 +18,7 @@ function getCurrentUserSafe() {
     return currentUser;
   }
 
-  return window.currentUser || window.klevbyCurrentUser || null;
+  return window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null;
 }
 
 function getCurrentAuthReady() {
@@ -30,6 +36,10 @@ function getPostsArray() {
 
   if (Array.isArray(window.posts)) {
     return window.posts;
+  }
+
+  if (Array.isArray(window.klevbyPosts)) {
+    return window.klevbyPosts;
   }
 
   return [];
@@ -121,7 +131,12 @@ function getSupabaseClientSafe() {
     return supabaseClient;
   }
 
-  return window.supabaseClient || window.klevbySupabase || null;
+  return (
+    window.supabaseClient ||
+    window.klevbySupabase ||
+    (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
+    null
+  );
 }
 
 function isAdminSafe() {
@@ -134,6 +149,15 @@ function isAdminSafe() {
   }
 
   return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
+}
+
+function isAuthLockError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+
+  return (
+    message.includes("lock") &&
+    message.includes("auth-token")
+  );
 }
 
 function showStatusSafe(message, isError = false) {
@@ -271,8 +295,8 @@ function saveAuthorLocal(name, telegram) {
   localStorage.setItem("klevby_author_telegram", telegram || "");
 }
 
-function getPostsSelectQuery() {
-  return [
+function getPostsSelectQuery(includeFishingType = false) {
+  const columns = [
     "id",
     "created_at",
     "name",
@@ -285,72 +309,159 @@ function getPostsSelectQuery() {
     "telegram",
     "owner_id",
     "crew_full"
-  ].join(",");
+  ];
+
+  if (includeFishingType) {
+    columns.push("fishing_type");
+  }
+
+  return columns.join(",");
 }
 
-async function loadPosts() {
-  showStatusSafe("Загрузка объявлений...");
+function schedulePostsLoad(delay = POSTS_LOAD_RETRY_DELAY_MS) {
+  clearTimeout(postsLoadRetryTimer);
 
-  const postsSection = document.getElementById("postsSection");
+  postsLoadRetryTimer = setTimeout(() => {
+    loadPosts({ force: true }).catch((error) => {
+      console.warn("Klevby posts: отложенная загрузка не удалась:", error);
+    });
+  }, delay);
+}
 
-  if (postsSection) {
-    postsSection.innerHTML = `
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-    `;
-  }
+async function queryPostsSafe(db, retry = 0) {
+  try {
+    let result = await db
+      .from("posts")
+      .select(getPostsSelectQuery(true))
+      .order("created_at", { ascending: false });
 
-  const db = getSupabaseClientSafe();
-
-  if (!db) {
-    showStatusSafe("Supabase ещё не готов. Обнови страницу.", true);
-
-    if (postsSection) {
-      postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Обнови страницу.</div>';
+    if (result.error && String(result.error.message || "").includes("fishing_type")) {
+      result = await db
+        .from("posts")
+        .select(getPostsSelectQuery(false))
+        .order("created_at", { ascending: false });
     }
 
-    return;
+    return result;
+  } catch (error) {
+    if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
+      console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, POSTS_LOAD_RETRY_DELAY_MS);
+      });
+
+      return queryPostsSafe(db, retry + 1);
+    }
+
+    throw error;
+  }
+}
+
+async function loadPosts(options = {}) {
+  const force = Boolean(options.force);
+  const retry = Number(options.retry || 0);
+
+  const postsSection = document.getElementById("postsSection");
+  const existingPosts = getPostsArray();
+
+  if (!force && postsLoadPromise) {
+    return postsLoadPromise;
   }
 
-  let result = await db
-    .from("posts")
-    .select("*")
-    .order("created_at", { ascending: false });
+  postsLoadPromise = (async function () {
+    showStatusSafe("Загрузка объявлений...");
 
-  if (result.error) {
-    console.warn("Ошибка загрузки posts через select(*). Пробую безопасный список колонок:", result.error);
-
-    result = await db
-      .from("posts")
-      .select(getPostsSelectQuery())
-      .order("created_at", { ascending: false });
-  }
-
-  if (result.error) {
-    console.error("Ошибка загрузки posts:", result.error);
-
-    const message = result.error.message
-      ? "Не удалось загрузить объявления: " + result.error.message
-      : "Не удалось загрузить объявления. Проверь таблицу posts и RLS.";
-
-    showStatusSafe(message, true);
-
-    if (postsSection) {
+    if (postsSection && !existingPosts.length) {
       postsSection.innerHTML = `
-        <div class="info-line error-line">
-          Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-        </div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
       `;
     }
 
-    return;
+    const db = getSupabaseClientSafe();
+
+    if (!db) {
+      showStatusSafe("Supabase ещё не готов. Повторяем загрузку объявлений...");
+
+      if (postsSection && !existingPosts.length) {
+        postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
+      }
+
+      schedulePostsLoad(900);
+      return;
+    }
+
+    let result;
+
+    try {
+      result = await queryPostsSafe(db, retry);
+    } catch (error) {
+      if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
+        console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
+        showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
+        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+        return;
+      }
+
+      console.error("Ошибка загрузки posts:", error);
+
+      const message = error?.message
+        ? "Не удалось загрузить объявления: " + error.message
+        : "Не удалось загрузить объявления. Проверь таблицу posts и RLS.";
+
+      showStatusSafe(message, true);
+
+      if (postsSection && !existingPosts.length) {
+        postsSection.innerHTML = `
+          <div class="info-line error-line">
+            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+          </div>
+        `;
+      }
+
+      return;
+    }
+
+    if (result.error) {
+      if (isAuthLockError(result.error) && retry < POSTS_MAX_RETRIES) {
+        console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", result.error);
+        showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
+        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+        return;
+      }
+
+      console.error("Ошибка загрузки posts:", result.error);
+
+      const message = result.error.message
+        ? "Не удалось загрузить объявления: " + result.error.message
+        : "Не удалось загрузить объявления. Проверь таблицу posts и RLS.";
+
+      showStatusSafe(message, true);
+
+      if (postsSection && !existingPosts.length) {
+        postsSection.innerHTML = `
+          <div class="info-line error-line">
+            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+          </div>
+        `;
+      }
+
+      return;
+    }
+
+    const loadedPosts = Array.isArray(result.data) ? result.data : [];
+
+    setPostsArray(loadedPosts);
+    renderPosts();
+  })();
+
+  try {
+    return await postsLoadPromise;
+  } finally {
+    postsLoadPromise = null;
   }
-
-  const loadedPosts = Array.isArray(result.data) ? result.data : [];
-
-  setPostsArray(loadedPosts);
-  renderPosts();
 }
 
 function renderPosts() {
@@ -639,16 +750,32 @@ function writePostAuthor() {
   }
 }
 
-async function savePost() {
+async function ensureUserForPostAction() {
+  let user = getCurrentUserSafe();
+
+  if (user && user.id) {
+    return user;
+  }
+
   if (typeof window.restoreAuthState === "function" && !getCurrentAuthReady()) {
-    await window.restoreAuthState("before_save", false);
+    await window.restoreAuthState("before_post_action", false);
   }
 
-  if (typeof window.restoreAuthState === "function" && !getCurrentUserSafe()) {
-    await window.restoreAuthState("save_post_retry", false);
+  user = getCurrentUserSafe();
+
+  if (user && user.id) {
+    return user;
   }
 
-  const restoredUser = getCurrentUserSafe();
+  if (typeof window.restoreAuthState === "function") {
+    await window.restoreAuthState("post_action_retry", false);
+  }
+
+  return getCurrentUserSafe();
+}
+
+async function savePost() {
+  const restoredUser = await ensureUserForPostAction();
 
   const name = document.getElementById("nameInput")?.value.trim() || "";
   const city = document.getElementById("cityInput")?.value.trim() || "";
@@ -760,7 +887,7 @@ async function savePost() {
   showFormMessageSafe(wasEditing ? "Выезд обновлён." : "Выезд создан.");
 
   setCurrentViewMode("all");
-  await loadPosts();
+  await loadPosts({ force: true });
 
   if (typeof window.klevbyReloadMap === "function") {
     window.klevbyReloadMap();
@@ -875,7 +1002,7 @@ async function toggleCrewFull(id, value) {
     return;
   }
 
-  await loadPosts();
+  await loadPosts({ force: true });
 }
 
 async function deletePost(id) {
@@ -899,7 +1026,7 @@ async function deletePost(id) {
     return;
   }
 
-  await loadPosts();
+  await loadPosts({ force: true });
 
   if (typeof window.klevbyReloadMap === "function") {
     window.klevbyReloadMap();
