@@ -5,6 +5,9 @@
   window.__klevbyCallLoadedV3 = true;
 
   const CALL_TIMEOUT_MS = 45000;
+  const AUTH_REFRESH_THROTTLE_MS = 2500;
+  const PERSONAL_CHANNEL_THROTTLE_MS = 1800;
+
   const ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -39,6 +42,12 @@
   let buttonObserver = null;
   let buttonUpdateTimer = null;
   let personalChannelUserId = "";
+
+  let userRefreshPromise = null;
+  let lastUserRefreshAt = 0;
+
+  let personalChannelPromise = null;
+  let lastPersonalChannelEnsureAt = 0;
 
   function $(selector) {
     return document.querySelector(selector);
@@ -76,7 +85,10 @@
     );
   }
 
-  async function refreshUser() {
+  async function refreshUser(options = {}) {
+    const force = Boolean(options.force);
+    const now = Date.now();
+
     const mainClient = getMainSupabaseClient();
     const mainUser = getMainUser();
 
@@ -84,12 +96,32 @@
 
     if (mainUser && mainUser.id) {
       currentUser = mainUser;
+      lastUserRefreshAt = now;
       return currentUser;
     }
 
-    try {
-      if (mainClient?.auth?.getUser) {
-        const { data } = await mainClient.auth.getUser();
+    if (!force && currentUser && currentUser.id && now - lastUserRefreshAt < AUTH_REFRESH_THROTTLE_MS) {
+      return currentUser;
+    }
+
+    if (!force && userRefreshPromise) {
+      return userRefreshPromise;
+    }
+
+    if (!mainClient?.auth?.getUser) {
+      return currentUser || null;
+    }
+
+    lastUserRefreshAt = now;
+
+    userRefreshPromise = (async () => {
+      try {
+        const { data, error } = await mainClient.auth.getUser();
+
+        if (error) {
+          console.warn("Klevby calls: user refresh warning", error);
+          return currentUser || null;
+        }
 
         if (data?.user) {
           currentUser = data.user;
@@ -98,12 +130,17 @@
           window.klevbyUser = currentUser;
           return currentUser;
         }
-      }
-    } catch (error) {
-      console.warn("Klevby calls: user refresh failed", error);
-    }
 
-    return null;
+        return currentUser || null;
+      } catch (error) {
+        console.warn("Klevby calls: user refresh failed", error);
+        return currentUser || null;
+      } finally {
+        userRefreshPromise = null;
+      }
+    })();
+
+    return userRefreshPromise;
   }
 
   function cleanDisplayName(value) {
@@ -832,94 +869,122 @@
     return callChannel;
   }
 
-  async function ensurePersonalChannel() {
-    await refreshUser();
+  async function ensurePersonalChannel(options = {}) {
+    const force = Boolean(options.force);
+    const now = Date.now();
 
-    const client = getMainSupabaseClient();
-    const myId = getMyId();
+    if (!force && personalChannelPromise) {
+      return personalChannelPromise;
+    }
 
-    if (!client || !myId) return;
-
-    if (personalChannel && personalChannelUserId === myId) {
+    if (
+      !force &&
+      personalChannel &&
+      personalChannelUserId &&
+      currentUser?.id &&
+      personalChannelUserId === String(currentUser.id) &&
+      now - lastPersonalChannelEnsureAt < PERSONAL_CHANNEL_THROTTLE_MS
+    ) {
       return;
     }
 
-    if (personalChannel) {
-      try {
-        await client.removeChannel(personalChannel);
-      } catch (error) {}
-      personalChannel = null;
-      personalChannelUserId = "";
-    }
+    personalChannelPromise = (async () => {
+      lastPersonalChannelEnsureAt = Date.now();
 
-    personalChannelUserId = myId;
+      await refreshUser({ force });
 
-    personalChannel = client.channel(`klevby_user_calls_${myId}`, {
-      config: {
-        broadcast: {
-          self: false,
-          ack: true
+      const client = getMainSupabaseClient();
+      const myId = getMyId();
+
+      if (!client || !myId) return;
+
+      if (personalChannel && personalChannelUserId === myId) {
+        return;
+      }
+
+      if (personalChannel) {
+        try {
+          await client.removeChannel(personalChannel);
+        } catch (error) {}
+        personalChannel = null;
+        personalChannelUserId = "";
+      }
+
+      personalChannelUserId = myId;
+
+      personalChannel = client.channel(`klevby_user_calls_${myId}`, {
+        config: {
+          broadcast: {
+            self: false,
+            ack: true
+          }
         }
-      }
-    });
+      });
 
-    personalChannel.on("broadcast", { event: "incoming_call" }, async ({ payload }) => {
-      if (!payload || payload.to !== myId) return;
+      personalChannel.on("broadcast", { event: "incoming_call" }, async ({ payload }) => {
+        if (!payload || payload.to !== myId) return;
 
-      await refreshUser();
+        await refreshUser();
 
-      if (!currentUser || String(currentUser.id) !== myId) {
-        return;
-      }
+        if (!currentUser || String(currentUser.id) !== myId) {
+          return;
+        }
 
-      if (callState !== "idle") {
-        const busyChannel = client.channel(`klevby_call_${payload.callId}`, {
-          config: {
-            broadcast: {
-              self: false,
-              ack: true
-            }
-          }
-        });
-
-        busyChannel.subscribe(async (status) => {
-          if (status === "SUBSCRIBED") {
-            await busyChannel.send({
-              type: "broadcast",
-              event: "end",
-              payload: {
-                callId: payload.callId,
-                from: myId,
-                to: payload.from,
-                reason: "busy"
+        if (callState !== "idle") {
+          const busyChannel = client.channel(`klevby_call_${payload.callId}`, {
+            config: {
+              broadcast: {
+                self: false,
+                ack: true
               }
-            });
+            }
+          });
 
-            client.removeChannel(busyChannel);
-          }
-        });
+          busyChannel.subscribe(async (status) => {
+            if (status === "SUBSCRIBED") {
+              await busyChannel.send({
+                type: "broadcast",
+                event: "end",
+                payload: {
+                  callId: payload.callId,
+                  from: myId,
+                  to: payload.from,
+                  reason: "busy"
+                }
+              });
 
-        return;
-      }
+              client.removeChannel(busyChannel);
+            }
+          });
 
-      callState = "incoming";
-      callId = payload.callId;
+          return;
+        }
 
-      activePeer = {
-        id: String(payload.from),
-        name: cleanDisplayName(payload.callerName) || "Собеседник",
-        offer: payload.offer
-      };
+        callState = "incoming";
+        callId = payload.callId;
 
-      openIncomingOverlay(payload);
-      await createCallChannel(callId);
-    });
+        activePeer = {
+          id: String(payload.from),
+          name: cleanDisplayName(payload.callerName) || "Собеседник",
+          offer: payload.offer
+        };
 
-    personalChannel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        console.log("Klevby calls: personal channel ready", myId);
-      }
-    });
+        openIncomingOverlay(payload);
+        await createCallChannel(callId);
+      });
+
+      personalChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log("Klevby calls: personal channel ready", myId);
+        }
+      });
+    })();
+
+    try {
+      return await personalChannelPromise;
+    } finally {
+      personalChannelPromise = null;
+    }
   }
 
   async function sendToPersonalChannel(userId, event, payload) {
@@ -1468,11 +1533,18 @@
   });
 
   window.addEventListener("klevby-auth-changed", async () => {
-    await refreshUser();
+    await refreshUser({ force: true });
+
+    const client = getMainSupabaseClient();
+    const myId = getMyId();
+
+    if (personalChannel && personalChannelUserId === myId) {
+      scheduleButtonUpdate();
+      return;
+    }
 
     if (personalChannel) {
       try {
-        const client = getMainSupabaseClient();
         if (client) await client.removeChannel(personalChannel);
       } catch (error) {}
 
@@ -1480,7 +1552,7 @@
       personalChannelUserId = "";
     }
 
-    await ensurePersonalChannel();
+    await ensurePersonalChannel({ force: true });
     scheduleButtonUpdate();
   });
 
