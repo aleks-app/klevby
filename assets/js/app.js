@@ -5,23 +5,15 @@ const SUPABASE_ANON_KEY = KLEVB_CONFIG.SUPABASE_ANON_KEY || "";
 const SUPABASE_STORAGE_KEY = KLEVB_CONFIG.SUPABASE_STORAGE_KEY || "sb-klevby-auth-token";
 const TELEGRAM_GROUP = KLEVB_CONFIG.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
 const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
-const CARD_IMAGES = Array.isArray(KLEVB_CONFIG.CARD_IMAGES) ? KLEVB_CONFIG.CARD_IMAGES : [];
 
 window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
 window.ADMIN_EMAIL = ADMIN_EMAIL;
 
 let supabaseClient = null;
-let posts = [];
 let currentUser = null;
 let viewMode = "all";
-let editingId = null;
-let activeModalPost = null;
-let postModalCloseTimer = null;
 let authMode = "register";
-let authRestoreTimer = null;
-let authRestoreInProgress = false;
-let lastAuthRestoreAt = 0;
 let authReady = false;
 
 const splashStartedAt = Date.now();
@@ -36,6 +28,7 @@ function hideAppSplash() {
 
   setTimeout(() => {
     splash.classList.add("hide");
+
     setTimeout(() => {
       splash.remove();
     }, 800);
@@ -158,6 +151,7 @@ function initSupabase() {
 function showStatus(message, isError = false) {
   const status = document.getElementById("statusLine");
   if (!status) return;
+
   status.textContent = message;
   status.classList.toggle("error-line", isError);
 }
@@ -165,6 +159,7 @@ function showStatus(message, isError = false) {
 function showFormMessage(message, isError = false) {
   const el = document.getElementById("formMessage");
   if (!el) return;
+
   el.textContent = message;
   el.style.color = isError ? "#ffd2d2" : "rgba(245,245,245,0.66)";
 }
@@ -186,11 +181,17 @@ window.addEventListener("resize", () => {
 });
 
 function showSection(section) {
-  document.getElementById("homeSection").classList.toggle("hidden", section !== "home");
-  document.getElementById("marketSection").classList.toggle("hidden", section !== "market");
-  document.getElementById("pondsSection").classList.toggle("hidden", section !== "ponds");
-  document.getElementById("mapSection").classList.toggle("hidden", section !== "map");
-  document.getElementById("authSection").classList.toggle("hidden", section !== "auth");
+  const homeSection = document.getElementById("homeSection");
+  const marketSection = document.getElementById("marketSection");
+  const pondsSection = document.getElementById("pondsSection");
+  const mapSection = document.getElementById("mapSection");
+  const authSection = document.getElementById("authSection");
+
+  if (homeSection) homeSection.classList.toggle("hidden", section !== "home");
+  if (marketSection) marketSection.classList.toggle("hidden", section !== "market");
+  if (pondsSection) pondsSection.classList.toggle("hidden", section !== "ponds");
+  if (mapSection) mapSection.classList.toggle("hidden", section !== "map");
+  if (authSection) authSection.classList.toggle("hidden", section !== "auth");
 
   syncGlobalAuthState();
 
@@ -227,6 +228,8 @@ function showSection(section) {
 
 function setMode(mode) {
   viewMode = mode;
+  window.klevbyViewMode = mode;
+
   showSection("home");
 
   if (typeof window.renderPosts === "function") {
