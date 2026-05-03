@@ -5,6 +5,7 @@ const SUPABASE_ANON_KEY = KLEVB_CONFIG.SUPABASE_ANON_KEY || "";
 const SUPABASE_STORAGE_KEY = KLEVB_CONFIG.SUPABASE_STORAGE_KEY || "sb-klevby-auth-token";
 const TELEGRAM_GROUP = KLEVB_CONFIG.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
 const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
+const CARD_IMAGES = Array.isArray(KLEVB_CONFIG.CARD_IMAGES) ? KLEVB_CONFIG.CARD_IMAGES : [];
 
 window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
@@ -15,6 +16,15 @@ let currentUser = null;
 let viewMode = "all";
 let authMode = "register";
 let authReady = false;
+
+let posts = [];
+let editingId = null;
+let activeModalPost = null;
+let postModalCloseTimer = null;
+
+let authRestoreTimer = null;
+let authRestoreInProgress = false;
+let lastAuthRestoreAt = 0;
 
 const splashStartedAt = Date.now();
 
