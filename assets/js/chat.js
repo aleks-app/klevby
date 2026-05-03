@@ -1,6 +1,4 @@
 (function () {
-  const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
   const VAPID_PUBLIC_KEY = "BBZPSipFkHsboxaQ7UmJvZ2TJqXQa5JE59HuwS1oq-3WWhwfBtjSfrFwKe6eJvE2NoqGCEXkInaGH4nElgWsXNM";
 
   if (window.__klevbyChatLoaded) {
@@ -9,36 +7,43 @@
 
   window.__klevbyChatLoaded = true;
 
-  const initInterval = setInterval(() => {
-    const mainClient =
+  function getSharedSupabaseClient() {
+    return (
       window.klevbySupabase ||
       window.supabaseClient ||
-      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null);
+      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
+      null
+    );
+  }
 
-    if (mainClient) {
-      clearInterval(initInterval);
-      setupChat(mainClient);
-      return;
-    }
+  function waitForSharedSupabaseClient() {
+    return new Promise((resolve, reject) => {
+      let tries = 0;
 
-    if (window.supabase) {
-      clearInterval(initInterval);
+      const timer = setInterval(() => {
+        tries += 1;
 
-      const chatDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storageKey: "sb-oecdshvozssadztcokog-auth-token"
-        },
-        global: {
-          fetch: (...args) => fetch(...args)
+        const client = getSharedSupabaseClient();
+
+        if (client) {
+          clearInterval(timer);
+          resolve(client);
+          return;
         }
-      });
 
-      setupChat(chatDb);
-    }
-  }, 300);
+        if (tries > 120) {
+          clearInterval(timer);
+          reject(new Error("Основной Supabase client не найден для chat.js"));
+        }
+      }, 100);
+    });
+  }
+
+  waitForSharedSupabaseClient()
+    .then((client) => setupChat(client))
+    .catch((error) => {
+      console.error("Klevby chat: не удалось запустить чат:", error);
+    });
 
   function setupChat(chatDb) {
     injectExtraChatStyles();
@@ -67,6 +72,14 @@
 
     let chatNavigationToken = 0;
     let chatLoading = false;
+
+    let userRefreshPromise = null;
+    let lastUserRefreshAt = 0;
+    let profileSavePromise = null;
+    let lastProfileSaveAt = 0;
+
+    const CHAT_AUTH_REFRESH_THROTTLE_MS = 3000;
+    const PROFILE_SAVE_THROTTLE_MS = 7000;
 
     const onlineUsers = new Map();
     const userProfiles = new Map();
@@ -166,12 +179,18 @@
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
     refreshCurrentUser().then(async () => {
-      await ensureCurrentUserProfile();
+      await ensureCurrentUserProfile({ soft: true });
       setupPresence();
       setupRealtime();
       syncSelectedPeerForCalls();
       await refreshPushButtonState();
       await saveExistingPushSubscriptionIfPossible();
+    }).catch((error) => {
+      console.warn("Klevby chat: стартовая проверка пользователя пропущена:", error);
+      setupPresence();
+      setupRealtime();
+      syncSelectedPeerForCalls();
+      refreshPushButtonState();
     });
 
     if (chatDb.auth && typeof chatDb.auth.onAuthStateChange === "function") {
@@ -182,7 +201,8 @@
           currentChatUser ||
           null;
 
-        await ensureCurrentUserProfile();
+        syncGlobalChatUser();
+        await ensureCurrentUserProfile({ force: true, soft: true });
         setupPresence();
         syncSelectedPeerForCalls();
         await refreshPushButtonState();
@@ -197,7 +217,8 @@
         currentChatUser ||
         null;
 
-      await ensureCurrentUserProfile();
+      syncGlobalChatUser();
+      await ensureCurrentUserProfile({ force: true, soft: true });
 
       if (activeMode === "private" && modal && modal.classList.contains("open")) {
         if (selectedPeer) {
@@ -286,12 +307,7 @@
     }
 
     function getMainSupabaseClient() {
-      return (
-        window.klevbySupabase ||
-        window.supabaseClient ||
-        (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
-        chatDb
-      );
+      return getSharedSupabaseClient() || chatDb;
     }
 
     function getUserFromMainSite() {
@@ -307,6 +323,19 @@
         window.klevbyUser ||
         null
       );
+    }
+
+    function syncGlobalChatUser() {
+      if (!currentChatUser || !currentChatUser.id) return;
+
+      window.klevbyCurrentUser = currentChatUser;
+      window.currentUser = currentChatUser;
+      window.klevbyUser = currentChatUser;
+    }
+
+    function isAuthLockError(error) {
+      const message = String(error?.message || error || "").toLowerCase();
+      return message.includes("lock") && message.includes("auth-token");
     }
 
     function getGuestName() {
@@ -350,72 +379,65 @@
       );
     }
 
-    async function refreshCurrentUser() {
+    async function refreshCurrentUser(options = {}) {
+      const force = Boolean(options.force);
+      const now = Date.now();
       const mainUser = getUserFromMainSite();
 
       if (mainUser && mainUser.id) {
         currentChatUser = mainUser;
+        lastUserRefreshAt = now;
         return currentChatUser;
+      }
+
+      if (!force && currentChatUser && currentChatUser.id && now - lastUserRefreshAt < CHAT_AUTH_REFRESH_THROTTLE_MS) {
+        return currentChatUser;
+      }
+
+      if (!force && userRefreshPromise) {
+        return userRefreshPromise;
       }
 
       const mainClient = getMainSupabaseClient();
 
-      try {
-        if (mainClient?.auth && typeof mainClient.auth.getUser === "function") {
-          const { data } = await mainClient.auth.getUser();
+      if (!mainClient?.auth?.getUser) {
+        currentChatUser = getUserFromMainSite() || currentChatUser || null;
+        return currentChatUser;
+      }
+
+      lastUserRefreshAt = now;
+
+      userRefreshPromise = (async () => {
+        try {
+          const { data, error } = await mainClient.auth.getUser();
+
+          if (error) {
+            if (!isAuthLockError(error)) {
+              console.warn("Не удалось получить пользователя из основного клиента:", error);
+            }
+
+            currentChatUser = getUserFromMainSite() || currentChatUser || null;
+            return currentChatUser;
+          }
 
           if (data?.user) {
             currentChatUser = data.user;
-
-            window.klevbyCurrentUser = currentChatUser;
-            window.currentUser = currentChatUser;
-            window.klevbyUser = currentChatUser;
-
+            syncGlobalChatUser();
             return currentChatUser;
           }
-        }
-      } catch (error) {
-        console.warn("Не удалось получить пользователя из основного клиента:", error);
-      }
-
-      try {
-        if (chatDb?.auth && typeof chatDb.auth.getSession === "function") {
-          const { data } = await chatDb.auth.getSession();
-
-          if (data?.session?.user) {
-            currentChatUser = data.session.user;
-
-            window.klevbyCurrentUser = currentChatUser;
-            window.currentUser = currentChatUser;
-            window.klevbyUser = currentChatUser;
-
-            return currentChatUser;
+        } catch (error) {
+          if (!isAuthLockError(error)) {
+            console.warn("Не удалось получить пользователя из основного клиента:", error);
           }
+        } finally {
+          userRefreshPromise = null;
         }
-      } catch (error) {
-        console.warn("Не удалось получить session пользователя:", error);
-      }
 
-      try {
-        if (chatDb?.auth && typeof chatDb.auth.getUser === "function") {
-          const { data } = await chatDb.auth.getUser();
+        currentChatUser = getUserFromMainSite() || currentChatUser || null;
+        return currentChatUser;
+      })();
 
-          if (data?.user) {
-            currentChatUser = data.user;
-
-            window.klevbyCurrentUser = currentChatUser;
-            window.currentUser = currentChatUser;
-            window.klevbyUser = currentChatUser;
-
-            return currentChatUser;
-          }
-        }
-      } catch (error) {
-        console.warn("Не удалось получить пользователя из chatDb:", error);
-      }
-
-      currentChatUser = getUserFromMainSite() || null;
-      return currentChatUser;
+      return userRefreshPromise;
     }
 
     function getCurrentChatName() {
@@ -440,8 +462,12 @@
       return getGuestName();
     }
 
-    async function ensureCurrentUserProfile() {
-      await refreshCurrentUser();
+    async function ensureCurrentUserProfile(options = {}) {
+      const force = Boolean(options.force);
+      const soft = options.soft !== false;
+      const now = Date.now();
+
+      await refreshCurrentUser({ force: false });
 
       if (!currentChatUser) return;
 
@@ -451,23 +477,48 @@
         userProfiles.set(String(currentChatUser.id), nickname);
       }
 
-      try {
-        await getMainSupabaseClient().from("profiles").upsert(
-          [
-            {
-              id: currentChatUser.id,
-              nickname: nickname,
-              username: nickname,
-              display_name: nickname,
-              email: currentChatUser.email || "",
-              updated_at: new Date().toISOString()
-            }
-          ],
-          { onConflict: "id" }
-        );
-      } catch (error) {
-        console.warn("Профиль пользователя не сохранён:", error);
+      if (!force && now - lastProfileSaveAt < PROFILE_SAVE_THROTTLE_MS) {
+        return;
       }
+
+      if (!force && profileSavePromise) {
+        return profileSavePromise;
+      }
+
+      const client = getMainSupabaseClient();
+      if (!client?.from) return;
+
+      lastProfileSaveAt = now;
+
+      profileSavePromise = (async () => {
+        try {
+          const { error } = await client.from("profiles").upsert(
+            [
+              {
+                id: currentChatUser.id,
+                nickname: nickname,
+                username: nickname,
+                display_name: nickname,
+                email: currentChatUser.email || "",
+                updated_at: new Date().toISOString()
+              }
+            ],
+            { onConflict: "id" }
+          );
+
+          if (error) {
+            if (!soft) throw error;
+            console.warn("Профиль пользователя не сохранён:", error);
+          }
+        } catch (error) {
+          if (!soft) throw error;
+          console.warn("Профиль пользователя не сохранён:", error);
+        } finally {
+          profileSavePromise = null;
+        }
+      })();
+
+      return profileSavePromise;
     }
 
     async function loadProfilesByIds(ids = []) {
@@ -1089,7 +1140,7 @@
         return;
       }
 
-      await refreshCurrentUser();
+      await refreshCurrentUser({ force: true });
 
       if (!currentChatUser) {
         alert("Сначала войди в аккаунт. Уведомления привязываются к твоему профилю.");
@@ -1164,34 +1215,8 @@
             console.warn("Push через functions.invoke не отправлен:", error);
           } else {
             console.log("Klevby push отправлен:", data);
-            return;
           }
         }
-
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${SUPABASE_KEY}`
-          },
-          body: JSON.stringify(body)
-        });
-
-        let result = null;
-
-        try {
-          result = await response.json();
-        } catch (error) {
-          result = null;
-        }
-
-        if (!response.ok) {
-          console.warn("Push через fetch не отправлен:", response.status, result);
-          return;
-        }
-
-        console.log("Klevby push отправлен через fetch:", result);
       } catch (error) {
         console.warn("Push уведомление не отправлено:", error);
       }
@@ -1248,7 +1273,7 @@
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
             await refreshCurrentUser();
-            await ensureCurrentUserProfile();
+            await ensureCurrentUserProfile({ soft: true });
 
             presenceChannel.track({
               user_id: currentChatUser?.id || null,
@@ -1300,33 +1325,10 @@
         error = queryError;
       }
 
-      if (error) {
-        console.error("Ошибка загрузки общего чата:", error);
-
-        try {
-          await refreshCurrentUser();
-
-          if (isStaleNavigation(navToken)) return;
-
-          const retry = await getMainSupabaseClient()
-            .from("messages")
-            .select("*")
-            .order("created_at", { ascending: true });
-
-          if (isStaleNavigation(navToken)) return;
-
-          data = retry.data;
-          error = retry.error;
-        } catch (retryError) {
-          if (isStaleNavigation(navToken)) return;
-          error = retryError;
-        }
-      }
-
       if (isStaleNavigation(navToken)) return;
 
       if (error) {
-        console.error("Повторная ошибка загрузки общего чата:", error);
+        console.error("Ошибка загрузки общего чата:", error);
         showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
         finishChatNavigation(navToken);
         return;
@@ -1357,7 +1359,7 @@
 
       if (isStaleNavigation(navToken)) return;
 
-      await ensureCurrentUserProfile();
+      await ensureCurrentUserProfile({ soft: true });
 
       if (isStaleNavigation(navToken)) return;
 
@@ -1578,7 +1580,7 @@
 
       if (isStaleNavigation(navToken)) return;
 
-      await ensureCurrentUserProfile();
+      await ensureCurrentUserProfile({ soft: true });
 
       if (isStaleNavigation(navToken)) return;
 
@@ -1669,7 +1671,7 @@
       if (!rawVal) return;
 
       await refreshCurrentUser();
-      await ensureCurrentUserProfile();
+      await ensureCurrentUserProfile({ soft: true });
 
       sendBtn.disabled = true;
 
@@ -1711,7 +1713,7 @@
       if (!rawVal) return;
 
       await refreshCurrentUser();
-      await ensureCurrentUserProfile();
+      await ensureCurrentUserProfile({ soft: true });
 
       if (!currentChatUser) {
         alert("Для личных сообщений нужно войти.");
@@ -1765,7 +1767,7 @@
 
       if (!confirm("Удалить сообщение?")) return;
 
-      await refreshCurrentUser();
+      await refreshCurrentUser({ force: true });
 
       let result;
 
@@ -1841,7 +1843,7 @@
       const now = Date.now();
 
       if (klevbyResumeInProgress) return;
-      if (now - klevbyLastResumeAt < 1200) return;
+      if (now - klevbyLastResumeAt < 2500) return;
 
       klevbyResumeInProgress = true;
       klevbyLastResumeAt = now;
@@ -1850,7 +1852,7 @@
         updateViewportVars();
 
         await refreshCurrentUser();
-        await ensureCurrentUserProfile();
+        await ensureCurrentUserProfile({ soft: true });
         await reconnectRealtimeConnections();
         await saveExistingPushSubscriptionIfPossible();
 
@@ -1889,7 +1891,7 @@
 
       klevbyResumeTimer = setTimeout(() => {
         reloadChatAfterResume(reason);
-      }, 300);
+      }, 700);
     }
 
     async function openChat() {
@@ -1900,7 +1902,7 @@
       modal.classList.add("open");
 
       await refreshCurrentUser();
-      await ensureCurrentUserProfile();
+      await ensureCurrentUserProfile({ soft: true });
       await reconnectRealtimeConnections();
       await loadPublicMessages();
       await refreshPushButtonState();
@@ -1945,7 +1947,6 @@
             if (emptyState) clearMessages();
 
             await refreshCurrentUser();
-            await ensureCurrentUserProfile();
 
             if (payload.new?.user_id && payload.new?.user_name) {
               rememberFallbackProfile(payload.new.user_id, payload.new.user_name);
@@ -1975,7 +1976,6 @@
           { event: "INSERT", schema: "public", table: "private_messages" },
           async (payload) => {
             await refreshCurrentUser();
-            await ensureCurrentUserProfile();
 
             const msg = payload.new;
             const myId = String(currentChatUser?.id || "");
