@@ -609,10 +609,6 @@
     return userResult.data && userResult.data.user ? userResult.data.user : null;
   }
 
-  function isAdminUser(user) {
-    return user && user.email === ADMIN_EMAIL;
-  }
-
   async function handleMapClick(coords) {
     const user = await getCurrentUser();
 
@@ -879,7 +875,7 @@
 
     const result = await mapDb
       .from("posts")
-      .select("id, name, city, text, telegram, fishing_type, created_at")
+      .select("id, name, city, destination, trip_time, text, telegram, created_at")
       .order("created_at", { ascending: false });
 
     if (result.error) {
@@ -941,7 +937,8 @@
   function getPostBalloonHtml(post, coords) {
     const name = escapeHtml(post.name || "Без имени");
     const city = escapeHtml(post.city || "Город не указан");
-    const fishingType = escapeHtml(post.fishing_type || "Тип ловли не указан");
+    const destination = escapeHtml(post.destination || "Куда едет — не указано");
+    const tripTime = escapeHtml(post.trip_time || "Когда — не указано");
     const text = escapeHtml(post.text || "Описание не указано");
     const tg = cleanTelegram(post.telegram);
 
@@ -973,11 +970,15 @@
         </div>
 
         <div style="font-size:13px;margin-bottom:6px;">
-          <b>Город:</b> ${city}
+          <b>Откуда:</b> ${city}
         </div>
 
         <div style="font-size:13px;margin-bottom:6px;">
-          <b>Тип ловли:</b> ${fishingType}
+          <b>Куда:</b> ${destination}
+        </div>
+
+        <div style="font-size:13px;margin-bottom:6px;">
+          <b>Когда:</b> ${tripTime}
         </div>
 
         <div style="font-size:13px;line-height:1.4;margin-bottom:8px;">
