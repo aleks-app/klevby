@@ -25,6 +25,13 @@ let authRestoreTimer = null;
 let authRestoreInProgress = false;
 let lastAuthRestoreAt = 0;
 
+let lastAuthEventSignature = "";
+let lastAuthEventAt = 0;
+
+let pondsReloadTimer = null;
+let pondsReloadInProgress = false;
+let lastPondsReloadAt = 0;
+
 const splashStartedAt = Date.now();
 
 function hideAppSplash() {
@@ -48,10 +55,26 @@ window.addEventListener("load", hideAppSplash);
 setTimeout(hideAppSplash, 5200);
 
 function isAdmin() {
-  return Boolean(currentUser && currentUser.email === ADMIN_EMAIL);
+  return Boolean(
+    currentUser &&
+    ADMIN_EMAIL &&
+    String(currentUser.email || "").toLowerCase() === String(ADMIN_EMAIL).toLowerCase()
+  );
 }
 
-function syncGlobalAuthState() {
+function getAuthEventSignature() {
+  return [
+    currentUser?.id || "guest",
+    currentUser?.email || "",
+    isAdmin() ? "admin" : "user",
+    authReady ? "ready" : "not-ready"
+  ].join("|");
+}
+
+function syncGlobalAuthState(options = {}) {
+  const shouldNotify = Boolean(options.notify);
+  const forceNotify = Boolean(options.forceNotify);
+
   window.klevbySupabase = supabaseClient;
   window.supabaseClient = supabaseClient;
 
@@ -69,6 +92,22 @@ function syncGlobalAuthState() {
   window.klevbyViewMode = viewMode;
   window.klevbyAuthReady = authReady;
 
+  if (!shouldNotify && !forceNotify) {
+    return;
+  }
+
+  const now = Date.now();
+  const signature = getAuthEventSignature();
+  const changed = signature !== lastAuthEventSignature;
+  const enoughTimePassed = now - lastAuthEventAt > 1500;
+
+  if (!forceNotify && !changed && !enoughTimePassed) {
+    return;
+  }
+
+  lastAuthEventSignature = signature;
+  lastAuthEventAt = now;
+
   window.dispatchEvent(new CustomEvent("klevby-auth-changed", {
     detail: {
       user: currentUser,
@@ -79,20 +118,43 @@ function syncGlobalAuthState() {
   }));
 }
 
-function reloadPondsIfReady() {
-  syncGlobalAuthState();
+function reloadPondsIfReady(options = {}) {
+  const force = Boolean(options.force);
+  const delay = Number(options.delay || 450);
 
-  if (typeof window.klevbyLoadPonds === "function") {
-    window.klevbyLoadPonds();
-  }
+  clearTimeout(pondsReloadTimer);
 
-  if (typeof window.klevbyInitPonds === "function") {
-    window.klevbyInitPonds();
-  }
+  pondsReloadTimer = setTimeout(async () => {
+    const now = Date.now();
 
-  if (typeof window.loadPonds === "function") {
-    window.loadPonds();
-  }
+    if (!force && pondsReloadInProgress) return;
+    if (!force && now - lastPondsReloadAt < 1600) return;
+
+    pondsReloadInProgress = true;
+    lastPondsReloadAt = now;
+
+    try {
+      syncGlobalAuthState();
+
+      if (typeof window.klevbyInitPonds === "function") {
+        window.klevbyInitPonds();
+        return;
+      }
+
+      if (typeof window.klevbyLoadPonds === "function") {
+        await window.klevbyLoadPonds();
+        return;
+      }
+
+      if (typeof window.loadPonds === "function") {
+        await window.loadPonds();
+      }
+    } catch (error) {
+      console.warn("Klevby ponds: не удалось обновить раздел прудов:", error);
+    } finally {
+      pondsReloadInProgress = false;
+    }
+  }, delay);
 }
 
 function initSupabase() {
@@ -106,6 +168,11 @@ function initSupabase() {
     showStatus("Supabase не загрузился. Обнови страницу.", true);
     console.error("Klevby: библиотека Supabase не загружена.");
     return false;
+  }
+
+  if (supabaseClient) {
+    syncGlobalAuthState();
+    return true;
   }
 
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -138,6 +205,8 @@ function initSupabase() {
 
   if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      const previousUserId = currentUser?.id || null;
+
       if (event === "SIGNED_OUT") {
         currentUser = null;
       } else if (session && session.user) {
@@ -146,7 +215,13 @@ function initSupabase() {
 
       authReady = true;
 
-      syncGlobalAuthState();
+      const newUserId = currentUser?.id || null;
+      const userChanged = previousUserId !== newUserId;
+
+      syncGlobalAuthState({
+        notify: true,
+        forceNotify: userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT"
+      });
 
       if (typeof window.updateAuthStatus === "function") {
         window.updateAuthStatus();
@@ -160,11 +235,13 @@ function initSupabase() {
         window.renderPosts();
       }
 
-      reloadPondsIfReady();
+      if (userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        reloadPondsIfReady({ delay: 700 });
+      }
     });
   }
 
-  syncGlobalAuthState();
+  syncGlobalAuthState({ notify: true, forceNotify: true });
   return true;
 }
 
@@ -214,11 +291,13 @@ function showSection(section) {
   }
 
   if (section === "market" && typeof window.klevbyLoadMarket === "function") {
-    window.klevbyLoadMarket();
+    setTimeout(() => {
+      window.klevbyLoadMarket();
+    }, 250);
   }
 
   if (section === "ponds") {
-    reloadPondsIfReady();
+    reloadPondsIfReady({ force: true, delay: 250 });
   }
 
   if (section === "map" && typeof window.klevbyReloadMap === "function") {
@@ -315,10 +394,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     await window.initAuth();
   } else {
     authReady = true;
-    syncGlobalAuthState();
+    syncGlobalAuthState({ notify: true, forceNotify: true });
 
     if (typeof window.loadPosts === "function") {
-      await window.loadPosts();
+      await window.loadPosts({ force: true });
     }
   }
 
