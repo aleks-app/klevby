@@ -1,5 +1,7 @@
 (function () {
-  if (window.__klevbyCallLoadedV3) return;
+  if (window.__klevbyCallLoadedV4) return;
+  window.__klevbyCallLoadedV4 = true;
+
   window.__klevbyCallLoadedV3 = true;
 
   const CALL_TIMEOUT_MS = 45000;
@@ -12,6 +14,7 @@
   let supabaseClient = null;
   let currentUser = null;
   let activePeer = null;
+  let lastKnownPeer = null;
 
   let callState = "idle";
   let callId = null;
@@ -35,9 +38,22 @@
 
   let buttonObserver = null;
   let buttonUpdateTimer = null;
+  let personalChannelUserId = "";
 
   function $(selector) {
     return document.querySelector(selector);
+  }
+
+  function removeOldTestCallButton() {
+    const oldTestButton = document.getElementById("klevby-chat-call");
+    if (oldTestButton) {
+      oldTestButton.remove();
+    }
+
+    const oldTestOverlay = document.getElementById("klevbyCallOverlay");
+    if (oldTestOverlay && oldTestOverlay.textContent.includes("тестовый звонок")) {
+      oldTestOverlay.remove();
+    }
   }
 
   function getMainSupabaseClient() {
@@ -74,6 +90,7 @@
     try {
       if (mainClient?.auth?.getUser) {
         const { data } = await mainClient.auth.getUser();
+
         if (data?.user) {
           currentUser = data.user;
           window.klevbyCurrentUser = currentUser;
@@ -121,6 +138,18 @@
     );
   }
 
+  function setLastKnownPeer(peer) {
+    if (!peer || !peer.id) {
+      lastKnownPeer = null;
+      return;
+    }
+
+    lastKnownPeer = {
+      id: String(peer.id),
+      name: cleanDisplayName(peer.name) || "Собеседник"
+    };
+  }
+
   function getPeerFromChat() {
     const chatWindow = $("#chat-window");
     const title = $("#chatTitle");
@@ -129,7 +158,7 @@
       return null;
     }
 
-    const savedPeer = window.klevbySelectedPeer || window.selectedPeer || null;
+    const savedPeer = window.klevbySelectedPeer || window.selectedPeer || lastKnownPeer || null;
 
     if (savedPeer && savedPeer.id) {
       return {
@@ -141,20 +170,16 @@
     const peerId =
       chatWindow.dataset.peerId ||
       chatWindow.getAttribute("data-peer-id") ||
-      document.querySelector("[data-peer-id][aria-selected='true']")?.dataset?.peerId ||
       "";
 
     const peerName =
+      cleanDisplayName(chatWindow.dataset.peerName) ||
+      cleanDisplayName(chatWindow.getAttribute("data-peer-name")) ||
       cleanDisplayName(title?.textContent) ||
-      chatWindow.dataset.peerName ||
-      chatWindow.getAttribute("data-peer-name") ||
       "Собеседник";
 
     if (!peerId) {
-      return {
-        id: "",
-        name: peerName
-      };
+      return null;
     }
 
     return {
@@ -165,14 +190,14 @@
 
   function isPrivateDialogOpen() {
     const chatWindow = $("#chat-window");
-    return Boolean(chatWindow && chatWindow.classList.contains("klevby-dialog-screen"));
-  }
+    const peer = getPeerFromChat();
 
-  function getPeerName() {
-    const peer = activePeer || getPeerFromChat();
-    const title = $("#chatTitle");
-
-    return cleanDisplayName(peer?.name) || cleanDisplayName(title?.textContent) || "Собеседник";
+    return Boolean(
+      chatWindow &&
+      chatWindow.classList.contains("klevby-dialog-screen") &&
+      peer &&
+      peer.id
+    );
   }
 
   function getInitial(name) {
@@ -223,13 +248,23 @@
   }
 
   function injectStyles() {
-    const old = $("#klevby-call-styles-v3");
+    const old = $("#klevby-call-styles-v4");
     if (old) old.remove();
 
+    const oldV3 = $("#klevby-call-styles-v3");
+    if (oldV3) oldV3.remove();
+
     const style = document.createElement("style");
-    style.id = "klevby-call-styles-v3";
+    style.id = "klevby-call-styles-v4";
 
     style.textContent = `
+      #klevby-chat-call {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+
       #klevby-call-btn {
         width: 44px !important;
         height: 44px !important;
@@ -788,7 +823,9 @@
     await new Promise((resolve, reject) => {
       callChannel.subscribe((status) => {
         if (status === "SUBSCRIBED") resolve();
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") reject(new Error("Не удалось подключить канал звонка."));
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          reject(new Error("Не удалось подключить канал звонка."));
+        }
       });
     });
 
@@ -802,7 +839,20 @@
     const myId = getMyId();
 
     if (!client || !myId) return;
-    if (personalChannel) return;
+
+    if (personalChannel && personalChannelUserId === myId) {
+      return;
+    }
+
+    if (personalChannel) {
+      try {
+        await client.removeChannel(personalChannel);
+      } catch (error) {}
+      personalChannel = null;
+      personalChannelUserId = "";
+    }
+
+    personalChannelUserId = myId;
 
     personalChannel = client.channel(`klevby_user_calls_${myId}`, {
       config: {
@@ -816,9 +866,20 @@
     personalChannel.on("broadcast", { event: "incoming_call" }, async ({ payload }) => {
       if (!payload || payload.to !== myId) return;
 
+      await refreshUser();
+
+      if (!currentUser || String(currentUser.id) !== myId) {
+        return;
+      }
+
       if (callState !== "idle") {
         const busyChannel = client.channel(`klevby_call_${payload.callId}`, {
-          config: { broadcast: { self: false, ack: true } }
+          config: {
+            broadcast: {
+              self: false,
+              ack: true
+            }
+          }
         });
 
         busyChannel.subscribe(async (status) => {
@@ -854,7 +915,11 @@
       await createCallChannel(callId);
     });
 
-    personalChannel.subscribe();
+    personalChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        console.log("Klevby calls: personal channel ready", myId);
+      }
+    });
   }
 
   async function sendToPersonalChannel(userId, event, payload) {
@@ -876,7 +941,9 @@
     await new Promise((resolve, reject) => {
       channel.subscribe((status) => {
         if (status === "SUBSCRIBED") resolve();
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") reject(new Error("Собеседник сейчас недоступен."));
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          reject(new Error("Собеседник сейчас недоступен."));
+        }
       });
     });
 
@@ -890,7 +957,7 @@
       try {
         client.removeChannel(channel);
       } catch (error) {}
-    }, 1200);
+    }, 1600);
   }
 
   async function updateCallRecord(status) {
@@ -965,6 +1032,7 @@
       });
 
       const audio = $("#klevbyRemoteAudio");
+
       if (audio) {
         audio.srcObject = remoteStream;
         audio.play().catch(() => {});
@@ -1030,6 +1098,7 @@
 
     if (!peer.id) {
       showToast("Открой личную переписку с пользователем.");
+      scheduleButtonUpdate();
       return;
     }
 
@@ -1046,6 +1115,8 @@
     try {
       supabaseClient = payload.supabase || getMainSupabaseClient();
       activePeer = peer;
+      setLastKnownPeer(peer);
+
       callId = makeCallId(currentUser.id, peer.id);
       callState = "calling";
 
@@ -1072,6 +1143,7 @@
       });
 
       clearTimeout(callTimeoutTimer);
+
       callTimeoutTimer = setTimeout(() => {
         if (callState === "calling") {
           endCall("no_answer", "Собеседник не ответил.");
@@ -1206,6 +1278,7 @@
     }
 
     const audio = $("#klevbyRemoteAudio");
+
     if (audio) {
       try {
         audio.pause();
@@ -1240,6 +1313,8 @@
   }
 
   function ensureCallButton() {
+    removeOldTestCallButton();
+
     const header = $("#chat-header");
     const closeButton = $("#close-chat");
 
@@ -1263,6 +1338,8 @@
   }
 
   function updateCallButtonVisibility() {
+    removeOldTestCallButton();
+
     const callButton = $("#klevby-call-btn");
 
     if (!callButton) return;
@@ -1280,7 +1357,7 @@
     buttonUpdateTimer = setTimeout(() => {
       ensureCallButton();
       updateCallButtonVisibility();
-    }, 100);
+    }, 120);
   }
 
   function startButtonObserver() {
@@ -1299,6 +1376,14 @@
   }
 
   function handleDocumentClick(event) {
+    const oldTestButton = event.target.closest("#klevby-chat-call");
+
+    if (oldTestButton) {
+      safeStopEvent(event);
+      oldTestButton.remove();
+      return;
+    }
+
     const callButton = event.target.closest("#klevby-call-btn");
 
     if (callButton) {
@@ -1308,6 +1393,7 @@
     }
 
     const endButton = event.target.closest("#klevbyEndCallBtn");
+
     if (endButton) {
       safeStopEvent(event);
       endCall("ended");
@@ -1315,6 +1401,7 @@
     }
 
     const acceptButton = event.target.closest("#klevbyAcceptCallBtn");
+
     if (acceptButton) {
       safeStopEvent(event);
       acceptIncomingCall();
@@ -1322,6 +1409,7 @@
     }
 
     const declineButton = event.target.closest("#klevbyDeclineCallBtn");
+
     if (declineButton) {
       safeStopEvent(event);
       declineCall();
@@ -1343,6 +1431,7 @@
 
   async function init() {
     injectStyles();
+    removeOldTestCallButton();
 
     const waitForClient = setInterval(async () => {
       const client = getMainSupabaseClient();
@@ -1358,18 +1447,25 @@
 
       ensureCallButton();
       startButtonObserver();
+      scheduleButtonUpdate();
     }, 300);
 
     setTimeout(() => {
       clearInterval(waitForClient);
       ensureCallButton();
       startButtonObserver();
+      scheduleButtonUpdate();
     }, 10000);
   }
 
   document.addEventListener("click", handleDocumentClick, true);
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  window.addEventListener("klevby-peer-selected", (event) => {
+    setLastKnownPeer(event.detail || null);
+    scheduleButtonUpdate();
+  });
 
   window.addEventListener("klevby-auth-changed", async () => {
     await refreshUser();
@@ -1381,6 +1477,7 @@
       } catch (error) {}
 
       personalChannel = null;
+      personalChannelUserId = "";
     }
 
     await ensurePersonalChannel();
@@ -1410,9 +1507,10 @@
 
   window.klevbyStartRealCall = startCall;
   window.klevbyEndRealCall = endCall;
-  window.klevbyStartTestCall = startCall;
-  window.klevbyEndTestCall = endCall;
   window.klevbyCloseCallOverlay = endCall;
+
+  window.klevbyStartTestCall = null;
+  window.klevbyEndTestCall = null;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
