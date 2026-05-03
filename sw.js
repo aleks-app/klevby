@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v5-push-2026-05-03";
+const CACHE_NAME = "klevby-cache-v6-push-2026-05-03";
 
 const APP_FILES = [
   "/",
@@ -30,7 +30,8 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
+    caches
+      .keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
@@ -49,29 +50,47 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = {};
+  let payload = {
+    title: "Klevby",
+    message: "Новое уведомление Klevby 🎣",
+    url: "/",
+    icon: "/assets/img/klevby-icon-512.png",
+    badge: "/assets/img/klevby-icon-512.png"
+  };
 
   try {
-    data = event.data ? event.data.json() : {};
+    if (event.data) {
+      const text = event.data.text();
+
+      if (text) {
+        try {
+          const json = JSON.parse(text);
+
+          payload = {
+            ...payload,
+            ...json,
+            message: json.message || json.body || payload.message
+          };
+        } catch (error) {
+          payload.message = text;
+        }
+      }
+    }
   } catch (error) {
-    data = {
-      title: "Klevby",
-      body: event.data ? event.data.text() : "Новое уведомление"
-    };
+    payload.message = "Новое уведомление Klevby 🎣";
   }
 
-  const title = data.title || "Klevby";
+  const title = payload.title || "Klevby";
+
   const options = {
-    body: data.body || "Новое уведомление Klevby",
-    icon: data.icon || "/assets/img/klevby-icon-512.png",
-    badge: data.badge || "/assets/img/klevby-icon-512.png",
-    image: data.image || undefined,
-    tag: data.tag || "klevby-notification",
+    body: payload.message || payload.body || "Новое уведомление Klevby 🎣",
+    icon: payload.icon || "/assets/img/klevby-icon-512.png",
+    badge: payload.badge || "/assets/img/klevby-icon-512.png",
     data: {
-      url: data.url || "/",
-      ...data.data
+      url: payload.url || "/"
     },
-    vibrate: [120, 80, 120],
+    tag: "klevby-push",
+    renotify: true,
     requireInteraction: false
   };
 
@@ -84,26 +103,32 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const targetUrl = event.notification?.data?.url || "/";
-  const finalUrl = new URL(targetUrl, self.location.origin).href;
 
   event.waitUntil(
-    clients.matchAll({
-      type: "window",
-      includeUncontrolled: true
-    }).then((clientList) => {
-      for (const client of clientList) {
-        if ("focus" in client) {
-          client.navigate(finalUrl);
-          return client.focus();
+    clients
+      .matchAll({
+        type: "window",
+        includeUncontrolled: true
+      })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if ("focus" in client) {
+            client.focus();
+
+            if ("navigate" in client) {
+              return client.navigate(targetUrl);
+            }
+
+            return client;
+          }
         }
-      }
 
-      if (clients.openWindow) {
-        return clients.openWindow(finalUrl);
-      }
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
 
-      return null;
-    })
+        return null;
+      })
   );
 });
 
