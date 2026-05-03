@@ -1,29 +1,53 @@
 (function () {
-  const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
-
   let marketDb = null;
   let marketItems = [];
   let marketUser = null;
   let editingMarketId = null;
   let marketRendered = false;
 
-  function waitForSupabase() {
+  let marketUserRefreshPromise = null;
+  let marketLastUserRefreshAt = 0;
+
+  const MARKET_AUTH_REFRESH_THROTTLE_MS = 2500;
+
+  function getMainSupabaseClient() {
+    return (
+      window.klevbySupabase ||
+      window.supabaseClient ||
+      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
+      null
+    );
+  }
+
+  function getMainUser() {
+    return (
+      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
+      window.klevbyCurrentUser ||
+      window.currentUser ||
+      window.klevbyUser ||
+      marketUser ||
+      null
+    );
+  }
+
+  function waitForMarketClient() {
     return new Promise(function (resolve, reject) {
       let tries = 0;
 
       const timer = setInterval(function () {
         tries++;
 
-        if (window.supabase) {
+        const client = getMainSupabaseClient();
+
+        if (client) {
           clearInterval(timer);
-          resolve();
+          resolve(client);
           return;
         }
 
         if (tries > 80) {
           clearInterval(timer);
-          reject(new Error("Supabase library not loaded"));
+          reject(new Error("Основной Supabase client не найден"));
         }
       }, 100);
     });
@@ -320,12 +344,62 @@
     marketRendered = true;
   }
 
-  async function refreshMarketUser() {
-    if (!marketDb) return null;
+  async function refreshMarketUser(options = {}) {
+    const force = Boolean(options.force);
+    const now = Date.now();
 
-    const result = await marketDb.auth.getUser();
-    marketUser = result.data && result.data.user ? result.data.user : null;
-    return marketUser;
+    const mainUser = getMainUser();
+
+    if (mainUser && mainUser.id) {
+      marketUser = mainUser;
+      marketLastUserRefreshAt = now;
+      return marketUser;
+    }
+
+    if (!marketDb?.auth?.getUser) {
+      marketUser = null;
+      return null;
+    }
+
+    if (!force && marketUser && marketUser.id && now - marketLastUserRefreshAt < MARKET_AUTH_REFRESH_THROTTLE_MS) {
+      return marketUser;
+    }
+
+    if (!force && marketUserRefreshPromise) {
+      return marketUserRefreshPromise;
+    }
+
+    marketLastUserRefreshAt = now;
+
+    marketUserRefreshPromise = (async function () {
+      try {
+        const result = await marketDb.auth.getUser();
+
+        if (result.error) {
+          console.warn("Klevby барахолка: пользователь не получен:", result.error);
+          marketUser = getMainUser() || null;
+          return marketUser;
+        }
+
+        marketUser = result.data && result.data.user ? result.data.user : null;
+
+        if (marketUser) {
+          window.klevbyCurrentUser = marketUser;
+          window.currentUser = marketUser;
+          window.klevbyUser = marketUser;
+        }
+
+        return marketUser;
+      } catch (error) {
+        console.warn("Klevby барахолка: ошибка получения пользователя:", error);
+        marketUser = getMainUser() || null;
+        return marketUser;
+      } finally {
+        marketUserRefreshPromise = null;
+      }
+    })();
+
+    return marketUserRefreshPromise;
   }
 
   function showMarketMessage(message, isError = false) {
@@ -431,11 +505,11 @@
       : `<button class="small-btn gray" disabled>Нет контакта</button>`;
 
     const editBtn = canManage
-      ? `<button class="small-btn yellow" onclick="editMarketItem('${item.id}')">Редактировать</button>`
+      ? `<button class="small-btn yellow" onclick="editMarketItem('${escapeHtml(item.id)}')">Редактировать</button>`
       : "";
 
     const deleteBtn = canManage
-      ? `<button class="small-btn red" onclick="deleteMarketItem('${item.id}')">Удалить</button>`
+      ? `<button class="small-btn red" onclick="deleteMarketItem('${escapeHtml(item.id)}')">Удалить</button>`
       : "";
 
     return `
@@ -466,7 +540,7 @@
   }
 
   async function saveMarketItem() {
-    await refreshMarketUser();
+    await refreshMarketUser({ force: true });
 
     if (!marketUser) {
       if (typeof showSection === "function") showSection("auth");
@@ -553,10 +627,13 @@
     document.getElementById("marketFormTitle").textContent = "Редактировать товар";
     document.getElementById("marketCancelEditBtn").classList.remove("hidden");
 
-    document.getElementById("marketSection").scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
+    const marketSection = document.getElementById("marketSection");
+    if (marketSection) {
+      marketSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
   }
 
   function cancelMarketEdit() {
@@ -579,12 +656,20 @@
   }
 
   async function deleteMarketItem(id) {
+    await refreshMarketUser();
+
+    if (!marketUser) {
+      alert("Сначала войди в аккаунт.");
+      return;
+    }
+
     if (!confirm("Удалить товар из барахолки?")) return;
 
     const result = await marketDb
       .from("market_items")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("owner_id", marketUser.id);
 
     if (result.error) {
       console.error(result.error);
@@ -598,9 +683,8 @@
   async function initMarket() {
     try {
       injectMarketStyles();
-      await waitForSupabase();
 
-      marketDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      marketDb = await waitForMarketClient();
 
       window.klevbyLoadMarket = loadMarketItems;
       window.renderMarketItems = renderMarketItems;
@@ -618,7 +702,7 @@
 
       const root = document.getElementById("marketRoot");
       if (root) {
-        root.innerHTML = `<div class="info-line error-line">Ошибка запуска барахолки. Проверь market-logic.js и Supabase.</div>`;
+        root.innerHTML = `<div class="info-line error-line">Ошибка запуска барахолки. Проверь market-logic.js и основной Supabase client.</div>`;
       }
     }
   }
