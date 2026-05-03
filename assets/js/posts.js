@@ -7,6 +7,22 @@ function getOwnerId() {
   return user ? user.id : null;
 }
 
+function getCurrentUserSafe() {
+  if (typeof currentUser !== "undefined" && currentUser) {
+    return currentUser;
+  }
+
+  return window.currentUser || window.klevbyCurrentUser || null;
+}
+
+function getCurrentAuthReady() {
+  if (typeof authReady !== "undefined") {
+    return authReady;
+  }
+
+  return Boolean(window.klevbyAuthReady || window.authReady);
+}
+
 function getPostsArray() {
   if (typeof posts !== "undefined" && Array.isArray(posts)) {
     return posts;
@@ -20,19 +36,36 @@ function getPostsArray() {
 }
 
 function setPostsArray(value) {
+  const safePosts = Array.isArray(value) ? value : [];
+
   if (typeof posts !== "undefined") {
-    posts = Array.isArray(value) ? value : [];
+    posts = safePosts;
   }
 
-  window.posts = Array.isArray(value) ? value : [];
+  window.posts = safePosts;
+  window.klevbyPosts = safePosts;
 }
 
 function getCurrentViewMode() {
+  if (window.klevbyViewMode) {
+    return window.klevbyViewMode;
+  }
+
   if (typeof viewMode !== "undefined" && viewMode) {
     return viewMode;
   }
 
-  return window.klevbyViewMode || "all";
+  return "all";
+}
+
+function setCurrentViewMode(mode) {
+  const safeMode = mode === "mine" ? "mine" : "all";
+
+  if (typeof viewMode !== "undefined") {
+    viewMode = safeMode;
+  }
+
+  window.klevbyViewMode = safeMode;
 }
 
 function getCurrentEditingId() {
@@ -83,35 +116,76 @@ function setPostModalCloseTimer(value) {
   window.klevbyPostModalCloseTimer = value;
 }
 
-function getCardImagesSafe() {
+function getSupabaseClientSafe() {
+  if (typeof supabaseClient !== "undefined" && supabaseClient) {
+    return supabaseClient;
+  }
+
+  return window.supabaseClient || window.klevbySupabase || null;
+}
+
+function isAdminSafe() {
+  if (typeof isAdmin === "function") {
+    return isAdmin();
+  }
+
+  if (typeof window.isAdmin === "function") {
+    return window.isAdmin();
+  }
+
+  return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
+}
+
+function showStatusSafe(message, isError = false) {
+  if (typeof showStatus === "function") {
+    showStatus(message, isError);
+    return;
+  }
+
+  if (typeof window.showStatus === "function") {
+    window.showStatus(message, isError);
+    return;
+  }
+
+  const status = document.getElementById("statusLine");
+  if (!status) return;
+
+  status.textContent = message;
+  status.classList.toggle("error-line", Boolean(isError));
+}
+
+function showFormMessageSafe(message, isError = false) {
+  if (typeof showFormMessage === "function") {
+    showFormMessage(message, isError);
+    return;
+  }
+
+  if (typeof window.showFormMessage === "function") {
+    window.showFormMessage(message, isError);
+    return;
+  }
+
+  const el = document.getElementById("formMessage");
+  if (!el) return;
+
+  el.textContent = message;
+  el.style.color = isError ? "#ffd2d2" : "rgba(245,245,245,0.66)";
+}
+
+function openTelegramSafe() {
+  if (typeof openTelegram === "function") {
+    openTelegram();
+    return;
+  }
+
+  if (typeof window.openTelegram === "function") {
+    window.openTelegram();
+    return;
+  }
+
   const config = window.KLEVB_CONFIG || {};
-  const images = Array.isArray(config.CARD_IMAGES) ? config.CARD_IMAGES.filter(Boolean) : [];
-
-  if (images.length) {
-    return images;
-  }
-
-  return [
-    "assets/img/narach-bg.webp",
-    "assets/img/hero-fishing.webp",
-    "assets/img/klevby-icon-512.png"
-  ];
-}
-
-function getCurrentAuthReady() {
-  if (typeof authReady !== "undefined") {
-    return authReady;
-  }
-
-  return Boolean(window.authReady);
-}
-
-function getCurrentUserSafe() {
-  if (typeof currentUser !== "undefined" && currentUser) {
-    return currentUser;
-  }
-
-  return window.currentUser || window.klevbyCurrentUser || null;
+  const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
+  window.open(link, "_blank");
 }
 
 function cleanTelegram(value) {
@@ -145,6 +219,10 @@ function escapeAttr(text) {
   return escapeHtml(text).replaceAll("`", "&#096;");
 }
 
+function getPostFishingType(post) {
+  return post?.fishing_type || post?.type || post?.category || "";
+}
+
 function getFishingTypeClass(type) {
   const t = normalizeText(type);
 
@@ -155,6 +233,20 @@ function getFishingTypeClass(type) {
   if (t.includes("зим")) return "type-winter";
 
   return "";
+}
+
+function getCardImagesSafe() {
+  const config = window.KLEVB_CONFIG || {};
+  const images = Array.isArray(config.CARD_IMAGES) ? config.CARD_IMAGES.filter(Boolean) : [];
+
+  if (images.length) {
+    return images;
+  }
+
+  return [
+    "assets/img/narach-bg.webp",
+    "assets/img/klevby-icon-512.png"
+  ];
 }
 
 function getCardImage(post) {
@@ -179,10 +271,28 @@ function saveAuthorLocal(name, telegram) {
   localStorage.setItem("klevby_author_telegram", telegram || "");
 }
 
+function getPostsSelectQuery() {
+  return [
+    "id",
+    "created_at",
+    "name",
+    "city",
+    "destination",
+    "trip_time",
+    "transport",
+    "seats",
+    "text",
+    "telegram",
+    "owner_id",
+    "crew_full"
+  ].join(",");
+}
+
 async function loadPosts() {
-  showStatus("Загрузка объявлений...");
+  showStatusSafe("Загрузка объявлений...");
 
   const postsSection = document.getElementById("postsSection");
+
   if (postsSection) {
     postsSection.innerHTML = `
       <div class="skeleton"></div>
@@ -191,33 +301,55 @@ async function loadPosts() {
     `;
   }
 
-  if (!supabaseClient) {
-    showStatus("Supabase ещё не готов. Обнови страницу.", true);
+  const db = getSupabaseClientSafe();
+
+  if (!db) {
+    showStatusSafe("Supabase ещё не готов. Обнови страницу.", true);
 
     if (postsSection) {
-      postsSection.innerHTML = "";
+      postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Обнови страницу.</div>';
     }
 
     return;
   }
 
-  const { data, error } = await supabaseClient
+  let result = await db
     .from("posts")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Ошибка загрузки posts:", error);
-    showStatus("Не удалось загрузить объявления. Проверь таблицу posts и RLS.", true);
+  if (result.error) {
+    console.warn("Ошибка загрузки posts через select(*). Пробую безопасный список колонок:", result.error);
+
+    result = await db
+      .from("posts")
+      .select(getPostsSelectQuery())
+      .order("created_at", { ascending: false });
+  }
+
+  if (result.error) {
+    console.error("Ошибка загрузки posts:", result.error);
+
+    const message = result.error.message
+      ? "Не удалось загрузить объявления: " + result.error.message
+      : "Не удалось загрузить объявления. Проверь таблицу posts и RLS.";
+
+    showStatusSafe(message, true);
 
     if (postsSection) {
-      postsSection.innerHTML = "";
+      postsSection.innerHTML = `
+        <div class="info-line error-line">
+          Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+        </div>
+      `;
     }
 
     return;
   }
 
-  setPostsArray(data || []);
+  const loadedPosts = Array.isArray(result.data) ? result.data : [];
+
+  setPostsArray(loadedPosts);
   renderPosts();
 }
 
@@ -225,6 +357,7 @@ function renderPosts() {
   const list = document.getElementById("postsSection");
   if (!list) return;
 
+  const allPosts = getPostsArray();
   const search = normalizeText(document.getElementById("searchInput")?.value);
   const selectedCity = normalizeText(document.getElementById("citySelect")?.value);
   const selectedType = normalizeText(document.getElementById("typeSelect")?.value);
@@ -232,13 +365,13 @@ function renderPosts() {
   const ownerId = getOwnerId();
   const mode = getCurrentViewMode();
 
-  let filtered = [...getPostsArray()];
+  let filtered = [...allPosts];
 
   if (mode === "mine") {
     filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
-    showStatus("Сейчас показаны: мои объявления.");
+    showStatusSafe("Сейчас показаны: мои объявления.");
   } else {
-    showStatus("Сейчас показаны: все объявления.");
+    showStatusSafe("Сейчас показаны: все объявления.");
   }
 
   if (search) {
@@ -250,7 +383,7 @@ function renderPosts() {
       normalizeText(post.transport).includes(search) ||
       normalizeText(post.seats).includes(search) ||
       normalizeText(post.text).includes(search) ||
-      normalizeText(post.fishing_type).includes(search)
+      normalizeText(getPostFishingType(post)).includes(search)
     );
   }
 
@@ -259,7 +392,7 @@ function renderPosts() {
   }
 
   if (selectedType) {
-    filtered = filtered.filter(post => normalizeText(post.fishing_type).includes(selectedType));
+    filtered = filtered.filter(post => normalizeText(getPostFishingType(post)).includes(selectedType));
   }
 
   if (telegramOnly) {
@@ -267,7 +400,11 @@ function renderPosts() {
   }
 
   if (!filtered.length) {
-    list.innerHTML = '<div class="info-line">Пока объявлений нет.</div>';
+    const emptyText = allPosts.length
+      ? "По фильтрам ничего не найдено."
+      : "Пока объявлений нет.";
+
+    list.innerHTML = `<div class="info-line">${emptyText}</div>`;
 
     if (typeof window.updateHomeFloatButton === "function") {
       setTimeout(window.updateHomeFloatButton, 80);
@@ -276,7 +413,28 @@ function renderPosts() {
     return;
   }
 
-  list.innerHTML = filtered.map(cardHtml).join("");
+  const cards = filtered
+    .map((post) => {
+      try {
+        return cardHtml(post);
+      } catch (error) {
+        console.error("Ошибка отрисовки карточки объявления:", post, error);
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .join("");
+
+  if (!cards) {
+    list.innerHTML = `
+      <div class="info-line error-line">
+        Объявления загрузились, но карточки не отрисовались. Смотри Console.
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = cards;
 
   if (typeof window.updateHomeFloatButton === "function") {
     setTimeout(window.updateHomeFloatButton, 80);
@@ -284,41 +442,44 @@ function renderPosts() {
 }
 
 function cardHtml(post) {
-  const tg = cleanTelegram(post.telegram);
+  const id = post?.id;
+  const tg = cleanTelegram(post?.telegram);
   const ownerId = getOwnerId();
-  const canManage = isAdmin() || (ownerId && post.owner_id === ownerId);
-  const isFull = Boolean(post.crew_full);
+  const canManage = isAdminSafe() || (ownerId && post?.owner_id === ownerId);
+  const isFull = Boolean(post?.crew_full);
   const image = getCardImage(post);
-  const fishingType = post.fishing_type || "";
+  const fishingType = getPostFishingType(post);
   const fishingTypeClass = getFishingTypeClass(fishingType);
 
-  const name = post.name || "Рыбак";
-  const city = post.city || "";
-  const destination = post.destination || "";
-  const tripTime = post.trip_time || "";
-  const transport = post.transport || "";
-  const seats = post.seats || "";
+  const name = post?.name || "Рыбак";
+  const city = post?.city || "";
+  const destination = post?.destination || "";
+  const tripTime = post?.trip_time || "";
+  const transport = post?.transport || "";
+  const seats = post?.seats || "";
   const titleDestination = destination || city || "рыбалку";
+
+  const safeId = escapeAttr(id);
 
   const tgButton = isFull
     ? `<button class="small-btn disabled" disabled onclick="event.stopPropagation()">Экипаж набран</button>`
     : tg
       ? `<button class="small-btn green" onclick="event.stopPropagation(); window.open('https://t.me/${escapeAttr(tg)}','_blank')">Написать автору</button>`
-      : `<button class="small-btn green" onclick="event.stopPropagation(); openTelegram()">Написать в общий чат</button>`;
+      : `<button class="small-btn green" onclick="event.stopPropagation(); openTelegramSafe()">Написать в общий чат</button>`;
 
   const fullBtn = canManage
-    ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${escapeAttr(post.id)}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
+    ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${safeId}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
     : "";
 
   const editBtn = canManage
-    ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${escapeAttr(post.id)}')">Редактировать</button>`
+    ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${safeId}')">Редактировать</button>`
     : "";
 
   const deleteBtn = canManage
-    ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${escapeAttr(post.id)}')">Удалить</button>`
+    ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${safeId}')">Удалить</button>`
     : "";
 
-  const date = post.created_at
+  const date = post?.created_at
     ? new Date(post.created_at).toLocaleString("ru-RU", {
         day: "2-digit",
         month: "short",
@@ -328,7 +489,7 @@ function cardHtml(post) {
     : "";
 
   return `
-    <div class="card ${isFull ? "full" : ""}" onclick="openPostModal('${escapeAttr(post.id)}')">
+    <div class="card ${isFull ? "full" : ""}" onclick="openPostModal('${safeId}')">
       <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
       <div class="card-body">
@@ -360,7 +521,7 @@ function cardHtml(post) {
           </div>
         </div>
 
-        <p class="trip-description">${escapeHtml(post.text || "")}</p>
+        <p class="trip-description">${escapeHtml(post?.text || "")}</p>
 
         <div class="tags">
           <span class="tag">🎣 выезд</span>
@@ -368,7 +529,7 @@ function cardHtml(post) {
           ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
           ${isFull ? '<span class="tag full">экипаж набран</span>' : ''}
           ${tg ? '<span class="tag">Telegram</span>' : ''}
-          ${ownerId && post.owner_id === ownerId ? '<span class="tag">моё</span>' : ''}
+          ${ownerId && post?.owner_id === ownerId ? '<span class="tag">моё</span>' : ''}
         </div>
 
         <div class="actions">
@@ -408,7 +569,7 @@ function openPostModal(id) {
         minute: "2-digit"
       })
     : "";
-  const fishingType = post.fishing_type || "";
+  const fishingType = getPostFishingType(post);
   const destination = post.destination || post.city || "рыбалку";
 
   imageEl.style.backgroundImage = `url('${image}')`;
@@ -474,7 +635,7 @@ function writePostAuthor() {
   if (tg) {
     window.open(`https://t.me/${tg}`, "_blank");
   } else {
-    openTelegram();
+    openTelegramSafe();
   }
 }
 
@@ -483,7 +644,11 @@ async function savePost() {
     await window.restoreAuthState("before_save", false);
   }
 
-  const user = getCurrentUserSafe();
+  if (typeof window.restoreAuthState === "function" && !getCurrentUserSafe()) {
+    await window.restoreAuthState("save_post_retry", false);
+  }
+
+  const restoredUser = getCurrentUserSafe();
 
   const name = document.getElementById("nameInput")?.value.trim() || "";
   const city = document.getElementById("cityInput")?.value.trim() || "";
@@ -495,20 +660,24 @@ async function savePost() {
   const text = document.getElementById("textInput")?.value.trim() || "";
   const telegram = cleanTelegram(document.getElementById("telegramInput")?.value || "");
 
-  if (typeof window.restoreAuthState === "function" && !getCurrentUserSafe()) {
-    await window.restoreAuthState("save_post_retry", false);
-  }
-
-  const restoredUser = getCurrentUserSafe();
-
   if (!restoredUser) {
-    showSection("auth");
+    if (typeof window.showSection === "function") {
+      window.showSection("auth");
+    }
+
     alert("Сначала создай профиль или войди. Так объявления будут защищены от удаления чужими людьми.");
     return;
   }
 
   if (!name || !city || !destination || !tripTime || !text) {
-    showFormMessage("Заполни Nickname, город, куда едешь, когда и описание.", true);
+    showFormMessageSafe("Заполни Nickname, город, куда едешь, когда и описание.", true);
+    return;
+  }
+
+  const db = getSupabaseClientSafe();
+
+  if (!db) {
+    showFormMessageSafe("Supabase ещё не готов. Обнови страницу.", true);
     return;
   }
 
@@ -519,7 +688,6 @@ async function savePost() {
     city,
     destination,
     trip_time: tripTime,
-    fishing_type: fishingType,
     transport,
     seats,
     text,
@@ -527,22 +695,43 @@ async function savePost() {
     owner_id: restoredUser.id
   };
 
+  if (fishingType) {
+    payload.fishing_type = fishingType;
+  }
+
   let result;
   const activeEditingId = getCurrentEditingId();
 
   if (activeEditingId) {
-    result = await supabaseClient
+    result = await db
       .from("posts")
       .update(payload)
       .eq("id", activeEditingId);
   } else {
-    result = await supabaseClient
+    result = await db
       .from("posts")
       .insert([{ ...payload, crew_full: false }]);
   }
 
+  if (result.error && String(result.error.message || "").includes("fishing_type")) {
+    console.warn("В posts нет fishing_type. Сохраняю без этого поля:", result.error);
+
+    delete payload.fishing_type;
+
+    if (activeEditingId) {
+      result = await db
+        .from("posts")
+        .update(payload)
+        .eq("id", activeEditingId);
+    } else {
+      result = await db
+        .from("posts")
+        .insert([{ ...payload, crew_full: false }]);
+    }
+  }
+
   if (result.error) {
-    showFormMessage("Не получилось сохранить. Проверь поля destination, trip_time, transport, seats в таблице posts.", true);
+    showFormMessageSafe("Не получилось сохранить объявление: " + (result.error.message || "ошибка Supabase"), true);
     console.error("Ошибка сохранения posts:", result.error);
     return;
   }
@@ -568,8 +757,9 @@ async function savePost() {
     cancelEditBtn.classList.add("hidden");
   }
 
-  showFormMessage(wasEditing ? "Выезд обновлён." : "Выезд создан.");
+  showFormMessageSafe(wasEditing ? "Выезд обновлён." : "Выезд создан.");
 
+  setCurrentViewMode("all");
   await loadPosts();
 
   if (typeof window.klevbyReloadMap === "function") {
@@ -583,28 +773,28 @@ function editPost(id) {
 
   setCurrentEditingId(id);
 
-  const nameInput = document.getElementById("nameInput");
-  const cityInput = document.getElementById("cityInput");
-  const destinationInput = document.getElementById("destinationInput");
-  const tripTimeInput = document.getElementById("tripTimeInput");
-  const fishingTypeInput = document.getElementById("fishingTypeInput");
-  const transportInput = document.getElementById("transportInput");
-  const seatsInput = document.getElementById("seatsInput");
-  const textInput = document.getElementById("textInput");
-  const telegramInput = document.getElementById("telegramInput");
+  const values = {
+    nameInput: post.name || "",
+    cityInput: post.city || "",
+    destinationInput: post.destination || "",
+    tripTimeInput: post.trip_time || "",
+    fishingTypeInput: getPostFishingType(post),
+    transportInput: post.transport || "",
+    seatsInput: post.seats || "",
+    textInput: post.text || "",
+    telegramInput: post.telegram || ""
+  };
+
+  Object.keys(values).forEach((idKey) => {
+    const el = document.getElementById(idKey);
+    if (el) {
+      el.value = values[idKey];
+    }
+  });
+
   const formTitle = document.getElementById("formTitle");
   const cancelEditBtn = document.getElementById("cancelEditBtn");
   const createPanel = document.getElementById("createPanel");
-
-  if (nameInput) nameInput.value = post.name || "";
-  if (cityInput) cityInput.value = post.city || "";
-  if (destinationInput) destinationInput.value = post.destination || "";
-  if (tripTimeInput) tripTimeInput.value = post.trip_time || "";
-  if (fishingTypeInput) fishingTypeInput.value = post.fishing_type || "";
-  if (transportInput) transportInput.value = post.transport || "";
-  if (seatsInput) seatsInput.value = post.seats || "";
-  if (textInput) textInput.value = post.text || "";
-  if (telegramInput) telegramInput.value = post.telegram || "";
 
   if (formTitle) {
     formTitle.innerText = "Редактировать выезд";
@@ -642,7 +832,7 @@ function cancelEdit() {
     cancelEditBtn.classList.add("hidden");
   }
 
-  showFormMessage("");
+  showFormMessageSafe("");
 }
 
 function clearForm() {
@@ -667,7 +857,14 @@ function clearForm() {
 }
 
 async function toggleCrewFull(id, value) {
-  const { error } = await supabaseClient
+  const db = getSupabaseClientSafe();
+
+  if (!db) {
+    alert("Supabase ещё не готов. Обнови страницу.");
+    return;
+  }
+
+  const { error } = await db
     .from("posts")
     .update({ crew_full: value })
     .eq("id", id);
@@ -684,7 +881,14 @@ async function toggleCrewFull(id, value) {
 async function deletePost(id) {
   if (!confirm("Удалить объявление? Это действие нельзя отменить.")) return;
 
-  const { error } = await supabaseClient
+  const db = getSupabaseClientSafe();
+
+  if (!db) {
+    alert("Supabase ещё не готов. Обнови страницу.");
+    return;
+  }
+
+  const { error } = await db
     .from("posts")
     .delete()
     .eq("id", id);
@@ -703,9 +907,13 @@ async function deletePost(id) {
 }
 
 window.getOwnerId = getOwnerId;
+window.getCurrentUserSafe = getCurrentUserSafe;
+window.getCurrentAuthReady = getCurrentAuthReady;
 window.getPostsArray = getPostsArray;
 window.setPostsArray = setPostsArray;
 window.getCurrentViewMode = getCurrentViewMode;
+window.setCurrentViewMode = setCurrentViewMode;
+window.getPostFishingType = getPostFishingType;
 window.cleanTelegram = cleanTelegram;
 window.normalizeText = normalizeText;
 window.escapeHtml = escapeHtml;
@@ -720,6 +928,7 @@ window.openPostModal = openPostModal;
 window.closePostModal = closePostModal;
 window.handlePostModalBackdrop = handlePostModalBackdrop;
 window.writePostAuthor = writePostAuthor;
+window.openTelegramSafe = openTelegramSafe;
 window.savePost = savePost;
 window.editPost = editPost;
 window.cancelEdit = cancelEdit;
