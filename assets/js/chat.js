@@ -1,6 +1,7 @@
 (function () {
   const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
   const SUPABASE_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
+  const VAPID_PUBLIC_KEY = "BBZPSipFkHsboxaQ7UmJvZ2TJqXQa5JE59HuwS1oq-3WWhwfBtjSfrFwKe6eJvE2NoqGCEXkInaGH4nElgWsXNM";
 
   if (window.__klevbyChatLoaded) {
     return;
@@ -85,6 +86,7 @@
               </div>
             </div>
 
+            <button id="klevby-push-btn" class="klevby-push-btn" type="button" aria-label="Включить уведомления" title="Включить уведомления">🔔</button>
             <button id="close-chat" class="klevby-chat-close" type="button" aria-label="Закрыть">×</button>
           </div>
 
@@ -151,6 +153,7 @@
     const chatAvatar = document.getElementById("chatAvatar");
 
     const backBtn = document.getElementById("back-chat");
+    const pushBtn = document.getElementById("klevby-push-btn");
     const replyPreview = document.getElementById("replyPreview");
     const replyAuthor = document.getElementById("replyAuthor");
     const replyText = document.getElementById("replyText");
@@ -164,6 +167,8 @@
       setupPresence();
       setupRealtime();
       syncSelectedPeerForCalls();
+      await refreshPushButtonState();
+      await saveExistingPushSubscriptionIfPossible();
     });
 
     if (chatDb.auth && typeof chatDb.auth.onAuthStateChange === "function") {
@@ -177,6 +182,8 @@
         await ensureCurrentUserProfile();
         setupPresence();
         syncSelectedPeerForCalls();
+        await refreshPushButtonState();
+        await saveExistingPushSubscriptionIfPossible();
       });
     }
 
@@ -198,6 +205,8 @@
       }
 
       syncSelectedPeerForCalls();
+      await refreshPushButtonState();
+      await saveExistingPushSubscriptionIfPossible();
     });
 
     function syncSelectedPeerForCalls() {
@@ -903,6 +912,189 @@
       privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
     }
 
+    function isPushSupported() {
+      return Boolean(
+        "serviceWorker" in navigator &&
+        "PushManager" in window &&
+        "Notification" in window
+      );
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+
+      return outputArray;
+    }
+
+    async function getReadyServiceWorkerRegistration() {
+      if (!("serviceWorker" in navigator)) {
+        throw new Error("Service Worker не поддерживается.");
+      }
+
+      try {
+        const existing = await navigator.serviceWorker.getRegistration("/");
+        if (existing) {
+          await existing.update().catch(() => {});
+        }
+      } catch (error) {}
+
+      return await navigator.serviceWorker.ready;
+    }
+
+    async function savePushSubscriptionToSupabase(subscription) {
+      await refreshCurrentUser();
+
+      if (!currentChatUser) {
+        throw new Error("Для уведомлений нужно войти в аккаунт.");
+      }
+
+      const json = subscription.toJSON();
+      const keys = json.keys || {};
+
+      if (!json.endpoint || !keys.p256dh || !keys.auth) {
+        throw new Error("Браузер не выдал данные подписки.");
+      }
+
+      const payload = {
+        user_id: currentChatUser.id,
+        endpoint: json.endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        subscription: json,
+        user_agent: navigator.userAgent || "",
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await getMainSupabaseClient()
+        .from("push_subscriptions")
+        .upsert([payload], { onConflict: "endpoint" });
+
+      if (error) {
+        console.error("Ошибка сохранения push-подписки:", error);
+        throw new Error("Не удалось сохранить подписку в Supabase.");
+      }
+
+      return payload;
+    }
+
+    async function refreshPushButtonState() {
+      if (!pushBtn) return;
+
+      if (!isPushSupported()) {
+        pushBtn.classList.add("hidden");
+        return;
+      }
+
+      pushBtn.classList.remove("hidden");
+      pushBtn.classList.remove("enabled", "blocked");
+
+      if (Notification.permission === "granted") {
+        pushBtn.classList.add("enabled");
+        pushBtn.textContent = "🔔";
+        pushBtn.title = "Уведомления включены";
+        pushBtn.setAttribute("aria-label", "Уведомления включены");
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        pushBtn.classList.add("blocked");
+        pushBtn.textContent = "🔕";
+        pushBtn.title = "Уведомления заблокированы в браузере";
+        pushBtn.setAttribute("aria-label", "Уведомления заблокированы");
+        return;
+      }
+
+      pushBtn.textContent = "🔔";
+      pushBtn.title = "Включить уведомления";
+      pushBtn.setAttribute("aria-label", "Включить уведомления");
+    }
+
+    async function saveExistingPushSubscriptionIfPossible() {
+      if (!isPushSupported()) return;
+      if (Notification.permission !== "granted") return;
+
+      await refreshCurrentUser();
+
+      if (!currentChatUser) return;
+
+      try {
+        const registration = await getReadyServiceWorkerRegistration();
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (subscription) {
+          await savePushSubscriptionToSupabase(subscription);
+        }
+
+        await refreshPushButtonState();
+      } catch (error) {
+        console.warn("Не удалось обновить существующую push-подписку:", error);
+      }
+    }
+
+    async function enablePushNotifications() {
+      if (!isPushSupported()) {
+        alert("Этот браузер не поддерживает push-уведомления.");
+        return;
+      }
+
+      await refreshCurrentUser();
+
+      if (!currentChatUser) {
+        alert("Сначала войди в аккаунт. Уведомления привязываются к твоему профилю.");
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        alert("Уведомления заблокированы в браузере. Нужно открыть настройки сайта и разрешить уведомления для klevby.com.");
+        await refreshPushButtonState();
+        return;
+      }
+
+      try {
+        let permission = Notification.permission;
+
+        if (permission !== "granted") {
+          permission = await Notification.requestPermission();
+        }
+
+        if (permission !== "granted") {
+          await refreshPushButtonState();
+          alert("Уведомления не включены. Нужно нажать «Разрешить» в окне браузера.");
+          return;
+        }
+
+        const registration = await getReadyServiceWorkerRegistration();
+
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+        }
+
+        await savePushSubscriptionToSupabase(subscription);
+        await refreshPushButtonState();
+
+        alert("Уведомления включены. Теперь устройство сохранено для push-уведомлений.");
+      } catch (error) {
+        console.error("Ошибка включения push:", error);
+        alert(error.message || "Не удалось включить уведомления.");
+        await refreshPushButtonState();
+      }
+    }
+
     function setupPresence() {
       if (presenceChannel) {
         presenceChannel.track({
@@ -1498,6 +1690,7 @@
         await refreshCurrentUser();
         await ensureCurrentUserProfile();
         await reconnectRealtimeConnections();
+        await saveExistingPushSubscriptionIfPossible();
 
         const isChatOpen = modal && modal.classList.contains("open");
 
@@ -1548,6 +1741,8 @@
       await ensureCurrentUserProfile();
       await reconnectRealtimeConnections();
       await loadPublicMessages();
+      await refreshPushButtonState();
+      await saveExistingPushSubscriptionIfPossible();
 
       syncSelectedPeerForCalls();
 
@@ -1703,6 +1898,13 @@
         event.preventDefault();
         event.stopPropagation();
         await openChat();
+        return;
+      }
+
+      if (event.target.closest("#klevby-push-btn")) {
+        event.preventDefault();
+        event.stopPropagation();
+        await enablePushNotifications();
         return;
       }
 
@@ -2026,7 +2228,8 @@
       }
 
       .klevby-chat-back,
-      .klevby-chat-close {
+      .klevby-chat-close,
+      .klevby-push-btn {
         width: 38px !important;
         height: 38px !important;
         min-width: 38px !important;
@@ -2034,7 +2237,7 @@
         border-radius: 50% !important;
         background: rgba(255,255,255,0.08) !important;
         color: #ffffff !important;
-        font-size: 28px !important;
+        font-size: 20px !important;
         line-height: 1 !important;
         cursor: pointer !important;
         display: inline-flex !important;
@@ -2043,8 +2246,24 @@
         -webkit-tap-highlight-color: transparent !important;
       }
 
+      .klevby-chat-close {
+        font-size: 28px !important;
+      }
+
+      .klevby-push-btn.enabled {
+        background: rgba(87,230,178,0.18) !important;
+        color: #c8ffe0 !important;
+        box-shadow: 0 0 18px rgba(87,230,178,0.16) !important;
+      }
+
+      .klevby-push-btn.blocked {
+        background: rgba(216,77,77,0.18) !important;
+        color: #ffd2d2 !important;
+      }
+
       .klevby-chat-close:active,
-      .klevby-chat-back:active {
+      .klevby-chat-back:active,
+      .klevby-push-btn:active {
         transform: scale(0.94) !important;
       }
 
