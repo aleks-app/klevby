@@ -1,6 +1,4 @@
 (function () {
-  const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
   const ADMIN_EMAIL = "al822alex@gmail.com";
 
   /*
@@ -22,7 +20,65 @@
   let activeSpotFilter = "all";
   let initStarted = false;
 
+  let currentMapUser = null;
+  let userRefreshPromise = null;
+  let lastUserRefreshAt = 0;
+
+  const MAP_AUTH_REFRESH_THROTTLE_MS = 8000;
+
   const geocodeCache = {};
+
+  function getMainSupabaseClient() {
+    return (
+      window.klevbySupabase ||
+      window.supabaseClient ||
+      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
+      null
+    );
+  }
+
+  function getMainUser() {
+    return (
+      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
+      window.klevbyCurrentUser ||
+      window.currentUser ||
+      window.klevbyUser ||
+      currentMapUser ||
+      null
+    );
+  }
+
+  function waitForMainSupabaseClient() {
+    return new Promise(function (resolve, reject) {
+      let tries = 0;
+
+      const timer = setInterval(function () {
+        tries += 1;
+
+        const client = getMainSupabaseClient();
+
+        if (client) {
+          clearInterval(timer);
+          resolve(client);
+          return;
+        }
+
+        if (tries > 120) {
+          clearInterval(timer);
+          reject(new Error("Основной Supabase client не найден для map-logic.js"));
+        }
+      }, 100);
+    });
+  }
+
+  function isAuthLockError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+
+    return (
+      message.includes("lock") &&
+      message.includes("auth-token")
+    );
+  }
 
   function escapeHtml(value) {
     return String(value || "")
@@ -47,27 +103,6 @@
     return v;
   }
 
-  function waitForSupabase() {
-    return new Promise(function (resolve, reject) {
-      let tries = 0;
-
-      const timer = setInterval(function () {
-        tries++;
-
-        if (window.supabase) {
-          clearInterval(timer);
-          resolve();
-          return;
-        }
-
-        if (tries > 80) {
-          clearInterval(timer);
-          reject(new Error("Supabase library not loaded"));
-        }
-      }, 100);
-    });
-  }
-
   function loadYandexMapsApi() {
     return new Promise(function (resolve, reject) {
       if (window.ymaps) {
@@ -79,8 +114,13 @@
 
       if (existingScript) {
         existingScript.addEventListener("load", function () {
-          window.ymaps.ready(resolve);
+          if (window.ymaps) {
+            window.ymaps.ready(resolve);
+          } else {
+            reject(new Error("Yandex Maps API loaded, but ymaps is missing"));
+          }
         });
+
         existingScript.addEventListener("error", reject);
         return;
       }
@@ -95,7 +135,11 @@
       script.async = true;
 
       script.onload = function () {
-        window.ymaps.ready(resolve);
+        if (window.ymaps) {
+          window.ymaps.ready(resolve);
+        } else {
+          reject(new Error("Yandex Maps API loaded, but ymaps is missing"));
+        }
       };
 
       script.onerror = function () {
@@ -237,6 +281,8 @@
       .klevby-map-select,
       .klevby-map-textarea {
         width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         border: 1px solid rgba(255,255,255,0.08);
         outline: none;
         border-radius: 16px;
@@ -360,7 +406,15 @@
           width: 100%;
         }
 
+        .klevby-map-modal {
+          align-items: flex-end;
+          padding: 10px;
+          padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+
         .klevby-map-modal-card {
+          width: 100%;
+          max-height: min(90vh, 90dvh);
           padding: 18px;
           border-radius: 22px;
         }
@@ -408,6 +462,8 @@
     }
 
     mapEl.style.width = "100%";
+    mapEl.style.maxWidth = "100%";
+    mapEl.style.boxSizing = "border-box";
     mapEl.style.minHeight = "520px";
     mapEl.style.height = "65vh";
     mapEl.style.borderRadius = "16px";
@@ -602,11 +658,67 @@
     pendingSpotCoords = null;
   }
 
-  async function getCurrentUser() {
-    if (!mapDb) return null;
+  async function getCurrentUser(options = {}) {
+    const force = Boolean(options.force);
+    const now = Date.now();
 
-    const userResult = await mapDb.auth.getUser();
-    return userResult.data && userResult.data.user ? userResult.data.user : null;
+    const mainUser = getMainUser();
+
+    if (mainUser && mainUser.id) {
+      currentMapUser = mainUser;
+      lastUserRefreshAt = now;
+      return currentMapUser;
+    }
+
+    if (!mapDb?.auth?.getUser) {
+      return currentMapUser || null;
+    }
+
+    if (!force && currentMapUser && currentMapUser.id && now - lastUserRefreshAt < MAP_AUTH_REFRESH_THROTTLE_MS) {
+      return currentMapUser;
+    }
+
+    if (!force && userRefreshPromise) {
+      return userRefreshPromise;
+    }
+
+    lastUserRefreshAt = now;
+
+    userRefreshPromise = (async function () {
+      try {
+        const userResult = await mapDb.auth.getUser();
+
+        if (userResult.error) {
+          if (!isAuthLockError(userResult.error)) {
+            console.warn("Klevby map: пользователь не получен:", userResult.error);
+          }
+
+          currentMapUser = getMainUser() || currentMapUser || null;
+          return currentMapUser;
+        }
+
+        currentMapUser = userResult.data && userResult.data.user ? userResult.data.user : null;
+
+        if (currentMapUser && currentMapUser.id) {
+          window.klevbyCurrentUser = currentMapUser;
+          window.currentUser = currentMapUser;
+          window.klevbyUser = currentMapUser;
+        }
+
+        return currentMapUser;
+      } catch (error) {
+        if (!isAuthLockError(error)) {
+          console.warn("Klevby map: ошибка получения пользователя:", error);
+        }
+
+        currentMapUser = getMainUser() || currentMapUser || null;
+        return currentMapUser;
+      } finally {
+        userRefreshPromise = null;
+      }
+    })();
+
+    return userRefreshPromise;
   }
 
   async function handleMapClick(coords) {
@@ -621,7 +733,7 @@
   }
 
   async function saveSpotFromModal() {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser({ force: true });
 
     if (!user) {
       setSpotMessage("Сначала войди в аккаунт на сайте.", true);
@@ -720,7 +832,7 @@
   }
 
   async function loadFishingSpots() {
-    if (!spotsCollection) return;
+    if (!spotsCollection || !mapDb) return;
 
     const result = await mapDb
       .from("fishing_spots")
@@ -869,7 +981,7 @@
   }
 
   async function loadPostMarkers() {
-    if (!postsCollection) return;
+    if (!postsCollection || !mapDb) return;
 
     postsCollection.removeAll();
 
@@ -994,7 +1106,7 @@
   }
 
   async function reloadMapData() {
-    if (!mapReady) return;
+    if (!mapReady || !mapDb) return;
 
     await loadFishingSpots();
     await loadPostMarkers();
@@ -1034,6 +1146,9 @@
 
     if (!mapButton) return;
 
+    if (mapButton.dataset.klevbyMapBound === "true") return;
+    mapButton.dataset.klevbyMapBound = "true";
+
     mapButton.addEventListener("click", function () {
       setTimeout(function () {
         if (mapInstance && mapInstance.container) {
@@ -1046,7 +1161,7 @@
   }
 
   async function deleteFishingSpot(id) {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser({ force: true });
 
     if (!user) {
       alert("Чтобы удалить точку, сначала войди в аккаунт.");
@@ -1076,9 +1191,17 @@
 
     try {
       injectMapStyles();
-      await waitForSupabase();
 
-      mapDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      mapDb = getMainSupabaseClient();
+
+      if (!mapDb) {
+        mapDb = await waitForMainSupabaseClient();
+      }
+
+      const mainUser = getMainUser();
+      if (mainUser && mainUser.id) {
+        currentMapUser = mainUser;
+      }
 
       const mapEl = prepareMapContainer();
       if (!mapEl) return;
@@ -1099,6 +1222,21 @@
       console.error("Ошибка запуска карты:", error);
     }
   }
+
+  window.addEventListener("klevby-auth-changed", function (event) {
+    const user =
+      event?.detail?.user ||
+      getMainUser() ||
+      null;
+
+    currentMapUser = user;
+
+    if (user && user.id) {
+      window.klevbyCurrentUser = user;
+      window.currentUser = user;
+      window.klevbyUser = user;
+    }
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initMapLogic);
