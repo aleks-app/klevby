@@ -1,6 +1,4 @@
 (function () {
-  const VAPID_PUBLIC_KEY = "BBZPSipFkHsboxaQ7UmJvZ2TJqXQa5JE59HuwS1oq-3WWhwfBtjSfrFwKe6eJvE2NoqGCEXkInaGH4nElgWsXNM";
-
   if (window.__klevbyChatLoaded) {
     return;
   }
@@ -178,6 +176,8 @@
     const contextReplyBtn = document.getElementById("contextReplyBtn");
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
+    initChatPushBridge();
+
     refreshCurrentUser().then(async () => {
       await ensureCurrentUserProfile({ soft: true });
       setupPresence();
@@ -241,6 +241,69 @@
         setChatTabsLoading(false);
       }
     });
+
+    function getChatPushApi() {
+      return window.KlevbyChatPush || null;
+    }
+
+    function initChatPushBridge() {
+      const api = getChatPushApi();
+
+      if (!api || typeof api.init !== "function") {
+        if (pushBtn) {
+          pushBtn.classList.add("hidden");
+        }
+
+        return;
+      }
+
+      api.init({
+        pushButton: pushBtn,
+        getCurrentUser: () => currentChatUser,
+        refreshCurrentUser,
+        getSupabaseClient: getMainSupabaseClient,
+        cleanDisplayName,
+        isValidSupabaseUuid
+      });
+    }
+
+    async function refreshPushButtonState() {
+      const api = getChatPushApi();
+
+      if (api && typeof api.refreshPushButtonState === "function") {
+        return await api.refreshPushButtonState();
+      }
+
+      if (pushBtn) {
+        pushBtn.classList.add("hidden");
+      }
+    }
+
+    async function saveExistingPushSubscriptionIfPossible() {
+      const api = getChatPushApi();
+
+      if (api && typeof api.saveExistingPushSubscriptionIfPossible === "function") {
+        return await api.saveExistingPushSubscriptionIfPossible();
+      }
+    }
+
+    async function enablePushNotifications() {
+      const api = getChatPushApi();
+
+      if (api && typeof api.enablePushNotifications === "function") {
+        return await api.enablePushNotifications();
+      }
+
+      alert("Push-уведомления сейчас не подключены. Проверь assets/js/chat-push.js.");
+    }
+
+    async function sendPushToUser(receiverUserId, senderName, messageText) {
+      const api = getChatPushApi();
+
+      if (api && typeof api.sendPushToUser === "function") {
+        return await api.sendPushToUser(receiverUserId, senderName, messageText);
+      }
+    }
 
     function beginChatNavigation() {
       chatNavigationToken += 1;
@@ -1030,223 +1093,6 @@
 
       privateUnreadBadge.classList.remove("hidden");
       privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
-    }
-
-    function isPushSupported() {
-      return Boolean(
-        "serviceWorker" in navigator &&
-        "PushManager" in window &&
-        "Notification" in window
-      );
-    }
-
-    function urlBase64ToUint8Array(base64String) {
-      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-      const base64 = (base64String + padding)
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-
-      return outputArray;
-    }
-
-    async function getReadyServiceWorkerRegistration() {
-      if (!("serviceWorker" in navigator)) {
-        throw new Error("Service Worker не поддерживается.");
-      }
-
-      try {
-        const existing = await navigator.serviceWorker.getRegistration("/");
-        if (existing) {
-          await existing.update().catch(() => {});
-        }
-      } catch (error) {}
-
-      return await navigator.serviceWorker.ready;
-    }
-
-    async function savePushSubscriptionToSupabase(subscription) {
-      await refreshCurrentUser();
-
-      if (!currentChatUser) {
-        throw new Error("Для уведомлений нужно войти в аккаунт.");
-      }
-
-      const json = subscription.toJSON();
-      const keys = json.keys || {};
-
-      if (!json.endpoint || !keys.p256dh || !keys.auth) {
-        throw new Error("Браузер не выдал данные подписки.");
-      }
-
-      const payload = {
-        user_id: currentChatUser.id,
-        endpoint: json.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        subscription: json,
-        user_agent: navigator.userAgent || "",
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await getMainSupabaseClient()
-        .from("push_subscriptions")
-        .upsert([payload], { onConflict: "endpoint" });
-
-      if (error) {
-        console.error("Ошибка сохранения push-подписки:", error);
-        throw new Error("Не удалось сохранить подписку в Supabase.");
-      }
-
-      return payload;
-    }
-
-    async function refreshPushButtonState() {
-      if (!pushBtn) return;
-
-      if (!isPushSupported()) {
-        pushBtn.classList.add("hidden");
-        return;
-      }
-
-      pushBtn.classList.remove("hidden");
-      pushBtn.classList.remove("enabled", "blocked");
-
-      if (Notification.permission === "granted") {
-        pushBtn.classList.add("enabled");
-        pushBtn.textContent = "🔔";
-        pushBtn.title = "Уведомления включены";
-        pushBtn.setAttribute("aria-label", "Уведомления включены");
-        return;
-      }
-
-      if (Notification.permission === "denied") {
-        pushBtn.classList.add("blocked");
-        pushBtn.textContent = "🔕";
-        pushBtn.title = "Уведомления заблокированы в браузере";
-        pushBtn.setAttribute("aria-label", "Уведомления заблокированы");
-        return;
-      }
-
-      pushBtn.textContent = "🔔";
-      pushBtn.title = "Включить уведомления";
-      pushBtn.setAttribute("aria-label", "Включить уведомления");
-    }
-
-    async function saveExistingPushSubscriptionIfPossible() {
-      if (!isPushSupported()) return;
-      if (Notification.permission !== "granted") return;
-
-      await refreshCurrentUser();
-
-      if (!currentChatUser) return;
-
-      try {
-        const registration = await getReadyServiceWorkerRegistration();
-        const subscription = await registration.pushManager.getSubscription();
-
-        if (subscription) {
-          await savePushSubscriptionToSupabase(subscription);
-        }
-
-        await refreshPushButtonState();
-      } catch (error) {
-        console.warn("Не удалось обновить существующую push-подписку:", error);
-      }
-    }
-
-    async function enablePushNotifications() {
-      if (!isPushSupported()) {
-        alert("Этот браузер не поддерживает push-уведомления.");
-        return;
-      }
-
-      await refreshCurrentUser({ force: true });
-
-      if (!currentChatUser) {
-        alert("Сначала войди в аккаунт. Уведомления привязываются к твоему профилю.");
-        return;
-      }
-
-      if (Notification.permission === "denied") {
-        alert("Уведомления заблокированы в браузере. Нужно открыть настройки сайта и разрешить уведомления для klevby.com.");
-        await refreshPushButtonState();
-        return;
-      }
-
-      try {
-        let permission = Notification.permission;
-
-        if (permission !== "granted") {
-          permission = await Notification.requestPermission();
-        }
-
-        if (permission !== "granted") {
-          await refreshPushButtonState();
-          alert("Уведомления не включены. Нужно нажать «Разрешить» в окне браузера.");
-          return;
-        }
-
-        const registration = await getReadyServiceWorkerRegistration();
-
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-          });
-        }
-
-        await savePushSubscriptionToSupabase(subscription);
-        await refreshPushButtonState();
-
-        alert("Уведомления включены. Теперь устройство сохранено для push-уведомлений.");
-      } catch (error) {
-        console.error("Ошибка включения push:", error);
-        alert(error.message || "Не удалось включить уведомления.");
-        await refreshPushButtonState();
-      }
-    }
-
-    async function sendPushToUser(receiverUserId, senderName, messageText) {
-      if (!receiverUserId || !isValidSupabaseUuid(receiverUserId)) return;
-
-      try {
-        const shortText = String(messageText || "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 120);
-
-        const body = {
-          user_id: String(receiverUserId),
-          title: "Klevby",
-          message: `${cleanDisplayName(senderName) || "Новое сообщение"}: ${shortText || "Новое личное сообщение"}`,
-          url: "https://klevby.com/"
-        };
-
-        const fnClient = getMainSupabaseClient();
-
-        if (fnClient?.functions && typeof fnClient.functions.invoke === "function") {
-          const { data, error } = await fnClient.functions.invoke("send-push", {
-            body
-          });
-
-          if (error) {
-            console.warn("Push через functions.invoke не отправлен:", error);
-          } else {
-            console.log("Klevby push отправлен:", data);
-          }
-        }
-      } catch (error) {
-        console.warn("Push уведомление не отправлено:", error);
-      }
     }
 
     function setupPresence() {
