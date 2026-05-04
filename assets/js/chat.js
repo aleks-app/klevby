@@ -521,8 +521,22 @@
       return profileSavePromise;
     }
 
+    function isValidSupabaseUuid(value) {
+      const id = String(value || "").trim();
+
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    }
+
+    function getValidProfileIds(ids = []) {
+      return [...new Set(
+        (ids || [])
+          .map((id) => String(id || "").trim())
+          .filter((id) => isValidSupabaseUuid(id))
+      )];
+    }
+
     async function loadProfilesByIds(ids = []) {
-      const uniqueIds = [...new Set((ids || []).filter(Boolean).map(String))];
+      const uniqueIds = getValidProfileIds(ids);
 
       if (!uniqueIds.length) return;
 
@@ -533,6 +547,7 @@
           .in("id", uniqueIds);
 
         if (error) {
+          console.warn("Профили не загружены:", error);
           return;
         }
 
@@ -1329,7 +1344,7 @@
 
       if (error) {
         console.error("Ошибка загрузки общего чата:", error);
-        showEmptyState("Не удалось загрузить общий чат. Провь интернет и обнови приложение.");
+        showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
         finishChatNavigation(navToken);
         return;
       }
@@ -1799,7 +1814,7 @@
 
       if (result.error) {
         console.error("Ошибка удаления сообщения:", result.error);
-        alert("Не получилось удалить сообщение. Провь RLS delete.");
+        alert("Не получилось удалить сообщение. Проверь RLS delete.");
         return;
       }
 
