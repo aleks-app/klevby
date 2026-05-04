@@ -77,12 +77,9 @@
     let lastUserRefreshAt = 0;
     let profileSavePromise = null;
     let lastProfileSaveAt = 0;
-    let authSideEffectTimer = null;
-    let pushSaveTimer = null;
 
-    const CHAT_AUTH_REFRESH_THROTTLE_MS = 10000;
-    const CHAT_AUTH_FORCE_GUARD_MS = 1800;
-    const PROFILE_SAVE_THROTTLE_MS = 12000;
+    const CHAT_AUTH_REFRESH_THROTTLE_MS = 3000;
+    const PROFILE_SAVE_THROTTLE_MS = 7000;
 
     const onlineUsers = new Map();
     const userProfiles = new Map();
@@ -187,7 +184,7 @@
       setupRealtime();
       syncSelectedPeerForCalls();
       await refreshPushButtonState();
-      scheduleExistingPushSubscriptionSave(1200);
+      await saveExistingPushSubscriptionIfPossible();
     }).catch((error) => {
       console.warn("Klevby chat: стартовая проверка пользователя пропущена:", error);
       setupPresence();
@@ -197,89 +194,44 @@
     });
 
     if (chatDb.auth && typeof chatDb.auth.onAuthStateChange === "function") {
-      chatDb.auth.onAuthStateChange((event, session) => {
-        setTimeout(() => {
-          if (event === "SIGNED_OUT") {
-            currentChatUser = null;
-            clearGlobalChatUser();
-          } else {
-            currentChatUser =
-              session?.user ||
-              getUserFromMainSite() ||
-              currentChatUser ||
-              null;
-
-            syncGlobalChatUser();
-          }
-
-          scheduleAuthSideEffects({
-            forceProfile: event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED",
-            reloadPrivate: true
-          });
-        }, 0);
-      });
-    }
-
-    window.addEventListener("klevby-auth-changed", (event) => {
-      setTimeout(() => {
+      chatDb.auth.onAuthStateChange(async (_event, session) => {
         currentChatUser =
-          event?.detail?.user ||
+          session?.user ||
           getUserFromMainSite() ||
           currentChatUser ||
           null;
 
         syncGlobalChatUser();
+        await ensureCurrentUserProfile({ force: true, soft: true });
+        setupPresence();
+        syncSelectedPeerForCalls();
+        await refreshPushButtonState();
+        await saveExistingPushSubscriptionIfPossible();
+      });
+    }
 
-        scheduleAuthSideEffects({
-          forceProfile: true,
-          reloadPrivate: true
-        });
-      }, 0);
-    });
+    window.addEventListener("klevby-auth-changed", async (event) => {
+      currentChatUser =
+        event?.detail?.user ||
+        getUserFromMainSite() ||
+        currentChatUser ||
+        null;
 
-    function scheduleAuthSideEffects(options = {}) {
-      clearTimeout(authSideEffectTimer);
+      syncGlobalChatUser();
+      await ensureCurrentUserProfile({ force: true, soft: true });
 
-      authSideEffectTimer = setTimeout(async () => {
-        try {
-          await refreshCurrentUser({ force: false });
-          await ensureCurrentUserProfile({
-            force: Boolean(options.forceProfile),
-            soft: true
-          });
-
-          setupPresence();
-          syncSelectedPeerForCalls();
-          await refreshPushButtonState();
-          scheduleExistingPushSubscriptionSave(900);
-
-          if (
-            options.reloadPrivate &&
-            activeMode === "private" &&
-            modal &&
-            modal.classList.contains("open")
-          ) {
-            if (selectedPeer) {
-              await openPrivateDialog(selectedPeer.id, selectedPeer.name);
-            } else {
-              await loadPrivatePeople();
-            }
-          }
-        } catch (error) {
-          console.warn("Klevby chat: auth side effects пропущены:", error);
+      if (activeMode === "private" && modal && modal.classList.contains("open")) {
+        if (selectedPeer) {
+          await openPrivateDialog(selectedPeer.id, selectedPeer.name);
+        } else {
+          await loadPrivatePeople();
         }
-      }, 350);
-    }
+      }
 
-    function scheduleExistingPushSubscriptionSave(delay = 900) {
-      clearTimeout(pushSaveTimer);
-
-      pushSaveTimer = setTimeout(() => {
-        saveExistingPushSubscriptionIfPossible().catch((error) => {
-          console.warn("Не удалось сохранить существующую push-подписку:", error);
-        });
-      }, delay);
-    }
+      syncSelectedPeerForCalls();
+      await refreshPushButtonState();
+      await saveExistingPushSubscriptionIfPossible();
+    });
 
     function beginChatNavigation() {
       chatNavigationToken += 1;
@@ -381,14 +333,6 @@
       window.klevbyUser = currentChatUser;
     }
 
-    function clearGlobalChatUser() {
-      window.klevbyCurrentUser = null;
-      window.currentUser = null;
-      window.klevbyUser = null;
-      window.klevbySelectedPeer = null;
-      window.selectedPeer = null;
-    }
-
     function isAuthLockError(error) {
       const message = String(error?.message || error || "").toLowerCase();
       return message.includes("lock") && message.includes("auth-token");
@@ -446,17 +390,11 @@
         return currentChatUser;
       }
 
-      if (currentChatUser && currentChatUser.id) {
-        if (!force && now - lastUserRefreshAt < CHAT_AUTH_REFRESH_THROTTLE_MS) {
-          return currentChatUser;
-        }
-
-        if (force && now - lastUserRefreshAt < CHAT_AUTH_FORCE_GUARD_MS) {
-          return currentChatUser;
-        }
+      if (!force && currentChatUser && currentChatUser.id && now - lastUserRefreshAt < CHAT_AUTH_REFRESH_THROTTLE_MS) {
+        return currentChatUser;
       }
 
-      if (userRefreshPromise) {
+      if (!force && userRefreshPromise) {
         return userRefreshPromise;
       }
 
@@ -487,19 +425,16 @@
             syncGlobalChatUser();
             return currentChatUser;
           }
-
-          currentChatUser = getUserFromMainSite() || null;
-          return currentChatUser;
         } catch (error) {
           if (!isAuthLockError(error)) {
             console.warn("Не удалось получить пользователя из основного клиента:", error);
           }
-
-          currentChatUser = getUserFromMainSite() || currentChatUser || null;
-          return currentChatUser;
         } finally {
           userRefreshPromise = null;
         }
+
+        currentChatUser = getUserFromMainSite() || currentChatUser || null;
+        return currentChatUser;
       })();
 
       return userRefreshPromise;
@@ -532,9 +467,7 @@
       const soft = options.soft !== false;
       const now = Date.now();
 
-      if (!currentChatUser) {
-        await refreshCurrentUser({ force: false });
-      }
+      await refreshCurrentUser({ force: false });
 
       if (!currentChatUser) return;
 
@@ -548,7 +481,7 @@
         return;
       }
 
-      if (profileSavePromise) {
+      if (!force && profileSavePromise) {
         return profileSavePromise;
       }
 
@@ -1112,9 +1045,7 @@
     }
 
     async function savePushSubscriptionToSupabase(subscription) {
-      if (!currentChatUser) {
-        await refreshCurrentUser();
-      }
+      await refreshCurrentUser();
 
       if (!currentChatUser) {
         throw new Error("Для уведомлений нужно войти в аккаунт.");
@@ -1185,9 +1116,7 @@
       if (!isPushSupported()) return;
       if (Notification.permission !== "granted") return;
 
-      if (!currentChatUser) {
-        await refreshCurrentUser();
-      }
+      await refreshCurrentUser();
 
       if (!currentChatUser) return;
 
@@ -1211,9 +1140,7 @@
         return;
       }
 
-      if (!currentChatUser) {
-        await refreshCurrentUser({ force: true });
-      }
+      await refreshCurrentUser({ force: true });
 
       if (!currentChatUser) {
         alert("Сначала войди в аккаунт. Уведомления привязываются к твоему профилю.");
@@ -1343,8 +1270,11 @@
             }
           });
         })
-        .subscribe((status) => {
+        .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
+            await refreshCurrentUser();
+            await ensureCurrentUserProfile({ soft: true });
+
             presenceChannel.track({
               user_id: currentChatUser?.id || null,
               name: getCurrentChatName(),
@@ -1399,7 +1329,7 @@
 
       if (error) {
         console.error("Ошибка загрузки общего чата:", error);
-        showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
+        showEmptyState("Не удалось загрузить общий чат. Провь интернет и обнови приложение.");
         finishChatNavigation(navToken);
         return;
       }
@@ -1837,7 +1767,7 @@
 
       if (!confirm("Удалить сообщение?")) return;
 
-      await refreshCurrentUser();
+      await refreshCurrentUser({ force: true });
 
       let result;
 
@@ -1863,7 +1793,6 @@
           result = await getMainSupabaseClient()
             .from("messages")
             .delete()
-            .eq("id", id)
             .eq("user_name", getCurrentChatName());
         }
       }
@@ -1924,7 +1853,7 @@
         await refreshCurrentUser();
         await ensureCurrentUserProfile({ soft: true });
         await reconnectRealtimeConnections();
-        scheduleExistingPushSubscriptionSave(1200);
+        await saveExistingPushSubscriptionIfPossible();
 
         const isChatOpen = modal && modal.classList.contains("open");
 
@@ -1976,7 +1905,7 @@
       await reconnectRealtimeConnections();
       await loadPublicMessages();
       await refreshPushButtonState();
-      scheduleExistingPushSubscriptionSave(1200);
+      await saveExistingPushSubscriptionIfPossible();
 
       syncSelectedPeerForCalls();
 
@@ -2016,9 +1945,7 @@
             const emptyState = messagesContainer.querySelector(".chat-empty-state");
             if (emptyState) clearMessages();
 
-            if (!currentChatUser) {
-              await refreshCurrentUser();
-            }
+            await refreshCurrentUser();
 
             if (payload.new?.user_id && payload.new?.user_name) {
               rememberFallbackProfile(payload.new.user_id, payload.new.user_name);
@@ -2047,9 +1974,7 @@
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "private_messages" },
           async (payload) => {
-            if (!currentChatUser) {
-              await refreshCurrentUser();
-            }
+            await refreshCurrentUser();
 
             const msg = payload.new;
             const myId = String(currentChatUser?.id || "");
@@ -2405,715 +2330,11 @@
 
   function injectExtraChatStyles() {
     const oldStyle = document.getElementById("klevby-chat-extra-styles");
-    if (oldStyle) oldStyle.remove();
 
-    const style = document.createElement("style");
-    style.id = "klevby-chat-extra-styles";
+    if (oldStyle) {
+      oldStyle.remove();
+    }
 
-    style.textContent = `
-      .hidden {
-        display: none !important;
-      }
-
-      #chat-desktop-btn.klevby-chat-launcher {
-        position: fixed !important;
-        right: 22px !important;
-        bottom: 22px !important;
-        z-index: 65000 !important;
-        width: 58px !important;
-        height: 58px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #57e6b2, #28c990) !important;
-        color: #03150c !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 27px !important;
-        cursor: pointer !important;
-        box-shadow: 0 18px 44px rgba(0,0,0,0.38), 0 0 24px rgba(87,230,178,0.22) !important;
-        user-select: none !important;
-      }
-
-      #klevby-chat-modal {
-        position: fixed !important;
-        inset: 0 !important;
-        z-index: 2147483000 !important;
-        background: rgba(0, 0, 0, 0.62) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
-        display: flex !important;
-        align-items: flex-end !important;
-        justify-content: flex-end !important;
-        padding: 18px !important;
-      }
-
-      #klevby-chat-modal.hidden {
-        display: none !important;
-      }
-
-      .klevby-chat-window {
-        width: min(420px, 100%) !important;
-        height: min(720px, calc(var(--klevby-vvh, 100vh) - 36px)) !important;
-        max-height: calc(var(--klevby-vvh, 100vh) - 36px) !important;
-        background: rgba(10, 20, 23, 0.98) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255,255,255,0.10) !important;
-        border-radius: 26px !important;
-        overflow: hidden !important;
-        box-shadow: 0 24px 70px rgba(0,0,0,0.55) !important;
-        display: grid !important;
-        grid-template-rows: auto auto 1fr auto auto !important;
-      }
-
-      .klevby-chat-header {
-        min-height: 66px !important;
-        padding: 10px 12px !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 10px !important;
-        border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-        background: rgba(14, 29, 32, 0.98) !important;
-      }
-
-      .klevby-chat-back,
-      .klevby-chat-close,
-      .klevby-push-btn {
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
-        border: 0 !important;
-        border-radius: 50% !important;
-        background: rgba(255,255,255,0.08) !important;
-        color: #ffffff !important;
-        font-size: 20px !important;
-        line-height: 1 !important;
-        cursor: pointer !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        -webkit-tap-highlight-color: transparent !important;
-      }
-
-      .klevby-chat-close {
-        font-size: 28px !important;
-      }
-
-      .klevby-push-btn.enabled {
-        background: rgba(87,230,178,0.18) !important;
-        color: #c8ffe0 !important;
-        box-shadow: 0 0 18px rgba(87,230,178,0.16) !important;
-      }
-
-      .klevby-push-btn.blocked {
-        background: rgba(216,77,77,0.18) !important;
-        color: #ffd2d2 !important;
-      }
-
-      .klevby-chat-close:active,
-      .klevby-chat-back:active,
-      .klevby-push-btn:active {
-        transform: scale(0.94) !important;
-      }
-
-      .klevby-chat-tab:disabled,
-      .klevby-chat-back:disabled {
-        opacity: 0.55 !important;
-        cursor: wait !important;
-        pointer-events: none !important;
-      }
-
-      .klevby-chat-tab.loading {
-        position: relative !important;
-      }
-
-      .klevby-chat-tab.loading::after {
-        content: "" !important;
-        width: 12px !important;
-        height: 12px !important;
-        margin-left: 6px !important;
-        border-radius: 50% !important;
-        border: 2px solid rgba(255,255,255,0.22) !important;
-        border-top-color: #c8ffe0 !important;
-        display: inline-block !important;
-        vertical-align: -2px !important;
-        animation: klevby-chat-spin 0.8s linear infinite !important;
-      }
-
-      @keyframes klevby-chat-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .klevby-chat-head-main {
-        min-width: 0 !important;
-        flex: 1 !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 10px !important;
-      }
-
-      .klevby-chat-avatar {
-        width: 42px !important;
-        height: 42px !important;
-        flex: 0 0 auto !important;
-        border-radius: 50% !important;
-        background: rgba(87,230,178,0.14) !important;
-        color: #c8ffe0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 21px !important;
-        font-weight: 800 !important;
-      }
-
-      .klevby-chat-title-wrap {
-        min-width: 0 !important;
-      }
-
-      .klevby-chat-title {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
-        color: #ffffff !important;
-      }
-
-      .klevby-chat-subtitle {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        margin-top: 2px !important;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        color: rgba(255,255,255,0.52) !important;
-      }
-
-      .klevby-chat-tabs {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-        padding: 10px !important;
-        background: rgba(10,20,23,0.98) !important;
-        border-bottom: 1px solid rgba(255,255,255,0.06) !important;
-      }
-
-      .klevby-chat-tab {
-        min-height: 42px !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 15px !important;
-        background: rgba(255,255,255,0.06) !important;
-        color: rgba(255,255,255,0.74) !important;
-        font-size: 13px !important;
-        font-weight: 800 !important;
-        cursor: pointer !important;
-      }
-
-      .klevby-chat-tab.active {
-        background: rgba(87,230,178,0.16) !important;
-        color: #c8ffe0 !important;
-        border-color: rgba(87,230,178,0.24) !important;
-      }
-
-      .klevby-unread-badge {
-        min-width: 18px !important;
-        height: 18px !important;
-        padding: 0 6px !important;
-        border-radius: 999px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background: #d84d4d !important;
-        color: #ffffff !important;
-        font-size: 10px !important;
-        font-weight: 900 !important;
-        margin-left: 4px !important;
-      }
-
-      .klevby-chat-messages {
-        min-height: 0 !important;
-        height: 100% !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        padding: 14px 12px 16px !important;
-        background:
-          radial-gradient(circle at 10% 0%, rgba(87,230,178,0.08), transparent 34%),
-          rgba(5, 11, 13, 0.98) !important;
-        -webkit-overflow-scrolling: touch !important;
-      }
-
-      .chat-empty-state {
-        margin: 18px auto !important;
-        padding: 16px !important;
-        border-radius: 18px !important;
-        background: rgba(255,255,255,0.06) !important;
-        color: rgba(255,255,255,0.62) !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        text-align: center !important;
-      }
-
-      .klevby-date-divider {
-        width: fit-content !important;
-        margin: 10px auto 14px !important;
-        padding: 6px 10px !important;
-        border-radius: 999px !important;
-        background: rgba(255,255,255,0.08) !important;
-        color: rgba(255,255,255,0.55) !important;
-        font-size: 11px !important;
-        font-weight: 800 !important;
-      }
-
-      .chat-message-row {
-        width: 100% !important;
-        display: flex !important;
-        align-items: flex-end !important;
-        gap: 8px !important;
-        margin: 7px 0 !important;
-      }
-
-      .chat-message-row.grouped-with-prev {
-        margin-top: 2px !important;
-      }
-
-      .my-message-row {
-        justify-content: flex-end !important;
-      }
-
-      .other-message-row {
-        justify-content: flex-start !important;
-      }
-
-      .klevby-message-avatar {
-        width: 30px !important;
-        height: 30px !important;
-        border-radius: 50% !important;
-        background: rgba(255,255,255,0.08) !important;
-        color: #c8ffe0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 13px !important;
-        font-weight: 900 !important;
-        flex: 0 0 auto !important;
-      }
-
-      .grouped-with-prev .klevby-message-avatar {
-        opacity: 0 !important;
-      }
-
-      .chat-message-bubble {
-        position: relative !important;
-        max-width: min(78%, 310px) !important;
-        padding: 9px 11px 7px !important;
-        border-radius: 18px !important;
-        font-size: 14px !important;
-        line-height: 1.38 !important;
-        word-wrap: break-word !important;
-        overflow-wrap: anywhere !important;
-      }
-
-      .my-message {
-        background: linear-gradient(135deg, #57e6b2, #28c990) !important;
-        color: #03150c !important;
-        border-bottom-right-radius: 6px !important;
-      }
-
-      .other-message {
-        background: rgba(255,255,255,0.08) !important;
-        color: #ffffff !important;
-        border-bottom-left-radius: 6px !important;
-      }
-
-      .chat-message-author {
-        display: block !important;
-        margin-bottom: 3px !important;
-        color: #9ff3cc !important;
-        font-size: 12px !important;
-        font-weight: 900 !important;
-      }
-
-      .chat-message-text {
-        white-space: pre-wrap !important;
-        font-weight: 500 !important;
-      }
-
-      .klevby-message-reply {
-        margin-bottom: 6px !important;
-        padding: 6px 8px !important;
-        border-left: 3px solid rgba(87,230,178,0.75) !important;
-        border-radius: 9px !important;
-        background: rgba(0,0,0,0.16) !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        opacity: 0.88 !important;
-      }
-
-      .klevby-message-footer {
-        margin-top: 3px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-end !important;
-        gap: 4px !important;
-        font-size: 10px !important;
-        opacity: 0.68 !important;
-      }
-
-      .klevby-message-actions {
-        display: none !important;
-        position: absolute !important;
-        right: 5px !important;
-        top: -18px !important;
-        gap: 4px !important;
-      }
-
-      .chat-message-bubble:hover .klevby-message-actions {
-        display: flex !important;
-      }
-
-      .klevby-message-action {
-        width: 25px !important;
-        height: 25px !important;
-        border: 0 !important;
-        border-radius: 50% !important;
-        background: rgba(0,0,0,0.38) !important;
-        color: #ffffff !important;
-        font-size: 12px !important;
-        cursor: pointer !important;
-      }
-
-      .klevby-message-menu {
-        position: fixed !important;
-        z-index: 2147483001 !important;
-        width: 170px !important;
-        padding: 8px !important;
-        border-radius: 14px !important;
-        background: rgba(12, 22, 25, 0.98) !important;
-        border: 1px solid rgba(255,255,255,0.10) !important;
-        box-shadow: 0 16px 44px rgba(0,0,0,0.45) !important;
-      }
-
-      .klevby-message-menu button {
-        width: 100% !important;
-        min-height: 38px !important;
-        border: 0 !important;
-        border-radius: 10px !important;
-        background: transparent !important;
-        color: #ffffff !important;
-        font-size: 13px !important;
-        font-weight: 800 !important;
-        text-align: left !important;
-        cursor: pointer !important;
-      }
-
-      .klevby-message-menu button:active {
-        background: rgba(255,255,255,0.08) !important;
-      }
-
-      .klevby-reply-preview {
-        min-height: 48px !important;
-        padding: 8px 10px !important;
-        display: grid !important;
-        grid-template-columns: 3px 1fr 32px !important;
-        gap: 8px !important;
-        align-items: center !important;
-        background: rgba(14, 29, 32, 0.98) !important;
-        border-top: 1px solid rgba(255,255,255,0.08) !important;
-      }
-
-      .klevby-reply-line {
-        width: 3px !important;
-        height: 32px !important;
-        border-radius: 999px !important;
-        background: #57e6b2 !important;
-      }
-
-      .klevby-reply-author {
-        color: #9ff3cc !important;
-        font-size: 12px !important;
-        font-weight: 900 !important;
-      }
-
-      .klevby-reply-text {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        color: rgba(255,255,255,0.62) !important;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-      }
-
-      .klevby-reply-cancel {
-        width: 32px !important;
-        height: 32px !important;
-        border: 0 !important;
-        border-radius: 50% !important;
-        background: rgba(255,255,255,0.08) !important;
-        color: #ffffff !important;
-        font-size: 20px !important;
-        cursor: pointer !important;
-      }
-
-      .klevby-chat-inputbar {
-        min-height: 64px !important;
-        padding: 10px !important;
-        display: grid !important;
-        grid-template-columns: 1fr 46px !important;
-        gap: 8px !important;
-        background: rgba(14, 29, 32, 0.98) !important;
-        border-top: 1px solid rgba(255,255,255,0.08) !important;
-      }
-
-      .klevby-chat-input {
-        width: 100% !important;
-        height: 46px !important;
-        margin: 0 !important;
-        padding: 0 14px !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 18px !important;
-        background: rgba(255,255,255,0.08) !important;
-        color: #ffffff !important;
-        outline: none !important;
-        font-size: 16px !important;
-        font-weight: 500 !important;
-      }
-
-      .klevby-chat-send {
-        width: 46px !important;
-        height: 46px !important;
-        border: 0 !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #57e6b2, #28c990) !important;
-        color: #03150c !important;
-        font-size: 20px !important;
-        font-weight: 900 !important;
-        cursor: pointer !important;
-      }
-
-      .klevby-chat-send:disabled,
-      .klevby-chat-input:disabled {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
-      }
-
-      .klevby-private-dialog-list {
-        width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 0 !important;
-        padding: 4px 0 !important;
-      }
-
-      .klevby-private-dialog-item {
-        width: 100% !important;
-        min-height: 72px !important;
-        padding: 10px 12px !important;
-        border: 0 !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-        background: transparent !important;
-        color: #ffffff !important;
-        display: grid !important;
-        grid-template-columns: 46px 1fr auto !important;
-        align-items: center !important;
-        gap: 10px !important;
-        cursor: pointer !important;
-        text-align: left !important;
-      }
-
-      .klevby-chat-loading .klevby-private-dialog-item {
-        pointer-events: none !important;
-        opacity: 0.68 !important;
-      }
-
-      .klevby-private-dialog-item:active {
-        background: rgba(255, 255, 255, 0.06) !important;
-      }
-
-      .klevby-private-dialog-item.has-unread {
-        background: rgba(216, 77, 77, 0.10) !important;
-      }
-
-      .klevby-private-dialog-avatar {
-        width: 46px !important;
-        height: 46px !important;
-        border-radius: 50% !important;
-        background: #1b2b28 !important;
-        color: #b8f5d6 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
-      }
-
-      .klevby-private-dialog-main {
-        min-width: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 5px !important;
-      }
-
-      .klevby-private-dialog-top,
-      .klevby-private-dialog-bottom {
-        min-width: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 8px !important;
-      }
-
-      .klevby-private-dialog-name {
-        min-width: 0 !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        font-size: 15px !important;
-        font-weight: 800 !important;
-        color: #ffffff !important;
-      }
-
-      .klevby-private-dialog-time {
-        flex: 0 0 auto !important;
-        font-size: 11px !important;
-        color: rgba(255, 255, 255, 0.42) !important;
-        font-weight: 600 !important;
-      }
-
-      .klevby-private-dialog-preview {
-        min-width: 0 !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        font-size: 12px !important;
-        color: rgba(255, 255, 255, 0.52) !important;
-        font-weight: 500 !important;
-      }
-
-      .klevby-private-unread-dot {
-        min-width: 18px !important;
-        height: 18px !important;
-        padding: 0 6px !important;
-        border-radius: 999px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background: #d84d4d !important;
-        color: #ffffff !important;
-        font-size: 10px !important;
-        line-height: 18px !important;
-        font-weight: 800 !important;
-        flex: 0 0 auto !important;
-      }
-
-      .klevby-private-status {
-        width: 8px !important;
-        height: 8px !important;
-        border-radius: 50% !important;
-        background: rgba(255, 255, 255, 0.18) !important;
-      }
-
-      .klevby-private-status.online {
-        background: #49d69b !important;
-      }
-
-      .klevby-private-list-screen #chat-input-area {
-        display: none !important;
-      }
-
-      @media (max-width: 900px) {
-        #chat-desktop-btn.klevby-chat-launcher {
-          display: none !important;
-        }
-      }
-
-      @media (max-width: 768px) {
-        html.klevby-chat-lock,
-        body.klevby-chat-lock {
-          overflow: hidden !important;
-          overscroll-behavior: none !important;
-        }
-
-        body.klevby-chat-lock .mobile-tabbar,
-        body.klevby-chat-lock #homeFloatBtn {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
-        }
-
-        #klevby-chat-modal {
-          align-items: stretch !important;
-          justify-content: stretch !important;
-          padding: 0 !important;
-          left: var(--klevby-vleft, 0px) !important;
-          top: var(--klevby-vtop, 0px) !important;
-          right: auto !important;
-          bottom: auto !important;
-          width: var(--klevby-vvw, 100vw) !important;
-          height: var(--klevby-vvh, 100dvh) !important;
-          min-height: var(--klevby-vvh, 100dvh) !important;
-          max-height: var(--klevby-vvh, 100dvh) !important;
-          background: #050b0d !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          overflow: hidden !important;
-        }
-
-        #klevby-chat-modal.open {
-          display: flex !important;
-        }
-
-        .klevby-chat-window {
-          width: 100% !important;
-          height: var(--klevby-vvh, 100dvh) !important;
-          min-height: var(--klevby-vvh, 100dvh) !important;
-          max-height: var(--klevby-vvh, 100dvh) !important;
-          border-radius: 0 !important;
-          border: 0 !important;
-          background: #050b0d !important;
-          box-shadow: none !important;
-          grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
-          overflow: hidden !important;
-        }
-
-        .klevby-chat-header {
-          padding-top: max(10px, env(safe-area-inset-top)) !important;
-          background: #0e1d20 !important;
-          z-index: 3 !important;
-        }
-
-        .klevby-chat-tabs {
-          background: #0a1417 !important;
-          z-index: 2 !important;
-        }
-
-        .klevby-chat-messages {
-          min-height: 0 !important;
-          height: auto !important;
-          background: #050b0d !important;
-          overflow-y: auto !important;
-          overscroll-behavior: contain !important;
-          padding-bottom: 18px !important;
-        }
-
-        .klevby-reply-preview {
-          background: #0e1d20 !important;
-          z-index: 3 !important;
-        }
-
-        .klevby-chat-inputbar {
-          padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
-          background: #0e1d20 !important;
-          z-index: 4 !important;
-        }
-
-        .chat-message-bubble {
-          max-width: 82% !important;
-        }
-      }
-    `;
-
-    document.head.appendChild(style);
+    document.documentElement.classList.add("klevby-chat-css-ready");
   }
 })();
