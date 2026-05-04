@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v6-push-2026-05-03";
+const CACHE_NAME = "klevby-cache-v7-chat-clean-2026-05-04";
 
 const APP_FILES = [
   "/",
@@ -8,6 +8,14 @@ const APP_FILES = [
   "/assets/css/ponds.css",
   "/assets/css/chat-style.css",
 
+  "/assets/js/config.js",
+  "/assets/js/pwa-manifest.js",
+  "/assets/js/pwa.js",
+  "/assets/js/weather.js",
+  "/assets/js/auth.js",
+  "/assets/js/posts.js",
+  "/assets/js/ui.js",
+  "/assets/js/app.js",
   "/assets/js/chat.js",
   "/assets/js/call.js",
   "/assets/js/map-logic.js",
@@ -23,7 +31,10 @@ self.addEventListener("install", (event) => {
 
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_FILES).catch(() => null);
+      return cache.addAll(APP_FILES).catch((error) => {
+        console.warn("Klevby SW: часть файлов не добавилась в кэш:", error);
+        return null;
+      });
     })
   );
 });
