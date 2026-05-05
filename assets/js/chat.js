@@ -63,17 +63,8 @@
     let chatNavigationToken = 0;
     let chatLoading = false;
 
-    let userRefreshPromise = null;
-    let lastUserRefreshAt = 0;
-    let profileSavePromise = null;
-    let lastProfileSaveAt = 0;
-
-    const CHAT_AUTH_REFRESH_THROTTLE_MS = 3000;
-    const PROFILE_SAVE_THROTTLE_MS = 7000;
-
     const onlineUsers = new Map();
     const userProfiles = new Map();
-    const guestNameKey = "klevby_chat_guest_name";
 
     const chatHTML = `
       <div id="chat-desktop-btn" class="klevby-chat-launcher" title="Открыть чат">💬</div>
@@ -167,6 +158,7 @@
     const contextReplyBtn = document.getElementById("contextReplyBtn");
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
+    initChatUserBridge();
     initChatRenderBridge();
     initChatPushBridge();
     initChatPublicBridge();
@@ -236,6 +228,28 @@
         setChatTabsLoading(false);
       }
     });
+
+    function getChatUserApi() {
+      return window.KlevbyChatUser || null;
+    }
+
+    function initChatUserBridge() {
+      const api = getChatUserApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-user.js не подключён.");
+        return;
+      }
+
+      api.init({
+        getMainSupabaseClient,
+        getCurrentUser: () => currentChatUser,
+        setCurrentUser: (user) => {
+          currentChatUser = user || null;
+        },
+        userProfiles
+      });
+    }
 
     function getChatRenderApi() {
       return window.KlevbyChatRender || null;
@@ -713,6 +727,12 @@
     }
 
     function getUserFromMainSite() {
+      const api = getChatUserApi();
+
+      if (api && typeof api.getUserFromMainSite === "function") {
+        return api.getUserFromMainSite();
+      }
+
       const fromGetter =
         typeof window.klevbyGetCurrentUser === "function"
           ? window.klevbyGetCurrentUser()
@@ -728,6 +748,13 @@
     }
 
     function syncGlobalChatUser() {
+      const api = getChatUserApi();
+
+      if (api && typeof api.syncGlobalChatUser === "function") {
+        api.syncGlobalChatUser();
+        return;
+      }
+
       if (!currentChatUser || !currentChatUser.id) return;
 
       window.klevbyCurrentUser = currentChatUser;
@@ -736,17 +763,35 @@
     }
 
     function isAuthLockError(error) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.isAuthLockError === "function") {
+        return api.isAuthLockError(error);
+      }
+
       const message = String(error?.message || error || "").toLowerCase();
       return message.includes("lock") && message.includes("auth-token");
     }
 
     function isValidSupabaseUuid(value) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.isValidSupabaseUuid === "function") {
+        return api.isValidSupabaseUuid(value);
+      }
+
       const id = String(value || "").trim();
 
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
     }
 
     function getValidProfileIds(ids = []) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.getValidProfileIds === "function") {
+        return api.getValidProfileIds(ids);
+      }
+
       return [...new Set(
         (ids || [])
           .map((id) => String(id || "").trim())
@@ -755,17 +800,29 @@
     }
 
     function getGuestName() {
-      let name = localStorage.getItem(guestNameKey);
+      const api = getChatUserApi();
+
+      if (api && typeof api.getGuestName === "function") {
+        return api.getGuestName();
+      }
+
+      let name = localStorage.getItem("klevby_chat_guest_name");
 
       if (!name) {
         name = "Рыбак-" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem(guestNameKey, name);
+        localStorage.setItem("klevby_chat_guest_name", name);
       }
 
       return name;
     }
 
     function cleanDisplayName(value) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.cleanDisplayName === "function") {
+        return api.cleanDisplayName(value);
+      }
+
       let name = String(value || "").trim();
 
       if (!name) return "";
@@ -783,6 +840,12 @@
     }
 
     function getMetadataName(user = currentChatUser) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.getMetadataName === "function") {
+        return api.getMetadataName(user);
+      }
+
       const meta = user?.user_metadata || {};
 
       return cleanDisplayName(
@@ -796,79 +859,29 @@
     }
 
     async function refreshCurrentUser(options = {}) {
-      const force = Boolean(options.force);
-      const now = Date.now();
-      const mainUser = getUserFromMainSite();
+      const api = getChatUserApi();
 
-      if (mainUser && mainUser.id) {
-        currentChatUser = mainUser;
-        lastUserRefreshAt = now;
+      if (api && typeof api.refreshCurrentUser === "function") {
+        const user = await api.refreshCurrentUser(options);
+        currentChatUser = user || null;
         return currentChatUser;
       }
 
-      if (!force && currentChatUser && currentChatUser.id && now - lastUserRefreshAt < CHAT_AUTH_REFRESH_THROTTLE_MS) {
-        return currentChatUser;
-      }
-
-      if (!force && userRefreshPromise) {
-        return userRefreshPromise;
-      }
-
-      const mainClient = getMainSupabaseClient();
-
-      if (!mainClient?.auth?.getUser) {
-        currentChatUser = getUserFromMainSite() || currentChatUser || null;
-        return currentChatUser;
-      }
-
-      lastUserRefreshAt = now;
-
-      userRefreshPromise = (async () => {
-        try {
-          const { data, error } = await mainClient.auth.getUser();
-
-          if (error) {
-            if (!isAuthLockError(error)) {
-              console.warn("Не удалось получить пользователя из основного клиента:", error);
-            }
-
-            currentChatUser = getUserFromMainSite() || currentChatUser || null;
-            return currentChatUser;
-          }
-
-          if (data?.user) {
-            currentChatUser = data.user;
-            syncGlobalChatUser();
-            return currentChatUser;
-          }
-        } catch (error) {
-          if (!isAuthLockError(error)) {
-            console.warn("Не удалось получить пользователя из основного клиента:", error);
-          }
-        } finally {
-          userRefreshPromise = null;
-        }
-
-        currentChatUser = getUserFromMainSite() || currentChatUser || null;
-        return currentChatUser;
-      })();
-
-      return userRefreshPromise;
+      currentChatUser = getUserFromMainSite() || currentChatUser || null;
+      return currentChatUser;
     }
 
     function getCurrentChatName() {
+      const api = getChatUserApi();
+
+      if (api && typeof api.getCurrentChatName === "function") {
+        return api.getCurrentChatName();
+      }
+
       const nickname = getMetadataName(currentChatUser);
 
       if (nickname) {
         return nickname;
-      }
-
-      const savedName =
-        cleanDisplayName(localStorage.getItem("klevby_chat_username")) ||
-        cleanDisplayName(localStorage.getItem("klevby_author_name"));
-
-      if (savedName) {
-        return savedName;
       }
 
       if (currentChatUser?.email) {
@@ -879,99 +892,33 @@
     }
 
     async function ensureCurrentUserProfile(options = {}) {
-      const force = Boolean(options.force);
-      const soft = options.soft !== false;
-      const now = Date.now();
+      const api = getChatUserApi();
 
-      await refreshCurrentUser({ force: false });
-
-      if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) return;
-
-      const nickname = getCurrentChatName();
-
-      if (currentChatUser.id && nickname) {
-        userProfiles.set(String(currentChatUser.id), nickname);
+      if (api && typeof api.ensureCurrentUserProfile === "function") {
+        return await api.ensureCurrentUserProfile(options);
       }
-
-      if (!force && now - lastProfileSaveAt < PROFILE_SAVE_THROTTLE_MS) {
-        return;
-      }
-
-      if (!force && profileSavePromise) {
-        return profileSavePromise;
-      }
-
-      const client = getMainSupabaseClient();
-      if (!client?.from) return;
-
-      lastProfileSaveAt = now;
-
-      profileSavePromise = (async () => {
-        try {
-          const { error } = await client.from("profiles").upsert(
-            [
-              {
-                id: currentChatUser.id,
-                nickname: nickname,
-                username: nickname,
-                display_name: nickname,
-                email: currentChatUser.email || "",
-                updated_at: new Date().toISOString()
-              }
-            ],
-            { onConflict: "id" }
-          );
-
-          if (error) {
-            if (!soft) throw error;
-            console.warn("Профиль пользователя не сохранён:", error);
-          }
-        } catch (error) {
-          if (!soft) throw error;
-          console.warn("Профиль пользователя не сохранён:", error);
-        } finally {
-          profileSavePromise = null;
-        }
-      })();
-
-      return profileSavePromise;
     }
 
     async function loadProfilesByIds(ids = []) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.loadProfilesByIds === "function") {
+        return await api.loadProfilesByIds(ids);
+      }
+
       const uniqueIds = getValidProfileIds(ids);
 
       if (!uniqueIds.length) return;
-
-      try {
-        const { data, error } = await getMainSupabaseClient()
-          .from("profiles")
-          .select("id,nickname,username,display_name,email")
-          .in("id", uniqueIds);
-
-        if (error) {
-          console.warn("Профили не загружены:", error);
-          return;
-        }
-
-        (data || []).forEach((profile) => {
-          const name = cleanDisplayName(
-            profile.nickname ||
-            profile.username ||
-            profile.display_name ||
-            profile.email ||
-            ""
-          );
-
-          if (profile.id && name && isValidSupabaseUuid(profile.id)) {
-            userProfiles.set(String(profile.id), name);
-          }
-        });
-      } catch (error) {
-        console.warn("Профили не загружены:", error);
-      }
     }
 
     function rememberFallbackProfile(userId, name) {
+      const api = getChatUserApi();
+
+      if (api && typeof api.rememberFallbackProfile === "function") {
+        api.rememberFallbackProfile(userId, name);
+        return;
+      }
+
       const id = String(userId || "").trim();
       const cleanName = cleanDisplayName(name);
 
@@ -984,6 +931,12 @@
     }
 
     function getProfileName(userId, fallback = "Рыбак") {
+      const api = getChatUserApi();
+
+      if (api && typeof api.getProfileName === "function") {
+        return api.getProfileName(userId, fallback);
+      }
+
       const id = String(userId || "").trim();
 
       if (id && userProfiles.has(id)) {
