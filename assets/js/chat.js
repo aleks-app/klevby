@@ -51,10 +51,6 @@
     let activeMode = "public";
     let selectedPeer = null;
 
-    let publicSubscription = null;
-    let privateSubscription = null;
-    let presenceChannel = null;
-
     let unreadPrivateCount = 0;
     let replyTarget = null;
 
@@ -177,6 +173,7 @@
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
     initChatPushBridge();
+    initChatRealtimeBridge();
 
     refreshCurrentUser().then(async () => {
       await ensureCurrentUserProfile({ soft: true });
@@ -267,6 +264,48 @@
       });
     }
 
+    function getChatRealtimeApi() {
+      return window.KlevbyChatRealtime || null;
+    }
+
+    function initChatRealtimeBridge() {
+      const api = getChatRealtimeApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-realtime.js не подключён.");
+        return;
+      }
+
+      api.init({
+        getSupabaseClient: getMainSupabaseClient,
+        getCurrentUser: () => currentChatUser,
+        getActiveMode: () => activeMode,
+        getSelectedPeer: () => selectedPeer,
+        getMessagesContainer: () => messagesContainer,
+
+        onlineUsers,
+        userProfiles,
+
+        refreshCurrentUser,
+        ensureCurrentUserProfile,
+        getCurrentChatName,
+        getGuestName,
+        cleanDisplayName,
+        isValidSupabaseUuid,
+
+        clearMessages,
+        renderPublicMessage,
+        renderPrivateMessage,
+        loadProfilesByIds,
+        rememberFallbackProfile,
+        loadPrivatePeople,
+        markPeerAsRead,
+
+        updateSelectedPeerStatus,
+        incrementUnreadPrivateCount
+      });
+    }
+
     async function refreshPushButtonState() {
       const api = getChatPushApi();
 
@@ -303,6 +342,42 @@
       if (api && typeof api.sendPushToUser === "function") {
         return await api.sendPushToUser(receiverUserId, senderName, messageText);
       }
+    }
+
+    function setupPresence() {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.setupPresence === "function") {
+        api.setupPresence();
+      }
+    }
+
+    function setupRealtime() {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.setupRealtime === "function") {
+        api.setupRealtime();
+      }
+    }
+
+    async function cleanupRealtimeConnections() {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.cleanupRealtimeConnections === "function") {
+        await api.cleanupRealtimeConnections();
+      }
+    }
+
+    async function reconnectRealtimeConnections() {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.reconnectRealtimeConnections === "function") {
+        await api.reconnectRealtimeConnections();
+        return;
+      }
+
+      setupPresence();
+      setupRealtime();
     }
 
     function beginChatNavigation() {
@@ -1089,6 +1164,11 @@
       chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
     }
 
+    function incrementUnreadPrivateCount(amount = 1) {
+      unreadPrivateCount += Number(amount) || 1;
+      updateUnreadBadge();
+    }
+
     function updateUnreadBadge() {
       if (!privateUnreadBadge) return;
 
@@ -1100,76 +1180,6 @@
 
       privateUnreadBadge.classList.remove("hidden");
       privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
-    }
-
-    function setupPresence() {
-      try {
-        const client = getMainSupabaseClient();
-
-        if (!client?.channel) return;
-
-        if (presenceChannel) {
-          presenceChannel.track({
-            user_id: currentChatUser?.id || null,
-            name: getCurrentChatName(),
-            online_at: new Date().toISOString()
-          });
-
-          return;
-        }
-
-        presenceChannel = client.channel("klevby_presence", {
-          config: {
-            presence: {
-              key: currentChatUser?.id || getGuestName()
-            }
-          }
-        });
-
-        presenceChannel
-          .on("presence", { event: "sync" }, () => {
-            onlineUsers.clear();
-
-            const state = presenceChannel.presenceState();
-
-            Object.values(state).forEach((items) => {
-              (items || []).forEach((item) => {
-                if (item.user_id && isValidSupabaseUuid(item.user_id)) {
-                  onlineUsers.set(String(item.user_id), item);
-
-                  if (item.name) {
-                    userProfiles.set(String(item.user_id), cleanDisplayName(item.name));
-                  }
-                }
-              });
-            });
-
-            updateSelectedPeerStatus();
-
-            document.querySelectorAll(".klevby-private-dialog-item").forEach((button) => {
-              const peerId = button.dataset.peerId;
-              const dot = button.querySelector(".klevby-private-status");
-
-              if (dot) {
-                dot.classList.toggle("online", isOnline(peerId));
-              }
-            });
-          })
-          .subscribe(async (status) => {
-            if (status === "SUBSCRIBED") {
-              await refreshCurrentUser();
-              await ensureCurrentUserProfile({ soft: true });
-
-              presenceChannel.track({
-                user_id: currentChatUser?.id || null,
-                name: getCurrentChatName(),
-                online_at: new Date().toISOString()
-              });
-            }
-          });
-      } catch (error) {
-        console.warn("Klevby chat: presence не запущен:", error);
-      }
     }
 
     async function loadPublicMessages(navToken = beginChatNavigation()) {
@@ -1717,35 +1727,6 @@
       hideMessageMenu();
     }
 
-    async function cleanupRealtimeConnections() {
-      const channels = [
-        publicSubscription,
-        privateSubscription,
-        presenceChannel
-      ].filter(Boolean);
-
-      publicSubscription = null;
-      privateSubscription = null;
-      presenceChannel = null;
-      onlineUsers.clear();
-
-      await Promise.all(
-        channels.map(async (channel) => {
-          try {
-            await getMainSupabaseClient().removeChannel(channel);
-          } catch (error) {
-            console.warn("Не удалось удалить старый realtime channel:", error);
-          }
-        })
-      );
-    }
-
-    async function reconnectRealtimeConnections() {
-      await cleanupRealtimeConnections();
-      setupPresence();
-      setupRealtime();
-    }
-
     async function reloadChatAfterResume(reason = "resume") {
       const now = Date.now();
 
@@ -1844,127 +1825,6 @@
       clearReply();
       hideMessageMenu();
       unlockChatPage();
-    }
-
-    function setupRealtime() {
-      const client = getMainSupabaseClient();
-
-      if (!client?.channel) return;
-      if (publicSubscription || privateSubscription) return;
-
-      publicSubscription = client
-        .channel("klevby_public_messages")
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages" },
-          async (payload) => {
-            try {
-              if (activeMode !== "public") return;
-
-              const emptyState = messagesContainer.querySelector(".chat-empty-state");
-              if (emptyState) clearMessages();
-
-              await refreshCurrentUser();
-
-              if (payload.new?.user_id && payload.new?.user_name) {
-                rememberFallbackProfile(payload.new.user_id, payload.new.user_name);
-              }
-
-              await loadProfilesByIds([payload.new?.user_id]);
-              renderPublicMessage(payload.new);
-            } catch (error) {
-              console.warn("Realtime public message skipped:", error);
-            }
-          }
-        )
-        .on(
-          "postgres_changes",
-          { event: "DELETE", schema: "public", table: "messages" },
-          (payload) => {
-            const id = payload.old?.id;
-            if (!id) return;
-
-            const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="public"]`);
-            if (row) row.remove();
-          }
-        )
-        .subscribe();
-
-      privateSubscription = client
-        .channel("klevby_private_messages")
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "private_messages" },
-          async (payload) => {
-            try {
-              await refreshCurrentUser();
-
-              const msg = payload.new;
-              const myId = String(currentChatUser?.id || "");
-
-              if (!myId || !isValidSupabaseUuid(myId)) return;
-
-              if (msg.sender_id && msg.sender_name) {
-                rememberFallbackProfile(msg.sender_id, msg.sender_name);
-              }
-
-              await loadProfilesByIds([msg.sender_id, msg.receiver_id]);
-
-              const isForMe = String(msg.receiver_id) === myId;
-              const senderId = String(msg.sender_id || "");
-
-              if (isForMe) {
-                const alreadyInThisDialog =
-                  activeMode === "private" &&
-                  selectedPeer &&
-                  String(selectedPeer.id) === senderId;
-
-                if (!alreadyInThisDialog) {
-                  unreadPrivateCount += 1;
-                  updateUnreadBadge();
-                }
-
-                if (activeMode === "private" && !selectedPeer) {
-                  await loadPrivatePeople();
-                  return;
-                }
-              }
-
-              if (!currentChatUser || activeMode !== "private" || !selectedPeer) return;
-
-              const peerId = String(selectedPeer.id);
-
-              if (!isValidSupabaseUuid(peerId)) return;
-
-              const belongsToDialog =
-                (String(msg.sender_id) === myId && String(msg.receiver_id) === peerId) ||
-                (String(msg.sender_id) === peerId && String(msg.receiver_id) === myId);
-
-              if (!belongsToDialog) return;
-
-              markPeerAsRead(peerId);
-
-              const emptyState = messagesContainer.querySelector(".chat-empty-state");
-              if (emptyState) clearMessages();
-
-              renderPrivateMessage(msg);
-            } catch (error) {
-              console.warn("Realtime private message skipped:", error);
-            }
-          }
-        )
-        .on(
-          "postgres_changes",
-          { event: "DELETE", schema: "public", table: "private_messages" },
-          (payload) => {
-            const id = payload.old?.id;
-            if (!id) return;
-
-            const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="private"]`);
-            if (row) row.remove();
-          }
-        )
-        .subscribe();
     }
 
     document.addEventListener("visibilitychange", () => {
