@@ -54,7 +54,6 @@
     let unreadPrivateCount = 0;
     let replyTargetFallback = null;
     let contextMessageDataFallback = null;
-    let longPressTimer = null;
 
     let klevbyResumeTimer = null;
     let klevbyResumeInProgress = false;
@@ -95,7 +94,6 @@
     const replyText = shell.replyText;
 
     const messageContextMenu = shell.messageContextMenu;
-    const contextReplyBtn = shell.contextReplyBtn;
     const contextDeleteBtn = shell.contextDeleteBtn;
 
     initChatUserBridge();
@@ -105,6 +103,7 @@
     initChatPublicBridge();
     initChatPrivateBridge();
     initChatRealtimeBridge();
+    initChatEventsBridge();
 
     refreshCurrentUser().then(async () => {
       await ensureCurrentUserProfile({ soft: true });
@@ -434,6 +433,49 @@
 
         updateSelectedPeerStatus,
         incrementUnreadPrivateCount
+      });
+    }
+
+    function getChatEventsApi() {
+      return window.KlevbyChatEvents || null;
+    }
+
+    function initChatEventsBridge() {
+      const api = getChatEventsApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-events.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          modal,
+          messagesContainer,
+          input,
+          sendBtn
+        },
+
+        getChatLoading: () => chatLoading,
+
+        openChat,
+        closeChat,
+        enablePushNotifications,
+        loadPublicMessages,
+        loadPrivatePeople,
+        openPrivateDialog,
+        clearReply,
+        getContextMessageData,
+        setReplyTarget,
+        deleteMessage,
+        findMessageDataFromRow,
+        hideMessageMenu,
+        showMessageMenu,
+        send,
+        updateViewportVars,
+        scrollChatToBottom,
+        scheduleChatResume,
+        setChatTabsLoading
       });
     }
 
@@ -1411,191 +1453,6 @@
       hideMessageMenu();
       unlockChatPage();
     }
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        scheduleChatResume("visibilitychange");
-      }
-    });
-
-    window.addEventListener("pageshow", () => {
-      scheduleChatResume("pageshow");
-    });
-
-    window.addEventListener("focus", () => {
-      scheduleChatResume("focus");
-    });
-
-    window.addEventListener("online", () => {
-      scheduleChatResume("online");
-    });
-
-    document.addEventListener("click", async (event) => {
-      try {
-        if (event.target.closest("#nav-chat") || event.target.closest("#chat-desktop-btn")) {
-          event.preventDefault();
-          event.stopPropagation();
-          await openChat();
-          return;
-        }
-
-        if (event.target.closest("#klevby-push-btn")) {
-          event.preventDefault();
-          event.stopPropagation();
-          await enablePushNotifications();
-          return;
-        }
-
-        if (event.target.id === "close-chat" || event.target.closest("#close-chat")) {
-          event.preventDefault();
-          event.stopPropagation();
-          closeChat();
-          return;
-        }
-
-        if (event.target.id === "klevby-chat-modal") {
-          closeChat();
-          return;
-        }
-
-        if (
-          chatLoading &&
-          event.target.closest("#publicChatTab, #privateChatTab, #back-chat, .klevby-private-dialog-item")
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-
-        if (event.target.closest("#publicChatTab")) {
-          await loadPublicMessages();
-          return;
-        }
-
-        if (event.target.closest("#privateChatTab")) {
-          await loadPrivatePeople();
-          return;
-        }
-
-        if (event.target.closest("#back-chat")) {
-          await loadPrivatePeople();
-          return;
-        }
-
-        if (event.target.closest("#cancelReply")) {
-          clearReply();
-          return;
-        }
-
-        if (event.target.closest("#contextReplyBtn")) {
-          const data = getContextMessageData();
-
-          if (data) {
-            setReplyTarget(data);
-          }
-
-          return;
-        }
-
-        if (event.target.closest("#contextDeleteBtn")) {
-          const data = getContextMessageData();
-
-          if (data) {
-            await deleteMessage(data.type, data.id);
-          }
-
-          return;
-        }
-
-        const dialogButton = event.target.closest(".klevby-private-dialog-item");
-
-        if (dialogButton) {
-          await openPrivateDialog(dialogButton.dataset.peerId, dialogButton.dataset.peerName);
-          return;
-        }
-
-        const replyButton = event.target.closest(".reply-message-btn");
-
-        if (replyButton) {
-          const row = replyButton.closest(".chat-message-row");
-          const data = findMessageDataFromRow(row);
-
-          if (data) {
-            setReplyTarget(data);
-          }
-
-          return;
-        }
-
-        const deleteButton = event.target.closest(".delete-message-btn");
-
-        if (deleteButton) {
-          await deleteMessage(deleteButton.dataset.type, deleteButton.dataset.id);
-          return;
-        }
-
-        if (!event.target.closest(".klevby-message-menu") && !event.target.closest(".chat-message-row")) {
-          hideMessageMenu();
-        }
-      } catch (error) {
-        console.error("Klevby chat: ошибка клика:", error);
-        setChatTabsLoading(false);
-      }
-    });
-
-    messagesContainer.addEventListener("pointerdown", (event) => {
-      const row = event.target.closest(".chat-message-row");
-      if (!row) return;
-
-      clearTimeout(longPressTimer);
-
-      longPressTimer = setTimeout(() => {
-        showMessageMenu(row);
-      }, 520);
-    });
-
-    messagesContainer.addEventListener("pointerup", () => {
-      clearTimeout(longPressTimer);
-    });
-
-    messagesContainer.addEventListener("pointermove", () => {
-      clearTimeout(longPressTimer);
-    });
-
-    messagesContainer.addEventListener("contextmenu", (event) => {
-      const row = event.target.closest(".chat-message-row");
-      if (!row) return;
-
-      event.preventDefault();
-      showMessageMenu(row);
-    });
-
-    sendBtn.addEventListener("click", send);
-
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        send();
-      }
-    });
-
-    input.addEventListener("focus", () => {
-      updateViewportVars();
-
-      setTimeout(() => {
-        updateViewportVars();
-        scrollChatToBottom();
-      }, 120);
-
-      setTimeout(() => {
-        updateViewportVars();
-        scrollChatToBottom();
-      }, 350);
-    });
-
-    input.addEventListener("blur", () => {
-      setTimeout(updateViewportVars, 150);
-    });
   }
 
   function mountChatShell() {
