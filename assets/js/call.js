@@ -53,6 +53,24 @@
     return document.querySelector(selector);
   }
 
+  function isValidSupabaseUuid(value) {
+    const id = String(value || "").trim();
+
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  }
+
+  function makeUuid() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+      const random = Math.random() * 16 | 0;
+      const value = char === "x" ? random : (random & 0x3 | 0x8);
+      return value.toString(16);
+    });
+  }
+
   function removeOldTestCallButton() {
     const oldTestButton = document.getElementById("klevby-chat-call");
     if (oldTestButton) {
@@ -176,7 +194,7 @@
   }
 
   function setLastKnownPeer(peer) {
-    if (!peer || !peer.id) {
+    if (!peer || !peer.id || !isValidSupabaseUuid(peer.id)) {
       lastKnownPeer = null;
       return;
     }
@@ -197,7 +215,7 @@
 
     const savedPeer = window.klevbySelectedPeer || window.selectedPeer || lastKnownPeer || null;
 
-    if (savedPeer && savedPeer.id) {
+    if (savedPeer && savedPeer.id && isValidSupabaseUuid(savedPeer.id)) {
       return {
         id: String(savedPeer.id),
         name: cleanDisplayName(savedPeer.name) || cleanDisplayName(title?.textContent) || "Собеседник"
@@ -215,7 +233,7 @@
       cleanDisplayName(title?.textContent) ||
       "Собеседник";
 
-    if (!peerId) {
+    if (!peerId || !isValidSupabaseUuid(peerId)) {
       return null;
     }
 
@@ -233,7 +251,8 @@
       chatWindow &&
       chatWindow.classList.contains("klevby-dialog-screen") &&
       peer &&
-      peer.id
+      peer.id &&
+      isValidSupabaseUuid(peer.id)
     );
   }
 
@@ -796,11 +815,8 @@
     return String(currentUser?.id || "");
   }
 
-  function makeCallId(a, b) {
-    const left = String(a || "");
-    const right = String(b || "");
-    const random = Math.random().toString(36).slice(2, 10);
-    return `${Date.now()}_${left.slice(0, 8)}_${right.slice(0, 8)}_${random}`;
+  function makeCallId() {
+    return makeUuid();
   }
 
   async function createCallChannel(id) {
@@ -896,7 +912,7 @@
       const client = getMainSupabaseClient();
       const myId = getMyId();
 
-      if (!client || !myId) return;
+      if (!client || !myId || !isValidSupabaseUuid(myId)) return;
 
       if (personalChannel && personalChannelUserId === myId) {
         return;
@@ -927,6 +943,10 @@
         await refreshUser();
 
         if (!currentUser || String(currentUser.id) !== myId) {
+          return;
+        }
+
+        if (!payload.callId || !isValidSupabaseUuid(payload.from)) {
           return;
         }
 
@@ -961,7 +981,7 @@
         }
 
         callState = "incoming";
-        callId = payload.callId;
+        callId = String(payload.callId);
 
         activePeer = {
           id: String(payload.from),
@@ -992,6 +1012,10 @@
 
     if (!client || !userId) {
       throw new Error("Нет подключения к Supabase.");
+    }
+
+    if (!isValidSupabaseUuid(userId)) {
+      throw new Error("Неверный id собеседника для звонка.");
     }
 
     const channel = client.channel(`klevby_user_calls_${userId}`, {
@@ -1028,26 +1052,35 @@
   async function updateCallRecord(status) {
     const client = getMainSupabaseClient();
 
-    if (!client || !callId) return;
+    if (!client || !callId || !isValidSupabaseUuid(callId)) return;
 
     try {
-      await client
+      const { error } = await client
         .from("calls")
         .update({
           status,
           updated_at: new Date().toISOString()
         })
         .eq("id", callId);
-    } catch (error) {}
+
+      if (error) {
+        console.warn("Klevby calls: call record update skipped", error);
+      }
+    } catch (error) {
+      console.warn("Klevby calls: call record update failed", error);
+    }
   }
 
   async function createCallRecord(peer) {
     const client = getMainSupabaseClient();
 
     if (!client || !currentUser || !peer?.id || !callId) return;
+    if (!isValidSupabaseUuid(callId)) return;
+    if (!isValidSupabaseUuid(currentUser.id)) return;
+    if (!isValidSupabaseUuid(peer.id)) return;
 
     try {
-      await client.from("calls").insert([
+      const { error } = await client.from("calls").insert([
         {
           id: callId,
           caller_id: currentUser.id,
@@ -1059,6 +1092,10 @@
           updated_at: new Date().toISOString()
         }
       ]);
+
+      if (error) {
+        console.warn("Klevby calls: call record skipped", error);
+      }
     } catch (error) {
       console.warn("Klevby calls: call record skipped", error);
     }
@@ -1156,12 +1193,12 @@
       name: cleanDisplayName(peerFromPayload.name) || cleanDisplayName(peerFromChat?.name) || "Собеседник"
     };
 
-    if (!currentUser) {
+    if (!currentUser || !isValidSupabaseUuid(currentUser.id)) {
       showToast("Для звонка нужно войти в аккаунт.");
       return;
     }
 
-    if (!peer.id) {
+    if (!peer.id || !isValidSupabaseUuid(peer.id)) {
       showToast("Открой личную переписку с пользователем.");
       scheduleButtonUpdate();
       return;
@@ -1182,7 +1219,7 @@
       activePeer = peer;
       setLastKnownPeer(peer);
 
-      callId = makeCallId(currentUser.id, peer.id);
+      callId = makeCallId();
       callState = "calling";
 
       openOutgoingOverlay(peer.name);
@@ -1227,7 +1264,7 @@
     try {
       await refreshUser();
 
-      if (!currentUser) {
+      if (!currentUser || !isValidSupabaseUuid(currentUser.id)) {
         declineCall();
         showToast("Для звонка нужно войти.");
         return;
