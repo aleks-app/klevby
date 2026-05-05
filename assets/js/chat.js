@@ -66,97 +66,37 @@
     const onlineUsers = new Map();
     const userProfiles = new Map();
 
-    const chatHTML = `
-      <div id="chat-desktop-btn" class="klevby-chat-launcher" title="Открыть чат">💬</div>
+    const shell = mountChatShell();
 
-      <div id="klevby-chat-modal" class="hidden">
-        <div id="chat-window" class="klevby-chat-window">
-          <div id="chat-header" class="klevby-chat-header">
-            <button id="back-chat" class="klevby-chat-back hidden" type="button" aria-label="Назад">‹</button>
+    if (!shell) {
+      console.error("Klevby chat: assets/js/chat-shell.js не подключён или не запустился.");
+      return;
+    }
 
-            <div class="klevby-chat-head-main">
-              <div class="klevby-chat-avatar" id="chatAvatar">🎣</div>
-              <div class="klevby-chat-title-wrap">
-                <div class="klevby-chat-title" id="chatTitle">Чат рыбаков</div>
-                <div class="klevby-chat-subtitle" id="chatSubtitle">Общий разговор Klevby</div>
-              </div>
-            </div>
+    const modal = shell.modal;
+    const chatWindow = shell.chatWindow;
+    const messagesContainer = shell.messagesContainer;
+    const input = shell.input;
+    const sendBtn = shell.sendBtn;
 
-            <button id="klevby-push-btn" class="klevby-push-btn" type="button" aria-label="Включить уведомления" title="Включить уведомления">🔔</button>
-            <button id="close-chat" class="klevby-chat-close" type="button" aria-label="Закрыть">×</button>
-          </div>
+    const publicTab = shell.publicTab;
+    const privateTab = shell.privateTab;
+    const privatePeople = shell.privatePeople;
+    const privateUnreadBadge = shell.privateUnreadBadge;
 
-          <div class="klevby-chat-tabs" role="tablist">
-            <button id="publicChatTab" class="klevby-chat-tab active" type="button">Общий чат</button>
-            <button id="privateChatTab" class="klevby-chat-tab" type="button">
-              Личка <span id="privateUnreadBadge" class="klevby-unread-badge hidden">0</span>
-            </button>
-          </div>
+    const chatTitle = shell.chatTitle;
+    const chatSubtitle = shell.chatSubtitle;
+    const chatAvatar = shell.chatAvatar;
 
-          <div id="privateChatPeople" class="klevby-private-people hidden"></div>
+    const backBtn = shell.backBtn;
+    const pushBtn = shell.pushBtn;
+    const replyPreview = shell.replyPreview;
+    const replyAuthor = shell.replyAuthor;
+    const replyText = shell.replyText;
 
-          <div id="chat-messages" class="klevby-chat-messages"></div>
-
-          <div id="messageContextMenu" class="klevby-message-menu hidden">
-            <button id="contextReplyBtn" type="button">Ответить</button>
-            <button id="contextDeleteBtn" type="button">Удалить</button>
-          </div>
-
-          <div id="replyPreview" class="klevby-reply-preview hidden">
-            <div class="klevby-reply-line"></div>
-            <div class="klevby-reply-body">
-              <div class="klevby-reply-author" id="replyAuthor"></div>
-              <div class="klevby-reply-text" id="replyText"></div>
-            </div>
-            <button id="cancelReply" class="klevby-reply-cancel" type="button">×</button>
-          </div>
-
-          <div id="chat-input-area" class="klevby-chat-inputbar">
-            <input
-              type="text"
-              id="message-input"
-              class="klevby-chat-input"
-              placeholder="Напиши сообщение..."
-              autocomplete="off"
-            />
-            <button id="send-btn" class="klevby-chat-send" type="button">➤</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const oldModal = document.getElementById("klevby-chat-modal");
-    const oldLauncher = document.getElementById("chat-desktop-btn");
-
-    if (oldModal) oldModal.remove();
-    if (oldLauncher) oldLauncher.remove();
-
-    document.body.insertAdjacentHTML("beforeend", chatHTML);
-
-    const modal = document.getElementById("klevby-chat-modal");
-    const chatWindow = document.getElementById("chat-window");
-    const messagesContainer = document.getElementById("chat-messages");
-    const input = document.getElementById("message-input");
-    const sendBtn = document.getElementById("send-btn");
-
-    const publicTab = document.getElementById("publicChatTab");
-    const privateTab = document.getElementById("privateChatTab");
-    const privatePeople = document.getElementById("privateChatPeople");
-    const privateUnreadBadge = document.getElementById("privateUnreadBadge");
-
-    const chatTitle = document.getElementById("chatTitle");
-    const chatSubtitle = document.getElementById("chatSubtitle");
-    const chatAvatar = document.getElementById("chatAvatar");
-
-    const backBtn = document.getElementById("back-chat");
-    const pushBtn = document.getElementById("klevby-push-btn");
-    const replyPreview = document.getElementById("replyPreview");
-    const replyAuthor = document.getElementById("replyAuthor");
-    const replyText = document.getElementById("replyText");
-
-    const messageContextMenu = document.getElementById("messageContextMenu");
-    const contextReplyBtn = document.getElementById("contextReplyBtn");
-    const contextDeleteBtn = document.getElementById("contextDeleteBtn");
+    const messageContextMenu = shell.messageContextMenu;
+    const contextReplyBtn = shell.contextReplyBtn;
+    const contextDeleteBtn = shell.contextDeleteBtn;
 
     initChatUserBridge();
     initChatRenderBridge();
@@ -1656,6 +1596,16 @@
     input.addEventListener("blur", () => {
       setTimeout(updateViewportVars, 150);
     });
+  }
+
+  function mountChatShell() {
+    const api = window.KlevbyChatShell || null;
+
+    if (!api || typeof api.mount !== "function") {
+      return null;
+    }
+
+    return api.mount();
   }
 
   function getChatViewportApi() {
