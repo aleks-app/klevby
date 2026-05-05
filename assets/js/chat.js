@@ -99,6 +99,7 @@
     initChatUserBridge();
     initChatRenderBridge();
     initChatReplyBridge();
+    initChatMessageActionsBridge();
     initChatPushBridge();
     initChatPublicBridge();
     initChatPrivateBridge();
@@ -282,6 +283,35 @@
           input
         },
         hideMessageMenu
+      });
+    }
+
+    function getChatMessageActionsApi() {
+      return window.KlevbyChatMessageActions || null;
+    }
+
+    function initChatMessageActionsBridge() {
+      const api = getChatMessageActionsApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-message-actions.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          messagesContainer,
+          messageContextMenu,
+          contextDeleteBtn
+        },
+
+        getCurrentUser: () => currentChatUser,
+        refreshCurrentUser,
+        getMainSupabaseClient,
+        getCurrentChatName,
+        cleanDisplayName,
+        isValidSupabaseUuid,
+        cssEscape
       });
     }
 
@@ -1153,10 +1183,17 @@
     }
 
     function showMessageMenu(row) {
-      const api = getChatRenderApi();
+      const api = getChatMessageActionsApi();
 
       if (api && typeof api.showMessageMenu === "function") {
         api.showMessageMenu(row);
+        return;
+      }
+
+      const renderApi = getChatRenderApi();
+
+      if (renderApi && typeof renderApi.showMessageMenu === "function") {
+        renderApi.showMessageMenu(row);
         return;
       }
 
@@ -1187,10 +1224,17 @@
     }
 
     function hideMessageMenu() {
-      const api = getChatRenderApi();
+      const api = getChatMessageActionsApi();
 
       if (api && typeof api.hideMessageMenu === "function") {
         api.hideMessageMenu();
+        return;
+      }
+
+      const renderApi = getChatRenderApi();
+
+      if (renderApi && typeof renderApi.hideMessageMenu === "function") {
+        renderApi.hideMessageMenu();
         return;
       }
 
@@ -1201,10 +1245,16 @@
     }
 
     function getContextMessageData() {
-      const api = getChatRenderApi();
+      const api = getChatMessageActionsApi();
 
       if (api && typeof api.getContextMessageData === "function") {
         return api.getContextMessageData();
+      }
+
+      const renderApi = getChatRenderApi();
+
+      if (renderApi && typeof renderApi.getContextMessageData === "function") {
+        return renderApi.getContextMessageData();
       }
 
       return contextMessageDataFallback;
@@ -1307,6 +1357,12 @@
     }
 
     async function deleteMessage(type, id) {
+      const api = getChatMessageActionsApi();
+
+      if (api && typeof api.deleteMessage === "function") {
+        return await api.deleteMessage(type, id);
+      }
+
       if (!id) return;
 
       if (!confirm("Удалить сообщение?")) return;
