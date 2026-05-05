@@ -173,6 +173,7 @@
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
     initChatPushBridge();
+    initChatPrivateBridge();
     initChatRealtimeBridge();
 
     refreshCurrentUser().then(async () => {
@@ -261,6 +262,77 @@
         getSupabaseClient: getMainSupabaseClient,
         cleanDisplayName,
         isValidSupabaseUuid
+      });
+    }
+
+    function getChatPrivateApi() {
+      return window.KlevbyChatPrivate || null;
+    }
+
+    function initChatPrivateBridge() {
+      const api = getChatPrivateApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-private.js не подключён.");
+        return;
+      }
+
+      api.init({
+        getMainSupabaseClient,
+        getCurrentUser: () => currentChatUser,
+        getSelectedPeer: () => selectedPeer,
+        getUnreadPrivateCount: () => unreadPrivateCount,
+        setActiveMode: (mode) => {
+          activeMode = mode;
+        },
+        setSelectedPeer: (peer) => {
+          selectedPeer = peer;
+        },
+        setUnreadPrivateCount: (value) => {
+          unreadPrivateCount = Math.max(0, Number(value) || 0);
+        },
+
+        elements: {
+          chatWindow,
+          messagesContainer,
+          input,
+          sendBtn,
+          publicTab,
+          privateTab,
+          privatePeople,
+          backBtn,
+          chatAvatar,
+          chatTitle,
+          chatSubtitle
+        },
+
+        beginChatNavigation,
+        isStaleNavigation,
+        finishChatNavigation,
+        refreshCurrentUser,
+        ensureCurrentUserProfile,
+        getCurrentChatName,
+        cleanDisplayName,
+        isValidSupabaseUuid,
+        getProfileName,
+        rememberFallbackProfile,
+        loadProfilesByIds,
+        clearMessages,
+        showEmptyState,
+        clearReply,
+        renderPrivateMessage,
+        renderMessageList,
+        parseReplyContent,
+        getTimestamp,
+        getMessageTime,
+        getInitials,
+        escapeHtml,
+        isOnline,
+        getUserStatusText,
+        updateUnreadBadge,
+        syncSelectedPeerForCalls,
+        buildMessageContent,
+        sendPushToUser
       });
     }
 
@@ -378,6 +450,62 @@
 
       setupPresence();
       setupRealtime();
+    }
+
+    async function loadPrivatePeople(navToken = beginChatNavigation()) {
+      const api = getChatPrivateApi();
+
+      if (api && typeof api.loadPrivatePeople === "function") {
+        return await api.loadPrivatePeople(navToken);
+      }
+
+      try {
+        showEmptyState("Личные сообщения сейчас не подключены. Проверь assets/js/chat-private.js.");
+      } finally {
+        finishChatNavigation(navToken);
+      }
+    }
+
+    async function openPrivateDialog(peerId, peerName, navToken = beginChatNavigation()) {
+      const api = getChatPrivateApi();
+
+      if (api && typeof api.openPrivateDialog === "function") {
+        return await api.openPrivateDialog(peerId, peerName, navToken);
+      }
+
+      try {
+        showEmptyState("Личный диалог сейчас не подключён. Проверь assets/js/chat-private.js.");
+      } finally {
+        finishChatNavigation(navToken);
+      }
+    }
+
+    async function sendPrivateMessage() {
+      const api = getChatPrivateApi();
+
+      if (api && typeof api.sendPrivateMessage === "function") {
+        return await api.sendPrivateMessage();
+      }
+
+      alert("Личные сообщения сейчас не подключены. Проверь assets/js/chat-private.js.");
+    }
+
+    function markPeerAsRead(peerId) {
+      const api = getChatPrivateApi();
+
+      if (api && typeof api.markPeerAsRead === "function") {
+        api.markPeerAsRead(peerId);
+        return;
+      }
+
+      if (!isValidSupabaseUuid(peerId)) return;
+
+      try {
+        const myId = currentChatUser?.id || "guest";
+        localStorage.setItem(`klevby_private_read_${myId}_${peerId}`, String(Date.now()));
+      } catch (error) {
+        console.warn("Klevby chat: не удалось сохранить статус прочтения:", error);
+      }
     }
 
     function beginChatNavigation() {
@@ -737,20 +865,6 @@
       }
 
       return cleanDisplayName(fallback) || "Рыбак";
-    }
-
-    function getReadStorageKey(peerId) {
-      const myId = currentChatUser?.id || "guest";
-      return `klevby_private_read_${myId}_${peerId}`;
-    }
-
-    function getPeerReadTime(peerId) {
-      return Number(localStorage.getItem(getReadStorageKey(peerId)) || "0");
-    }
-
-    function markPeerAsRead(peerId) {
-      if (!isValidSupabaseUuid(peerId)) return;
-      localStorage.setItem(getReadStorageKey(peerId), String(Date.now()));
     }
 
     function escapeHtml(text) {
@@ -1247,338 +1361,6 @@
       }
     }
 
-    async function loadPrivatePeople(navToken = beginChatNavigation()) {
-      try {
-        await refreshCurrentUser();
-
-        if (isStaleNavigation(navToken)) return;
-
-        await ensureCurrentUserProfile({ soft: true });
-
-        if (isStaleNavigation(navToken)) return;
-
-        activeMode = "private";
-        selectedPeer = null;
-        clearReply();
-
-        chatWindow.classList.remove("klevby-dialog-screen");
-        chatWindow.classList.add("klevby-private-list-screen");
-
-        publicTab.classList.remove("active");
-        privateTab.classList.add("active");
-        privatePeople.classList.add("hidden");
-        backBtn.classList.add("hidden");
-
-        chatAvatar.textContent = "✉";
-        chatTitle.textContent = "Личные сообщения";
-        chatSubtitle.textContent = currentChatUser ? "Выбери диалог" : "Для лички нужен вход";
-        input.placeholder = "Выбери диалог...";
-        input.disabled = true;
-        sendBtn.disabled = true;
-
-        syncSelectedPeerForCalls();
-        clearMessages();
-
-        if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
-          showEmptyState("Чтобы пользоваться личными сообщениями, войди или зарегистрируйся на сайте.");
-          return;
-        }
-
-        const myId = String(currentChatUser.id);
-        const peersMap = new Map();
-
-        function addPeer(id, name, message = null) {
-          const peerId = String(id || "").trim();
-
-          if (!peerId) return;
-          if (!isValidSupabaseUuid(peerId)) return;
-          if (peerId === myId) return;
-
-          const peerName = getProfileName(peerId, name || "Рыбак");
-
-          if (!peersMap.has(peerId)) {
-            peersMap.set(peerId, {
-              id: peerId,
-              name: peerName,
-              lastMessage: "",
-              lastTime: "",
-              lastTimeValue: 0,
-              unreadCount: 0
-            });
-          }
-
-          const peer = peersMap.get(peerId);
-          peer.name = getProfileName(peerId, peer.name || peerName);
-
-          if (message) {
-            const messageTimeValue = getTimestamp(message.created_at);
-            const isIncoming = String(message.receiver_id || "") === myId && String(message.sender_id || "") === peerId;
-            const readTime = getPeerReadTime(peerId);
-
-            if (messageTimeValue >= peer.lastTimeValue) {
-              peer.lastMessage = message.content || "";
-              peer.lastTime = getMessageTime(message.created_at);
-              peer.lastTimeValue = messageTimeValue;
-            }
-
-            if (isIncoming && messageTimeValue > readTime) {
-              peer.unreadCount += 1;
-            }
-          }
-        }
-
-        try {
-          const { data: privateUsers, error: privateUsersError } = await getMainSupabaseClient()
-            .from("private_messages")
-            .select("sender_id,receiver_id,sender_name,content,created_at")
-            .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
-            .order("created_at", { ascending: false });
-
-          if (isStaleNavigation(navToken)) return;
-
-          if (privateUsersError) {
-            console.warn("Не удалось загрузить пользователей из лички:", privateUsersError);
-          }
-
-          (privateUsers || []).forEach((item) => {
-            if (item.sender_id && item.sender_name) {
-              rememberFallbackProfile(item.sender_id, item.sender_name);
-            }
-          });
-
-          await loadProfilesByIds(
-            (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
-          );
-
-          if (isStaleNavigation(navToken)) return;
-
-          (privateUsers || []).forEach((item) => {
-            const senderId = String(item.sender_id || "");
-            const receiverId = String(item.receiver_id || "");
-            const peerId = senderId === myId ? receiverId : senderId;
-            const peerName = senderId === myId
-              ? getProfileName(receiverId, "Рыбак")
-              : getProfileName(senderId, item.sender_name || "Рыбак");
-
-            addPeer(peerId, peerName, item);
-          });
-        } catch (error) {
-          if (isStaleNavigation(navToken)) return;
-          console.warn("Не удалось загрузить пользователей из private_messages:", error);
-        }
-
-        try {
-          const { data: publicUsers } = await getMainSupabaseClient()
-            .from("messages")
-            .select("user_id,user_name")
-            .not("user_id", "is", null);
-
-          if (isStaleNavigation(navToken)) return;
-
-          (publicUsers || []).forEach((item) => {
-            rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
-          });
-
-          await loadProfilesByIds((publicUsers || []).map((item) => item.user_id));
-
-          if (isStaleNavigation(navToken)) return;
-
-          (publicUsers || []).forEach((item) => {
-            addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
-          });
-        } catch (error) {
-          if (isStaleNavigation(navToken)) return;
-          console.warn("Не удалось загрузить пользователей из общего чата:", error);
-        }
-
-        try {
-          const { data: postUsers } = await getMainSupabaseClient()
-            .from("posts")
-            .select("owner_id,name")
-            .not("owner_id", "is", null);
-
-          if (isStaleNavigation(navToken)) return;
-
-          (postUsers || []).forEach((item) => {
-            rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
-          });
-
-          await loadProfilesByIds((postUsers || []).map((item) => item.owner_id));
-
-          if (isStaleNavigation(navToken)) return;
-
-          (postUsers || []).forEach((item) => {
-            addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
-          });
-        } catch (error) {
-          if (isStaleNavigation(navToken)) return;
-          console.warn("Не удалось загрузить пользователей из объявлений:", error);
-        }
-
-        if (isStaleNavigation(navToken)) return;
-
-        const peers = Array.from(peersMap.values()).map((peer) => ({
-          ...peer,
-          name: getProfileName(peer.id, peer.name)
-        })).sort((a, b) => {
-          if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
-          if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
-          return b.lastTimeValue - a.lastTimeValue;
-        });
-
-        unreadPrivateCount = peers.reduce((sum, peer) => sum + peer.unreadCount, 0);
-        updateUnreadBadge();
-
-        if (!peers.length) {
-          showEmptyState("Пока нет собеседников. Пользователь должен быть автором объявления или написать в общий чат.");
-          return;
-        }
-
-        const list = document.createElement("div");
-        list.className = "klevby-private-dialog-list";
-
-        list.innerHTML = peers.map(peer => {
-          const preview = peer.lastMessage
-            ? parseReplyContent(peer.lastMessage).mainText
-            : "Нажми, чтобы открыть переписку";
-
-          return `
-            <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
-              <span class="klevby-private-dialog-avatar">${escapeHtml(getInitials(peer.name))}</span>
-
-              <span class="klevby-private-dialog-main">
-                <span class="klevby-private-dialog-top">
-                  <span class="klevby-private-dialog-name">${escapeHtml(peer.name)}</span>
-                  <span class="klevby-private-dialog-time">${escapeHtml(peer.lastTime || "")}</span>
-                </span>
-
-                <span class="klevby-private-dialog-bottom">
-                  <span class="klevby-private-dialog-preview">${escapeHtml(preview)}</span>
-                  ${peer.unreadCount > 0 ? `<span class="klevby-private-unread-dot">${escapeHtml(peer.unreadCount)}</span>` : ""}
-                </span>
-              </span>
-
-              <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
-            </button>
-          `;
-        }).join("");
-
-        clearMessages();
-        messagesContainer.appendChild(list);
-      } catch (error) {
-        if (!isStaleNavigation(navToken)) {
-          console.error("Ошибка загрузки личных сообщений:", error);
-          showEmptyState("Не удалось загрузить личные сообщения. Проверь Console.");
-        }
-      } finally {
-        finishChatNavigation(navToken);
-      }
-    }
-
-    async function openPrivateDialog(peerId, peerName, navToken = beginChatNavigation()) {
-      try {
-        const safePeerId = String(peerId || "").trim();
-
-        await refreshCurrentUser();
-
-        if (isStaleNavigation(navToken)) return;
-
-        await ensureCurrentUserProfile({ soft: true });
-
-        if (isStaleNavigation(navToken)) return;
-
-        if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
-          showEmptyState("Для личных сообщений нужно войти.");
-          return;
-        }
-
-        if (!isValidSupabaseUuid(safePeerId)) {
-          console.warn("Klevby chat: неверный peerId для лички:", safePeerId);
-          showEmptyState("Этот диалог открыть нельзя: у пользователя повреждён id. Создай новый профиль или проверь owner_id в Supabase.");
-          return;
-        }
-
-        await loadProfilesByIds([safePeerId]);
-
-        if (isStaleNavigation(navToken)) return;
-
-        selectedPeer = {
-          id: safePeerId,
-          name: getProfileName(safePeerId, peerName || "Рыбак")
-        };
-
-        activeMode = "private";
-
-        chatWindow.classList.add("klevby-dialog-screen");
-        chatWindow.classList.remove("klevby-private-list-screen");
-
-        clearReply();
-
-        chatAvatar.textContent = getInitials(selectedPeer.name);
-        chatTitle.textContent = selectedPeer.name;
-        chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
-        input.placeholder = "Напиши личное сообщение...";
-        input.disabled = false;
-        sendBtn.disabled = false;
-
-        backBtn.classList.remove("hidden");
-
-        syncSelectedPeerForCalls();
-        markPeerAsRead(safePeerId);
-
-        clearMessages();
-
-        const { data, error } = await getMainSupabaseClient()
-          .from("private_messages")
-          .select("*")
-          .or(`and(sender_id.eq.${currentChatUser.id},receiver_id.eq.${safePeerId}),and(sender_id.eq.${safePeerId},receiver_id.eq.${currentChatUser.id})`)
-          .order("created_at", { ascending: true });
-
-        if (isStaleNavigation(navToken)) return;
-
-        if (error) {
-          console.error("Ошибка загрузки лички:", error);
-          showEmptyState("Не удалось загрузить личку. Проверь private_messages и RLS.");
-          return;
-        }
-
-        (data || []).forEach((message) => {
-          if (message.sender_id && message.sender_name) {
-            rememberFallbackProfile(message.sender_id, message.sender_name);
-          }
-        });
-
-        await loadProfilesByIds(
-          (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
-        );
-
-        if (isStaleNavigation(navToken)) return;
-
-        selectedPeer.name = getProfileName(safePeerId, selectedPeer.name);
-        chatAvatar.textContent = getInitials(selectedPeer.name);
-        chatTitle.textContent = selectedPeer.name;
-
-        syncSelectedPeerForCalls();
-
-        unreadPrivateCount = Math.max(0, unreadPrivateCount - 1);
-        updateUnreadBadge();
-
-        if (!data || !data.length) {
-          showEmptyState("Личных сообщений пока нет. Напиши первым.");
-          return;
-        }
-
-        renderMessageList(data, renderPrivateMessage);
-      } catch (error) {
-        if (!isStaleNavigation(navToken)) {
-          console.error("Ошибка открытия личного диалога:", error);
-          showEmptyState("Не удалось открыть личный диалог. Проверь Console.");
-        }
-      } finally {
-        finishChatNavigation(navToken);
-      }
-    }
-
     async function sendPublicMessage() {
       const rawVal = input.value.trim();
       if (!rawVal) return;
@@ -1618,54 +1400,6 @@
         setTimeout(() => {
           sentLocalMessages.delete(`${userName}__${content}`);
         }, 30000);
-      } finally {
-        sendBtn.disabled = false;
-      }
-    }
-
-    async function sendPrivateMessage() {
-      const rawVal = input.value.trim();
-      if (!rawVal) return;
-
-      try {
-        await refreshCurrentUser();
-        await ensureCurrentUserProfile({ soft: true });
-
-        if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
-          alert("Для личных сообщений нужно войти.");
-          return;
-        }
-
-        if (!selectedPeer || !isValidSupabaseUuid(selectedPeer.id)) {
-          alert("Сначала выбери собеседника.");
-          return;
-        }
-
-        sendBtn.disabled = true;
-
-        const senderName = getCurrentChatName();
-        const messageContent = buildMessageContent(rawVal);
-
-        const payload = {
-          sender_id: currentChatUser.id,
-          receiver_id: selectedPeer.id,
-          sender_name: senderName,
-          content: messageContent
-        };
-
-        const { error } = await getMainSupabaseClient().from("private_messages").insert([payload]);
-
-        if (error) {
-          console.error("Ошибка отправки личного сообщения:", error);
-          alert("Не получилось отправить личное сообщение. Проверь private_messages и RLS.");
-          return;
-        }
-
-        await sendPushToUser(selectedPeer.id, senderName, rawVal);
-
-        input.value = "";
-        clearReply();
-        markPeerAsRead(selectedPeer.id);
       } finally {
         sendBtn.disabled = false;
       }
