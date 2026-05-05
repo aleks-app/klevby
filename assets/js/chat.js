@@ -52,7 +52,7 @@
     let selectedPeer = null;
 
     let unreadPrivateCount = 0;
-    let replyTarget = null;
+    let replyTargetFallback = null;
     let contextMessageDataFallback = null;
     let longPressTimer = null;
 
@@ -160,6 +160,7 @@
 
     initChatUserBridge();
     initChatRenderBridge();
+    initChatReplyBridge();
     initChatPushBridge();
     initChatPublicBridge();
     initChatPrivateBridge();
@@ -276,6 +277,29 @@
         rememberFallbackProfile,
         isMyPublicMessage,
         scrollChatToBottom
+      });
+    }
+
+    function getChatReplyApi() {
+      return window.KlevbyChatReply || null;
+    }
+
+    function initChatReplyBridge() {
+      const api = getChatReplyApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-reply.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          replyPreview,
+          replyAuthor,
+          replyText,
+          input
+        },
+        hideMessageMenu
       });
     }
 
@@ -1205,20 +1229,34 @@
     }
 
     function clearReply() {
-      replyTarget = null;
+      const api = getChatReplyApi();
+
+      if (api && typeof api.clearReply === "function") {
+        api.clearReply();
+        return;
+      }
+
+      replyTargetFallback = null;
       replyPreview.classList.add("hidden");
       replyAuthor.textContent = "";
       replyText.textContent = "";
     }
 
     function setReplyTarget(messageData) {
-      replyTarget = {
+      const api = getChatReplyApi();
+
+      if (api && typeof api.setReplyTarget === "function") {
+        api.setReplyTarget(messageData);
+        return;
+      }
+
+      replyTargetFallback = {
         author: messageData.isMine ? "Вы" : messageData.author,
         text: messageData.content || ""
       };
 
-      replyAuthor.textContent = "Ответ: " + replyTarget.author;
-      replyText.textContent = replyTarget.text;
+      replyAuthor.textContent = "Ответ: " + replyTargetFallback.author;
+      replyText.textContent = replyTargetFallback.text;
 
       replyPreview.classList.remove("hidden");
       hideMessageMenu();
@@ -1229,14 +1267,20 @@
     }
 
     function buildMessageContent(value) {
-      if (!replyTarget) return value;
+      const api = getChatReplyApi();
 
-      const quoted = String(replyTarget.text || "")
+      if (api && typeof api.buildMessageContent === "function") {
+        return api.buildMessageContent(value);
+      }
+
+      if (!replyTargetFallback) return value;
+
+      const quoted = String(replyTargetFallback.text || "")
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 120);
 
-      return `↩ Ответ ${replyTarget.author}: ${quoted}\n${value}`;
+      return `↩ Ответ ${replyTargetFallback.author}: ${quoted}\n${value}`;
     }
 
     function isOnline(userId) {
