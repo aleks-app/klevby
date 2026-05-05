@@ -1,7 +1,8 @@
 (function () {
-  if (window.__klevbyCallLoadedV4) return;
-  window.__klevbyCallLoadedV4 = true;
+  if (window.__klevbyCallLoadedV5) return;
+  window.__klevbyCallLoadedV5 = true;
 
+  window.__klevbyCallLoadedV4 = true;
   window.__klevbyCallLoadedV3 = true;
 
   const CALL_TIMEOUT_MS = 45000;
@@ -300,18 +301,21 @@
 
     setTimeout(() => {
       if (toast.parentNode) toast.remove();
-    }, 1800);
+    }, 2200);
   }
 
   function injectStyles() {
-    const old = $("#klevby-call-styles-v4");
+    const old = $("#klevby-call-styles-v5");
     if (old) old.remove();
+
+    const oldV4 = $("#klevby-call-styles-v4");
+    if (oldV4) oldV4.remove();
 
     const oldV3 = $("#klevby-call-styles-v3");
     if (oldV3) oldV3.remove();
 
     const style = document.createElement("style");
-    style.id = "klevby-call-styles-v4";
+    style.id = "klevby-call-styles-v5";
 
     style.textContent = `
       #klevby-chat-call {
@@ -488,7 +492,34 @@
       }
 
       .klevby-remote-audio {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        left: -9999px !important;
+        top: auto !important;
+        opacity: 0.01 !important;
+        pointer-events: none !important;
+      }
+
+      #klevbyEnableAudioBtn {
+        margin-top: 22px !important;
+        min-height: 44px !important;
+        padding: 10px 16px !important;
+        border: 1px solid rgba(255,255,255,0.14) !important;
+        border-radius: 999px !important;
+        background: rgba(87,230,178,0.18) !important;
+        color: #d9ffed !important;
+        font-family: Montserrat, system-ui, sans-serif !important;
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        cursor: pointer !important;
         display: none !important;
+      }
+
+      #klevbyEnableAudioBtn.visible {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
       }
 
       #klevbyCallToast {
@@ -657,6 +688,101 @@
     if (status) status.textContent = text;
   }
 
+  function showEnableAudioButton() {
+    const btn = $("#klevbyEnableAudioBtn");
+    if (btn) {
+      btn.classList.add("visible");
+    }
+  }
+
+  function hideEnableAudioButton() {
+    const btn = $("#klevbyEnableAudioBtn");
+    if (btn) {
+      btn.classList.remove("visible");
+    }
+  }
+
+  async function playRemoteAudio() {
+    const audio = $("#klevbyRemoteAudio");
+
+    if (!audio || !remoteStream) return;
+
+    try {
+      audio.srcObject = remoteStream;
+      audio.autoplay = true;
+      audio.playsInline = true;
+      audio.muted = false;
+      audio.volume = 1;
+
+      const tracks = remoteStream.getAudioTracks();
+      console.log("Klevby calls: remote audio tracks", tracks.map((track) => ({
+        id: track.id,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState
+      })));
+
+      await audio.play();
+      hideEnableAudioButton();
+      console.log("Klevby calls: remote audio playing");
+    } catch (error) {
+      console.warn("Klevby calls: remote audio play blocked", error);
+      showEnableAudioButton();
+    }
+  }
+
+  function attachRemoteStreamToAudio() {
+    const audio = $("#klevbyRemoteAudio");
+
+    if (!audio) return;
+
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.muted = false;
+    audio.volume = 1;
+
+    if (remoteStream) {
+      audio.srcObject = remoteStream;
+      playRemoteAudio();
+    }
+  }
+
+  function logLocalAudioTracks() {
+    if (!localStream) return;
+
+    const tracks = localStream.getAudioTracks();
+
+    console.log("Klevby calls: local audio tracks", tracks.map((track) => ({
+      id: track.id,
+      label: track.label,
+      enabled: track.enabled,
+      muted: track.muted,
+      readyState: track.readyState
+    })));
+  }
+
+  function enableLocalAudioTracks() {
+    if (!localStream) return;
+
+    localStream.getAudioTracks().forEach((track) => {
+      track.enabled = true;
+
+      track.onmute = () => {
+        console.warn("Klevby calls: local audio track muted", track.id);
+      };
+
+      track.onunmute = () => {
+        console.log("Klevby calls: local audio track unmuted", track.id);
+      };
+
+      track.onended = () => {
+        console.warn("Klevby calls: local audio track ended", track.id);
+      };
+    });
+
+    logLocalAudioTracks();
+  }
+
   function buildCallScreen({ name, status, incoming = false }) {
     const safeName = escapeHtml(name || "Собеседник");
 
@@ -685,6 +811,8 @@
           }
         </div>
 
+        <button id="klevbyEnableAudioBtn" type="button">🔊 Нажми для звука</button>
+
         <div class="klevby-call-muted-note">
           Для разговора разреши доступ к микрофону. Если собеседник не онлайн — вызов завершится автоматически.
         </div>
@@ -709,6 +837,7 @@
     document.body.appendChild(callOverlay);
     lockPage();
     bindCallButtons();
+    attachRemoteStreamToAudio();
     startTimer();
     startRingSound();
   }
@@ -728,6 +857,7 @@
     document.body.appendChild(callOverlay);
     lockPage();
     bindCallButtons();
+    attachRemoteStreamToAudio();
     startTimer();
   }
 
@@ -746,6 +876,7 @@
     document.body.appendChild(incomingOverlay);
     lockPage();
     bindCallButtons();
+    attachRemoteStreamToAudio();
     startRingSound();
 
     callTimeoutTimer = setTimeout(() => {
@@ -783,6 +914,7 @@
     const endButton = $("#klevbyEndCallBtn");
     const acceptButton = $("#klevbyAcceptCallBtn");
     const declineButton = $("#klevbyDeclineCallBtn");
+    const enableAudioButton = $("#klevbyEnableAudioBtn");
 
     if (endButton) {
       endButton.onclick = function (event) {
@@ -802,6 +934,14 @@
       declineButton.onclick = function (event) {
         safeStopEvent(event);
         declineCall();
+      };
+    }
+
+    if (enableAudioButton) {
+      enableAudioButton.onclick = function (event) {
+        safeStopEvent(event);
+        ensureAudioContext();
+        playRemoteAudio();
       };
     }
   }
@@ -847,9 +987,11 @@
       if (!peerConnection || !payload.answer) return;
 
       try {
+        console.log("Klevby calls: answer received");
         await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
         setCallStatus("Соединение установлено");
         stopRingSound();
+        attachRemoteStreamToAudio();
       } catch (error) {
         console.warn("Klevby calls: answer failed", error);
         endCall("error", "Не удалось принять ответ вызова.");
@@ -989,6 +1131,12 @@
           offer: payload.offer
         };
 
+        console.log("Klevby calls: incoming call", {
+          callId,
+          from: activePeer.id,
+          callerName: activePeer.name
+        });
+
         openIncomingOverlay(payload);
         await createCallChannel(callId);
       });
@@ -1109,6 +1257,12 @@
     const myId = getMyId();
     const peerId = getPeerIdForSignal();
 
+    console.log("Klevby calls: setup peer connection", {
+      myId,
+      peerId,
+      callId
+    });
+
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -1118,27 +1272,53 @@
       video: false
     });
 
+    enableLocalAudioTracks();
+
     remoteStream = new MediaStream();
+    attachRemoteStreamToAudio();
 
     peerConnection = new RTCPeerConnection({
       iceServers: ICE_SERVERS
     });
 
-    localStream.getTracks().forEach((track) => {
+    localStream.getAudioTracks().forEach((track) => {
+      track.enabled = true;
       peerConnection.addTrack(track, localStream);
+      console.log("Klevby calls: local track added", {
+        id: track.id,
+        label: track.label,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState
+      });
     });
 
     peerConnection.ontrack = function (event) {
-      event.streams[0].getTracks().forEach((track) => {
-        remoteStream.addTrack(track);
+      console.log("Klevby calls: remote track received", {
+        kind: event.track?.kind,
+        id: event.track?.id,
+        enabled: event.track?.enabled,
+        muted: event.track?.muted,
+        readyState: event.track?.readyState,
+        streams: event.streams?.length || 0
       });
 
-      const audio = $("#klevbyRemoteAudio");
+      const stream = event.streams && event.streams[0] ? event.streams[0] : null;
 
-      if (audio) {
-        audio.srcObject = remoteStream;
-        audio.play().catch(() => {});
+      if (stream) {
+        stream.getAudioTracks().forEach((track) => {
+          if (!remoteStream.getTracks().some((existingTrack) => existingTrack.id === track.id)) {
+            remoteStream.addTrack(track);
+          }
+        });
+      } else if (event.track && event.track.kind === "audio") {
+        if (!remoteStream.getTracks().some((existingTrack) => existingTrack.id === event.track.id)) {
+          remoteStream.addTrack(event.track);
+        }
       }
+
+      attachRemoteStreamToAudio();
+      playRemoteAudio();
     };
 
     peerConnection.onicecandidate = async function (event) {
@@ -1160,13 +1340,31 @@
       }
     };
 
+    peerConnection.oniceconnectionstatechange = function () {
+      console.log("Klevby calls: iceConnectionState", peerConnection.iceConnectionState);
+
+      if (
+        peerConnection.iceConnectionState === "failed" ||
+        peerConnection.iceConnectionState === "disconnected" ||
+        peerConnection.iceConnectionState === "closed"
+      ) {
+        if (callState !== "idle") {
+          showToast("Проблема соединения. Возможно нужен TURN-сервер.");
+        }
+      }
+    };
+
     peerConnection.onconnectionstatechange = function () {
       const state = peerConnection.connectionState;
+
+      console.log("Klevby calls: connectionState", state);
 
       if (state === "connected") {
         callState = "connected";
         setCallStatus("Разговор идёт");
         stopRingSound();
+        attachRemoteStreamToAudio();
+        playRemoteAudio();
         updateCallRecord("connected");
       }
 
@@ -1176,6 +1374,10 @@
           showToast("Соединение завершено");
         }
       }
+    };
+
+    peerConnection.onsignalingstatechange = function () {
+      console.log("Klevby calls: signalingState", peerConnection.signalingState);
     };
 
     return peerConnection;
@@ -1215,12 +1417,21 @@
     }
 
     try {
+      ensureAudioContext();
+
       supabaseClient = payload.supabase || getMainSupabaseClient();
       activePeer = peer;
       setLastKnownPeer(peer);
 
       callId = makeCallId();
       callState = "calling";
+
+      console.log("Klevby calls: start call", {
+        callId,
+        from: currentUser.id,
+        to: peer.id,
+        peerName: peer.name
+      });
 
       openOutgoingOverlay(peer.name);
       await createCallChannel(callId);
@@ -1262,6 +1473,7 @@
     if (callState !== "incoming" || !activePeer?.offer) return;
 
     try {
+      ensureAudioContext();
       await refreshUser();
 
       if (!currentUser || !isValidSupabaseUuid(currentUser.id)) {
@@ -1278,6 +1490,7 @@
 
       await setupPeerConnection();
 
+      console.log("Klevby calls: set remote offer");
       await peerConnection.setRemoteDescription(new RTCSessionDescription(activePeer.offer));
 
       const answer = await peerConnection.createAnswer();
@@ -1296,6 +1509,8 @@
 
       callState = "connected";
       setCallStatus("Разговор идёт");
+      attachRemoteStreamToAudio();
+      playRemoteAudio();
       await updateCallRecord("connected");
     } catch (error) {
       console.error("Klevby calls: accept failed", error);
@@ -1358,7 +1573,9 @@
       try {
         peerConnection.ontrack = null;
         peerConnection.onicecandidate = null;
+        peerConnection.oniceconnectionstatechange = null;
         peerConnection.onconnectionstatechange = null;
+        peerConnection.onsignalingstatechange = null;
         peerConnection.close();
       } catch (error) {}
     }
@@ -1515,6 +1732,15 @@
     if (declineButton) {
       safeStopEvent(event);
       declineCall();
+      return;
+    }
+
+    const enableAudioButton = event.target.closest("#klevbyEnableAudioBtn");
+
+    if (enableAudioButton) {
+      safeStopEvent(event);
+      ensureAudioContext();
+      playRemoteAudio();
     }
   }
 
@@ -1528,6 +1754,7 @@
     if (document.visibilityState === "visible") {
       ensurePersonalChannel();
       scheduleButtonUpdate();
+      attachRemoteStreamToAudio();
     }
   }
 
@@ -1596,11 +1823,13 @@
   window.addEventListener("pageshow", () => {
     ensurePersonalChannel();
     scheduleButtonUpdate();
+    attachRemoteStreamToAudio();
   });
 
   window.addEventListener("focus", () => {
     ensurePersonalChannel();
     scheduleButtonUpdate();
+    attachRemoteStreamToAudio();
   });
 
   window.addEventListener("pagehide", () => {
