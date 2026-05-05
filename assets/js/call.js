@@ -1,7 +1,8 @@
 (function () {
-  if (window.__klevbyCallLoadedV5) return;
-  window.__klevbyCallLoadedV5 = true;
+  if (window.__klevbyCallLoadedV6) return;
+  window.__klevbyCallLoadedV6 = true;
 
+  window.__klevbyCallLoadedV5 = true;
   window.__klevbyCallLoadedV4 = true;
   window.__klevbyCallLoadedV3 = true;
 
@@ -9,6 +10,14 @@
   const AUTH_REFRESH_THROTTLE_MS = 2500;
   const PERSONAL_CHANNEL_THROTTLE_MS = 1800;
   const ICE_GATHERING_WAIT_MS = 4500;
+
+  /*
+    Важно:
+    Сейчас звонки работают через Supabase Realtime broadcast.
+    Таблица calls для самого разговора не нужна.
+    Отключаем REST-записи, чтобы не ловить 400 Bad Request в консоли.
+  */
+  const SAVE_CALL_RECORDS = false;
 
   const ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -43,6 +52,11 @@
   let activeOscillator = null;
   let activeGain = null;
 
+  let remoteAudioSourceNode = null;
+  let remoteAudioSourceStream = null;
+  let remoteAudioRetryTimer = null;
+  let audioUnlocked = false;
+
   let buttonObserver = null;
   let buttonUpdateTimer = null;
   let personalChannelUserId = "";
@@ -52,6 +66,9 @@
 
   let personalChannelPromise = null;
   let lastPersonalChannelEnsureAt = 0;
+
+  let pendingRemoteIceCandidates = [];
+  let callRecordCreated = false;
 
   function $(selector) {
     return document.querySelector(selector);
@@ -293,10 +310,13 @@
 
     setTimeout(() => {
       if (toast.parentNode) toast.remove();
-    }, 1800);
+    }, 2100);
   }
 
   function injectStyles() {
+    const oldV6 = $("#klevby-call-styles-v6");
+    if (oldV6) oldV6.remove();
+
     const oldV5 = $("#klevby-call-styles-v5");
     if (oldV5) oldV5.remove();
 
@@ -307,7 +327,7 @@
     if (oldV3) oldV3.remove();
 
     const style = document.createElement("style");
-    style.id = "klevby-call-styles-v5";
+    style.id = "klevby-call-styles-v6";
 
     style.textContent = `
       #klevby-chat-call {
@@ -476,7 +496,7 @@
 
       .klevby-call-muted-note {
         margin-top: 28px !important;
-        max-width: 330px !important;
+        max-width: 340px !important;
         font-size: 13px !important;
         line-height: 1.55 !important;
         font-weight: 700 !important;
@@ -484,10 +504,12 @@
       }
 
       .klevby-remote-audio {
-        position: absolute !important;
+        position: fixed !important;
+        left: 0 !important;
+        bottom: 0 !important;
         width: 1px !important;
         height: 1px !important;
-        opacity: 0 !important;
+        opacity: 0.01 !important;
         pointer-events: none !important;
       }
 
@@ -556,6 +578,34 @@
     return audioContext;
   }
 
+  function unlockAudioForMobile() {
+    const ctx = ensureAudioContext();
+
+    if (!ctx) {
+      audioUnlocked = true;
+      return;
+    }
+
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+
+      gain.gain.value = 0.00001;
+
+      source.buffer = buffer;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(0);
+
+      audioUnlocked = true;
+      log("mobile audio unlocked");
+    } catch (error) {
+      audioUnlocked = true;
+      warn("mobile audio unlock skipped", error);
+    }
+  }
+
   function stopSingleBeep() {
     try {
       if (activeOscillator) {
@@ -611,6 +661,7 @@
 
   function startRingSound() {
     stopRingSound();
+    unlockAudioForMobile();
 
     playSingleBeep();
 
@@ -686,10 +737,10 @@
         </div>
 
         <div class="klevby-call-muted-note">
-          Для разговора разреши доступ к микрофону. Если собеседник не онлайн — вызов завершится автоматически.
+          Значок микрофона сверху — это системный индикатор доступа к микрофону, не запись разговора.
         </div>
 
-        <audio id="klevbyRemoteAudio" class="klevby-remote-audio" autoplay playsinline></audio>
+        <audio id="klevbyRemoteAudio" class="klevby-remote-audio" autoplay playsinline webkit-playsinline></audio>
       </div>
     `;
   }
@@ -711,6 +762,7 @@
     bindCallButtons();
     startTimer();
     startRingSound();
+    prepareRemoteAudioElement();
   }
 
   function openActiveCallOverlay(peerName) {
@@ -729,7 +781,8 @@
     lockPage();
     bindCallButtons();
     startTimer();
-    tryPlayRemoteAudio();
+    prepareRemoteAudioElement();
+    startRemoteAudioRetry();
   }
 
   function openIncomingOverlay(payload) {
@@ -748,6 +801,7 @@
     lockPage();
     bindCallButtons();
     startRingSound();
+    prepareRemoteAudioElement();
 
     callTimeoutTimer = setTimeout(() => {
       declineCall();
@@ -788,6 +842,8 @@
     if (endButton) {
       endButton.onclick = function (event) {
         safeStopEvent(event);
+        unlockAudioForMobile();
+        tryPlayRemoteAudio();
         endCall("ended");
       };
     }
@@ -795,6 +851,7 @@
     if (acceptButton) {
       acceptButton.onclick = function (event) {
         safeStopEvent(event);
+        unlockAudioForMobile();
         acceptIncomingCall();
       };
     }
@@ -802,6 +859,7 @@
     if (declineButton) {
       declineButton.onclick = function (event) {
         safeStopEvent(event);
+        unlockAudioForMobile();
         declineCall();
       };
     }
@@ -870,43 +928,138 @@
     return $("#klevbyRemoteAudio");
   }
 
-  function attachRemoteStreamToAudio() {
+  function prepareRemoteAudioElement() {
     const audio = getRemoteAudioElement();
 
-    if (!audio || !remoteStream) return;
+    if (!audio) return null;
 
     try {
       audio.autoplay = true;
       audio.playsInline = true;
+      audio.setAttribute("playsinline", "");
+      audio.setAttribute("webkit-playsinline", "");
       audio.muted = false;
+      audio.defaultMuted = false;
+      audio.volume = 1;
+    } catch (error) {
+      warn("remote audio prepare failed", error);
+    }
+
+    return audio;
+  }
+
+  function attachRemoteStreamToAudio() {
+    const audio = prepareRemoteAudioElement();
+
+    if (!audio || !remoteStream) return;
+
+    try {
+      audio.muted = false;
+      audio.defaultMuted = false;
       audio.volume = 1;
 
       if (audio.srcObject !== remoteStream) {
         audio.srcObject = remoteStream;
       }
+
+      log("remote audio attached", {
+        tracks: remoteStream.getTracks().map((track) => ({
+          id: track.id,
+          kind: track.kind,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState
+        }))
+      });
     } catch (error) {
       warn("remote audio attach failed", error);
     }
   }
 
+  function connectRemoteStreamToAudioContext() {
+    if (!remoteStream || !remoteStream.getAudioTracks().length) return;
+
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+
+    try {
+      if (remoteAudioSourceNode && remoteAudioSourceStream === remoteStream) {
+        return;
+      }
+
+      if (remoteAudioSourceNode) {
+        try {
+          remoteAudioSourceNode.disconnect();
+        } catch (error) {}
+      }
+
+      remoteAudioSourceNode = ctx.createMediaStreamSource(remoteStream);
+      remoteAudioSourceStream = remoteStream;
+      remoteAudioSourceNode.connect(ctx.destination);
+
+      log("remote stream connected to audio context");
+    } catch (error) {
+      warn("remote audio context connect skipped", error);
+    }
+  }
+
   function tryPlayRemoteAudio() {
-    const audio = getRemoteAudioElement();
+    const audio = prepareRemoteAudioElement();
+
+    unlockAudioForMobile();
 
     if (!audio) return;
 
     attachRemoteStreamToAudio();
+    connectRemoteStreamToAudioContext();
 
-    const playResult = audio.play();
+    if (!remoteStream || !remoteStream.getAudioTracks().length) {
+      return;
+    }
 
-    if (playResult && typeof playResult.then === "function") {
-      playResult
-        .then(() => {
-          log("remote audio playing");
-        })
-        .catch((error) => {
-          warn("remote audio play blocked", error);
-          showToast("Нажми экран звонка, чтобы включить звук.");
-        });
+    try {
+      audio.muted = false;
+      audio.defaultMuted = false;
+      audio.volume = 1;
+
+      const playResult = audio.play();
+
+      if (playResult && typeof playResult.then === "function") {
+        playResult
+          .then(() => {
+            log("remote audio playing");
+          })
+          .catch((error) => {
+            warn("remote audio play blocked", error);
+            showToast("Нажми по экрану звонка, чтобы включить звук.");
+          });
+      }
+    } catch (error) {
+      warn("remote audio play failed", error);
+    }
+  }
+
+  function startRemoteAudioRetry() {
+    stopRemoteAudioRetry();
+
+    let tries = 0;
+
+    remoteAudioRetryTimer = setInterval(() => {
+      tries += 1;
+
+      if (callState === "idle" || tries > 16) {
+        stopRemoteAudioRetry();
+        return;
+      }
+
+      tryPlayRemoteAudio();
+    }, 650);
+  }
+
+  function stopRemoteAudioRetry() {
+    if (remoteAudioRetryTimer) {
+      clearInterval(remoteAudioRetryTimer);
+      remoteAudioRetryTimer = null;
     }
   }
 
@@ -923,8 +1076,27 @@
       remoteStream = new MediaStream();
     }
 
+    if (event.track) {
+      event.track.enabled = true;
+
+      event.track.onunmute = () => {
+        log("remote track unmuted", event.track.id);
+        tryPlayRemoteAudio();
+      };
+
+      event.track.onmute = () => {
+        log("remote track muted", event.track.id);
+      };
+
+      event.track.onended = () => {
+        log("remote track ended", event.track.id);
+      };
+    }
+
     if (event.streams && event.streams[0]) {
       event.streams[0].getTracks().forEach((track) => {
+        track.enabled = true;
+
         if (!remoteStream.getTracks().some((item) => item.id === track.id)) {
           remoteStream.addTrack(track);
         }
@@ -936,7 +1108,38 @@
     }
 
     attachRemoteStreamToAudio();
+    connectRemoteStreamToAudioContext();
     tryPlayRemoteAudio();
+    startRemoteAudioRetry();
+  }
+
+  async function addRemoteIceCandidate(candidate) {
+    if (!candidate || !peerConnection) return;
+
+    if (!peerConnection.remoteDescription) {
+      pendingRemoteIceCandidates.push(candidate);
+      log("remote ice queued");
+      return;
+    }
+
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      log("remote ice added");
+    } catch (error) {
+      warn("ice failed", error);
+    }
+  }
+
+  async function flushPendingRemoteIceCandidates() {
+    if (!peerConnection || !peerConnection.remoteDescription) return;
+    if (!pendingRemoteIceCandidates.length) return;
+
+    const candidates = [...pendingRemoteIceCandidates];
+    pendingRemoteIceCandidates = [];
+
+    for (const candidate of candidates) {
+      await addRemoteIceCandidate(candidate);
+    }
   }
 
   async function createCallChannel(id) {
@@ -968,10 +1171,14 @@
 
       try {
         log("answer received");
+
         await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+        await flushPendingRemoteIceCandidates();
+
         setCallStatus("Соединение установлено");
         stopRingSound();
         tryPlayRemoteAudio();
+        startRemoteAudioRetry();
       } catch (error) {
         warn("answer failed", error);
         endCall("error", "Не удалось принять ответ вызова.");
@@ -980,14 +1187,10 @@
 
     callChannel.on("broadcast", { event: "ice" }, async ({ payload }) => {
       if (!payload || payload.to !== getMyId()) return;
-      if (!peerConnection || !payload.candidate) return;
+      if (!payload.candidate) return;
 
-      try {
-        log("remote ice received");
-        await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
-      } catch (error) {
-        warn("ice failed", error);
-      }
+      log("remote ice received");
+      await addRemoteIceCandidate(payload.candidate);
     });
 
     callChannel.on("broadcast", { event: "end" }, ({ payload }) => {
@@ -1105,6 +1308,8 @@
 
         callState = "incoming";
         callId = payload.callId;
+        callRecordCreated = false;
+        pendingRemoteIceCandidates = [];
 
         activePeer = {
           id: String(payload.from),
@@ -1173,30 +1378,41 @@
   }
 
   async function updateCallRecord(status) {
+    if (!SAVE_CALL_RECORDS) return;
+    if (!callRecordCreated) return;
+
     const client = getMainSupabaseClient();
 
     if (!client || !callId) return;
 
     try {
-      await client
+      const { error } = await client
         .from("calls")
         .update({
           status,
           updated_at: new Date().toISOString()
         })
         .eq("id", callId);
+
+      if (error) {
+        warn("call record update skipped", error);
+      }
     } catch (error) {
       warn("call record update skipped", error);
     }
   }
 
   async function createCallRecord(peer) {
+    callRecordCreated = false;
+
+    if (!SAVE_CALL_RECORDS) return;
+
     const client = getMainSupabaseClient();
 
     if (!client || !currentUser || !peer?.id || !callId) return;
 
     try {
-      await client.from("calls").insert([
+      const { error } = await client.from("calls").insert([
         {
           id: callId,
           caller_id: currentUser.id,
@@ -1208,31 +1424,78 @@
           updated_at: new Date().toISOString()
         }
       ]);
+
+      if (error) {
+        warn("call record skipped", error);
+        callRecordCreated = false;
+        return;
+      }
+
+      callRecordCreated = true;
     } catch (error) {
       warn("call record skipped", error);
+      callRecordCreated = false;
     }
   }
 
-  async function setupPeerConnection() {
+  async function requestMicrophoneStream() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("Браузер не поддерживает микрофон для звонков.");
     }
 
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        },
+        video: false
+      });
+    } catch (firstError) {
+      warn("advanced microphone constraints failed, retry audio:true", firstError);
+
+      return await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+    }
+  }
+
+  async function setupPeerConnection() {
     const myId = getMyId();
     const peerId = getPeerIdForSignal();
 
+    unlockAudioForMobile();
+
     log("request microphone");
 
-    localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      },
-      video: false
+    localStream = await requestMicrophoneStream();
+
+    const localAudioTracks = localStream.getAudioTracks();
+
+    if (!localAudioTracks.length) {
+      throw new Error("Микрофон не найден или не дал аудиодорожку.");
+    }
+
+    localAudioTracks.forEach((track) => {
+      track.enabled = true;
+
+      track.onmute = () => {
+        log("local audio track muted", track.id);
+      };
+
+      track.onunmute = () => {
+        log("local audio track unmuted", track.id);
+      };
+
+      track.onended = () => {
+        log("local audio track ended", track.id);
+      };
     });
 
-    log("local audio tracks", localStream.getAudioTracks().map((track) => ({
+    log("local audio tracks", localAudioTracks.map((track) => ({
       id: track.id,
       label: track.label,
       enabled: track.enabled,
@@ -1243,7 +1506,9 @@
     remoteStream = new MediaStream();
 
     peerConnection = new RTCPeerConnection({
-      iceServers: ICE_SERVERS
+      iceServers: ICE_SERVERS,
+      bundlePolicy: "balanced",
+      rtcpMuxPolicy: "require"
     });
 
     peerConnection.ontrack = handleRemoteTrack;
@@ -1254,7 +1519,12 @@
         return;
       }
 
-      log("local ice candidate", event.candidate.type || "candidate");
+      const candidatePayload =
+        typeof event.candidate.toJSON === "function"
+          ? event.candidate.toJSON()
+          : event.candidate;
+
+      log("local ice candidate", candidatePayload.type || "candidate");
 
       if (!callChannel) return;
 
@@ -1266,7 +1536,7 @@
             callId,
             from: myId,
             to: peerId,
-            candidate: event.candidate
+            candidate: candidatePayload
           }
         });
       } catch (error) {
@@ -1283,13 +1553,14 @@
         setCallStatus("Разговор идёт");
         stopRingSound();
         tryPlayRemoteAudio();
+        startRemoteAudioRetry();
         updateCallRecord("connected");
       }
 
       if (state === "failed") {
         if (callState !== "idle") {
           cleanupCall(false);
-          showToast("Соединение не установилось. Нужен TURN-сервер.");
+          showToast("Соединение не установилось. Позже добавим TURN-сервер.");
         }
       }
 
@@ -1303,6 +1574,11 @@
 
     peerConnection.oniceconnectionstatechange = function () {
       log("iceConnectionState", peerConnection.iceConnectionState);
+
+      if (peerConnection.iceConnectionState === "connected" || peerConnection.iceConnectionState === "completed") {
+        tryPlayRemoteAudio();
+        startRemoteAudioRetry();
+      }
     };
 
     peerConnection.onicegatheringstatechange = function () {
@@ -1322,6 +1598,8 @@
   }
 
   async function startCall(payload = {}) {
+    unlockAudioForMobile();
+
     await refreshUser();
     await ensurePersonalChannel();
 
@@ -1359,7 +1637,9 @@
       activePeer = peer;
       setLastKnownPeer(peer);
 
-      callId = makeCallId(currentUser.id, peer.id);
+      callId = makeCallId();
+      callRecordCreated = false;
+      pendingRemoteIceCandidates = [];
       callState = "calling";
 
       log("start call", { callId, from: currentUser.id, to: peer.id });
@@ -1402,6 +1682,8 @@
   }
 
   async function acceptIncomingCall() {
+    unlockAudioForMobile();
+
     if (callState !== "incoming" || !activePeer?.offer) return;
 
     try {
@@ -1428,6 +1710,7 @@
       await setupPeerConnection();
 
       await peerConnection.setRemoteDescription(new RTCSessionDescription(activePeer.offer));
+      await flushPendingRemoteIceCandidates();
 
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
@@ -1447,6 +1730,7 @@
       callState = "connected";
       setCallStatus("Разговор идёт");
       tryPlayRemoteAudio();
+      startRemoteAudioRetry();
       await updateCallRecord("connected");
     } catch (error) {
       console.error("Klevby calls: accept failed", error);
@@ -1504,6 +1788,16 @@
 
     stopTimer();
     stopRingSound();
+    stopRemoteAudioRetry();
+
+    if (remoteAudioSourceNode) {
+      try {
+        remoteAudioSourceNode.disconnect();
+      } catch (error) {}
+    }
+
+    remoteAudioSourceNode = null;
+    remoteAudioSourceStream = null;
 
     if (peerConnection) {
       try {
@@ -1557,6 +1851,8 @@
     callState = "idle";
     callId = null;
     activePeer = null;
+    pendingRemoteIceCandidates = [];
+    callRecordCreated = false;
 
     closeOverlaysOnly();
     unlockPageIfChatClosed();
@@ -1640,10 +1936,16 @@
       return;
     }
 
+    if (event.target.closest(".klevby-call-overlay, .klevby-incoming-call-overlay")) {
+      unlockAudioForMobile();
+      tryPlayRemoteAudio();
+    }
+
     const callButton = event.target.closest("#klevby-call-btn");
 
     if (callButton) {
       safeStopEvent(event);
+      unlockAudioForMobile();
       startCall();
       return;
     }
@@ -1652,6 +1954,7 @@
 
     if (endButton) {
       safeStopEvent(event);
+      unlockAudioForMobile();
       endCall("ended");
       return;
     }
@@ -1660,6 +1963,7 @@
 
     if (acceptButton) {
       safeStopEvent(event);
+      unlockAudioForMobile();
       acceptIncomingCall();
       return;
     }
@@ -1668,11 +1972,14 @@
 
     if (declineButton) {
       safeStopEvent(event);
+      unlockAudioForMobile();
       declineCall();
-      return;
     }
+  }
 
-    if (event.target.closest(".klevby-call-overlay, .klevby-incoming-call-overlay")) {
+  function handleTouchStart(event) {
+    if (event.target.closest(".klevby-call-overlay, .klevby-incoming-call-overlay, #klevby-call-btn")) {
+      unlockAudioForMobile();
       tryPlayRemoteAudio();
     }
   }
@@ -1687,6 +1994,12 @@
     if (document.visibilityState === "visible") {
       ensurePersonalChannel();
       scheduleButtonUpdate();
+
+      if (callState !== "idle") {
+        unlockAudioForMobile();
+        tryPlayRemoteAudio();
+        startRemoteAudioRetry();
+      }
     }
   }
 
@@ -1694,7 +2007,7 @@
     injectStyles();
     removeOldTestCallButton();
 
-    log("script loaded", "v5");
+    log("script loaded", "v6");
 
     const waitForClient = setInterval(async () => {
       const client = getMainSupabaseClient();
@@ -1722,6 +2035,7 @@
   }
 
   document.addEventListener("click", handleDocumentClick, true);
+  document.addEventListener("touchstart", handleTouchStart, { passive: true });
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -1757,11 +2071,23 @@
   window.addEventListener("pageshow", () => {
     ensurePersonalChannel();
     scheduleButtonUpdate();
+
+    if (callState !== "idle") {
+      unlockAudioForMobile();
+      tryPlayRemoteAudio();
+      startRemoteAudioRetry();
+    }
   });
 
   window.addEventListener("focus", () => {
     ensurePersonalChannel();
     scheduleButtonUpdate();
+
+    if (callState !== "idle") {
+      unlockAudioForMobile();
+      tryPlayRemoteAudio();
+      startRemoteAudioRetry();
+    }
   });
 
   window.addEventListener("pagehide", () => {
