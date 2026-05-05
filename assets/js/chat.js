@@ -78,7 +78,6 @@
     const onlineUsers = new Map();
     const userProfiles = new Map();
     const guestNameKey = "klevby_chat_guest_name";
-    const sentLocalMessages = new Set();
 
     const chatHTML = `
       <div id="chat-desktop-btn" class="klevby-chat-launcher" title="Открыть чат">💬</div>
@@ -173,6 +172,7 @@
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
     initChatPushBridge();
+    initChatPublicBridge();
     initChatPrivateBridge();
     initChatRealtimeBridge();
 
@@ -262,6 +262,62 @@
         getSupabaseClient: getMainSupabaseClient,
         cleanDisplayName,
         isValidSupabaseUuid
+      });
+    }
+
+    function getChatPublicApi() {
+      return window.KlevbyChatPublic || null;
+    }
+
+    function initChatPublicBridge() {
+      const api = getChatPublicApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-public.js не подключён.");
+        return;
+      }
+
+      api.init({
+        getMainSupabaseClient,
+        getCurrentUser: () => currentChatUser,
+        setActiveMode: (mode) => {
+          activeMode = mode;
+        },
+        setSelectedPeer: (peer) => {
+          selectedPeer = peer;
+        },
+
+        elements: {
+          chatWindow,
+          messagesContainer,
+          input,
+          sendBtn,
+          publicTab,
+          privateTab,
+          privatePeople,
+          backBtn,
+          chatAvatar,
+          chatTitle,
+          chatSubtitle
+        },
+
+        beginChatNavigation,
+        isStaleNavigation,
+        finishChatNavigation,
+        refreshCurrentUser,
+        ensureCurrentUserProfile,
+        loadProfilesByIds,
+        rememberFallbackProfile,
+        renderPublicMessage,
+        renderMessageList,
+        clearMessages,
+        showEmptyState,
+        clearReply,
+        syncSelectedPeerForCalls,
+        getCurrentChatName,
+        cleanDisplayName,
+        isValidSupabaseUuid,
+        buildMessageContent
       });
     }
 
@@ -450,6 +506,51 @@
 
       setupPresence();
       setupRealtime();
+    }
+
+    async function loadPublicMessages(navToken = beginChatNavigation()) {
+      const api = getChatPublicApi();
+
+      if (api && typeof api.loadPublicMessages === "function") {
+        return await api.loadPublicMessages(navToken);
+      }
+
+      try {
+        showEmptyState("Общий чат сейчас не подключён. Проверь assets/js/chat-public.js.");
+      } finally {
+        finishChatNavigation(navToken);
+      }
+    }
+
+    async function sendPublicMessage() {
+      const api = getChatPublicApi();
+
+      if (api && typeof api.sendPublicMessage === "function") {
+        return await api.sendPublicMessage();
+      }
+
+      alert("Общий чат сейчас не подключён. Проверь assets/js/chat-public.js.");
+    }
+
+    function isMyPublicMessage(message) {
+      const api = getChatPublicApi();
+
+      if (api && typeof api.isMyPublicMessage === "function") {
+        return api.isMyPublicMessage(message);
+      }
+
+      const myUserId = currentChatUser?.id || null;
+      const messageUserId = message.user_id || null;
+
+      if (myUserId && messageUserId && String(myUserId) === String(messageUserId)) {
+        return true;
+      }
+
+      if (!messageUserId && cleanDisplayName(message.user_name) === getCurrentChatName()) {
+        return true;
+      }
+
+      return false;
     }
 
     async function loadPrivatePeople(navToken = beginChatNavigation()) {
@@ -1049,29 +1150,6 @@
       return `↩ Ответ ${replyTarget.author}: ${quoted}\n${value}`;
     }
 
-    function getLocalMessageKey(message) {
-      return `${message.user_name || ""}__${message.content || ""}`;
-    }
-
-    function isMyPublicMessage(message) {
-      const myUserId = currentChatUser?.id || null;
-      const messageUserId = message.user_id || null;
-
-      if (myUserId && messageUserId && String(myUserId) === String(messageUserId)) {
-        return true;
-      }
-
-      if (!messageUserId && cleanDisplayName(message.user_name) === getCurrentChatName()) {
-        return true;
-      }
-
-      if (sentLocalMessages.has(getLocalMessageKey(message))) {
-        return true;
-      }
-
-      return false;
-    }
-
     function isMyPrivateMessage(message) {
       return currentChatUser?.id && String(message.sender_id) === String(currentChatUser.id);
     }
@@ -1294,115 +1372,6 @@
 
       privateUnreadBadge.classList.remove("hidden");
       privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
-    }
-
-    async function loadPublicMessages(navToken = beginChatNavigation()) {
-      try {
-        activeMode = "public";
-        selectedPeer = null;
-        clearReply();
-
-        chatWindow.classList.remove("klevby-dialog-screen");
-        chatWindow.classList.remove("klevby-private-list-screen");
-
-        publicTab.classList.add("active");
-        privateTab.classList.remove("active");
-        privatePeople.classList.add("hidden");
-        backBtn.classList.add("hidden");
-
-        chatAvatar.textContent = "🎣";
-        chatTitle.textContent = "Чат рыбаков";
-        chatSubtitle.textContent = "Общий разговор Klevby";
-        input.placeholder = "Напиши сообщение...";
-        input.disabled = false;
-        sendBtn.disabled = false;
-
-        syncSelectedPeerForCalls();
-        clearMessages();
-
-        const result = await getMainSupabaseClient()
-          .from("messages")
-          .select("*")
-          .order("created_at", { ascending: true });
-
-        if (isStaleNavigation(navToken)) return;
-
-        if (result.error) {
-          console.error("Ошибка загрузки общего чата:", result.error);
-          showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
-          return;
-        }
-
-        const data = Array.isArray(result.data) ? result.data : [];
-
-        data.forEach((message) => {
-          if (message.user_id && message.user_name) {
-            rememberFallbackProfile(message.user_id, message.user_name);
-          }
-        });
-
-        await loadProfilesByIds(data.map((message) => message.user_id));
-
-        if (isStaleNavigation(navToken)) return;
-
-        if (!data.length) {
-          showEmptyState("Пока сообщений нет. Напиши первым 🎣");
-          return;
-        }
-
-        renderMessageList(data, renderPublicMessage);
-      } catch (error) {
-        if (!isStaleNavigation(navToken)) {
-          console.error("Ошибка загрузки общего чата:", error);
-          showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
-        }
-      } finally {
-        finishChatNavigation(navToken);
-      }
-    }
-
-    async function sendPublicMessage() {
-      const rawVal = input.value.trim();
-      if (!rawVal) return;
-
-      try {
-        await refreshCurrentUser();
-        await ensureCurrentUserProfile({ soft: true });
-
-        sendBtn.disabled = true;
-
-        const userId = currentChatUser?.id || null;
-        const userName = getCurrentChatName();
-        const content = buildMessageContent(rawVal);
-
-        const payload = {
-          user_name: userName,
-          content
-        };
-
-        if (userId && isValidSupabaseUuid(userId)) {
-          payload.user_id = userId;
-        }
-
-        sentLocalMessages.add(`${userName}__${content}`);
-
-        const { error } = await getMainSupabaseClient().from("messages").insert([payload]);
-
-        if (error) {
-          console.error("Ошибка отправки общего сообщения:", error);
-          alert("Не получилось отправить сообщение. Проверь таблицу messages и RLS.");
-          return;
-        }
-
-        input.value = "";
-        clearReply();
-
-        setTimeout(() => {
-          sentLocalMessages.delete(`${userName}__${content}`);
-        }, 30000);
-      } finally {
-        sendBtn.disabled = false;
-      }
     }
 
     async function send() {
