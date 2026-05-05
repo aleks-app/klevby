@@ -53,11 +53,7 @@
 
     let unreadPrivateCount = 0;
     let replyTarget = null;
-
-    let lastRenderedDateKey = "";
-    let lastRenderedMessageMeta = null;
-
-    let contextMessageData = null;
+    let contextMessageDataFallback = null;
     let longPressTimer = null;
 
     let klevbyResumeTimer = null;
@@ -171,6 +167,7 @@
     const contextReplyBtn = document.getElementById("contextReplyBtn");
     const contextDeleteBtn = document.getElementById("contextDeleteBtn");
 
+    initChatRenderBridge();
     initChatPushBridge();
     initChatPublicBridge();
     initChatPrivateBridge();
@@ -239,6 +236,34 @@
         setChatTabsLoading(false);
       }
     });
+
+    function getChatRenderApi() {
+      return window.KlevbyChatRender || null;
+    }
+
+    function initChatRenderBridge() {
+      const api = getChatRenderApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-render.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          messagesContainer,
+          messageContextMenu,
+          contextDeleteBtn
+        },
+
+        getCurrentUser: () => currentChatUser,
+        getSelectedPeer: () => selectedPeer,
+        getProfileName,
+        rememberFallbackProfile,
+        isMyPublicMessage,
+        scrollChatToBottom
+      });
+    }
 
     function getChatPushApi() {
       return window.KlevbyChatPush || null;
@@ -969,6 +994,12 @@
     }
 
     function escapeHtml(text) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.escapeHtml === "function") {
+        return api.escapeHtml(text);
+      }
+
       return String(text || "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
@@ -978,6 +1009,12 @@
     }
 
     function cssEscape(value) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.cssEscape === "function") {
+        return api.cssEscape(value);
+      }
+
       if (window.CSS && typeof window.CSS.escape === "function") {
         return window.CSS.escape(value);
       }
@@ -986,11 +1023,23 @@
     }
 
     function getInitials(name) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.getInitials === "function") {
+        return api.getInitials(name);
+      }
+
       const clean = String(name || "Рыбак").trim();
       return (clean[0] || "Р").toUpperCase();
     }
 
     function getMessageTime(createdAt) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.getMessageTime === "function") {
+        return api.getMessageTime(createdAt);
+      }
+
       if (!createdAt) return "";
 
       try {
@@ -1004,93 +1053,23 @@
     }
 
     function getTimestamp(createdAt) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.getTimestamp === "function") {
+        return api.getTimestamp(createdAt);
+      }
+
       const time = new Date(createdAt || Date.now()).getTime();
       return Number.isFinite(time) ? time : Date.now();
     }
 
-    function getDateKey(createdAt) {
-      try {
-        return new Date(createdAt || Date.now()).toISOString().slice(0, 10);
-      } catch {
-        return "";
-      }
-    }
-
-    function getDateLabel(createdAt) {
-      try {
-        const date = new Date(createdAt);
-        const today = new Date();
-        const yesterday = new Date();
-
-        yesterday.setDate(today.getDate() - 1);
-
-        const dateKey = date.toISOString().slice(0, 10);
-        const todayKey = today.toISOString().slice(0, 10);
-        const yesterdayKey = yesterday.toISOString().slice(0, 10);
-
-        if (dateKey === todayKey) return "Сегодня";
-        if (dateKey === yesterdayKey) return "Вчера";
-
-        return date.toLocaleDateString("ru-RU", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric"
-        });
-      } catch {
-        return "";
-      }
-    }
-
-    function renderDateDivider(createdAt) {
-      const key = getDateKey(createdAt);
-
-      if (!key || key === lastRenderedDateKey) return;
-
-      lastRenderedDateKey = key;
-      lastRenderedMessageMeta = null;
-
-      const divider = document.createElement("div");
-      divider.className = "klevby-date-divider";
-      divider.textContent = getDateLabel(createdAt);
-
-      messagesContainer.appendChild(divider);
-    }
-
-    function resetRenderState() {
-      lastRenderedDateKey = "";
-      lastRenderedMessageMeta = null;
-    }
-
-    function clearMessages() {
-      messagesContainer.innerHTML = "";
-      resetRenderState();
-      hideMessageMenu();
-    }
-
-    function scrollChatToBottom() {
-      const api = window.KlevbyChatViewport;
-
-      if (api && typeof api.scrollChatToBottom === "function") {
-        api.scrollChatToBottom();
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      });
-    }
-
-    function showEmptyState(text) {
-      clearMessages();
-
-      messagesContainer.innerHTML = `
-        <div class="chat-empty-state">
-          ${escapeHtml(text)}
-        </div>
-      `;
-    }
-
     function parseReplyContent(content) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.parseReplyContent === "function") {
+        return api.parseReplyContent(content);
+      }
+
       const text = String(content || "");
 
       if (!text.startsWith("↩ Ответ ")) {
@@ -1113,6 +1092,163 @@
         reply: parts[0].replace("↩ Ответ ", ""),
         mainText: parts.slice(1).join("\n")
       };
+    }
+
+    function clearMessages() {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.clearMessages === "function") {
+        api.clearMessages();
+        return;
+      }
+
+      messagesContainer.innerHTML = "";
+      hideMessageMenu();
+    }
+
+    function scrollChatToBottom() {
+      const api = window.KlevbyChatViewport;
+
+      if (api && typeof api.scrollChatToBottom === "function") {
+        api.scrollChatToBottom();
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      });
+    }
+
+    function showEmptyState(text) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.showEmptyState === "function") {
+        api.showEmptyState(text);
+        return;
+      }
+
+      clearMessages();
+
+      messagesContainer.innerHTML = `
+        <div class="chat-empty-state">
+          ${escapeHtml(text)}
+        </div>
+      `;
+    }
+
+    function renderPublicMessage(message) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.renderPublicMessage === "function") {
+        api.renderPublicMessage(message);
+        return;
+      }
+
+      showEmptyState("Отрисовка общего чата не подключена. Проверь assets/js/chat-render.js.");
+    }
+
+    function renderPrivateMessage(message) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.renderPrivateMessage === "function") {
+        api.renderPrivateMessage(message);
+        return;
+      }
+
+      showEmptyState("Отрисовка лички не подключена. Проверь assets/js/chat-render.js.");
+    }
+
+    function renderMessageList(data, renderFn) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.renderMessageList === "function") {
+        api.renderMessageList(data, renderFn);
+        return;
+      }
+
+      clearMessages();
+
+      (data || []).forEach((message) => {
+        renderFn(message);
+      });
+
+      scrollChatToBottom();
+    }
+
+    function findMessageDataFromRow(row) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.findMessageDataFromRow === "function") {
+        return api.findMessageDataFromRow(row);
+      }
+
+      if (!row) return null;
+
+      return {
+        id: row.dataset.messageId || "",
+        type: row.dataset.messageType || "public",
+        author: row.dataset.author || "Рыбак",
+        content: row.dataset.content || "",
+        isMine: row.dataset.isMine === "1"
+      };
+    }
+
+    function showMessageMenu(row) {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.showMessageMenu === "function") {
+        api.showMessageMenu(row);
+        return;
+      }
+
+      const data = findMessageDataFromRow(row);
+      if (!data) return;
+
+      contextMessageDataFallback = data;
+      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
+      messageContextMenu.classList.remove("hidden");
+
+      const rect = row.getBoundingClientRect();
+      const menuWidth = 170;
+      const menuHeight = 92;
+
+      let left = Math.min(
+        Math.max(12, rect.left + rect.width / 2 - menuWidth / 2),
+        window.innerWidth - menuWidth - 12
+      );
+
+      let top = rect.top - menuHeight - 8;
+
+      if (top < 12) {
+        top = rect.bottom + 8;
+      }
+
+      messageContextMenu.style.left = `${left}px`;
+      messageContextMenu.style.top = `${top}px`;
+    }
+
+    function hideMessageMenu() {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.hideMessageMenu === "function") {
+        api.hideMessageMenu();
+        return;
+      }
+
+      contextMessageDataFallback = null;
+      messageContextMenu.classList.add("hidden");
+      messageContextMenu.style.left = "";
+      messageContextMenu.style.top = "";
+    }
+
+    function getContextMessageData() {
+      const api = getChatRenderApi();
+
+      if (api && typeof api.getContextMessageData === "function") {
+        return api.getContextMessageData();
+      }
+
+      return contextMessageDataFallback;
     }
 
     function clearReply() {
@@ -1148,197 +1284,6 @@
         .slice(0, 120);
 
       return `↩ Ответ ${replyTarget.author}: ${quoted}\n${value}`;
-    }
-
-    function isMyPrivateMessage(message) {
-      return currentChatUser?.id && String(message.sender_id) === String(currentChatUser.id);
-    }
-
-    function shouldGroupWithPrevious(meta) {
-      if (!lastRenderedMessageMeta) return false;
-      if (lastRenderedMessageMeta.type !== meta.type) return false;
-      if (lastRenderedMessageMeta.authorKey !== meta.authorKey) return false;
-      if (lastRenderedMessageMeta.isMine !== meta.isMine) return false;
-
-      return Math.abs(meta.timeStamp - lastRenderedMessageMeta.timeStamp) <= 5 * 60 * 1000;
-    }
-
-    function updatePreviousGroupClass(groupedWithPrevious) {
-      if (!groupedWithPrevious) return;
-
-      const rows = messagesContainer.querySelectorAll(".chat-message-row");
-      const previousRow = rows[rows.length - 1];
-
-      if (previousRow) {
-        previousRow.classList.add("grouped-with-next");
-      }
-    }
-
-    function renderMessageActions(message, type, isMine) {
-      const id = message.id ? escapeHtml(message.id) : "";
-
-      return `
-        <div class="klevby-message-actions">
-          <button class="klevby-message-action reply-message-btn" type="button" data-type="${type}" data-id="${id}">↩</button>
-          ${isMine && id ? `<button class="klevby-message-action delete-message-btn" type="button" data-type="${type}" data-id="${id}">🗑</button>` : ""}
-        </div>
-      `;
-    }
-
-    function buildMessageRow({ message, type, isMine, author, authorKey }) {
-      renderDateDivider(message.created_at);
-
-      const parsed = parseReplyContent(message.content || "");
-      const time = getMessageTime(message.created_at);
-      const timeStamp = getTimestamp(message.created_at);
-
-      const meta = {
-        type,
-        authorKey,
-        isMine,
-        timeStamp
-      };
-
-      const groupedWithPrevious = shouldGroupWithPrevious(meta);
-      updatePreviousGroupClass(groupedWithPrevious);
-
-      const row = document.createElement("div");
-
-      row.className = [
-        "chat-message-row",
-        isMine ? "my-message-row" : "other-message-row",
-        groupedWithPrevious ? "grouped-with-prev" : "first-in-group"
-      ].join(" ");
-
-      row.dataset.messageId = message.id || "";
-      row.dataset.messageType = type;
-      row.dataset.author = author;
-      row.dataset.content = parsed.mainText || "";
-      row.dataset.isMine = isMine ? "1" : "0";
-
-      const avatar = document.createElement("div");
-      avatar.className = "klevby-message-avatar";
-      avatar.textContent = getInitials(author);
-
-      const bubble = document.createElement("div");
-      bubble.className = `chat-message-bubble ${isMine ? "my-message" : "other-message"}`;
-
-      bubble.innerHTML = `
-        ${!groupedWithPrevious && !isMine ? `<span class="chat-message-author">${escapeHtml(author)}</span>` : ""}
-        ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
-        <span class="chat-message-text">${escapeHtml(parsed.mainText || "")}</span>
-        <div class="klevby-message-footer">
-          ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
-          ${isMine ? `<span class="klevby-checks">✓✓</span>` : ""}
-        </div>
-        ${renderMessageActions(message, type, isMine)}
-      `;
-
-      if (!isMine) row.appendChild(avatar);
-      row.appendChild(bubble);
-
-      lastRenderedMessageMeta = meta;
-
-      return row;
-    }
-
-    function renderPublicMessage(message) {
-      if (message.user_id && message.user_name) {
-        rememberFallbackProfile(message.user_id, message.user_name);
-      }
-
-      const isMine = isMyPublicMessage(message);
-      const author = isMine ? "Вы" : getProfileName(message.user_id, message.user_name || "Рыбак");
-      const authorKey = message.user_id || message.user_name || author;
-
-      const row = buildMessageRow({
-        message,
-        type: "public",
-        isMine,
-        author,
-        authorKey: String(authorKey)
-      });
-
-      messagesContainer.appendChild(row);
-      scrollChatToBottom();
-    }
-
-    function renderPrivateMessage(message) {
-      if (message.sender_id && message.sender_name) {
-        rememberFallbackProfile(message.sender_id, message.sender_name);
-      }
-
-      const isMine = isMyPrivateMessage(message);
-      const author = isMine ? "Вы" : getProfileName(message.sender_id, message.sender_name || selectedPeer?.name || "Рыбак");
-      const authorKey = message.sender_id || author;
-
-      const row = buildMessageRow({
-        message,
-        type: "private",
-        isMine,
-        author,
-        authorKey: String(authorKey)
-      });
-
-      messagesContainer.appendChild(row);
-      scrollChatToBottom();
-    }
-
-    function renderMessageList(data, renderFn) {
-      clearMessages();
-
-      (data || []).forEach((message) => {
-        renderFn(message);
-      });
-
-      scrollChatToBottom();
-    }
-
-    function findMessageDataFromRow(row) {
-      if (!row) return null;
-
-      return {
-        id: row.dataset.messageId || "",
-        type: row.dataset.messageType || "public",
-        author: row.dataset.author || "Рыбак",
-        content: row.dataset.content || "",
-        isMine: row.dataset.isMine === "1"
-      };
-    }
-
-    function showMessageMenu(row) {
-      const data = findMessageDataFromRow(row);
-      if (!data) return;
-
-      contextMessageData = data;
-      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
-
-      messageContextMenu.classList.remove("hidden");
-
-      const rect = row.getBoundingClientRect();
-      const menuWidth = 170;
-      const menuHeight = 92;
-
-      let left = Math.min(
-        Math.max(12, rect.left + rect.width / 2 - menuWidth / 2),
-        window.innerWidth - menuWidth - 12
-      );
-
-      let top = rect.top - menuHeight - 8;
-
-      if (top < 12) {
-        top = rect.bottom + 8;
-      }
-
-      messageContextMenu.style.left = `${left}px`;
-      messageContextMenu.style.top = `${top}px`;
-    }
-
-    function hideMessageMenu() {
-      contextMessageData = null;
-      messageContextMenu.classList.add("hidden");
-      messageContextMenu.style.left = "";
-      messageContextMenu.style.top = "";
     }
 
     function isOnline(userId) {
@@ -1606,16 +1551,22 @@
         }
 
         if (event.target.closest("#contextReplyBtn")) {
-          if (contextMessageData) {
-            setReplyTarget(contextMessageData);
+          const data = getContextMessageData();
+
+          if (data) {
+            setReplyTarget(data);
           }
+
           return;
         }
 
         if (event.target.closest("#contextDeleteBtn")) {
-          if (contextMessageData) {
-            await deleteMessage(contextMessageData.type, contextMessageData.id);
+          const data = getContextMessageData();
+
+          if (data) {
+            await deleteMessage(data.type, data.id);
           }
+
           return;
         }
 
