@@ -169,6 +169,49 @@
       }
     });
 
+    function getChatEventsApi() {
+      return window.KlevbyChatEvents || null;
+    }
+
+    function initChatEventsBridge() {
+      const api = getChatEventsApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-events.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          modal,
+          messagesContainer,
+          input,
+          sendBtn
+        },
+
+        getChatLoading: () => chatLoading,
+
+        openChat,
+        closeChat,
+        enablePushNotifications,
+        loadPublicMessages,
+        loadPrivatePeople,
+        openPrivateDialog,
+        clearReply,
+        getContextMessageData,
+        setReplyTarget,
+        deleteMessage,
+        findMessageDataFromRow,
+        hideMessageMenu,
+        showMessageMenu,
+        send,
+        updateViewportVars,
+        scrollChatToBottom,
+        scheduleChatResume,
+        setChatTabsLoading
+      });
+    }
+
     function getChatUserApi() {
       return window.KlevbyChatUser || null;
     }
@@ -433,49 +476,6 @@
 
         updateSelectedPeerStatus,
         incrementUnreadPrivateCount
-      });
-    }
-
-    function getChatEventsApi() {
-      return window.KlevbyChatEvents || null;
-    }
-
-    function initChatEventsBridge() {
-      const api = getChatEventsApi();
-
-      if (!api || typeof api.init !== "function") {
-        console.warn("Klevby chat: assets/js/chat-events.js не подключён.");
-        return;
-      }
-
-      api.init({
-        elements: {
-          modal,
-          messagesContainer,
-          input,
-          sendBtn
-        },
-
-        getChatLoading: () => chatLoading,
-
-        openChat,
-        closeChat,
-        enablePushNotifications,
-        loadPublicMessages,
-        loadPrivatePeople,
-        openPrivateDialog,
-        clearReply,
-        getContextMessageData,
-        setReplyTarget,
-        deleteMessage,
-        findMessageDataFromRow,
-        hideMessageMenu,
-        showMessageMenu,
-        send,
-        updateViewportVars,
-        scrollChatToBottom,
-        scheduleChatResume,
-        setChatTabsLoading
       });
     }
 
