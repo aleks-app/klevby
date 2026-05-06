@@ -39,6 +39,12 @@
       : document.getElementById("chat-messages");
   }
 
+  function getChatSubtitle() {
+    return ctx && typeof ctx.getChatSubtitle === "function"
+      ? ctx.getChatSubtitle()
+      : null;
+  }
+
   function safeCall(name, ...args) {
     if (!ctx || typeof ctx[name] !== "function") return undefined;
 
@@ -77,6 +83,36 @@
     }
 
     return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  }
+
+  function isOnline(userId) {
+    if (!userId) return false;
+
+    const onlineUsers = ctx && ctx.onlineUsers ? ctx.onlineUsers : null;
+
+    return Boolean(
+      onlineUsers &&
+      typeof onlineUsers.has === "function" &&
+      onlineUsers.has(String(userId))
+    );
+  }
+
+  function getUserStatusText(userId) {
+    if (!userId) return "Был недавно";
+    return isOnline(userId) ? "Онлайн" : "Был недавно";
+  }
+
+  function updateSelectedPeerStatus() {
+    const activeMode = getActiveMode();
+    const selectedPeer = getSelectedPeer();
+
+    if (activeMode !== "private" || !selectedPeer) return;
+
+    const chatSubtitle = getChatSubtitle();
+
+    if (!chatSubtitle) return;
+
+    chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
   }
 
   function setupPresence() {
@@ -129,19 +165,14 @@
             });
           });
 
-          safeCall("updateSelectedPeerStatus");
+          updateSelectedPeerStatus();
 
           document.querySelectorAll(".klevby-private-dialog-item").forEach((button) => {
             const peerId = button.dataset.peerId;
             const dot = button.querySelector(".klevby-private-status");
 
             if (dot) {
-              const isOnline =
-                onlineUsers &&
-                typeof onlineUsers.has === "function" &&
-                onlineUsers.has(String(peerId));
-
-              dot.classList.toggle("online", Boolean(isOnline));
+              dot.classList.toggle("online", isOnline(peerId));
             }
           });
         })
@@ -351,6 +382,9 @@
     setupPresence,
     setupRealtime,
     cleanupRealtimeConnections,
-    reconnectRealtimeConnections
+    reconnectRealtimeConnections,
+    isOnline,
+    getUserStatusText,
+    updateSelectedPeerStatus
   };
 })();
