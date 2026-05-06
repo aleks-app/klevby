@@ -51,11 +51,6 @@
     let activeMode = "public";
     let selectedPeer = null;
 
-    let unreadPrivateCountFallback = 0;
-
-    let chatNavigationTokenFallback = 0;
-    let chatLoadingFallback = false;
-
     const onlineUsers = new Map();
     const userProfiles = new Map();
 
@@ -759,7 +754,7 @@
         return api.getChatLoading();
       }
 
-      return chatLoadingFallback;
+      return false;
     }
 
     function beginChatNavigation() {
@@ -769,9 +764,7 @@
         return api.beginChatNavigation();
       }
 
-      chatNavigationTokenFallback += 1;
-      setChatTabsLoading(true);
-      return chatNavigationTokenFallback;
+      return Date.now();
     }
 
     function cancelChatNavigation() {
@@ -781,9 +774,7 @@
         return api.cancelChatNavigation();
       }
 
-      chatNavigationTokenFallback += 1;
-      setChatTabsLoading(false);
-      return chatNavigationTokenFallback;
+      return Date.now();
     }
 
     function isStaleNavigation(token) {
@@ -793,7 +784,7 @@
         return api.isStaleNavigation(token);
       }
 
-      return token !== chatNavigationTokenFallback;
+      return false;
     }
 
     function finishChatNavigation(token) {
@@ -801,11 +792,6 @@
 
       if (api && typeof api.finishChatNavigation === "function") {
         api.finishChatNavigation(token);
-        return;
-      }
-
-      if (!isStaleNavigation(token)) {
-        setChatTabsLoading(false);
       }
     }
 
@@ -814,28 +800,6 @@
 
       if (api && typeof api.setChatTabsLoading === "function") {
         api.setChatTabsLoading(isLoading);
-        return;
-      }
-
-      chatLoadingFallback = Boolean(isLoading);
-
-      if (publicTab) {
-        publicTab.disabled = chatLoadingFallback;
-        publicTab.classList.toggle("loading", chatLoadingFallback);
-      }
-
-      if (privateTab) {
-        privateTab.disabled = chatLoadingFallback;
-        privateTab.classList.toggle("loading", chatLoadingFallback);
-      }
-
-      if (backBtn) {
-        backBtn.disabled = chatLoadingFallback;
-        backBtn.classList.toggle("loading", chatLoadingFallback);
-      }
-
-      if (chatWindow) {
-        chatWindow.classList.toggle("klevby-chat-loading", chatLoadingFallback);
       }
     }
 
@@ -846,7 +810,7 @@
         return api.getUnreadPrivateCount();
       }
 
-      return unreadPrivateCountFallback;
+      return 0;
     }
 
     function setUnreadPrivateCount(value) {
@@ -854,11 +818,7 @@
 
       if (api && typeof api.setUnreadPrivateCount === "function") {
         api.setUnreadPrivateCount(value);
-        return;
       }
-
-      unreadPrivateCountFallback = Math.max(0, Number(value) || 0);
-      updateUnreadBadge();
     }
 
     function incrementUnreadPrivateCount(amount = 1) {
@@ -866,11 +826,7 @@
 
       if (api && typeof api.incrementUnreadPrivateCount === "function") {
         api.incrementUnreadPrivateCount(amount);
-        return;
       }
-
-      unreadPrivateCountFallback += Number(amount) || 1;
-      updateUnreadBadge();
     }
 
     function updateUnreadBadge() {
@@ -878,19 +834,7 @@
 
       if (api && typeof api.updateUnreadBadge === "function") {
         api.updateUnreadBadge();
-        return;
       }
-
-      if (!privateUnreadBadge) return;
-
-      if (unreadPrivateCountFallback <= 0) {
-        privateUnreadBadge.classList.add("hidden");
-        privateUnreadBadge.textContent = "0";
-        return;
-      }
-
-      privateUnreadBadge.classList.remove("hidden");
-      privateUnreadBadge.textContent = String(Math.min(unreadPrivateCountFallback, 99));
     }
 
     function syncSelectedPeerForCalls() {
