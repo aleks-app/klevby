@@ -4,28 +4,39 @@
   }
 
   let context = {
+    log: null,
+    warn: null,
+
     safeStopEvent: null,
+
+    getCallState: null,
+    isPrivateDialogOpen: null,
 
     unlockAudioForMobile: null,
     tryPlayRemoteAudio: null,
-    startRingSound: null,
-    stopRingSound: null,
     prepareRemoteAudioElement: null,
     startRemoteAudioRetry: null,
 
+    startRingSound: null,
+    stopRingSound: null,
+
+    startCall: null,
     endCall: null,
     acceptIncomingCall: null,
-    declineCall: null
+    declineCall: null,
+
+    incomingTimeoutMs: 45000
   };
 
   let callOverlay = null;
   let incomingOverlay = null;
+
   let callTimer = null;
   let callSeconds = 0;
+  let incomingTimeoutTimer = null;
 
-  function $(selector) {
-    return document.querySelector(selector);
-  }
+  let buttonObserver = null;
+  let buttonUpdateTimer = null;
 
   function init(options = {}) {
     context = {
@@ -34,12 +45,26 @@
     };
   }
 
-  function callContext(name, ...args) {
-    if (typeof context[name] === "function") {
-      return context[name](...args);
+  function $(selector) {
+    return document.querySelector(selector);
+  }
+
+  function log(...args) {
+    if (typeof context.log === "function") {
+      context.log(...args);
+      return;
     }
 
-    return undefined;
+    console.log("Klevby calls:", ...args);
+  }
+
+  function warn(...args) {
+    if (typeof context.warn === "function") {
+      context.warn(...args);
+      return;
+    }
+
+    console.warn("Klevby calls:", ...args);
   }
 
   function safeStopEvent(event) {
@@ -58,6 +83,110 @@
     }
   }
 
+  function getCallState() {
+    if (typeof context.getCallState === "function") {
+      return context.getCallState();
+    }
+
+    return "idle";
+  }
+
+  function isCallIdle() {
+    return getCallState() === "idle";
+  }
+
+  function unlockAudioForMobile() {
+    if (typeof context.unlockAudioForMobile === "function") {
+      context.unlockAudioForMobile();
+    }
+  }
+
+  function tryPlayRemoteAudio() {
+    if (typeof context.tryPlayRemoteAudio === "function") {
+      context.tryPlayRemoteAudio();
+    }
+  }
+
+  function prepareRemoteAudioElement() {
+    if (typeof context.prepareRemoteAudioElement === "function") {
+      context.prepareRemoteAudioElement();
+    }
+  }
+
+  function startRemoteAudioRetry() {
+    if (typeof context.startRemoteAudioRetry === "function") {
+      context.startRemoteAudioRetry();
+    }
+  }
+
+  function startRingSound() {
+    if (typeof context.startRingSound === "function") {
+      context.startRingSound();
+    }
+  }
+
+  function stopRingSound() {
+    if (typeof context.stopRingSound === "function") {
+      context.stopRingSound();
+    }
+  }
+
+  function startCall() {
+    if (typeof context.startCall === "function") {
+      context.startCall();
+    }
+  }
+
+  function endCall(reason = "ended") {
+    if (typeof context.endCall === "function") {
+      context.endCall(reason);
+    }
+  }
+
+  function acceptIncomingCall() {
+    if (typeof context.acceptIncomingCall === "function") {
+      context.acceptIncomingCall();
+    }
+  }
+
+  function declineCall() {
+    if (typeof context.declineCall === "function") {
+      context.declineCall();
+    }
+  }
+
+  function isPrivateDialogOpen() {
+    if (typeof context.isPrivateDialogOpen === "function") {
+      return Boolean(context.isPrivateDialogOpen());
+    }
+
+    const chatWindow = $("#chat-window");
+
+    return Boolean(
+      chatWindow &&
+      chatWindow.classList.contains("klevby-dialog-screen")
+    );
+  }
+
+  function removeOldTestCallButton() {
+    const oldTestButton = document.getElementById("klevby-chat-call");
+
+    if (oldTestButton) {
+      oldTestButton.remove();
+    }
+
+    const oldTestOverlay = document.getElementById("klevbyCallOverlay");
+
+    if (oldTestOverlay && oldTestOverlay.textContent.includes("тестовый звонок")) {
+      oldTestOverlay.remove();
+    }
+  }
+
+  function getInitial(name) {
+    const clean = String(name || "С").trim();
+    return (clean[0] || "С").toUpperCase();
+  }
+
   function escapeHtml(text) {
     return String(text || "")
       .replaceAll("&", "&amp;")
@@ -65,11 +194,6 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
-  }
-
-  function getInitial(name) {
-    const clean = String(name || "С").trim();
-    return (clean[0] || "С").toUpperCase();
   }
 
   function formatCallTime(seconds) {
@@ -101,6 +225,7 @@
 
   function startTimer() {
     stopTimer();
+
     callSeconds = 0;
 
     const timerEl = $("#klevbyCallTimer");
@@ -191,9 +316,8 @@
     lockPage();
     bindCallButtons();
     startTimer();
-
-    callContext("startRingSound");
-    callContext("prepareRemoteAudioElement");
+    startRingSound();
+    prepareRemoteAudioElement();
   }
 
   function openActiveCallOverlay(peerName) {
@@ -213,9 +337,8 @@
     lockPage();
     bindCallButtons();
     startTimer();
-
-    callContext("prepareRemoteAudioElement");
-    callContext("startRemoteAudioRetry");
+    prepareRemoteAudioElement();
+    startRemoteAudioRetry();
   }
 
   function openIncomingOverlay(payload = {}) {
@@ -234,12 +357,28 @@
 
     lockPage();
     bindCallButtons();
+    startRingSound();
+    prepareRemoteAudioElement();
 
-    callContext("startRingSound");
-    callContext("prepareRemoteAudioElement");
+    clearIncomingTimeout();
+
+    incomingTimeoutTimer = setTimeout(() => {
+      if (!isCallIdle()) {
+        declineCall();
+      }
+    }, Number(context.incomingTimeoutMs) || 45000);
+  }
+
+  function clearIncomingTimeout() {
+    if (incomingTimeoutTimer) {
+      clearTimeout(incomingTimeoutTimer);
+      incomingTimeoutTimer = null;
+    }
   }
 
   function closeOverlaysOnly() {
+    clearIncomingTimeout();
+
     const outgoing = $("#klevbyCallOverlay");
     const incoming = $("#klevbyIncomingCallOverlay");
 
@@ -278,55 +417,188 @@
     if (endButton) {
       endButton.onclick = function (event) {
         safeStopEvent(event);
-        callContext("unlockAudioForMobile");
-        callContext("tryPlayRemoteAudio");
-        callContext("endCall", "ended");
+        unlockAudioForMobile();
+        tryPlayRemoteAudio();
+        endCall("ended");
       };
     }
 
     if (acceptButton) {
       acceptButton.onclick = function (event) {
         safeStopEvent(event);
-        callContext("unlockAudioForMobile");
-        callContext("acceptIncomingCall");
+        unlockAudioForMobile();
+        acceptIncomingCall();
       };
     }
 
     if (declineButton) {
       declineButton.onclick = function (event) {
         safeStopEvent(event);
-        callContext("unlockAudioForMobile");
-        callContext("declineCall");
+        unlockAudioForMobile();
+        declineCall();
       };
     }
   }
 
-  function getCallOverlay() {
-    return callOverlay || $("#klevbyCallOverlay");
+  function ensureCallButton() {
+    removeOldTestCallButton();
+
+    const header = $("#chat-header");
+    const closeButton = $("#close-chat");
+
+    if (!header || !closeButton) return;
+
+    let callButton = $("#klevby-call-btn");
+
+    if (!callButton) {
+      callButton = document.createElement("button");
+      callButton.id = "klevby-call-btn";
+      callButton.type = "button";
+      callButton.setAttribute("aria-label", "Позвонить");
+      callButton.setAttribute("title", "Позвонить");
+      callButton.textContent = "📞";
+      callButton.className = "hidden";
+
+      closeButton.insertAdjacentElement("beforebegin", callButton);
+    }
+
+    updateCallButtonVisibility();
   }
 
-  function getIncomingOverlay() {
-    return incomingOverlay || $("#klevbyIncomingCallOverlay");
+  function updateCallButtonVisibility() {
+    removeOldTestCallButton();
+
+    const callButton = $("#klevby-call-btn");
+
+    if (!callButton) return;
+
+    if (isPrivateDialogOpen()) {
+      callButton.classList.remove("hidden");
+    } else {
+      callButton.classList.add("hidden");
+    }
   }
 
-  function hasActiveOverlay() {
-    return Boolean(getCallOverlay() || getIncomingOverlay());
+  function scheduleButtonUpdate() {
+    clearTimeout(buttonUpdateTimer);
+
+    buttonUpdateTimer = setTimeout(() => {
+      ensureCallButton();
+      updateCallButtonVisibility();
+    }, 120);
   }
 
-  function cleanupUI() {
+  function startButtonObserver() {
+    if (buttonObserver || !document.body) return;
+
+    buttonObserver = new MutationObserver(() => {
+      scheduleButtonUpdate();
+    });
+
+    buttonObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "data-peer-id", "data-peer-name"]
+    });
+  }
+
+  function stopButtonObserver() {
+    if (!buttonObserver) return;
+
+    buttonObserver.disconnect();
+    buttonObserver = null;
+  }
+
+  function handleDocumentClick(event) {
+    const oldTestButton = event.target.closest("#klevby-chat-call");
+
+    if (oldTestButton) {
+      safeStopEvent(event);
+      oldTestButton.remove();
+      return true;
+    }
+
+    if (event.target.closest(".klevby-call-overlay, .klevby-incoming-call-overlay")) {
+      unlockAudioForMobile();
+      tryPlayRemoteAudio();
+    }
+
+    const callButton = event.target.closest("#klevby-call-btn");
+
+    if (callButton) {
+      safeStopEvent(event);
+      unlockAudioForMobile();
+      startCall();
+      return true;
+    }
+
+    const endButton = event.target.closest("#klevbyEndCallBtn");
+
+    if (endButton) {
+      safeStopEvent(event);
+      unlockAudioForMobile();
+      endCall("ended");
+      return true;
+    }
+
+    const acceptButton = event.target.closest("#klevbyAcceptCallBtn");
+
+    if (acceptButton) {
+      safeStopEvent(event);
+      unlockAudioForMobile();
+      acceptIncomingCall();
+      return true;
+    }
+
+    const declineButton = event.target.closest("#klevbyDeclineCallBtn");
+
+    if (declineButton) {
+      safeStopEvent(event);
+      unlockAudioForMobile();
+      declineCall();
+      return true;
+    }
+
+    return false;
+  }
+
+  function handleTouchStart(event) {
+    if (event.target.closest(".klevby-call-overlay, .klevby-incoming-call-overlay, #klevby-call-btn")) {
+      unlockAudioForMobile();
+      tryPlayRemoteAudio();
+    }
+  }
+
+  function hasCallOverlay() {
+    return Boolean(callOverlay || incomingOverlay || $("#klevbyCallOverlay") || $("#klevbyIncomingCallOverlay"));
+  }
+
+  function cleanupUI(options = {}) {
+    const unlock = options.unlock !== false;
+
+    clearIncomingTimeout();
     stopTimer();
+    stopRingSound();
     closeOverlaysOnly();
-    unlockPageIfChatClosed();
+
+    if (unlock) {
+      unlockPageIfChatClosed();
+    }
+
+    scheduleButtonUpdate();
   }
 
   window.KlevbyCallUI = {
     init,
 
-    escapeHtml,
-    getInitial,
-    formatCallTime,
+    removeOldTestCallButton,
 
+    getInitial,
+    escapeHtml,
+    formatCallTime,
     showToast,
+
     startTimer,
     stopTimer,
     setCallStatus,
@@ -339,11 +611,19 @@
 
     lockPage,
     unlockPageIfChatClosed,
-    bindCallButtons,
 
-    getCallOverlay,
-    getIncomingOverlay,
-    hasActiveOverlay,
+    ensureCallButton,
+    updateCallButtonVisibility,
+    scheduleButtonUpdate,
+    startButtonObserver,
+    stopButtonObserver,
+
+    bindCallButtons,
+    handleDocumentClick,
+    handleTouchStart,
+    hasCallOverlay,
+
+    clearIncomingTimeout,
     cleanupUI
   };
 })();
