@@ -1490,12 +1490,11 @@
     function isOnline(userId) {
       const api = getChatRealtimeApi();
 
-      if (api && typeof api.isOnline === "function") {
-        return api.isOnline(userId);
-      }
-
-      if (!userId) return false;
-      return onlineUsers.has(String(userId));
+      return Boolean(
+        api &&
+        typeof api.isOnline === "function" &&
+        api.isOnline(userId)
+      );
     }
 
     function getUserStatusText(userId) {
@@ -1505,8 +1504,7 @@
         return api.getUserStatusText(userId);
       }
 
-      if (!userId) return "Был недавно";
-      return isOnline(userId) ? "Онлайн" : "Был недавно";
+      return "Был недавно";
     }
 
     function updateSelectedPeerStatus() {
@@ -1514,11 +1512,7 @@
 
       if (api && typeof api.updateSelectedPeerStatus === "function") {
         api.updateSelectedPeerStatus();
-        return;
       }
-
-      if (activeMode !== "private" || !selectedPeer) return;
-      chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
     }
 
     async function send() {
