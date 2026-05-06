@@ -11,6 +11,9 @@
   const PERSONAL_CHANNEL_THROTTLE_MS = 1800;
   const ICE_GATHERING_WAIT_MS = 4500;
 
+  const RINGTONE_URL = "assets/audio/klevby-ringtone.mp3";
+  const RINGTONE_VOLUME = 0.9;
+
   /*
     Важно:
     Сейчас звонки работают через Supabase Realtime broadcast.
@@ -51,6 +54,8 @@
   let ringInterval = null;
   let activeOscillator = null;
   let activeGain = null;
+  let ringtoneAudio = null;
+  let ringSoundActive = false;
 
   let remoteAudioSourceNode = null;
   let remoteAudioSourceStream = null;
@@ -368,6 +373,31 @@
     }
   }
 
+  function getRingtoneAudio() {
+    if (!ringtoneAudio) {
+      ringtoneAudio = new Audio(RINGTONE_URL);
+      ringtoneAudio.preload = "auto";
+      ringtoneAudio.loop = true;
+      ringtoneAudio.volume = RINGTONE_VOLUME;
+
+      try {
+        ringtoneAudio.setAttribute("playsinline", "");
+        ringtoneAudio.setAttribute("webkit-playsinline", "");
+      } catch (error) {}
+    }
+
+    return ringtoneAudio;
+  }
+
+  function stopRingtoneAudio() {
+    if (!ringtoneAudio) return;
+
+    try {
+      ringtoneAudio.pause();
+      ringtoneAudio.currentTime = 0;
+    } catch (error) {}
+  }
+
   function stopSingleBeep() {
     try {
       if (activeOscillator) {
@@ -421,23 +451,85 @@
     };
   }
 
-  function startRingSound() {
-    stopRingSound();
-    unlockAudioForMobile();
+  function startFallbackBeepRing() {
+    if (!ringSoundActive) return;
 
-    playSingleBeep();
-
-    ringInterval = setInterval(() => {
-      playSingleBeep();
-    }, 1850);
-  }
-
-  function stopRingSound() {
     if (ringInterval) {
       clearInterval(ringInterval);
       ringInterval = null;
     }
 
+    playSingleBeep();
+
+    ringInterval = setInterval(() => {
+      if (!ringSoundActive) {
+        clearInterval(ringInterval);
+        ringInterval = null;
+        return;
+      }
+
+      playSingleBeep();
+    }, 1850);
+  }
+
+  function playCustomRingtoneOrFallback() {
+    const audio = getRingtoneAudio();
+
+    if (!audio) {
+      startFallbackBeepRing();
+      return;
+    }
+
+    try {
+      audio.loop = true;
+      audio.volume = RINGTONE_VOLUME;
+      audio.currentTime = 0;
+
+      const playResult = audio.play();
+
+      if (playResult && typeof playResult.then === "function") {
+        playResult
+          .then(() => {
+            if (!ringSoundActive) {
+              stopRingtoneAudio();
+              return;
+            }
+
+            log("custom ringtone playing");
+          })
+          .catch((error) => {
+            if (!ringSoundActive) return;
+
+            warn("custom ringtone blocked, fallback beep enabled", error);
+            startFallbackBeepRing();
+          });
+      }
+    } catch (error) {
+      if (!ringSoundActive) return;
+
+      warn("custom ringtone failed, fallback beep enabled", error);
+      startFallbackBeepRing();
+    }
+  }
+
+  function startRingSound() {
+    stopRingSound();
+
+    ringSoundActive = true;
+
+    unlockAudioForMobile();
+    playCustomRingtoneOrFallback();
+  }
+
+  function stopRingSound() {
+    ringSoundActive = false;
+
+    if (ringInterval) {
+      clearInterval(ringInterval);
+      ringInterval = null;
+    }
+
+    stopRingtoneAudio();
     stopSingleBeep();
   }
 
@@ -792,11 +884,15 @@
             log("remote audio playing");
           })
           .catch((error) => {
+            if (callState === "idle") return;
+
             warn("remote audio play blocked", error);
             showToast("Нажми по экрану звонка, чтобы включить звук.");
           });
       }
     } catch (error) {
+      if (callState === "idle") return;
+
       warn("remote audio play failed", error);
     }
   }
@@ -1770,6 +1866,15 @@
     removeOldTestCallButton();
 
     log("script loaded", "v6");
+
+    try {
+      const audio = getRingtoneAudio();
+      if (audio && typeof audio.load === "function") {
+        audio.load();
+      }
+    } catch (error) {
+      warn("custom ringtone preload skipped", error);
+    }
 
     const waitForClient = setInterval(async () => {
       const client = getMainSupabaseClient();
