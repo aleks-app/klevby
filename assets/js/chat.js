@@ -683,22 +683,11 @@
     function isMyPublicMessage(message) {
       const api = getChatPublicApi();
 
-      if (api && typeof api.isMyPublicMessage === "function") {
-        return api.isMyPublicMessage(message);
-      }
-
-      const myUserId = currentChatUser?.id || null;
-      const messageUserId = message.user_id || null;
-
-      if (myUserId && messageUserId && String(myUserId) === String(messageUserId)) {
-        return true;
-      }
-
-      if (!messageUserId && cleanDisplayName(message.user_name) === getCurrentChatName()) {
-        return true;
-      }
-
-      return false;
+      return Boolean(
+        api &&
+        typeof api.isMyPublicMessage === "function" &&
+        api.isMyPublicMessage(message)
+      );
     }
 
     async function loadPrivatePeople(navToken = beginChatNavigation()) {
