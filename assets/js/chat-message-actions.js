@@ -268,6 +268,7 @@
 
   window.KlevbyChatMessageActions = {
     init,
+    findMessageDataFromRow,
     showMessageMenu,
     hideMessageMenu,
     getContextMessageData,
