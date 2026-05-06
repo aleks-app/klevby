@@ -733,16 +733,6 @@
 
       if (api && typeof api.markPeerAsRead === "function") {
         api.markPeerAsRead(peerId);
-        return;
-      }
-
-      if (!isValidSupabaseUuid(peerId)) return;
-
-      try {
-        const myId = currentChatUser?.id || "guest";
-        localStorage.setItem(`klevby_private_read_${myId}_${peerId}`, String(Date.now()));
-      } catch (error) {
-        console.warn("Klevby chat: не удалось сохранить статус прочтения:", error);
       }
     }
 
