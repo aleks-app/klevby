@@ -1160,12 +1160,7 @@
         return api.escapeHtml(text);
       }
 
-      return String(text || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+      return String(text || "");
     }
 
     function cssEscape(value) {
@@ -1175,11 +1170,7 @@
         return api.cssEscape(value);
       }
 
-      if (window.CSS && typeof window.CSS.escape === "function") {
-        return window.CSS.escape(value);
-      }
-
-      return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+      return String(value || "");
     }
 
     function getInitials(name) {
@@ -1189,8 +1180,7 @@
         return api.getInitials(name);
       }
 
-      const clean = String(name || "Рыбак").trim();
-      return (clean[0] || "Р").toUpperCase();
+      return "Р";
     }
 
     function getMessageTime(createdAt) {
@@ -1200,16 +1190,7 @@
         return api.getMessageTime(createdAt);
       }
 
-      if (!createdAt) return "";
-
-      try {
-        return new Date(createdAt).toLocaleTimeString("ru-RU", {
-          hour: "2-digit",
-          minute: "2-digit"
-        });
-      } catch {
-        return "";
-      }
+      return "";
     }
 
     function getTimestamp(createdAt) {
@@ -1219,8 +1200,7 @@
         return api.getTimestamp(createdAt);
       }
 
-      const time = new Date(createdAt || Date.now()).getTime();
-      return Number.isFinite(time) ? time : Date.now();
+      return Date.now();
     }
 
     function parseReplyContent(content) {
@@ -1230,27 +1210,9 @@
         return api.parseReplyContent(content);
       }
 
-      const text = String(content || "");
-
-      if (!text.startsWith("↩ Ответ ")) {
-        return {
-          reply: null,
-          mainText: text
-        };
-      }
-
-      const parts = text.split("\n");
-
-      if (parts.length < 2) {
-        return {
-          reply: null,
-          mainText: text
-        };
-      }
-
       return {
-        reply: parts[0].replace("↩ Ответ ", ""),
-        mainText: parts.slice(1).join("\n")
+        reply: null,
+        mainText: String(content || "")
       };
     }
 
