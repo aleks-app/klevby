@@ -52,7 +52,6 @@
     let selectedPeer = null;
 
     let unreadPrivateCountFallback = 0;
-    let replyTargetFallback = null;
     let contextMessageDataFallback = null;
 
     let chatNavigationTokenFallback = 0;
@@ -1437,13 +1436,7 @@
 
       if (api && typeof api.clearReply === "function") {
         api.clearReply();
-        return;
       }
-
-      replyTargetFallback = null;
-      replyPreview.classList.add("hidden");
-      replyAuthor.textContent = "";
-      replyText.textContent = "";
     }
 
     function setReplyTarget(messageData) {
@@ -1451,23 +1444,7 @@
 
       if (api && typeof api.setReplyTarget === "function") {
         api.setReplyTarget(messageData);
-        return;
       }
-
-      replyTargetFallback = {
-        author: messageData.isMine ? "Вы" : messageData.author,
-        text: messageData.content || ""
-      };
-
-      replyAuthor.textContent = "Ответ: " + replyTargetFallback.author;
-      replyText.textContent = replyTargetFallback.text;
-
-      replyPreview.classList.remove("hidden");
-      hideMessageMenu();
-
-      requestAnimationFrame(() => {
-        input.focus();
-      });
     }
 
     function buildMessageContent(value) {
@@ -1477,14 +1454,7 @@
         return api.buildMessageContent(value);
       }
 
-      if (!replyTargetFallback) return value;
-
-      const quoted = String(replyTargetFallback.text || "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 120);
-
-      return `↩ Ответ ${replyTargetFallback.author}: ${quoted}\n${value}`;
+      return value;
     }
 
     function isOnline(userId) {
