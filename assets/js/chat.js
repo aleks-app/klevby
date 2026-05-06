@@ -55,10 +55,6 @@
     let replyTargetFallback = null;
     let contextMessageDataFallback = null;
 
-    let klevbyResumeTimer = null;
-    let klevbyResumeInProgress = false;
-    let klevbyLastResumeAt = 0;
-
     let chatNavigationTokenFallback = 0;
     let chatLoadingFallback = false;
 
@@ -105,6 +101,7 @@
     initChatPublicBridge();
     initChatPrivateBridge();
     initChatRealtimeBridge();
+    initChatLifecycleBridge();
     initChatEventsBridge();
 
     refreshCurrentUser().then(async () => {
@@ -170,6 +167,61 @@
         setChatTabsLoading(false);
       }
     });
+
+    function getChatLifecycleApi() {
+      return window.KlevbyChatLifecycle || null;
+    }
+
+    function initChatLifecycleBridge() {
+      const api = getChatLifecycleApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-lifecycle.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          modal
+        },
+
+        getActiveMode: () => activeMode,
+        setActiveMode: (mode) => {
+          activeMode = mode || "public";
+        },
+
+        getSelectedPeer: () => selectedPeer,
+        setSelectedPeer: (peer) => {
+          selectedPeer = peer || null;
+        },
+
+        updateViewportVars,
+        lockChatPage,
+        unlockChatPage,
+
+        refreshCurrentUser,
+        ensureCurrentUserProfile,
+        reconnectRealtimeConnections,
+
+        loadPublicMessages,
+        loadPrivatePeople,
+        openPrivateDialog,
+
+        refreshPushButtonState,
+        saveExistingPushSubscriptionIfPossible,
+
+        syncSelectedPeerForCalls,
+        clearReply,
+        hideMessageMenu,
+
+        setChatTabsLoading,
+        cancelChatNavigation,
+
+        isValidSupabaseUuid,
+        scrollChatToBottom,
+        showEmptyState
+      });
+    }
 
     function getChatStateApi() {
       return window.KlevbyChatState || null;
@@ -1517,90 +1569,44 @@
     }
 
     async function reloadChatAfterResume(reason = "resume") {
-      const now = Date.now();
+      const api = getChatLifecycleApi();
 
-      if (klevbyResumeInProgress) return;
-      if (now - klevbyLastResumeAt < 2500) return;
-
-      klevbyResumeInProgress = true;
-      klevbyLastResumeAt = now;
-
-      try {
-        updateViewportVars();
-
-        await refreshCurrentUser();
-        await ensureCurrentUserProfile({ soft: true });
-        await reconnectRealtimeConnections();
-        await saveExistingPushSubscriptionIfPossible();
-
-        const isChatOpen = modal && modal.classList.contains("open");
-
-        if (!isChatOpen) {
-          return;
-        }
-
-        const savedMode = activeMode;
-        const savedPeer = selectedPeer ? { ...selectedPeer } : null;
-
-        if (savedMode === "private" && savedPeer && isValidSupabaseUuid(savedPeer.id)) {
-          await openPrivateDialog(savedPeer.id, savedPeer.name);
-        } else if (savedMode === "private") {
-          await loadPrivatePeople();
-        } else {
-          await loadPublicMessages();
-        }
-
-        syncSelectedPeerForCalls();
-
-        setTimeout(() => {
-          updateViewportVars();
-          scrollChatToBottom();
-        }, 150);
-      } catch (error) {
-        console.warn("Не удалось восстановить чат после возврата в приложение:", reason, error);
-        setChatTabsLoading(false);
-      } finally {
-        klevbyResumeInProgress = false;
+      if (api && typeof api.reloadChatAfterResume === "function") {
+        return await api.reloadChatAfterResume(reason);
       }
+
+      console.warn("Klevby chat: chat-lifecycle.js не подключён, восстановление чата пропущено.");
     }
 
     function scheduleChatResume(reason = "resume") {
-      clearTimeout(klevbyResumeTimer);
+      const api = getChatLifecycleApi();
 
-      klevbyResumeTimer = setTimeout(() => {
-        reloadChatAfterResume(reason);
-      }, 700);
+      if (api && typeof api.scheduleChatResume === "function") {
+        api.scheduleChatResume(reason);
+        return;
+      }
+
+      console.warn("Klevby chat: chat-lifecycle.js не подключён, scheduleChatResume пропущен.");
     }
 
     async function openChat() {
-      try {
-        updateViewportVars();
-        lockChatPage();
+      const api = getChatLifecycleApi();
 
-        modal.classList.remove("hidden");
-        modal.classList.add("open");
-
-        await refreshCurrentUser();
-        await ensureCurrentUserProfile({ soft: true });
-        await reconnectRealtimeConnections();
-        await loadPublicMessages();
-        await refreshPushButtonState();
-        await saveExistingPushSubscriptionIfPossible();
-
-        syncSelectedPeerForCalls();
-
-        setTimeout(() => {
-          updateViewportVars();
-          scrollChatToBottom();
-        }, 150);
-      } catch (error) {
-        console.error("Klevby chat: ошибка открытия чата:", error);
-        setChatTabsLoading(false);
-        showEmptyState("Не удалось открыть чат. Обнови страницу или проверь Console.");
+      if (api && typeof api.openChat === "function") {
+        return await api.openChat();
       }
+
+      console.warn("Klevby chat: chat-lifecycle.js не подключён, чат не открыт.");
     }
 
     function closeChat() {
+      const api = getChatLifecycleApi();
+
+      if (api && typeof api.closeChat === "function") {
+        api.closeChat();
+        return;
+      }
+
       cancelChatNavigation();
 
       modal.classList.remove("open");
