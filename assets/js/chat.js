@@ -102,6 +102,7 @@
     initChatPrivateBridge();
     initChatRealtimeBridge();
     initChatLifecycleBridge();
+    initChatAuthEventsBridge();
     initChatEventsBridge();
 
     refreshCurrentUser().then(async () => {
@@ -119,54 +120,49 @@
       refreshPushButtonState();
     });
 
-    if (chatDb.auth && typeof chatDb.auth.onAuthStateChange === "function") {
-      chatDb.auth.onAuthStateChange(async (_event, session) => {
-        try {
-          currentChatUser =
-            session?.user ||
-            getUserFromMainSite() ||
-            currentChatUser ||
-            null;
-
-          syncGlobalChatUser();
-          await ensureCurrentUserProfile({ force: true, soft: true });
-          setupPresence();
-          syncSelectedPeerForCalls();
-          await refreshPushButtonState();
-          await saveExistingPushSubscriptionIfPossible();
-        } catch (error) {
-          console.warn("Klevby chat: auth-change обработан с предупреждением:", error);
-        }
-      });
+    function getChatAuthEventsApi() {
+      return window.KlevbyChatAuthEvents || null;
     }
 
-    window.addEventListener("klevby-auth-changed", async (event) => {
-      try {
-        currentChatUser =
-          event?.detail?.user ||
-          getUserFromMainSite() ||
-          currentChatUser ||
-          null;
+    function initChatAuthEventsBridge() {
+      const api = getChatAuthEventsApi();
 
-        syncGlobalChatUser();
-        await ensureCurrentUserProfile({ force: true, soft: true });
-
-        if (activeMode === "private" && modal && modal.classList.contains("open")) {
-          if (selectedPeer) {
-            await openPrivateDialog(selectedPeer.id, selectedPeer.name);
-          } else {
-            await loadPrivatePeople();
-          }
-        }
-
-        syncSelectedPeerForCalls();
-        await refreshPushButtonState();
-        await saveExistingPushSubscriptionIfPossible();
-      } catch (error) {
-        console.warn("Klevby chat: klevby-auth-changed обработан с предупреждением:", error);
-        setChatTabsLoading(false);
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-auth-events.js не подключён.");
+        return;
       }
-    });
+
+      api.init({
+        chatDb,
+
+        elements: {
+          modal
+        },
+
+        getCurrentUser: () => currentChatUser,
+        setCurrentUser: (user) => {
+          currentChatUser = user || null;
+        },
+
+        getUserFromMainSite,
+        syncGlobalChatUser,
+        ensureCurrentUserProfile,
+
+        setupPresence,
+        syncSelectedPeerForCalls,
+
+        refreshPushButtonState,
+        saveExistingPushSubscriptionIfPossible,
+
+        getActiveMode: () => activeMode,
+        getSelectedPeer: () => selectedPeer,
+
+        openPrivateDialog,
+        loadPrivatePeople,
+
+        setChatTabsLoading
+      });
+    }
 
     function getChatLifecycleApi() {
       return window.KlevbyChatLifecycle || null;
