@@ -572,6 +572,16 @@
       });
     }
 
+    function callChatUser(name, fallback, ...args) {
+      const api = getChatUserApi();
+
+      if (api && typeof api[name] === "function") {
+        return api[name](...args);
+      }
+
+      return typeof fallback === "function" ? fallback(...args) : fallback;
+    }
+
     async function refreshPushButtonState() {
       const api = getChatPushApi();
 
@@ -877,223 +887,157 @@
     }
 
     function getUserFromMainSite() {
-      const api = getChatUserApi();
-
-      if (api && typeof api.getUserFromMainSite === "function") {
-        return api.getUserFromMainSite();
-      }
-
-      const fromGetter =
-        typeof window.klevbyGetCurrentUser === "function"
-          ? window.klevbyGetCurrentUser()
-          : null;
-
-      return (
-        fromGetter ||
+      return callChatUser("getUserFromMainSite", () => (
         window.klevbyCurrentUser ||
         window.currentUser ||
         window.klevbyUser ||
         null
-      );
+      ));
     }
 
     function syncGlobalChatUser() {
-      const api = getChatUserApi();
+      return callChatUser("syncGlobalChatUser", () => {
+        if (!currentChatUser || !currentChatUser.id) return;
 
-      if (api && typeof api.syncGlobalChatUser === "function") {
-        api.syncGlobalChatUser();
-        return;
-      }
-
-      if (!currentChatUser || !currentChatUser.id) return;
-
-      window.klevbyCurrentUser = currentChatUser;
-      window.currentUser = currentChatUser;
-      window.klevbyUser = currentChatUser;
+        window.klevbyCurrentUser = currentChatUser;
+        window.currentUser = currentChatUser;
+        window.klevbyUser = currentChatUser;
+      });
     }
 
     function isAuthLockError(error) {
-      const api = getChatUserApi();
-
-      if (api && typeof api.isAuthLockError === "function") {
-        return api.isAuthLockError(error);
-      }
-
-      const message = String(error?.message || error || "").toLowerCase();
-      return message.includes("lock") && message.includes("auth-token");
+      return callChatUser("isAuthLockError", () => {
+        const message = String(error?.message || error || "").toLowerCase();
+        return message.includes("lock") && message.includes("auth-token");
+      }, error);
     }
 
     function isValidSupabaseUuid(value) {
-      const api = getChatUserApi();
-
-      if (api && typeof api.isValidSupabaseUuid === "function") {
-        return api.isValidSupabaseUuid(value);
-      }
-
-      const id = String(value || "").trim();
-
-      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+      return callChatUser("isValidSupabaseUuid", () => {
+        const id = String(value || "").trim();
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+      }, value);
     }
 
     function getValidProfileIds(ids = []) {
-      const api = getChatUserApi();
-
-      if (api && typeof api.getValidProfileIds === "function") {
-        return api.getValidProfileIds(ids);
-      }
-
-      return [...new Set(
-        (ids || [])
-          .map((id) => String(id || "").trim())
-          .filter((id) => isValidSupabaseUuid(id))
-      )];
+      return callChatUser("getValidProfileIds", () => (
+        [...new Set(
+          (ids || [])
+            .map((id) => String(id || "").trim())
+            .filter((id) => isValidSupabaseUuid(id))
+        )]
+      ), ids);
     }
 
     function getGuestName() {
-      const api = getChatUserApi();
+      return callChatUser("getGuestName", () => {
+        let name = "";
 
-      if (api && typeof api.getGuestName === "function") {
-        return api.getGuestName();
-      }
+        try {
+          name = localStorage.getItem("klevby_chat_guest_name") || "";
+        } catch {
+          name = "";
+        }
 
-      let name = localStorage.getItem("klevby_chat_guest_name");
+        if (!name) {
+          name = "Рыбак-" + Math.floor(1000 + Math.random() * 9000);
 
-      if (!name) {
-        name = "Рыбак-" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem("klevby_chat_guest_name", name);
-      }
+          try {
+            localStorage.setItem("klevby_chat_guest_name", name);
+          } catch {
+            // localStorage может быть недоступен.
+          }
+        }
 
-      return name;
+        return name;
+      });
     }
 
     function cleanDisplayName(value) {
-      const api = getChatUserApi();
+      return callChatUser("cleanDisplayName", () => {
+        let name = String(value || "").trim();
 
-      if (api && typeof api.cleanDisplayName === "function") {
-        return api.cleanDisplayName(value);
-      }
+        if (!name) return "";
 
-      let name = String(value || "").trim();
+        if (name.includes("@")) {
+          name = name.split("@")[0];
+        }
 
-      if (!name) return "";
-
-      if (name.includes("@")) {
-        name = name.split("@")[0];
-      }
-
-      name = name
-        .replace(/[<>]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      return name.slice(0, 32);
+        return name
+          .replace(/[<>]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 32);
+      }, value);
     }
 
     function getMetadataName(user = currentChatUser) {
-      const api = getChatUserApi();
+      return callChatUser("getMetadataName", () => {
+        const meta = user?.user_metadata || {};
 
-      if (api && typeof api.getMetadataName === "function") {
-        return api.getMetadataName(user);
-      }
-
-      const meta = user?.user_metadata || {};
-
-      return cleanDisplayName(
-        meta.nickname ||
-        meta.username ||
-        meta.display_name ||
-        meta.name ||
-        meta.full_name ||
-        ""
-      );
+        return cleanDisplayName(
+          meta.nickname ||
+          meta.username ||
+          meta.display_name ||
+          meta.name ||
+          meta.full_name ||
+          ""
+        );
+      }, user);
     }
 
     async function refreshCurrentUser(options = {}) {
-      const api = getChatUserApi();
-
-      if (api && typeof api.refreshCurrentUser === "function") {
-        const user = await api.refreshCurrentUser(options);
-        currentChatUser = user || null;
-        return currentChatUser;
-      }
-
-      currentChatUser = getUserFromMainSite() || currentChatUser || null;
+      const user = await callChatUser("refreshCurrentUser", () => getUserFromMainSite() || currentChatUser || null, options);
+      currentChatUser = user || null;
       return currentChatUser;
     }
 
     function getCurrentChatName() {
-      const api = getChatUserApi();
+      return callChatUser("getCurrentChatName", () => {
+        const nickname = getMetadataName(currentChatUser);
 
-      if (api && typeof api.getCurrentChatName === "function") {
-        return api.getCurrentChatName();
-      }
+        if (nickname) return nickname;
 
-      const nickname = getMetadataName(currentChatUser);
+        if (currentChatUser?.email) {
+          return cleanDisplayName(currentChatUser.email);
+        }
 
-      if (nickname) {
-        return nickname;
-      }
-
-      if (currentChatUser?.email) {
-        return cleanDisplayName(currentChatUser.email);
-      }
-
-      return getGuestName();
+        return getGuestName();
+      });
     }
 
     async function ensureCurrentUserProfile(options = {}) {
-      const api = getChatUserApi();
-
-      if (api && typeof api.ensureCurrentUserProfile === "function") {
-        return await api.ensureCurrentUserProfile(options);
-      }
+      return await callChatUser("ensureCurrentUserProfile", undefined, options);
     }
 
     async function loadProfilesByIds(ids = []) {
-      const api = getChatUserApi();
-
-      if (api && typeof api.loadProfilesByIds === "function") {
-        return await api.loadProfilesByIds(ids);
-      }
-
-      const uniqueIds = getValidProfileIds(ids);
-
-      if (!uniqueIds.length) return;
+      return await callChatUser("loadProfilesByIds", undefined, ids);
     }
 
     function rememberFallbackProfile(userId, name) {
-      const api = getChatUserApi();
+      return callChatUser("rememberFallbackProfile", () => {
+        const id = String(userId || "").trim();
+        const cleanName = cleanDisplayName(name);
 
-      if (api && typeof api.rememberFallbackProfile === "function") {
-        api.rememberFallbackProfile(userId, name);
-        return;
-      }
+        if (!id || !cleanName) return;
+        if (!isValidSupabaseUuid(id)) return;
 
-      const id = String(userId || "").trim();
-      const cleanName = cleanDisplayName(name);
-
-      if (!id || !cleanName) return;
-      if (!isValidSupabaseUuid(id)) return;
-
-      if (!userProfiles.has(id)) {
-        userProfiles.set(id, cleanName);
-      }
+        if (!userProfiles.has(id)) {
+          userProfiles.set(id, cleanName);
+        }
+      }, userId, name);
     }
 
     function getProfileName(userId, fallback = "Рыбак") {
-      const api = getChatUserApi();
+      return callChatUser("getProfileName", () => {
+        const id = String(userId || "").trim();
 
-      if (api && typeof api.getProfileName === "function") {
-        return api.getProfileName(userId, fallback);
-      }
+        if (id && userProfiles.has(id)) {
+          return userProfiles.get(id) || cleanDisplayName(fallback) || "Рыбак";
+        }
 
-      const id = String(userId || "").trim();
-
-      if (id && userProfiles.has(id)) {
-        return userProfiles.get(id) || cleanDisplayName(fallback) || "Рыбак";
-      }
-
-      return cleanDisplayName(fallback) || "Рыбак";
+        return cleanDisplayName(fallback) || "Рыбак";
+      }, userId, fallback);
     }
 
     function escapeHtml(text) {
