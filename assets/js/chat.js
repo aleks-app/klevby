@@ -555,6 +555,7 @@
         getActiveMode: () => activeMode,
         getSelectedPeer: () => selectedPeer,
         getMessagesContainer: () => messagesContainer,
+        getChatSubtitle: () => chatSubtitle,
 
         onlineUsers,
         userProfiles,
@@ -574,7 +575,6 @@
         loadPrivatePeople,
         markPeerAsRead,
 
-        updateSelectedPeerStatus,
         incrementUnreadPrivateCount
       });
     }
@@ -1488,16 +1488,35 @@
     }
 
     function isOnline(userId) {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.isOnline === "function") {
+        return api.isOnline(userId);
+      }
+
       if (!userId) return false;
       return onlineUsers.has(String(userId));
     }
 
     function getUserStatusText(userId) {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.getUserStatusText === "function") {
+        return api.getUserStatusText(userId);
+      }
+
       if (!userId) return "Был недавно";
       return isOnline(userId) ? "Онлайн" : "Был недавно";
     }
 
     function updateSelectedPeerStatus() {
+      const api = getChatRealtimeApi();
+
+      if (api && typeof api.updateSelectedPeerStatus === "function") {
+        api.updateSelectedPeerStatus();
+        return;
+      }
+
       if (activeMode !== "private" || !selectedPeer) return;
       chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
     }
