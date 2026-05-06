@@ -113,8 +113,102 @@
       refreshPushButtonState();
     });
 
+    function callApi(getApi, name, fallback, ...args) {
+      const api = getApi();
+
+      if (api && typeof api[name] === "function") {
+        return api[name](...args);
+      }
+
+      return typeof fallback === "function" ? fallback(...args) : fallback;
+    }
+
     function getChatAuthEventsApi() {
       return window.KlevbyChatAuthEvents || null;
+    }
+
+    function getChatLifecycleApi() {
+      return window.KlevbyChatLifecycle || null;
+    }
+
+    function getChatStateApi() {
+      return window.KlevbyChatState || null;
+    }
+
+    function getChatEventsApi() {
+      return window.KlevbyChatEvents || null;
+    }
+
+    function getChatUserApi() {
+      return window.KlevbyChatUser || null;
+    }
+
+    function getChatRenderApi() {
+      return window.KlevbyChatRender || null;
+    }
+
+    function getChatReplyApi() {
+      return window.KlevbyChatReply || null;
+    }
+
+    function getChatMessageActionsApi() {
+      return window.KlevbyChatMessageActions || null;
+    }
+
+    function getChatPushApi() {
+      return window.KlevbyChatPush || null;
+    }
+
+    function getChatPublicApi() {
+      return window.KlevbyChatPublic || null;
+    }
+
+    function getChatPrivateApi() {
+      return window.KlevbyChatPrivate || null;
+    }
+
+    function getChatRealtimeApi() {
+      return window.KlevbyChatRealtime || null;
+    }
+
+    function callChatUser(name, fallback, ...args) {
+      return callApi(getChatUserApi, name, fallback, ...args);
+    }
+
+    function callChatPush(name, fallback, ...args) {
+      return callApi(getChatPushApi, name, fallback, ...args);
+    }
+
+    function callChatState(name, fallback, ...args) {
+      return callApi(getChatStateApi, name, fallback, ...args);
+    }
+
+    function callChatRender(name, fallback, ...args) {
+      return callApi(getChatRenderApi, name, fallback, ...args);
+    }
+
+    function callChatReply(name, fallback, ...args) {
+      return callApi(getChatReplyApi, name, fallback, ...args);
+    }
+
+    function callChatMessageActions(name, fallback, ...args) {
+      return callApi(getChatMessageActionsApi, name, fallback, ...args);
+    }
+
+    function callChatRealtime(name, fallback, ...args) {
+      return callApi(getChatRealtimeApi, name, fallback, ...args);
+    }
+
+    function callChatLifecycle(name, fallback, ...args) {
+      return callApi(getChatLifecycleApi, name, fallback, ...args);
+    }
+
+    function callChatPublic(name, fallback, ...args) {
+      return callApi(getChatPublicApi, name, fallback, ...args);
+    }
+
+    function callChatPrivate(name, fallback, ...args) {
+      return callApi(getChatPrivateApi, name, fallback, ...args);
     }
 
     function initChatAuthEventsBridge() {
@@ -155,10 +249,6 @@
 
         setChatTabsLoading
       });
-    }
-
-    function getChatLifecycleApi() {
-      return window.KlevbyChatLifecycle || null;
     }
 
     function initChatLifecycleBridge() {
@@ -212,10 +302,6 @@
       });
     }
 
-    function getChatStateApi() {
-      return window.KlevbyChatState || null;
-    }
-
     function initChatStateBridge() {
       const api = getChatStateApi();
 
@@ -233,10 +319,6 @@
           privateUnreadBadge
         }
       });
-    }
-
-    function getChatEventsApi() {
-      return window.KlevbyChatEvents || null;
     }
 
     function initChatEventsBridge() {
@@ -278,10 +360,6 @@
       });
     }
 
-    function getChatUserApi() {
-      return window.KlevbyChatUser || null;
-    }
-
     function initChatUserBridge() {
       const api = getChatUserApi();
 
@@ -298,10 +376,6 @@
         },
         userProfiles
       });
-    }
-
-    function getChatRenderApi() {
-      return window.KlevbyChatRender || null;
     }
 
     function initChatRenderBridge() {
@@ -328,10 +402,6 @@
       });
     }
 
-    function getChatReplyApi() {
-      return window.KlevbyChatReply || null;
-    }
-
     function initChatReplyBridge() {
       const api = getChatReplyApi();
 
@@ -349,10 +419,6 @@
         },
         hideMessageMenu
       });
-    }
-
-    function getChatMessageActionsApi() {
-      return window.KlevbyChatMessageActions || null;
     }
 
     function initChatMessageActionsBridge() {
@@ -380,10 +446,6 @@
       });
     }
 
-    function getChatPushApi() {
-      return window.KlevbyChatPush || null;
-    }
-
     function initChatPushBridge() {
       const api = getChatPushApi();
 
@@ -403,10 +465,6 @@
         cleanDisplayName,
         isValidSupabaseUuid
       });
-    }
-
-    function getChatPublicApi() {
-      return window.KlevbyChatPublic || null;
     }
 
     function initChatPublicBridge() {
@@ -459,10 +517,6 @@
         isValidSupabaseUuid,
         buildMessageContent
       });
-    }
-
-    function getChatPrivateApi() {
-      return window.KlevbyChatPrivate || null;
     }
 
     function initChatPrivateBridge() {
@@ -530,10 +584,6 @@
       });
     }
 
-    function getChatRealtimeApi() {
-      return window.KlevbyChatRealtime || null;
-    }
-
     function initChatRealtimeBridge() {
       const api = getChatRealtimeApi();
 
@@ -572,26 +622,6 @@
       });
     }
 
-    function callChatUser(name, fallback, ...args) {
-      const api = getChatUserApi();
-
-      if (api && typeof api[name] === "function") {
-        return api[name](...args);
-      }
-
-      return typeof fallback === "function" ? fallback(...args) : fallback;
-    }
-
-    function callChatPush(name, fallback, ...args) {
-      const api = getChatPushApi();
-
-      if (api && typeof api[name] === "function") {
-        return api[name](...args);
-      }
-
-      return typeof fallback === "function" ? fallback(...args) : fallback;
-    }
-
     async function refreshPushButtonState() {
       return await callChatPush("refreshPushButtonState", () => {
         if (pushBtn) {
@@ -621,209 +651,112 @@
     }
 
     function setupPresence() {
-      const api = getChatRealtimeApi();
-
-      if (api && typeof api.setupPresence === "function") {
-        api.setupPresence();
-      }
+      callChatRealtime("setupPresence");
     }
 
     function setupRealtime() {
-      const api = getChatRealtimeApi();
-
-      if (api && typeof api.setupRealtime === "function") {
-        api.setupRealtime();
-      }
+      callChatRealtime("setupRealtime");
     }
 
     async function cleanupRealtimeConnections() {
-      const api = getChatRealtimeApi();
-
-      if (api && typeof api.cleanupRealtimeConnections === "function") {
-        await api.cleanupRealtimeConnections();
-      }
+      return await callChatRealtime("cleanupRealtimeConnections");
     }
 
     async function reconnectRealtimeConnections() {
-      const api = getChatRealtimeApi();
-
-      if (api && typeof api.reconnectRealtimeConnections === "function") {
-        await api.reconnectRealtimeConnections();
-        return;
-      }
-
-      setupPresence();
-      setupRealtime();
+      return await callChatRealtime("reconnectRealtimeConnections", async () => {
+        setupPresence();
+        setupRealtime();
+      });
     }
 
     async function loadPublicMessages(navToken = beginChatNavigation()) {
-      const api = getChatPublicApi();
-
-      if (api && typeof api.loadPublicMessages === "function") {
-        return await api.loadPublicMessages(navToken);
-      }
-
-      try {
-        showEmptyState("Общий чат сейчас не подключён. Проверь assets/js/chat-public.js.");
-      } finally {
-        finishChatNavigation(navToken);
-      }
+      return await callChatPublic("loadPublicMessages", async (token) => {
+        try {
+          showEmptyState("Общий чат сейчас не подключён. Проверь assets/js/chat-public.js.");
+        } finally {
+          finishChatNavigation(token);
+        }
+      }, navToken);
     }
 
     async function sendPublicMessage() {
-      const api = getChatPublicApi();
-
-      if (api && typeof api.sendPublicMessage === "function") {
-        return await api.sendPublicMessage();
-      }
-
-      alert("Общий чат сейчас не подключён. Проверь assets/js/chat-public.js.");
+      return await callChatPublic("sendPublicMessage", () => {
+        alert("Общий чат сейчас не подключён. Проверь assets/js/chat-public.js.");
+      });
     }
 
     function isMyPublicMessage(message) {
-      const api = getChatPublicApi();
-
-      return Boolean(
-        api &&
-        typeof api.isMyPublicMessage === "function" &&
-        api.isMyPublicMessage(message)
-      );
+      return Boolean(callChatPublic("isMyPublicMessage", false, message));
     }
 
     async function loadPrivatePeople(navToken = beginChatNavigation()) {
-      const api = getChatPrivateApi();
-
-      if (api && typeof api.loadPrivatePeople === "function") {
-        return await api.loadPrivatePeople(navToken);
-      }
-
-      try {
-        showEmptyState("Личные сообщения сейчас не подключены. Проверь assets/js/chat-private.js.");
-      } finally {
-        finishChatNavigation(navToken);
-      }
+      return await callChatPrivate("loadPrivatePeople", async (token) => {
+        try {
+          showEmptyState("Личные сообщения сейчас не подключены. Проверь assets/js/chat-private.js.");
+        } finally {
+          finishChatNavigation(token);
+        }
+      }, navToken);
     }
 
     async function openPrivateDialog(peerId, peerName, navToken = beginChatNavigation()) {
-      const api = getChatPrivateApi();
-
-      if (api && typeof api.openPrivateDialog === "function") {
-        return await api.openPrivateDialog(peerId, peerName, navToken);
-      }
-
-      try {
-        showEmptyState("Личный диалог сейчас не подключён. Проверь assets/js/chat-private.js.");
-      } finally {
-        finishChatNavigation(navToken);
-      }
+      return await callChatPrivate("openPrivateDialog", async (id, name, token) => {
+        try {
+          showEmptyState("Личный диалог сейчас не подключён. Проверь assets/js/chat-private.js.");
+        } finally {
+          finishChatNavigation(token);
+        }
+      }, peerId, peerName, navToken);
     }
 
     async function sendPrivateMessage() {
-      const api = getChatPrivateApi();
-
-      if (api && typeof api.sendPrivateMessage === "function") {
-        return await api.sendPrivateMessage();
-      }
-
-      alert("Личные сообщения сейчас не подключены. Проверь assets/js/chat-private.js.");
+      return await callChatPrivate("sendPrivateMessage", () => {
+        alert("Личные сообщения сейчас не подключены. Проверь assets/js/chat-private.js.");
+      });
     }
 
     function markPeerAsRead(peerId) {
-      const api = getChatPrivateApi();
-
-      if (api && typeof api.markPeerAsRead === "function") {
-        api.markPeerAsRead(peerId);
-      }
+      callChatPrivate("markPeerAsRead", undefined, peerId);
     }
 
     function getChatLoading() {
-      const api = getChatStateApi();
-
-      if (api && typeof api.getChatLoading === "function") {
-        return api.getChatLoading();
-      }
-
-      return false;
+      return Boolean(callChatState("getChatLoading", false));
     }
 
     function beginChatNavigation() {
-      const api = getChatStateApi();
-
-      if (api && typeof api.beginChatNavigation === "function") {
-        return api.beginChatNavigation();
-      }
-
-      return Date.now();
+      return callChatState("beginChatNavigation", Date.now());
     }
 
     function cancelChatNavigation() {
-      const api = getChatStateApi();
-
-      if (api && typeof api.cancelChatNavigation === "function") {
-        return api.cancelChatNavigation();
-      }
-
-      return Date.now();
+      return callChatState("cancelChatNavigation", Date.now());
     }
 
     function isStaleNavigation(token) {
-      const api = getChatStateApi();
-
-      if (api && typeof api.isStaleNavigation === "function") {
-        return api.isStaleNavigation(token);
-      }
-
-      return false;
+      return Boolean(callChatState("isStaleNavigation", false, token));
     }
 
     function finishChatNavigation(token) {
-      const api = getChatStateApi();
-
-      if (api && typeof api.finishChatNavigation === "function") {
-        api.finishChatNavigation(token);
-      }
+      callChatState("finishChatNavigation", undefined, token);
     }
 
     function setChatTabsLoading(isLoading) {
-      const api = getChatStateApi();
-
-      if (api && typeof api.setChatTabsLoading === "function") {
-        api.setChatTabsLoading(isLoading);
-      }
+      callChatState("setChatTabsLoading", undefined, isLoading);
     }
 
     function getUnreadPrivateCount() {
-      const api = getChatStateApi();
-
-      if (api && typeof api.getUnreadPrivateCount === "function") {
-        return api.getUnreadPrivateCount();
-      }
-
-      return 0;
+      return Number(callChatState("getUnreadPrivateCount", 0)) || 0;
     }
 
     function setUnreadPrivateCount(value) {
-      const api = getChatStateApi();
-
-      if (api && typeof api.setUnreadPrivateCount === "function") {
-        api.setUnreadPrivateCount(value);
-      }
+      callChatState("setUnreadPrivateCount", undefined, value);
     }
 
     function incrementUnreadPrivateCount(amount = 1) {
-      const api = getChatStateApi();
-
-      if (api && typeof api.incrementUnreadPrivateCount === "function") {
-        api.incrementUnreadPrivateCount(amount);
-      }
+      callChatState("incrementUnreadPrivateCount", undefined, amount);
     }
 
     function updateUnreadBadge() {
-      const api = getChatStateApi();
-
-      if (api && typeof api.updateUnreadBadge === "function") {
-        api.updateUnreadBadge();
-      }
+      callChatState("updateUnreadBadge");
     }
 
     function syncSelectedPeerForCalls() {
@@ -966,7 +899,12 @@
     }
 
     async function refreshCurrentUser(options = {}) {
-      const user = await callChatUser("refreshCurrentUser", () => getUserFromMainSite() || currentChatUser || null, options);
+      const user = await callChatUser(
+        "refreshCurrentUser",
+        () => getUserFromMainSite() || currentChatUser || null,
+        options
+      );
+
       currentChatUser = user || null;
       return currentChatUser;
     }
@@ -1020,216 +958,104 @@
     }
 
     function escapeHtml(text) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.escapeHtml === "function") {
-        return api.escapeHtml(text);
-      }
-
-      return String(text || "");
+      return callChatRender("escapeHtml", () => String(text || ""), text);
     }
 
     function cssEscape(value) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.cssEscape === "function") {
-        return api.cssEscape(value);
-      }
-
-      return String(value || "");
+      return callChatRender("cssEscape", () => String(value || ""), value);
     }
 
     function getInitials(name) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.getInitials === "function") {
-        return api.getInitials(name);
-      }
-
-      return "Р";
+      return callChatRender("getInitials", "Р", name);
     }
 
     function getMessageTime(createdAt) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.getMessageTime === "function") {
-        return api.getMessageTime(createdAt);
-      }
-
-      return "";
+      return callChatRender("getMessageTime", "", createdAt);
     }
 
     function getTimestamp(createdAt) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.getTimestamp === "function") {
-        return api.getTimestamp(createdAt);
-      }
-
-      return Date.now();
+      return callChatRender("getTimestamp", Date.now(), createdAt);
     }
 
     function parseReplyContent(content) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.parseReplyContent === "function") {
-        return api.parseReplyContent(content);
-      }
-
-      return {
+      return callChatRender("parseReplyContent", () => ({
         reply: null,
         mainText: String(content || "")
-      };
+      }), content);
     }
 
     function clearMessages() {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.clearMessages === "function") {
-        api.clearMessages();
-      }
+      callChatRender("clearMessages");
     }
 
     function scrollChatToBottom() {
-      const api = getChatViewportApi();
-
-      if (api && typeof api.scrollChatToBottom === "function") {
-        api.scrollChatToBottom();
-      }
+      callApi(getChatViewportApi, "scrollChatToBottom");
     }
 
     function showEmptyState(text) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.showEmptyState === "function") {
-        api.showEmptyState(text);
-      }
+      callChatRender("showEmptyState", undefined, text);
     }
 
     function renderPublicMessage(message) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.renderPublicMessage === "function") {
-        api.renderPublicMessage(message);
-        return;
-      }
-
-      showEmptyState("Отрисовка общего чата не подключена. Проверь assets/js/chat-render.js.");
+      callChatRender("renderPublicMessage", () => {
+        showEmptyState("Отрисовка общего чата не подключена. Проверь assets/js/chat-render.js.");
+      }, message);
     }
 
     function renderPrivateMessage(message) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.renderPrivateMessage === "function") {
-        api.renderPrivateMessage(message);
-        return;
-      }
-
-      showEmptyState("Отрисовка лички не подключена. Проверь assets/js/chat-render.js.");
+      callChatRender("renderPrivateMessage", () => {
+        showEmptyState("Отрисовка лички не подключена. Проверь assets/js/chat-render.js.");
+      }, message);
     }
 
     function renderMessageList(data, renderFn) {
-      const api = getChatRenderApi();
-
-      if (api && typeof api.renderMessageList === "function") {
-        api.renderMessageList(data, renderFn);
-      }
+      callChatRender("renderMessageList", undefined, data, renderFn);
     }
 
     function findMessageDataFromRow(row) {
-      const api = getChatMessageActionsApi();
+      const fromActions = callChatMessageActions("findMessageDataFromRow", null, row);
 
-      if (api && typeof api.findMessageDataFromRow === "function") {
-        return api.findMessageDataFromRow(row);
+      if (fromActions) {
+        return fromActions;
       }
 
-      const renderApi = getChatRenderApi();
-
-      if (renderApi && typeof renderApi.findMessageDataFromRow === "function") {
-        return renderApi.findMessageDataFromRow(row);
-      }
-
-      return null;
+      return callChatRender("findMessageDataFromRow", null, row);
     }
 
     function showMessageMenu(row) {
-      const api = getChatMessageActionsApi();
-
-      if (api && typeof api.showMessageMenu === "function") {
-        api.showMessageMenu(row);
-      }
+      callChatMessageActions("showMessageMenu", undefined, row);
     }
 
     function hideMessageMenu() {
-      const api = getChatMessageActionsApi();
-
-      if (api && typeof api.hideMessageMenu === "function") {
-        api.hideMessageMenu();
-      }
+      callChatMessageActions("hideMessageMenu");
     }
 
     function getContextMessageData() {
-      const api = getChatMessageActionsApi();
-
-      if (api && typeof api.getContextMessageData === "function") {
-        return api.getContextMessageData();
-      }
-
-      return null;
+      return callChatMessageActions("getContextMessageData", null);
     }
 
     function clearReply() {
-      const api = getChatReplyApi();
-
-      if (api && typeof api.clearReply === "function") {
-        api.clearReply();
-      }
+      callChatReply("clearReply");
     }
 
     function setReplyTarget(messageData) {
-      const api = getChatReplyApi();
-
-      if (api && typeof api.setReplyTarget === "function") {
-        api.setReplyTarget(messageData);
-      }
+      callChatReply("setReplyTarget", undefined, messageData);
     }
 
     function buildMessageContent(value) {
-      const api = getChatReplyApi();
-
-      if (api && typeof api.buildMessageContent === "function") {
-        return api.buildMessageContent(value);
-      }
-
-      return value;
+      return callChatReply("buildMessageContent", value, value);
     }
 
     function isOnline(userId) {
-      const api = getChatRealtimeApi();
-
-      return Boolean(
-        api &&
-        typeof api.isOnline === "function" &&
-        api.isOnline(userId)
-      );
+      return Boolean(callChatRealtime("isOnline", false, userId));
     }
 
     function getUserStatusText(userId) {
-      const api = getChatRealtimeApi();
-
-      if (api && typeof api.getUserStatusText === "function") {
-        return api.getUserStatusText(userId);
-      }
-
-      return "Был недавно";
+      return callChatRealtime("getUserStatusText", "Был недавно", userId);
     }
 
     function updateSelectedPeerStatus() {
-      const api = getChatRealtimeApi();
-
-      if (api && typeof api.updateSelectedPeerStatus === "function") {
-        api.updateSelectedPeerStatus();
-      }
+      callChatRealtime("updateSelectedPeerStatus");
     }
 
     async function send() {
@@ -1241,66 +1067,44 @@
     }
 
     async function deleteMessage(type, id) {
-      const api = getChatMessageActionsApi();
-
-      if (api && typeof api.deleteMessage === "function") {
-        return await api.deleteMessage(type, id);
-      }
-
-      alert("Удаление сообщений сейчас не подключено. Проверь assets/js/chat-message-actions.js.");
+      return await callChatMessageActions("deleteMessage", () => {
+        alert("Удаление сообщений сейчас не подключено. Проверь assets/js/chat-message-actions.js.");
+      }, type, id);
     }
 
     async function reloadChatAfterResume(reason = "resume") {
-      const api = getChatLifecycleApi();
-
-      if (api && typeof api.reloadChatAfterResume === "function") {
-        return await api.reloadChatAfterResume(reason);
-      }
-
-      console.warn("Klevby chat: chat-lifecycle.js не подключён, восстановление чата пропущено.");
+      return await callChatLifecycle("reloadChatAfterResume", () => {
+        console.warn("Klevby chat: chat-lifecycle.js не подключён, восстановление чата пропущено.");
+      }, reason);
     }
 
     function scheduleChatResume(reason = "resume") {
-      const api = getChatLifecycleApi();
-
-      if (api && typeof api.scheduleChatResume === "function") {
-        api.scheduleChatResume(reason);
-        return;
-      }
-
-      console.warn("Klevby chat: chat-lifecycle.js не подключён, scheduleChatResume пропущен.");
+      callChatLifecycle("scheduleChatResume", () => {
+        console.warn("Klevby chat: chat-lifecycle.js не подключён, scheduleChatResume пропущен.");
+      }, reason);
     }
 
     async function openChat() {
-      const api = getChatLifecycleApi();
-
-      if (api && typeof api.openChat === "function") {
-        return await api.openChat();
-      }
-
-      console.warn("Klevby chat: chat-lifecycle.js не подключён, чат не открыт.");
+      return await callChatLifecycle("openChat", () => {
+        console.warn("Klevby chat: chat-lifecycle.js не подключён, чат не открыт.");
+      });
     }
 
     function closeChat() {
-      const api = getChatLifecycleApi();
+      callChatLifecycle("closeChat", () => {
+        cancelChatNavigation();
 
-      if (api && typeof api.closeChat === "function") {
-        api.closeChat();
-        return;
-      }
+        modal.classList.remove("open");
+        modal.classList.add("hidden");
 
-      cancelChatNavigation();
+        selectedPeer = null;
+        activeMode = "public";
 
-      modal.classList.remove("open");
-      modal.classList.add("hidden");
-
-      selectedPeer = null;
-      activeMode = "public";
-
-      syncSelectedPeerForCalls();
-      clearReply();
-      hideMessageMenu();
-      unlockChatPage();
+        syncSelectedPeerForCalls();
+        clearReply();
+        hideMessageMenu();
+        unlockChatPage();
+      });
     }
   }
 
