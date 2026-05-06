@@ -1108,24 +1108,15 @@
 
       if (api && typeof api.clearMessages === "function") {
         api.clearMessages();
-        return;
       }
-
-      messagesContainer.innerHTML = "";
-      hideMessageMenu();
     }
 
     function scrollChatToBottom() {
-      const api = window.KlevbyChatViewport;
+      const api = getChatViewportApi();
 
       if (api && typeof api.scrollChatToBottom === "function") {
         api.scrollChatToBottom();
-        return;
       }
-
-      requestAnimationFrame(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      });
     }
 
     function showEmptyState(text) {
@@ -1133,16 +1124,7 @@
 
       if (api && typeof api.showEmptyState === "function") {
         api.showEmptyState(text);
-        return;
       }
-
-      clearMessages();
-
-      messagesContainer.innerHTML = `
-        <div class="chat-empty-state">
-          ${escapeHtml(text)}
-        </div>
-      `;
     }
 
     function renderPublicMessage(message) {
@@ -1172,16 +1154,7 @@
 
       if (api && typeof api.renderMessageList === "function") {
         api.renderMessageList(data, renderFn);
-        return;
       }
-
-      clearMessages();
-
-      (data || []).forEach((message) => {
-        renderFn(message);
-      });
-
-      scrollChatToBottom();
     }
 
     function findMessageDataFromRow(row) {
@@ -1371,10 +1344,7 @@
 
     if (api && typeof api.init === "function") {
       api.init();
-      return;
     }
-
-    updateViewportVars();
   }
 
   function updateViewportVars() {
@@ -1390,11 +1360,7 @@
 
     if (api && typeof api.lockChatPage === "function") {
       api.lockChatPage();
-      return;
     }
-
-    document.documentElement.classList.add("klevby-chat-lock");
-    document.body.classList.add("klevby-chat-lock");
   }
 
   function unlockChatPage() {
@@ -1402,11 +1368,7 @@
 
     if (api && typeof api.unlockChatPage === "function") {
       api.unlockChatPage();
-      return;
     }
-
-    document.documentElement.classList.remove("klevby-chat-lock");
-    document.body.classList.remove("klevby-chat-lock");
   }
 
   function injectExtraChatStyles() {
