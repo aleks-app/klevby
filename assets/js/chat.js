@@ -51,7 +51,7 @@
     let activeMode = "public";
     let selectedPeer = null;
 
-    let unreadPrivateCount = 0;
+    let unreadPrivateCountFallback = 0;
     let replyTargetFallback = null;
     let contextMessageDataFallback = null;
 
@@ -59,8 +59,8 @@
     let klevbyResumeInProgress = false;
     let klevbyLastResumeAt = 0;
 
-    let chatNavigationToken = 0;
-    let chatLoading = false;
+    let chatNavigationTokenFallback = 0;
+    let chatLoadingFallback = false;
 
     const onlineUsers = new Map();
     const userProfiles = new Map();
@@ -96,6 +96,7 @@
     const messageContextMenu = shell.messageContextMenu;
     const contextDeleteBtn = shell.contextDeleteBtn;
 
+    initChatStateBridge();
     initChatUserBridge();
     initChatRenderBridge();
     initChatReplyBridge();
@@ -170,6 +171,29 @@
       }
     });
 
+    function getChatStateApi() {
+      return window.KlevbyChatState || null;
+    }
+
+    function initChatStateBridge() {
+      const api = getChatStateApi();
+
+      if (!api || typeof api.init !== "function") {
+        console.warn("Klevby chat: assets/js/chat-state.js не подключён.");
+        return;
+      }
+
+      api.init({
+        elements: {
+          publicTab,
+          privateTab,
+          backBtn,
+          chatWindow,
+          privateUnreadBadge
+        }
+      });
+    }
+
     function getChatEventsApi() {
       return window.KlevbyChatEvents || null;
     }
@@ -190,7 +214,7 @@
           sendBtn
         },
 
-        getChatLoading: () => chatLoading,
+        getChatLoading,
 
         openChat,
         closeChat,
@@ -412,16 +436,14 @@
         getMainSupabaseClient,
         getCurrentUser: () => currentChatUser,
         getSelectedPeer: () => selectedPeer,
-        getUnreadPrivateCount: () => unreadPrivateCount,
+        getUnreadPrivateCount,
         setActiveMode: (mode) => {
           activeMode = mode;
         },
         setSelectedPeer: (peer) => {
           selectedPeer = peer;
         },
-        setUnreadPrivateCount: (value) => {
-          unreadPrivateCount = Math.max(0, Number(value) || 0);
-        },
+        setUnreadPrivateCount,
 
         elements: {
           chatWindow,
@@ -684,43 +706,145 @@
       }
     }
 
+    function getChatLoading() {
+      const api = getChatStateApi();
+
+      if (api && typeof api.getChatLoading === "function") {
+        return api.getChatLoading();
+      }
+
+      return chatLoadingFallback;
+    }
+
     function beginChatNavigation() {
-      chatNavigationToken += 1;
+      const api = getChatStateApi();
+
+      if (api && typeof api.beginChatNavigation === "function") {
+        return api.beginChatNavigation();
+      }
+
+      chatNavigationTokenFallback += 1;
       setChatTabsLoading(true);
-      return chatNavigationToken;
+      return chatNavigationTokenFallback;
+    }
+
+    function cancelChatNavigation() {
+      const api = getChatStateApi();
+
+      if (api && typeof api.cancelChatNavigation === "function") {
+        return api.cancelChatNavigation();
+      }
+
+      chatNavigationTokenFallback += 1;
+      setChatTabsLoading(false);
+      return chatNavigationTokenFallback;
     }
 
     function isStaleNavigation(token) {
-      return token !== chatNavigationToken;
+      const api = getChatStateApi();
+
+      if (api && typeof api.isStaleNavigation === "function") {
+        return api.isStaleNavigation(token);
+      }
+
+      return token !== chatNavigationTokenFallback;
     }
 
     function finishChatNavigation(token) {
+      const api = getChatStateApi();
+
+      if (api && typeof api.finishChatNavigation === "function") {
+        api.finishChatNavigation(token);
+        return;
+      }
+
       if (!isStaleNavigation(token)) {
         setChatTabsLoading(false);
       }
     }
 
     function setChatTabsLoading(isLoading) {
-      chatLoading = Boolean(isLoading);
+      const api = getChatStateApi();
+
+      if (api && typeof api.setChatTabsLoading === "function") {
+        api.setChatTabsLoading(isLoading);
+        return;
+      }
+
+      chatLoadingFallback = Boolean(isLoading);
 
       if (publicTab) {
-        publicTab.disabled = chatLoading;
-        publicTab.classList.toggle("loading", chatLoading);
+        publicTab.disabled = chatLoadingFallback;
+        publicTab.classList.toggle("loading", chatLoadingFallback);
       }
 
       if (privateTab) {
-        privateTab.disabled = chatLoading;
-        privateTab.classList.toggle("loading", chatLoading);
+        privateTab.disabled = chatLoadingFallback;
+        privateTab.classList.toggle("loading", chatLoadingFallback);
       }
 
       if (backBtn) {
-        backBtn.disabled = chatLoading;
-        backBtn.classList.toggle("loading", chatLoading);
+        backBtn.disabled = chatLoadingFallback;
+        backBtn.classList.toggle("loading", chatLoadingFallback);
       }
 
       if (chatWindow) {
-        chatWindow.classList.toggle("klevby-chat-loading", chatLoading);
+        chatWindow.classList.toggle("klevby-chat-loading", chatLoadingFallback);
       }
+    }
+
+    function getUnreadPrivateCount() {
+      const api = getChatStateApi();
+
+      if (api && typeof api.getUnreadPrivateCount === "function") {
+        return api.getUnreadPrivateCount();
+      }
+
+      return unreadPrivateCountFallback;
+    }
+
+    function setUnreadPrivateCount(value) {
+      const api = getChatStateApi();
+
+      if (api && typeof api.setUnreadPrivateCount === "function") {
+        api.setUnreadPrivateCount(value);
+        return;
+      }
+
+      unreadPrivateCountFallback = Math.max(0, Number(value) || 0);
+      updateUnreadBadge();
+    }
+
+    function incrementUnreadPrivateCount(amount = 1) {
+      const api = getChatStateApi();
+
+      if (api && typeof api.incrementUnreadPrivateCount === "function") {
+        api.incrementUnreadPrivateCount(amount);
+        return;
+      }
+
+      unreadPrivateCountFallback += Number(amount) || 1;
+      updateUnreadBadge();
+    }
+
+    function updateUnreadBadge() {
+      const api = getChatStateApi();
+
+      if (api && typeof api.updateUnreadBadge === "function") {
+        api.updateUnreadBadge();
+        return;
+      }
+
+      if (!privateUnreadBadge) return;
+
+      if (unreadPrivateCountFallback <= 0) {
+        privateUnreadBadge.classList.add("hidden");
+        privateUnreadBadge.textContent = "0";
+        return;
+      }
+
+      privateUnreadBadge.classList.remove("hidden");
+      privateUnreadBadge.textContent = String(Math.min(unreadPrivateCountFallback, 99));
     }
 
     function syncSelectedPeerForCalls() {
@@ -1330,24 +1454,6 @@
       chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
     }
 
-    function incrementUnreadPrivateCount(amount = 1) {
-      unreadPrivateCount += Number(amount) || 1;
-      updateUnreadBadge();
-    }
-
-    function updateUnreadBadge() {
-      if (!privateUnreadBadge) return;
-
-      if (unreadPrivateCount <= 0) {
-        privateUnreadBadge.classList.add("hidden");
-        privateUnreadBadge.textContent = "0";
-        return;
-      }
-
-      privateUnreadBadge.classList.remove("hidden");
-      privateUnreadBadge.textContent = String(Math.min(unreadPrivateCount, 99));
-    }
-
     async function send() {
       if (activeMode === "private") {
         await sendPrivateMessage();
@@ -1495,8 +1601,7 @@
     }
 
     function closeChat() {
-      chatNavigationToken += 1;
-      setChatTabsLoading(false);
+      cancelChatNavigation();
 
       modal.classList.remove("open");
       modal.classList.add("hidden");
