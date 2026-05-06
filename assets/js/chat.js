@@ -582,42 +582,42 @@
       return typeof fallback === "function" ? fallback(...args) : fallback;
     }
 
-    async function refreshPushButtonState() {
+    function callChatPush(name, fallback, ...args) {
       const api = getChatPushApi();
 
-      if (api && typeof api.refreshPushButtonState === "function") {
-        return await api.refreshPushButtonState();
+      if (api && typeof api[name] === "function") {
+        return api[name](...args);
       }
 
-      if (pushBtn) {
-        pushBtn.classList.add("hidden");
-      }
+      return typeof fallback === "function" ? fallback(...args) : fallback;
+    }
+
+    async function refreshPushButtonState() {
+      return await callChatPush("refreshPushButtonState", () => {
+        if (pushBtn) {
+          pushBtn.classList.add("hidden");
+        }
+      });
     }
 
     async function saveExistingPushSubscriptionIfPossible() {
-      const api = getChatPushApi();
-
-      if (api && typeof api.saveExistingPushSubscriptionIfPossible === "function") {
-        return await api.saveExistingPushSubscriptionIfPossible();
-      }
+      return await callChatPush("saveExistingPushSubscriptionIfPossible");
     }
 
     async function enablePushNotifications() {
-      const api = getChatPushApi();
-
-      if (api && typeof api.enablePushNotifications === "function") {
-        return await api.enablePushNotifications();
-      }
-
-      alert("Push-уведомления сейчас не подключены. Проверь assets/js/chat-push.js.");
+      return await callChatPush("enablePushNotifications", () => {
+        alert("Push-уведомления сейчас не подключены. Проверь assets/js/chat-push.js.");
+      });
     }
 
     async function sendPushToUser(receiverUserId, senderName, messageText) {
-      const api = getChatPushApi();
-
-      if (api && typeof api.sendPushToUser === "function") {
-        return await api.sendPushToUser(receiverUserId, senderName, messageText);
-      }
+      return await callChatPush(
+        "sendPushToUser",
+        undefined,
+        receiverUserId,
+        senderName,
+        messageText
+      );
     }
 
     function setupPresence() {
