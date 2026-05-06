@@ -52,7 +52,6 @@
     let selectedPeer = null;
 
     let unreadPrivateCountFallback = 0;
-    let contextMessageDataFallback = null;
 
     let chatNavigationTokenFallback = 0;
     let chatLoadingFallback = false;
@@ -1298,21 +1297,19 @@
     }
 
     function findMessageDataFromRow(row) {
-      const api = getChatRenderApi();
+      const api = getChatMessageActionsApi();
 
       if (api && typeof api.findMessageDataFromRow === "function") {
         return api.findMessageDataFromRow(row);
       }
 
-      if (!row) return null;
+      const renderApi = getChatRenderApi();
 
-      return {
-        id: row.dataset.messageId || "",
-        type: row.dataset.messageType || "public",
-        author: row.dataset.author || "Рыбак",
-        content: row.dataset.content || "",
-        isMine: row.dataset.isMine === "1"
-      };
+      if (renderApi && typeof renderApi.findMessageDataFromRow === "function") {
+        return renderApi.findMessageDataFromRow(row);
+      }
+
+      return null;
     }
 
     function showMessageMenu(row) {
@@ -1320,40 +1317,7 @@
 
       if (api && typeof api.showMessageMenu === "function") {
         api.showMessageMenu(row);
-        return;
       }
-
-      const renderApi = getChatRenderApi();
-
-      if (renderApi && typeof renderApi.showMessageMenu === "function") {
-        renderApi.showMessageMenu(row);
-        return;
-      }
-
-      const data = findMessageDataFromRow(row);
-      if (!data) return;
-
-      contextMessageDataFallback = data;
-      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
-      messageContextMenu.classList.remove("hidden");
-
-      const rect = row.getBoundingClientRect();
-      const menuWidth = 170;
-      const menuHeight = 92;
-
-      let left = Math.min(
-        Math.max(12, rect.left + rect.width / 2 - menuWidth / 2),
-        window.innerWidth - menuWidth - 12
-      );
-
-      let top = rect.top - menuHeight - 8;
-
-      if (top < 12) {
-        top = rect.bottom + 8;
-      }
-
-      messageContextMenu.style.left = `${left}px`;
-      messageContextMenu.style.top = `${top}px`;
     }
 
     function hideMessageMenu() {
@@ -1361,20 +1325,7 @@
 
       if (api && typeof api.hideMessageMenu === "function") {
         api.hideMessageMenu();
-        return;
       }
-
-      const renderApi = getChatRenderApi();
-
-      if (renderApi && typeof renderApi.hideMessageMenu === "function") {
-        renderApi.hideMessageMenu();
-        return;
-      }
-
-      contextMessageDataFallback = null;
-      messageContextMenu.classList.add("hidden");
-      messageContextMenu.style.left = "";
-      messageContextMenu.style.top = "";
     }
 
     function getContextMessageData() {
@@ -1384,13 +1335,7 @@
         return api.getContextMessageData();
       }
 
-      const renderApi = getChatRenderApi();
-
-      if (renderApi && typeof renderApi.getContextMessageData === "function") {
-        return renderApi.getContextMessageData();
-      }
-
-      return contextMessageDataFallback;
+      return null;
     }
 
     function clearReply() {
@@ -1462,51 +1407,7 @@
         return await api.deleteMessage(type, id);
       }
 
-      if (!id) return;
-
-      if (!confirm("Удалить сообщение?")) return;
-
-      await refreshCurrentUser({ force: true });
-
-      let result;
-
-      if (type === "private") {
-        if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
-          alert("Удалять личные сообщения можно только после входа.");
-          return;
-        }
-
-        result = await getMainSupabaseClient()
-          .from("private_messages")
-          .delete()
-          .eq("id", id)
-          .eq("sender_id", currentChatUser.id);
-      } else {
-        if (currentChatUser && isValidSupabaseUuid(currentChatUser.id)) {
-          result = await getMainSupabaseClient()
-            .from("messages")
-            .delete()
-            .eq("id", id)
-            .eq("user_id", currentChatUser.id);
-        } else {
-          result = await getMainSupabaseClient()
-            .from("messages")
-            .delete()
-            .eq("id", id)
-            .eq("user_name", getCurrentChatName());
-        }
-      }
-
-      if (result.error) {
-        console.error("Ошибка удаления сообщения:", result.error);
-        alert("Не получилось удалить сообщение. Проверь RLS delete.");
-        return;
-      }
-
-      const row = messagesContainer.querySelector(`[data-message-id="${cssEscape(id)}"][data-message-type="${type}"]`);
-      if (row) row.remove();
-
-      hideMessageMenu();
+      alert("Удаление сообщений сейчас не подключено. Проверь assets/js/chat-message-actions.js.");
     }
 
     async function reloadChatAfterResume(reason = "resume") {
