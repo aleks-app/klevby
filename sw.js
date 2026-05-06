@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v7-chat-clean-2026-05-04";
+const CACHE_NAME = "klevby-cache-v8-sw-206-fix-2026-05-06";
 
 const APP_FILES = [
   "/",
@@ -16,8 +16,28 @@ const APP_FILES = [
   "/assets/js/posts.js",
   "/assets/js/ui.js",
   "/assets/js/app.js",
+
+  "/assets/js/chat-shell.js",
+  "/assets/js/chat-state.js",
+  "/assets/js/chat-push.js",
+  "/assets/js/chat-viewport.js",
+  "/assets/js/chat-realtime.js",
+  "/assets/js/chat-user.js",
+  "/assets/js/chat-render.js",
+  "/assets/js/chat-public.js",
+  "/assets/js/chat-private.js",
+  "/assets/js/chat-reply.js",
+  "/assets/js/chat-message-actions.js",
+  "/assets/js/chat-lifecycle.js",
+  "/assets/js/chat-auth-events.js",
+  "/assets/js/chat-events.js",
   "/assets/js/chat.js",
+
+  "/assets/js/call-styles.js",
+  "/assets/js/call-audio.js",
+  "/assets/js/call-ui.js",
   "/assets/js/call.js",
+
   "/assets/js/map-logic.js",
   "/assets/js/market-logic.js",
   "/assets/js/ponds.js",
@@ -30,12 +50,7 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_FILES).catch((error) => {
-        console.warn("Klevby SW: часть файлов не добавилась в кэш:", error);
-        return null;
-      });
-    })
+    precacheAppFiles()
   );
 });
 
@@ -154,6 +169,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (request.headers.has("range")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   const isHtml =
     request.mode === "navigate" ||
     url.pathname === "/" ||
@@ -172,12 +192,40 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(cacheFirst(request));
 });
 
+async function precacheAppFiles() {
+  const cache = await caches.open(CACHE_NAME);
+
+  const results = await Promise.allSettled(
+    APP_FILES.map(async (path) => {
+      try {
+        const request = new Request(path, {
+          method: "GET",
+          cache: "reload"
+        });
+
+        const response = await fetch(request);
+
+        await safeCachePut(cache, request, response);
+
+        return true;
+      } catch (error) {
+        console.warn("Klevby SW: файл не добавился в кэш:", path, error);
+        return false;
+      }
+    })
+  );
+
+  return results;
+}
+
 async function networkFirst(request) {
   try {
-    const freshResponse = await fetch(request, { cache: "no-store" });
+    const freshResponse = await fetch(request, {
+      cache: "no-store"
+    });
 
     const cache = await caches.open(CACHE_NAME);
-    cache.put(request, freshResponse.clone());
+    await safeCachePut(cache, request, freshResponse);
 
     return freshResponse;
   } catch (error) {
@@ -201,7 +249,31 @@ async function cacheFirst(request) {
   const freshResponse = await fetch(request);
 
   const cache = await caches.open(CACHE_NAME);
-  cache.put(request, freshResponse.clone());
+  await safeCachePut(cache, request, freshResponse);
 
   return freshResponse;
+}
+
+async function safeCachePut(cache, request, response) {
+  if (!cache || !request || !response) return;
+
+  if (request.method !== "GET") return;
+
+  if (request.headers && request.headers.has("range")) {
+    return;
+  }
+
+  if (response.status === 206) {
+    return;
+  }
+
+  if (!response.ok) {
+    return;
+  }
+
+  try {
+    await cache.put(request, response.clone());
+  } catch (error) {
+    console.warn("Klevby SW: ответ не удалось сохранить в кэш:", request.url, error);
+  }
 }
