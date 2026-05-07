@@ -1,1 +1,791 @@
+@media (max-width: 1050px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
 
+  .filter-reset,
+  .check {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  body {
+    padding-bottom: 104px;
+    background: #020403;
+  }
+
+  body::before {
+    opacity: 0.40;
+    z-index: -2;
+    background:
+      url("../../img/gold-lake-bg.webp") center top / cover no-repeat;
+    transform: scale(1.02);
+  }
+
+  body::after {
+    opacity: 1;
+    z-index: -1;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.16), transparent 34%),
+      linear-gradient(180deg, rgba(2,4,3,0.42) 0%, rgba(2,4,3,0.72) 34%, rgba(2,4,3,0.92) 72%, #020403 100%);
+  }
+
+  header {
+    position: relative;
+    top: auto;
+    padding: calc(env(safe-area-inset-top) + 18px) 0 8px;
+    background: transparent;
+    z-index: 2000;
+  }
+
+  .header-inner {
+    align-items: center;
+  }
+
+  .mobile-menu-wrap {
+    margin-top: 0;
+    z-index: 2100;
+  }
+
+  .burger-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 20px;
+    background:
+      radial-gradient(circle at 30% 0%, rgba(244,178,74,0.18), transparent 44%),
+      rgba(255,255,255,0.08);
+    border-color: rgba(244,178,74,0.16);
+  }
+
+  .logo {
+    font-size: 22px;
+    line-height: 1;
+    padding-top: 0;
+    font-weight: 800 !important;
+    position: relative;
+    z-index: 2100;
+    color: #fff8ea;
+  }
+
+  .home-float-btn {
+    top: auto;
+    right: 18px;
+    bottom: calc(104px + env(safe-area-inset-bottom));
+    width: 50px;
+    height: 50px;
+    min-height: 50px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 30% 10%, rgba(244,178,74,0.22), transparent 44%),
+      rgba(17, 24, 21, 0.86);
+  }
+
+  .home-float-btn::before {
+    content: "⌂";
+    font-size: 27px;
+    line-height: 1;
+    font-weight: 900;
+    color: #fff8ea;
+    transform: translateY(-1px);
+  }
+
+  .mobile-tabbar {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 8px;
+    z-index: 1100;
+    height: 82px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    padding: 7px 8px max(7px, env(safe-area-inset-bottom));
+    background:
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.13), transparent 42%),
+      rgba(12, 18, 16, 0.88);
+    border: 1px solid rgba(244,178,74,0.16);
+    border-radius: 30px 30px 25px 25px;
+    box-shadow:
+      0 -8px 34px rgba(0,0,0,0.48),
+      0 0 34px rgba(244,178,74,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.07);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    align-items: stretch;
+    margin: 8px 0 14px;
+    padding: 18px 16px;
+    min-height: 315px;
+    border-radius: 32px;
+    background:
+      linear-gradient(180deg, rgba(2,4,3,0.04) 0%, rgba(2,4,3,0.20) 24%, rgba(2,4,3,0.86) 100%),
+      linear-gradient(90deg, rgba(2,4,3,0.74) 0%, rgba(2,4,3,0.18) 100%),
+      url("../../img/gold-lake-bg.webp") center / cover no-repeat;
+    border: 1px solid rgba(244,178,74,0.18);
+    box-shadow:
+      0 18px 52px rgba(0,0,0,0.44),
+      0 0 40px rgba(244,178,74,0.10),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 72% 32%, rgba(244,178,74,0.26), transparent 28%),
+      linear-gradient(180deg, transparent 50%, rgba(2,4,3,0.76));
+    pointer-events: none;
+  }
+
+  .hero-copy {
+    padding: 14px 2px 0;
+    max-width: none;
+    justify-content: flex-end;
+    min-height: 275px;
+  }
+
+  .badge {
+    margin-bottom: 12px;
+    font-size: 12px;
+    padding: 7px 11px;
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(244,178,74,0.18);
+    color: rgba(255,248,234,0.90);
+  }
+
+  .hero h1 {
+    font-size: 32px;
+    letter-spacing: -1.05px;
+    margin-bottom: 10px;
+    font-weight: 800 !important;
+    line-height: 1.06;
+  }
+
+  .hero h1::after {
+    content: " для рыбалки";
+    color: var(--gold);
+    display: block;
+  }
+
+  .hero p {
+    font-size: 15px;
+    margin-bottom: 16px;
+    color: rgba(255,248,234,0.78);
+  }
+
+  .trust-bar {
+    gap: 10px;
+  }
+
+  .trust-item {
+    min-height: 58px;
+    padding: 12px;
+    grid-template-columns: 30px 1fr;
+    column-gap: 10px;
+    border-radius: 20px;
+    background: rgba(8,12,10,0.62);
+    border-color: rgba(244,178,74,0.14);
+  }
+
+  .trust-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+  }
+
+  .trust-value {
+    font-size: 20px;
+  }
+
+  .trust-label {
+    font-size: 11px;
+  }
+
+  .hero-photo {
+    display: none;
+  }
+
+  .forecast-panel {
+    margin: 14px 0;
+    padding: 18px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+      rgba(14, 21, 18, 0.78);
+    border: 1px solid rgba(244,178,74,0.15);
+    border-radius: 26px;
+    box-shadow:
+      0 16px 44px rgba(0,0,0,0.34),
+      inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+
+  .forecast-panel::before,
+  .forecast-panel::after,
+  .cloud,
+  .rain-layer {
+    display: none !important;
+  }
+
+  .mobile-weather-title {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .mobile-weather-city {
+    font-size: 21px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.35px;
+    color: #ffffff;
+  }
+
+  .mobile-weather-city::before {
+    content: "Погода и клёв";
+    display: block;
+    font-size: 18px;
+    margin-bottom: 7px;
+  }
+
+  .mobile-weather-city::after {
+    content: "📍 Минск";
+    display: block;
+    color: rgba(255,248,234,0.58);
+    font-size: 12px;
+    margin-top: 5px;
+  }
+
+  .mobile-weather-condition {
+    min-height: 34px;
+    padding: 7px 11px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.075);
+    border: 1px solid rgba(244,178,74,0.10);
+    color: rgba(255,248,234,0.88);
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .forecast-head {
+    display: none;
+  }
+
+  .forecast-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(244,178,74,0.08);
+    border-radius: 21px;
+    overflow: hidden;
+  }
+
+  .forecast-item {
+    min-height: 82px;
+    padding: 13px 10px;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "icon"
+      "value"
+      "label";
+    align-items: center;
+    justify-items: center;
+    column-gap: 0;
+    box-shadow: none;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    border-right: 1px solid rgba(244,178,74,0.10);
+  }
+
+  .forecast-item:nth-child(3) {
+    border-right: 0;
+  }
+
+  .forecast-item:nth-child(4) {
+    display: none;
+  }
+
+  .forecast-icon {
+    grid-area: icon;
+    width: 32px;
+    height: 32px;
+    margin: 0 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 13px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(244,178,74,0.09);
+    font-size: 0;
+    line-height: 1;
+  }
+
+  .forecast-icon::before {
+    content: attr(data-mobile-icon);
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .forecast-label {
+    grid-area: label;
+    margin: 2px 0 0;
+    color: rgba(255,248,234,0.56);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .forecast-value {
+    grid-area: value;
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.15px;
+    text-align: center;
+  }
+
+  .bite-line {
+    display: none;
+  }
+
+  #statusLine.info-line {
+    width: 100%;
+    margin: 18px 0 12px;
+    padding: 14px;
+    text-align: center;
+    background: rgba(14, 21, 18, 0.78);
+    border: 1px solid rgba(244,178,74,0.14);
+    border-radius: 22px;
+    color: var(--gold);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .filter-card {
+    padding: 18px;
+    margin: 14px 0;
+    display: none;
+  }
+
+  .filter-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .filters,
+  .form-row,
+  .ponds-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+
+  .filters > input,
+  .filters > select,
+  .filters > .filter-reset,
+  .filters > .check {
+    margin: 0;
+  }
+
+  .filter-reset {
+    width: 100%;
+  }
+
+  #createPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+      rgba(14, 21, 18, 0.82);
+    border-color: rgba(244,178,74,0.15);
+  }
+
+  #createPanel h2 {
+    margin: 0;
+    font-weight: 800 !important;
+  }
+
+  #createPanel .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+
+  #createPanel input,
+  #createPanel select,
+  #createPanel textarea {
+    width: 100%;
+    margin: 0;
+  }
+
+  #createPanel .actions {
+    width: 100%;
+    margin-top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #createPanel .actions .small-btn.green {
+    width: 60%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #postsSection.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin: 14px 0 44px;
+  }
+
+  #postsSection.grid::before {
+    content: "Лента";
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    margin: 4px 0 -2px;
+    color: #fff8ea;
+    text-shadow: 0 12px 34px rgba(0,0,0,0.45);
+  }
+
+  #postsSection .card {
+    min-height: auto;
+    border-radius: 28px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.070), rgba(255,255,255,0.034)),
+      rgba(13, 20, 17, 0.82);
+    border: 1px solid rgba(244,178,74,0.14);
+    box-shadow:
+      0 16px 42px rgba(0,0,0,0.36),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    display: block;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  #postsSection .card-img {
+    width: 100%;
+    height: 210px;
+    border-radius: 28px 28px 0 0;
+    background-position: center;
+  }
+
+  #postsSection .card-body {
+    padding: 15px 15px 16px;
+    min-width: 0;
+  }
+
+  #postsSection .card h3 {
+    font-size: 18px;
+    line-height: 1.22;
+    letter-spacing: -0.25px;
+    margin: 0 0 9px;
+  }
+
+  #postsSection .card p {
+    font-size: 13.5px;
+    line-height: 1.48;
+    color: rgba(255,248,234,0.72);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .trip-title {
+    font-size: 18px;
+    line-height: 1.22;
+    margin-bottom: 10px;
+    letter-spacing: -0.25px;
+  }
+
+  .trip-facts {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 10px 0 11px;
+  }
+
+  .trip-fact {
+    min-height: 46px;
+    padding: 8px 9px;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.055);
+    border-color: rgba(244,178,74,0.09);
+  }
+
+  .trip-fact-label {
+    font-size: 9px;
+  }
+
+  .trip-fact-value {
+    font-size: 11px;
+    -webkit-line-clamp: 1;
+  }
+
+  #postsSection .tags {
+    gap: 6px;
+    margin: 12px 0 0;
+  }
+
+  #postsSection .tag {
+    padding: 6px 8px;
+    border-radius: 13px;
+    font-size: 10.5px;
+    line-height: 1;
+  }
+
+  #postsSection .actions {
+    display: none;
+  }
+
+  #postsSection .small-btn {
+    width: 100%;
+    min-height: 34px;
+    padding: 8px 9px;
+    border-radius: 12px;
+    font-size: 10.5px;
+    line-height: 1.1;
+    white-space: normal;
+  }
+
+  .small-btn,
+  .main-btn {
+    min-height: 48px;
+  }
+
+  .post-modal-backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+  }
+
+  .post-modal-sheet {
+    width: min(100%, 720px);
+    max-height: 85vh;
+    border-radius: 24px;
+  }
+
+  .post-modal-image {
+    height: 300px;
+  }
+
+  .market-hero {
+    padding: 20px 16px;
+    border-radius: 28px;
+  }
+
+  .market-hero h2 {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 520px) {
+  .wrap {
+    width: 92%;
+  }
+
+  header {
+    padding: calc(env(safe-area-inset-top) + 18px) 0 8px;
+  }
+
+  .logo {
+    font-size: 22px;
+    font-weight: 800 !important;
+    position: relative;
+    z-index: 2100;
+  }
+
+  .hero {
+    margin: 6px 0 14px;
+    padding: 16px;
+    gap: 12px;
+    min-height: 305px;
+  }
+
+  .hero h1 {
+    font-size: 31px;
+    font-weight: 800 !important;
+  }
+
+  .hero p {
+    font-size: 14.5px;
+  }
+
+  .hero-photo {
+    min-height: 210px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+
+  .panel h2 {
+    font-size: 24px;
+    font-weight: 800 !important;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .map-placeholder {
+    min-height: 360px;
+    padding: 22px;
+  }
+
+  .map-card h2 {
+    font-size: 24px;
+    font-weight: 800 !important;
+  }
+
+  #postsSection.grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  #postsSection .card-img {
+    height: 205px;
+  }
+
+  #postsSection .card-body {
+    padding: 15px 15px 16px;
+  }
+
+  #postsSection .card h3 {
+    font-size: 18px;
+  }
+
+  #postsSection .card p {
+    font-size: 13.2px;
+    -webkit-line-clamp: 3;
+  }
+
+  .post-modal-sheet {
+    border-radius: 24px;
+    max-height: 85vh;
+  }
+
+  .post-modal-image {
+    height: 275px;
+  }
+
+  .post-modal-content {
+    padding: 0 14px 0;
+  }
+
+  .post-modal-card {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .post-modal-text {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .install-banner {
+    bottom: 100px;
+    padding: 16px;
+  }
+
+  .install-inner {
+    grid-template-columns: 42px 1fr;
+    gap: 10px;
+  }
+
+  .install-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 23px;
+  }
+
+  .install-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .install-btn {
+    flex: 1;
+    min-height: 42px;
+  }
+
+  .install-close {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (max-width: 380px) {
+  #postsSection.grid {
+    gap: 14px;
+  }
+
+  #postsSection .card {
+    display: block;
+  }
+
+  #postsSection .card-img {
+    height: 185px;
+  }
+
+  #postsSection .card-body {
+    padding: 14px;
+  }
+
+  #postsSection .tag:nth-child(n+4) {
+    display: none;
+  }
+
+  .post-modal-image {
+    height: 245px;
+  }
+
+  .home-float-btn {
+    right: 14px;
+    bottom: calc(100px + env(safe-area-inset-bottom));
+    width: 48px;
+    height: 48px;
+    min-height: 48px;
+  }
+
+  .trip-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-fact:nth-child(n+3) {
+    display: none;
+  }
+}
