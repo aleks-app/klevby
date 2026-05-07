@@ -130,7 +130,16 @@
     }
 
     try {
-      return localStorage.getItem(KLEVB_FEED_PROFILE_AVATAR_KEY) || "";
+      const localAvatar = localStorage.getItem(KLEVB_FEED_PROFILE_AVATAR_KEY) || "";
+      const localProfile = klevbyFeedReadProfileData();
+      const localName = String(localProfile.name || "").trim().toLowerCase();
+      const itemName = String(item?.authorName || "").trim().toLowerCase();
+
+      if (localAvatar && localName && itemName && localName === itemName) {
+        return localAvatar;
+      }
+
+      return "";
     } catch (error) {
       return "";
     }
@@ -314,17 +323,14 @@
   function klevbyEnsureFeedStyles() {
     const oldStyle = document.getElementById("klevbyFeedStyles");
 
-    if (oldStyle && oldStyle.dataset.version === "20260507-social-card-2") {
-      return;
-    }
-
     if (oldStyle) {
       oldStyle.remove();
     }
 
     const style = document.createElement("style");
     style.id = "klevbyFeedStyles";
-    style.dataset.version = "20260507-social-card-2";
+    style.dataset.version = "20260507-compact-social-card-1";
+
     style.textContent = `
       .social-feed-grid {
         align-items: start;
@@ -333,8 +339,9 @@
       .profile-feed-card {
         position: relative;
         overflow: hidden;
+        width: min(100%, 620px);
         padding: 0 !important;
-        border-radius: 30px !important;
+        border-radius: 28px !important;
         border: 1px solid rgba(244, 178, 74, 0.18) !important;
         background:
           radial-gradient(circle at 20% 0%, rgba(244, 178, 74, 0.10), transparent 38%),
@@ -352,23 +359,24 @@
 
       .profile-feed-image {
         width: 100% !important;
-        min-height: 420px !important;
-        height: clamp(420px, 58vw, 620px) !important;
-        border-radius: 30px 30px 0 0 !important;
+        min-height: 300px !important;
+        height: clamp(300px, 38vw, 430px) !important;
+        max-height: 430px !important;
+        border-radius: 28px 28px 0 0 !important;
         background-size: cover !important;
         background-position: center !important;
         background-repeat: no-repeat !important;
-        box-shadow: inset 0 -90px 110px rgba(0,0,0,0.22);
+        box-shadow: inset 0 -80px 100px rgba(0,0,0,0.18);
       }
 
       .profile-feed-body {
-        padding: 16px 18px 18px !important;
+        padding: 14px 16px 16px !important;
       }
 
       .profile-feed-avatar-img,
       .profile-feed-avatar-fallback {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         border-radius: 999px;
         display: inline-flex;
         flex: 0 0 auto;
@@ -395,9 +403,9 @@
         width: 100%;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 11px;
         padding: 0;
-        margin: 0 0 14px;
+        margin: 0 0 12px;
         border: 0;
         background: transparent;
         color: inherit;
@@ -412,8 +420,8 @@
 
       .profile-feed-author-name {
         display: block;
-        font-size: 16px;
-        font-weight: 900;
+        font-size: 15px;
+        font-weight: 950;
         line-height: 1.12;
         color: #fff8ea;
         overflow: hidden;
@@ -423,8 +431,8 @@
 
       .profile-feed-author-action {
         display: block;
-        margin-top: 4px;
-        font-size: 13px;
+        margin-top: 3px;
+        font-size: 12px;
         font-weight: 800;
         color: rgba(255,248,234,0.56);
         overflow: hidden;
@@ -433,17 +441,17 @@
       }
 
       .profile-feed-title {
-        margin: 0 0 14px !important;
+        margin: 0 0 12px !important;
         color: #fff8ea !important;
-        font-size: clamp(22px, 4.8vw, 34px) !important;
-        line-height: 1.08 !important;
+        font-size: clamp(19px, 3.8vw, 26px) !important;
+        line-height: 1.12 !important;
         font-weight: 950 !important;
-        letter-spacing: -0.035em;
+        letter-spacing: -0.028em;
       }
 
       .profile-feed-title .trip-name {
         color: #ffb43e !important;
-        text-shadow: 0 12px 32px rgba(255, 171, 48, 0.18);
+        text-shadow: 0 12px 32px rgba(255, 171, 48, 0.16);
       }
 
       .profile-feed-title .trip-destination {
@@ -454,20 +462,20 @@
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 8px !important;
-        margin: 0 0 14px !important;
+        margin: 0 0 12px !important;
       }
 
       .profile-feed-tags .tag {
-        min-height: 36px;
+        min-height: 32px;
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 8px 12px;
+        padding: 7px 11px;
         border-radius: 999px;
         border: 1px solid rgba(244,178,74,0.16);
         background: rgba(255,255,255,0.065);
         color: rgba(255,248,234,0.82);
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1;
         font-weight: 900;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
@@ -475,30 +483,29 @@
 
       .profile-feed-actions {
         display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: 8px !important;
         margin-top: 0 !important;
       }
 
       .profile-feed-actions .small-btn {
         min-width: 0 !important;
         width: 100% !important;
-        min-height: 54px !important;
-        border-radius: 20px !important;
-        font-size: 15px !important;
+        min-height: 46px !important;
+        padding: 0 10px !important;
+        border-radius: 17px !important;
+        font-size: 14px !important;
         font-weight: 950 !important;
         box-shadow: none !important;
       }
 
       .profile-feed-open-btn {
-        grid-column: 1 / -1;
-        min-height: 58px !important;
         background: linear-gradient(180deg, #ffbd4a, #ff9f22) !important;
         color: #120c04 !important;
         border-color: rgba(255, 210, 117, 0.30) !important;
         box-shadow:
-          0 16px 36px rgba(255, 165, 35, 0.18),
-          inset 0 1px 0 rgba(255,255,255,0.26) !important;
+          0 14px 30px rgba(255, 165, 35, 0.16),
+          inset 0 1px 0 rgba(255,255,255,0.24) !important;
       }
 
       .profile-feed-like-btn,
@@ -569,7 +576,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+        padding:
+          max(18px, env(safe-area-inset-top))
+          14px
+          max(18px, env(safe-area-inset-bottom));
       }
 
       .klevby-feed-viewer-backdrop,
@@ -586,7 +596,7 @@
         position: relative;
         z-index: 2;
         width: min(100%, 760px);
-        max-height: 90vh;
+        max-height: 88dvh;
         border: 1px solid rgba(244,178,74,0.18);
         border-radius: 28px;
         overflow: hidden;
@@ -621,7 +631,7 @@
 
       .klevby-feed-viewer-image {
         width: 100%;
-        max-height: 72vh;
+        max-height: 66dvh;
         display: block;
         object-fit: contain;
         background: #050807;
@@ -692,13 +702,15 @@
 
       .klevby-feed-comment-sheet {
         width: min(100%, 620px);
+        max-height: min(82dvh, 720px);
         padding: 22px;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
       }
 
       .klevby-feed-comment-sheet h3 {
-        margin: 0 44px 8px 0;
+        margin: 0 52px 8px 0;
         color: #fff8ea;
         font-size: 22px;
         line-height: 1.18;
@@ -717,7 +729,7 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
-        max-height: 280px;
+        max-height: 260px;
         overflow-y: auto;
         margin: 0 0 14px;
         padding: 4px 2px 2px;
@@ -794,7 +806,7 @@
 
       .klevby-feed-comment-textarea {
         width: 100%;
-        min-height: 110px;
+        min-height: 104px;
         resize: vertical;
         padding: 14px;
         border-radius: 20px;
@@ -839,35 +851,35 @@
         box-shadow: none;
       }
 
-      @media (max-width: 520px) {
+      @media (max-width: 760px) {
         .profile-feed-card {
-          border-radius: 28px !important;
+          width: 100%;
+          border-radius: 26px !important;
         }
 
         .profile-feed-image {
-          min-height: 440px !important;
-          height: 58vh !important;
-          max-height: 560px !important;
-          border-radius: 28px 28px 0 0 !important;
+          min-height: 280px !important;
+          height: 34dvh !important;
+          max-height: 340px !important;
+          border-radius: 26px 26px 0 0 !important;
         }
 
         .profile-feed-body {
-          padding: 16px 14px 16px !important;
-        }
-
-        .profile-feed-author {
-          gap: 11px;
-          margin-bottom: 13px;
+          padding: 13px 14px 15px !important;
         }
 
         .profile-feed-avatar-img,
         .profile-feed-avatar-fallback {
-          width: 42px;
-          height: 42px;
+          width: 38px;
+          height: 38px;
+        }
+
+        .profile-feed-author {
+          margin-bottom: 10px;
         }
 
         .profile-feed-author-name {
-          font-size: 15px;
+          font-size: 14px;
         }
 
         .profile-feed-author-action {
@@ -875,30 +887,55 @@
         }
 
         .profile-feed-title {
-          font-size: 26px !important;
-          line-height: 1.08 !important;
-          margin-bottom: 14px !important;
+          font-size: 20px !important;
+          line-height: 1.12 !important;
+          margin-bottom: 11px !important;
+        }
+
+        .profile-feed-tags {
+          gap: 7px !important;
+          margin-bottom: 11px !important;
         }
 
         .profile-feed-tags .tag {
-          min-height: 34px;
-          padding: 8px 11px;
-          font-size: 13px;
+          min-height: 31px;
+          padding: 7px 10px;
+          font-size: 12px;
         }
 
         .profile-feed-actions {
-          grid-template-columns: 1fr 1fr !important;
-          gap: 10px !important;
+          grid-template-columns: 1fr 1fr 1fr !important;
+          gap: 7px !important;
         }
 
         .profile-feed-actions .small-btn {
-          min-height: 54px !important;
-          border-radius: 18px !important;
+          min-height: 44px !important;
+          padding: 0 8px !important;
+          border-radius: 16px !important;
+          font-size: 13px !important;
         }
 
-        .profile-feed-open-btn {
-          grid-column: 1 / -1;
-          min-height: 58px !important;
+        .klevby-feed-comment-modal {
+          align-items: center !important;
+          justify-content: center !important;
+          padding:
+            max(18px, env(safe-area-inset-top))
+            12px
+            max(18px, env(safe-area-inset-bottom)) !important;
+        }
+
+        .klevby-feed-comment-sheet {
+          border-radius: 24px;
+          padding: 20px;
+          max-height: 78dvh;
+        }
+
+        .klevby-feed-comments-list {
+          max-height: 230px;
+        }
+
+        .klevby-feed-comment-textarea {
+          min-height: 96px;
         }
 
         .klevby-feed-viewer {
@@ -908,11 +945,11 @@
 
         .klevby-feed-viewer-sheet {
           border-radius: 24px;
-          max-height: 88vh;
+          max-height: 86dvh;
         }
 
         .klevby-feed-viewer-image {
-          max-height: 62vh;
+          max-height: 58dvh;
         }
 
         .klevby-feed-viewer-info {
@@ -928,36 +965,26 @@
         .klevby-feed-viewer-actions button {
           flex: 1;
         }
-
-        .klevby-feed-comment-modal {
-          align-items: flex-end;
-          padding: 12px;
-        }
-
-        .klevby-feed-comment-sheet {
-          border-radius: 24px;
-          padding: 20px;
-          max-height: 88vh;
-        }
-
-        .klevby-feed-comments-list {
-          max-height: 260px;
-        }
       }
 
       @media (max-width: 380px) {
         .profile-feed-image {
-          min-height: 390px !important;
-          height: 54vh !important;
+          min-height: 250px !important;
+          height: 31dvh !important;
+          max-height: 310px !important;
         }
 
         .profile-feed-title {
-          font-size: 23px !important;
+          font-size: 18px !important;
         }
 
         .profile-feed-actions .small-btn {
-          min-height: 50px !important;
-          font-size: 14px !important;
+          min-height: 42px !important;
+          font-size: 12px !important;
+        }
+
+        .klevby-feed-comments-list {
+          max-height: 200px;
         }
       }
     `;
@@ -992,7 +1019,7 @@
 
     return `
       <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.24)), url('${safeImage}')"></div>
+        <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"></div>
 
         <div class="card-body profile-feed-body">
           <button
