@@ -1,38 +1,64 @@
 (function () {
-  const SUPABASE_URL = "https://oecdshvozssadztcokog.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_lyYIaXcnAG21RaNJuVYRgA_yuRjselS";
-  const ADMIN_EMAIL = "al822alex@gmail.com";
+  const ADMIN_EMAIL =
+    window.KLEVB_ADMIN_EMAIL ||
+    window.ADMIN_EMAIL ||
+    window.klevbyAdminEmail ||
+    window.KLEVB_CONFIG?.ADMIN_EMAIL ||
+    "al822alex@gmail.com";
 
   let authDb = null;
   let currentMode = "register";
   let currentUser = null;
+  let authProfileInitialized = false;
+  let authProfileWaitTimer = null;
+  let authProfileStateSubscription = null;
+
+  function getExistingSupabaseClient() {
+    if (typeof window.klevbyGetSupabase === "function") {
+      try {
+        const client = window.klevbyGetSupabase();
+        if (client) return client;
+      } catch (error) {
+        console.warn("Klevby auth profile: klevbyGetSupabase не вернул клиент.", error);
+      }
+    }
+
+    if (window.supabaseClient) return window.supabaseClient;
+    if (window.klevbySupabase) return window.klevbySupabase;
+
+    return null;
+  }
 
   function waitForSupabase(callback) {
     let tries = 0;
 
-    const timer = setInterval(() => {
-      tries++;
+    clearInterval(authProfileWaitTimer);
 
-      if (window.klevbySupabase) {
-        clearInterval(timer);
-        authDb = window.klevbySupabase;
+    const tryAttach = () => {
+      tries += 1;
+
+      const existingClient = getExistingSupabaseClient();
+
+      if (existingClient) {
+        clearInterval(authProfileWaitTimer);
+        authProfileWaitTimer = null;
+        authDb = existingClient;
         callback();
         return;
       }
 
-      if (window.supabase) {
-        clearInterval(timer);
-        authDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        window.klevbySupabase = authDb;
-        callback();
-        return;
+      if (tries > 80) {
+        clearInterval(authProfileWaitTimer);
+        authProfileWaitTimer = null;
+        console.warn("Klevby auth profile: основной Supabase client не найден. Второй client не создаём.");
       }
+    };
 
-      if (tries > 60) {
-        clearInterval(timer);
-        console.warn("Klevby auth: Supabase не загрузился.");
-      }
-    }, 250);
+    tryAttach();
+
+    if (authDb) return;
+
+    authProfileWaitTimer = setInterval(tryAttach, 250);
   }
 
   function cleanNickname(value) {
@@ -79,6 +105,7 @@
     const submit = getEl("klevbyAuthSubmit");
     const switchText = getEl("klevbyAuthSwitchText");
     const switchBtn = getEl("klevbyAuthSwitchBtn");
+    const passwordInput = getEl("passwordInput");
 
     if (registerTab) registerTab.classList.toggle("active", currentMode === "register");
     if (loginTab) loginTab.classList.toggle("active", currentMode === "login");
@@ -111,6 +138,13 @@
 
     if (switchBtn) {
       switchBtn.textContent = currentMode === "register" ? "Войти" : "Создать профиль";
+    }
+
+    if (passwordInput) {
+      passwordInput.setAttribute(
+        "autocomplete",
+        currentMode === "register" ? "new-password" : "current-password"
+      );
     }
 
     showMessage("");
@@ -149,7 +183,7 @@
 
         <div class="klevby-auth-field">
           <label for="passwordInput">Пароль</label>
-          <input id="passwordInput" type="password" placeholder="Минимум 6 символов" autocomplete="current-password" />
+          <input id="passwordInput" type="password" placeholder="Минимум 6 символов" autocomplete="new-password" />
         </div>
 
         <button id="klevbyAuthSubmit" class="klevby-auth-main-btn" type="button">
@@ -406,8 +440,14 @@
     if (!authDb) return null;
 
     try {
-      const { data } = await authDb.auth.getUser();
-      currentUser = data?.user || null;
+      const { data: sessionData } = await authDb.auth.getSession();
+      currentUser = sessionData?.session?.user || null;
+
+      if (!currentUser) {
+        const { data: userData } = await authDb.auth.getUser();
+        currentUser = userData?.user || null;
+      }
+
       updateStatus();
       return currentUser;
     } catch (error) {
@@ -439,7 +479,34 @@
       "Ты вошёл: " +
       currentUser.email +
       (nickname ? " | Nickname: " + nickname : "") +
-      (currentUser.email === ADMIN_EMAIL ? " | Админ включён" : "");
+      (isCurrentUserAdmin() ? " | Админ включён" : "");
+  }
+
+  function isCurrentUserAdmin() {
+    return Boolean(
+      currentUser &&
+      ADMIN_EMAIL &&
+      String(currentUser.email || "").toLowerCase() === String(ADMIN_EMAIL).toLowerCase()
+    );
+  }
+
+  function notifyAuthChanged() {
+    window.dispatchEvent(new CustomEvent("klevby-auth-changed", {
+      detail: {
+        user: currentUser,
+        isAdmin: isCurrentUserAdmin()
+      }
+    }));
+  }
+
+  async function restoreMainAuthState(reason = "auth_profile") {
+    if (typeof window.restoreAuthState === "function") {
+      try {
+        await window.restoreAuthState(reason, true);
+      } catch (error) {
+        console.warn("Klevby auth profile: основной auth state не восстановился.", error);
+      }
+    }
   }
 
   async function saveProfile(user, nickname) {
@@ -463,7 +530,7 @@
         { onConflict: "id" }
       );
     } catch (error) {
-      console.warn("Klevby auth: профиль не сохранён в profiles.", error);
+      console.warn("Klevby auth profile: профиль не сохранён в profiles.", error);
     }
   }
 
@@ -471,6 +538,11 @@
     const nickname = cleanNickname(getEl("usernameInput")?.value);
     const email = String(getEl("emailInput")?.value || "").trim();
     const password = String(getEl("passwordInput")?.value || "").trim();
+
+    if (!authDb) {
+      showMessage("Supabase ещё не готов. Обнови страницу.", true);
+      return;
+    }
 
     if (!nickname || nickname.length < 2) {
       showMessage("Введи Nickname минимум 2 символа.", true);
@@ -524,25 +596,25 @@
 
         currentUser = updateResult.data?.user || currentUser;
       } catch (error) {
-        console.warn("Klevby auth: metadata не обновились.", error);
+        console.warn("Klevby auth profile: metadata не обновились.", error);
       }
     }
 
     updateStatus();
+    notifyAuthChanged();
+    await restoreMainAuthState("auth_profile_register");
 
     showMessage("Профиль создан. Если Supabase попросит подтверждение — открой письмо на email.", false);
-
-    window.dispatchEvent(new CustomEvent("klevby-auth-changed", {
-      detail: {
-        user: currentUser,
-        isAdmin: currentUser?.email === ADMIN_EMAIL
-      }
-    }));
   }
 
   async function loginProfile() {
     const email = String(getEl("emailInput")?.value || "").trim();
     const password = String(getEl("passwordInput")?.value || "").trim();
+
+    if (!authDb) {
+      showMessage("Supabase ещё не готов. Обнови страницу.", true);
+      return;
+    }
 
     if (!email || !password) {
       showMessage("Введи email и пароль.", true);
@@ -578,18 +650,19 @@
     }
 
     updateStatus();
-    showMessage("Вход выполнен.", false);
+    notifyAuthChanged();
+    await restoreMainAuthState("auth_profile_login");
 
-    window.dispatchEvent(new CustomEvent("klevby-auth-changed", {
-      detail: {
-        user: currentUser,
-        isAdmin: currentUser?.email === ADMIN_EMAIL
-      }
-    }));
+    showMessage("Вход выполнен.", false);
   }
 
   async function sendRecoveryProfile() {
     const email = String(getEl("emailInput")?.value || "").trim();
+
+    if (!authDb) {
+      showMessage("Supabase ещё не готов. Обнови страницу.", true);
+      return;
+    }
 
     if (!email) {
       showMessage("Введи email для сброса пароля.", true);
@@ -613,20 +686,21 @@
   }
 
   async function logoutProfile() {
+    if (!authDb) {
+      showMessage("Supabase ещё не готов. Обнови страницу.", true);
+      return;
+    }
+
     setLoading(true);
     await authDb.auth.signOut();
     setLoading(false);
 
     currentUser = null;
     updateStatus();
-    showMessage("Ты вышел из аккаунта.", false);
+    notifyAuthChanged();
+    await restoreMainAuthState("auth_profile_logout");
 
-    window.dispatchEvent(new CustomEvent("klevby-auth-changed", {
-      detail: {
-        user: null,
-        isAdmin: false
-      }
-    }));
+    showMessage("Ты вышел из аккаунта.", false);
   }
 
   function bindEvents() {
@@ -680,6 +754,7 @@
         if (event.key !== "Enter") return;
 
         event.preventDefault();
+        showMessage("");
 
         if (currentMode === "register") {
           await registerProfile();
@@ -690,23 +765,43 @@
     });
   }
 
+  function bindAuthStateListener() {
+    if (!authDb || !authDb.auth || typeof authDb.auth.onAuthStateChange !== "function") return;
+    if (authProfileStateSubscription) return;
+
+    const result = authDb.auth.onAuthStateChange(async (_event, session) => {
+      currentUser = session?.user || null;
+      updateStatus();
+    });
+
+    authProfileStateSubscription = result?.data?.subscription || result?.subscription || true;
+  }
+
   function init() {
+    if (authProfileInitialized) {
+      refreshUser();
+      return;
+    }
+
+    if (!authDb) {
+      console.warn("Klevby auth profile: Supabase client отсутствует.");
+      return;
+    }
+
     const ok = buildAuthUI();
 
     if (!ok) {
-      console.warn("Klevby auth: authSection не найден.");
+      console.warn("Klevby auth profile: authSection не найден.");
       return;
     }
+
+    authProfileInitialized = true;
 
     injectStyles();
     bindEvents();
     setMode("register");
     refreshUser();
-
-    authDb.auth.onAuthStateChange(async (_event, session) => {
-      currentUser = session?.user || null;
-      updateStatus();
-    });
+    bindAuthStateListener();
   }
 
   window.klevbyInitAuthProfile = function () {
