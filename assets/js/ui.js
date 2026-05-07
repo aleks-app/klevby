@@ -30,7 +30,112 @@ function updateHomeFloatButton() {
   btn.classList.toggle("show", isNotHome || isScrolledDown);
 }
 
+function getMobileTabButtons() {
+  return Array.from(document.querySelectorAll(".mobile-tab-btn"));
+}
+
+function setMobileTabActive(index) {
+  const buttons = getMobileTabButtons();
+
+  buttons.forEach((button, i) => {
+    button.classList.toggle("active", Number.isInteger(index) && i === index);
+  });
+}
+
+function setMobileTabbarMode(mode) {
+  const tabbar = document.querySelector(".mobile-tabbar");
+  const buttons = getMobileTabButtons();
+
+  if (!tabbar || buttons.length < 5) return;
+
+  const cleanMode = mode === "profile" ? "profile" : "home";
+
+  window.__klevbyMobileTabbarMode = cleanMode;
+  tabbar.setAttribute("data-mode", cleanMode);
+
+  const homeTabs = [
+    {
+      icon: "▰",
+      text: "Лента",
+      action: goMobileFeed
+    },
+    {
+      icon: "⌖",
+      text: "Карта",
+      action: goMobileMap
+    },
+    {
+      icon: "+",
+      text: "Создать",
+      action: goMobileCreate,
+      create: true
+    },
+    {
+      icon: "☁",
+      text: "Погода",
+      action: goMobileWeather
+    },
+    {
+      icon: "☵",
+      text: "Чат",
+      action: goMobileChat,
+      id: "nav-chat"
+    }
+  ];
+
+  const profileTabs = [
+    {
+      icon: "▧",
+      text: "Фото",
+      action: goProfilePhotos
+    },
+    {
+      icon: "▣",
+      text: "Выезды",
+      action: goProfileTrips
+    },
+    {
+      icon: "+",
+      text: "Создать",
+      action: goProfileCreate,
+      create: true
+    },
+    {
+      icon: "⚙",
+      text: "Анкета",
+      action: goProfileSettings
+    },
+    {
+      icon: "☵",
+      text: "Чат",
+      action: goMobileChat,
+      id: "nav-chat"
+    }
+  ];
+
+  const config = cleanMode === "profile" ? profileTabs : homeTabs;
+
+  buttons.forEach((button, index) => {
+    const item = config[index];
+    if (!button || !item) return;
+
+    button.className = item.create
+      ? "mobile-tab-btn mobile-tab-create"
+      : "mobile-tab-btn";
+
+    if (item.id) {
+      button.id = item.id;
+    } else if (button.id === "nav-chat") {
+      button.removeAttribute("id");
+    }
+
+    button.innerHTML = `<span class="mobile-tab-icon">${item.icon}</span><span class="mobile-tab-text">${item.text}</span>`;
+    button.onclick = item.action;
+  });
+}
+
 function goHomeTop() {
+  setMobileTabbarMode("home");
   setMobileTabActive(0);
   showSection("home");
 
@@ -58,32 +163,40 @@ function mobileScrollTo(id) {
   }, 80);
 }
 
-function setMobileTabActive(index) {
-  const buttons = document.querySelectorAll(".mobile-tab-btn");
+function scrollToProfilePhotos() {
+  setTimeout(() => {
+    const profileContent = document.querySelector(".profile-content-card");
 
-  buttons.forEach((button, i) => {
-    button.classList.toggle("active", Number.isInteger(index) && i === index);
-  });
+    if (profileContent) {
+      profileContent.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    setTimeout(updateHomeFloatButton, 120);
+  }, 100);
 }
 
 function goMobileFeed() {
+  setMobileTabbarMode("home");
   setMobileTabActive(0);
   showSection("home");
   mobileScrollTo("postsSection");
 }
 
 function goMobileCreate() {
+  setMobileTabbarMode("home");
   setMobileTabActive(2);
   showSection("home");
   mobileScrollTo("createPanel");
 }
 
 function goMobileMap() {
+  setMobileTabbarMode("home");
   setMobileTabActive(1);
   showSection("map");
 }
 
 function goMobileWeather() {
+  setMobileTabbarMode("home");
   setMobileTabActive(3);
   showSection("home");
   mobileScrollTo("forecastPanel");
@@ -91,6 +204,76 @@ function goMobileWeather() {
 
 function goMobileProfile() {
   openKlevbyProfile();
+}
+
+function goMobileChat() {
+  setMobileTabActive(4);
+
+  const possibleChatFunctions = [
+    "openKlevbyChat",
+    "openChat",
+    "showChat",
+    "toggleChat",
+    "openChatShell"
+  ];
+
+  for (const functionName of possibleChatFunctions) {
+    if (typeof window[functionName] === "function") {
+      window[functionName]();
+      return;
+    }
+  }
+}
+
+function goProfilePhotos() {
+  setMobileTabbarMode("profile");
+  setMobileTabActive(0);
+
+  const profileSection = document.getElementById("profileSection");
+  const isProfileOpen = profileSection && !profileSection.classList.contains("hidden");
+
+  if (!isProfileOpen) {
+    openKlevbyProfile();
+  }
+
+  scrollToProfilePhotos();
+}
+
+function goProfileTrips() {
+  setMobileTabbarMode("home");
+  setMobileTabActive(0);
+
+  if (typeof setMode === "function") {
+    setMode("mine");
+  }
+
+  showSection("home");
+  mobileScrollTo("postsSection");
+}
+
+function goProfileCreate() {
+  setMobileTabbarMode("home");
+  setMobileTabActive(2);
+  showSection("home");
+  mobileScrollTo("createPanel");
+}
+
+function goProfileSettings() {
+  setMobileTabbarMode("profile");
+  setMobileTabActive(3);
+
+  const profileSection = document.getElementById("profileSection");
+  const isProfileOpen = profileSection && !profileSection.classList.contains("hidden");
+
+  if (!isProfileOpen) {
+    openKlevbyProfile();
+  }
+
+  setTimeout(() => {
+    if (typeof openProfileSettingsModal === "function") {
+      openProfileSettingsModal();
+    }
+  }, 140);
 }
 
 function openKlevbyProfile() {
@@ -116,6 +299,7 @@ function openKlevbyProfile() {
 
   closeMobileMenuSafe();
   closeProfileSettingsModal(false);
+  setMobileTabbarMode("profile");
   setMobileTabActive(null);
   updateKlevbyProfileView();
 
@@ -129,11 +313,13 @@ function openKlevbyProfile() {
 
 function hideKlevbyProfileSection() {
   const profileSection = document.getElementById("profileSection");
+
   if (profileSection) {
     profileSection.classList.add("hidden");
   }
 
   closeProfileSettingsModal(false);
+  setMobileTabbarMode("home");
 }
 
 function closeMobileMenuSafe() {
@@ -325,6 +511,10 @@ function handleLocalAvatarUpload(event) {
     }
 
     setProfileAvatar(result);
+
+    if (navigator.vibrate) {
+      navigator.vibrate(18);
+    }
   };
 
   reader.readAsDataURL(file);
@@ -333,6 +523,7 @@ function handleLocalAvatarUpload(event) {
 function restoreLocalProfileAvatar() {
   try {
     const savedAvatar = localStorage.getItem("klevby_profile_avatar");
+
     if (savedAvatar) {
       setProfileAvatar(savedAvatar);
     } else {
@@ -439,6 +630,7 @@ function saveProfileSettings() {
     if (message) {
       message.textContent = "Укажи nickname профиля.";
     }
+
     return;
   }
 
@@ -451,12 +643,12 @@ function saveProfileSettings() {
   updateKlevbyProfileView();
 
   if (message) {
-    message.textContent = "Профиль сохранён.";
+    message.textContent = "✅ Профиль сохранён.";
   }
 
-  setTimeout(() => {
-    closeProfileSettingsModal(false);
-  }, 450);
+  if (navigator.vibrate) {
+    navigator.vibrate(18);
+  }
 }
 
 function syncProfileInputsFromSettings(name, telegram, city) {
@@ -493,6 +685,7 @@ function patchKlevbyShowSection() {
 
     if (sectionName !== "profile") {
       hideKlevbyProfileSection();
+      setMobileTabbarMode("home");
     }
 
     setTimeout(updateHomeFloatButton, 120);
@@ -503,7 +696,29 @@ function patchKlevbyShowSection() {
   window.__klevbyShowSectionPatched = true;
 }
 
+function patchKlevbyProfileOpenFunction() {
+  if (typeof window.openKlevbyProfile !== "function") return;
+  if (window.openKlevbyProfile.__klevbyProfileTabPatched) return;
+
+  const originalOpenProfile = window.openKlevbyProfile;
+
+  const patchedOpenProfile = function patchedOpenKlevbyProfile() {
+    const result = originalOpenProfile.apply(this, arguments);
+
+    setMobileTabbarMode("profile");
+    setMobileTabActive(null);
+
+    setTimeout(updateHomeFloatButton, 120);
+
+    return result;
+  };
+
+  patchedOpenProfile.__klevbyProfileTabPatched = true;
+  window.openKlevbyProfile = patchedOpenProfile;
+}
+
 function initKlevbyProfileUi() {
+  setMobileTabbarMode("home");
   restoreLocalProfileAvatar();
   updateKlevbyProfileView();
 
@@ -527,6 +742,10 @@ function initKlevbyProfileUi() {
   setTimeout(patchKlevbyShowSection, 0);
   setTimeout(patchKlevbyShowSection, 250);
   setTimeout(patchKlevbyShowSection, 800);
+
+  setTimeout(patchKlevbyProfileOpenFunction, 0);
+  setTimeout(patchKlevbyProfileOpenFunction, 250);
+  setTimeout(patchKlevbyProfileOpenFunction, 800);
 }
 
 window.toggleMobileMenu = toggleMobileMenu;
@@ -536,11 +755,18 @@ window.goHomeTop = goHomeTop;
 window.scrollToPosts = scrollToPosts;
 window.mobileScrollTo = mobileScrollTo;
 window.setMobileTabActive = setMobileTabActive;
+window.setMobileTabbarMode = setMobileTabbarMode;
 window.goMobileFeed = goMobileFeed;
 window.goMobileCreate = goMobileCreate;
 window.goMobileMap = goMobileMap;
 window.goMobileWeather = goMobileWeather;
 window.goMobileProfile = goMobileProfile;
+window.goMobileChat = goMobileChat;
+
+window.goProfilePhotos = goProfilePhotos;
+window.goProfileTrips = goProfileTrips;
+window.goProfileCreate = goProfileCreate;
+window.goProfileSettings = goProfileSettings;
 
 window.openKlevbyProfile = openKlevbyProfile;
 window.hideKlevbyProfileSection = hideKlevbyProfileSection;
