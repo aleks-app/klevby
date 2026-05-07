@@ -32,6 +32,9 @@ let pondsReloadTimer = null;
 let pondsReloadInProgress = false;
 let lastPondsReloadAt = 0;
 
+let klevbyProfileOpenPatched = false;
+let klevbyOriginalOpenProfile = null;
+
 const splashStartedAt = Date.now();
 
 function hideAppSplash() {
@@ -235,6 +238,10 @@ function initSupabase() {
         window.renderPosts();
       }
 
+      if (typeof window.renderProfileFeed === "function") {
+        window.renderProfileFeed();
+      }
+
       if (userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT") {
         reloadPondsIfReady({ delay: 700 });
       }
@@ -265,22 +272,131 @@ function openTelegram() {
   window.open(TELEGRAM_GROUP, "_blank");
 }
 
+function getAppSections() {
+  return [
+    "homeSection",
+    "tripsSection",
+    "createSection",
+    "marketSection",
+    "pondsSection",
+    "mapSection",
+    "authSection",
+    "profileSection"
+  ];
+}
+
+function hideAllAppSectionsExcept(activeId) {
+  getAppSections().forEach((id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+
+    section.classList.toggle("hidden", id !== activeId);
+  });
+}
+
+function clearProfileChromeIfNeeded(section) {
+  if (section === "profile") return;
+
+  try {
+    if (typeof window.setProfileScreenChrome === "function") {
+      window.setProfileScreenChrome(false);
+    }
+
+    if (typeof window.restoreMainTabbar === "function") {
+      window.restoreMainTabbar();
+    }
+
+    sessionStorage.removeItem("klevby_profile_return_mode");
+    window.__klevbyProfileReturnMode = false;
+  } catch (error) {
+    window.__klevbyProfileReturnMode = false;
+  }
+}
+
+function setMobileTabVisual(index) {
+  const buttons = Array.from(document.querySelectorAll(".mobile-tabbar .mobile-tab-btn"));
+
+  buttons.forEach((button, buttonIndex) => {
+    button.classList.toggle("active", Number.isInteger(index) && buttonIndex === index);
+  });
+}
+
+function getVisibleSectionName() {
+  if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
+  if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
+  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
+  if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
+  if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
+  if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
+  if (!document.getElementById("authSection")?.classList.contains("hidden")) return "auth";
+  if (!document.getElementById("profileSection")?.classList.contains("hidden")) return "profile";
+
+  return "home";
+}
+
 function showSection(section) {
-  const homeSection = document.getElementById("homeSection");
-  const marketSection = document.getElementById("marketSection");
-  const pondsSection = document.getElementById("pondsSection");
-  const mapSection = document.getElementById("mapSection");
-  const authSection = document.getElementById("authSection");
+  const safeSection = String(section || "home").trim();
 
-  if (homeSection) homeSection.classList.toggle("hidden", section !== "home");
-  if (marketSection) marketSection.classList.toggle("hidden", section !== "market");
-  if (pondsSection) pondsSection.classList.toggle("hidden", section !== "ponds");
-  if (mapSection) mapSection.classList.toggle("hidden", section !== "map");
-  if (authSection) authSection.classList.toggle("hidden", section !== "auth");
+  if (safeSection === "profile") {
+    if (typeof window.openKlevbyProfile === "function") {
+      window.openKlevbyProfile();
+      return;
+    }
+  }
 
+  const sectionMap = {
+    home: "homeSection",
+    trips: "tripsSection",
+    create: "createSection",
+    market: "marketSection",
+    ponds: "pondsSection",
+    map: "mapSection",
+    auth: "authSection"
+  };
+
+  const activeId = sectionMap[safeSection] || "homeSection";
+
+  clearProfileChromeIfNeeded(safeSection);
+  hideAllAppSectionsExcept(activeId);
   syncGlobalAuthState();
 
-  if (section === "auth") {
+  if (safeSection === "home") {
+    setMobileTabVisual(0);
+
+    if (typeof window.renderProfileFeed === "function") {
+      window.renderProfileFeed();
+    }
+  }
+
+  if (safeSection === "trips") {
+    setMobileTabVisual(0);
+
+    if (typeof window.renderPosts === "function") {
+      window.renderPosts();
+    }
+  }
+
+  if (safeSection === "create") {
+    setMobileTabVisual(2);
+
+    if (typeof window.fillAuthorLocal === "function") {
+      window.fillAuthorLocal();
+    }
+
+    setTimeout(() => {
+      const panel = document.getElementById("createPanel");
+      if (panel) {
+        panel.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }
+    }, 80);
+  }
+
+  if (safeSection === "auth") {
+    setMobileTabVisual(null);
+
     if (typeof window.setAuthMode === "function") {
       window.setAuthMode(currentUser ? "login" : authMode);
     }
@@ -290,20 +406,29 @@ function showSection(section) {
     }
   }
 
-  if (section === "market" && typeof window.klevbyLoadMarket === "function") {
-    setTimeout(() => {
-      window.klevbyLoadMarket();
-    }, 250);
+  if (safeSection === "market") {
+    setMobileTabVisual(null);
+
+    if (typeof window.klevbyLoadMarket === "function") {
+      setTimeout(() => {
+        window.klevbyLoadMarket();
+      }, 250);
+    }
   }
 
-  if (section === "ponds") {
+  if (safeSection === "ponds") {
+    setMobileTabVisual(null);
     reloadPondsIfReady({ force: true, delay: 250 });
   }
 
-  if (section === "map" && typeof window.klevbyReloadMap === "function") {
-    setTimeout(() => {
-      window.klevbyReloadMap();
-    }, 300);
+  if (safeSection === "map") {
+    setMobileTabVisual(1);
+
+    if (typeof window.klevbyReloadMap === "function") {
+      setTimeout(() => {
+        window.klevbyReloadMap();
+      }, 300);
+    }
   }
 
   setTimeout(() => {
@@ -312,18 +437,81 @@ function showSection(section) {
     }
   }, 80);
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (safeSection !== "create") {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 
 function setMode(mode) {
   viewMode = mode === "mine" ? "mine" : "all";
   window.klevbyViewMode = viewMode;
 
-  showSection("home");
+  showSection("trips");
 
   if (typeof window.renderPosts === "function") {
     window.renderPosts();
   }
+}
+
+function showCreatePostScreen(options = {}) {
+  const fromProfile = Boolean(options.fromProfile);
+
+  if (fromProfile) {
+    try {
+      sessionStorage.setItem("klevby_profile_return_mode", "1");
+      window.__klevbyProfileReturnMode = true;
+    } catch (error) {
+      window.__klevbyProfileReturnMode = true;
+    }
+  }
+
+  showSection("create");
+}
+
+function showTripsBoard(mode = "all") {
+  setMode(mode);
+}
+
+function goMobileFeed() {
+  showSection("home");
+}
+
+function goMobileMap() {
+  showSection("map");
+}
+
+function goMobileCreate() {
+  showCreatePostScreen();
+}
+
+function goMobileWeather() {
+  showSection("home");
+
+  setTimeout(() => {
+    const panel = document.getElementById("forecastPanel");
+    if (panel) {
+      panel.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  }, 120);
+}
+
+function goHomeTop() {
+  const visibleSection = getVisibleSectionName();
+
+  if (visibleSection === "profile") {
+    showSection("home");
+    return;
+  }
+
+  if (visibleSection === "create") {
+    setMode("all");
+    return;
+  }
+
+  showSection("home");
 }
 
 function resetFilters() {
@@ -342,6 +530,48 @@ function resetFilters() {
   }
 }
 
+function patchProfileOpenForExtraSections() {
+  if (klevbyProfileOpenPatched) return;
+  if (typeof window.openKlevbyProfile !== "function") return;
+
+  klevbyOriginalOpenProfile = window.openKlevbyProfile;
+
+  window.openKlevbyProfile = function patchedOpenKlevbyProfile() {
+    hideAllAppSectionsExcept("profileSection");
+
+    const result = klevbyOriginalOpenProfile.apply(this, arguments);
+
+    const tripsSection = document.getElementById("tripsSection");
+    const createSection = document.getElementById("createSection");
+
+    if (tripsSection) tripsSection.classList.add("hidden");
+    if (createSection) createSection.classList.add("hidden");
+
+    setMobileTabVisual(null);
+
+    return result;
+  };
+
+  klevbyProfileOpenPatched = true;
+}
+
+function patchProfileShortcutActions() {
+  window.openProfileCreateView = function patchedOpenProfileCreateView() {
+    showCreatePostScreen({ fromProfile: true });
+  };
+
+  window.openProfileTripsView = function patchedOpenProfileTripsView() {
+    try {
+      sessionStorage.setItem("klevby_profile_return_mode", "1");
+      window.__klevbyProfileReturnMode = true;
+    } catch (error) {
+      window.__klevbyProfileReturnMode = true;
+    }
+
+    setMode("mine");
+  };
+}
+
 function handleGlobalScrollOrResize() {
   if (typeof window.updateHomeFloatButton === "function") {
     window.updateHomeFloatButton();
@@ -358,6 +588,9 @@ document.addEventListener("keydown", function (event) {
 });
 
 document.addEventListener("DOMContentLoaded", async function () {
+  patchProfileOpenForExtraSections();
+  patchProfileShortcutActions();
+
   const ok = initSupabase();
   if (!ok) return;
 
@@ -401,10 +634,17 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
+  if (typeof window.renderProfileFeed === "function") {
+    window.renderProfileFeed();
+  }
+
   if (typeof window.updateHomeFloatButton === "function") {
     window.updateHomeFloatButton();
   }
 });
+
+patchProfileOpenForExtraSections();
+patchProfileShortcutActions();
 
 window.isAdmin = isAdmin;
 window.syncGlobalAuthState = syncGlobalAuthState;
@@ -415,4 +655,11 @@ window.showFormMessage = showFormMessage;
 window.openTelegram = openTelegram;
 window.showSection = showSection;
 window.setMode = setMode;
+window.showTripsBoard = showTripsBoard;
+window.showCreatePostScreen = showCreatePostScreen;
+window.goMobileFeed = goMobileFeed;
+window.goMobileMap = goMobileMap;
+window.goMobileCreate = goMobileCreate;
+window.goMobileWeather = goMobileWeather;
+window.goHomeTop = goHomeTop;
 window.resetFilters = resetFilters;
