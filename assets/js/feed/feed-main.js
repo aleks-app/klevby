@@ -1,4 +1,16 @@
 (function () {
+  let klevbyFeedSoftRefreshTimer = null;
+  let klevbyFeedSoftRefreshInProgress = false;
+  let klevbyFeedSoftRefreshPending = false;
+  let klevbyFeedSoftRefreshBound = false;
+  let klevbyFeedSoftRefreshInterval = null;
+  let klevbyFeedRealtimeFallbackStarted = false;
+  let klevbyFeedLastSoftRefreshAt = 0;
+
+  const KLEVB_FEED_SOFT_REFRESH_DELAY = 650;
+  const KLEVB_FEED_SOFT_REFRESH_MIN_GAP = 900;
+  const KLEVB_FEED_AUTO_REFRESH_MS = 25000;
+
   function getState() {
     return window.KlevbyFeedState || {};
   }
@@ -37,6 +49,21 @@
     }
 
     return fallbackValue;
+  }
+
+  function isHomeFeedVisible() {
+    const homeSection = document.getElementById("homeSection");
+    const list = document.getElementById("profileFeedSection");
+
+    return Boolean(
+      homeSection &&
+      list &&
+      !homeSection.classList.contains("hidden")
+    );
+  }
+
+  function isPageActive() {
+    return document.visibilityState !== "hidden";
   }
 
   function openKlevbyProfileSafe() {
@@ -85,13 +112,181 @@
       return render.refreshFeedIfHomeVisible();
     }
 
-    const homeSection = document.getElementById("homeSection");
-
-    if (homeSection && !homeSection.classList.contains("hidden")) {
+    if (isHomeFeedVisible()) {
       return renderProfileFeed();
     }
 
     return Promise.resolve();
+  }
+
+  function scheduleSoftFeedRefresh(reason = "manual", options = {}) {
+    const delay = Number.isFinite(Number(options.delay))
+      ? Math.max(0, Number(options.delay))
+      : KLEVB_FEED_SOFT_REFRESH_DELAY;
+
+    const force = Boolean(options.force);
+
+    clearTimeout(klevbyFeedSoftRefreshTimer);
+
+    klevbyFeedSoftRefreshTimer = setTimeout(() => {
+      softRefreshFeed(reason, {
+        force
+      });
+    }, delay);
+  }
+
+  async function softRefreshFeed(reason = "manual", options = {}) {
+    const force = Boolean(options.force);
+
+    if (!force) {
+      if (!isPageActive()) {
+        return false;
+      }
+
+      if (!isHomeFeedVisible()) {
+        return false;
+      }
+    }
+
+    const now = Date.now();
+    const timeFromLastRefresh = now - klevbyFeedLastSoftRefreshAt;
+
+    if (!force && timeFromLastRefresh < KLEVB_FEED_SOFT_REFRESH_MIN_GAP) {
+      scheduleSoftFeedRefresh(reason, {
+        delay: KLEVB_FEED_SOFT_REFRESH_MIN_GAP - timeFromLastRefresh + 80,
+        force
+      });
+
+      return false;
+    }
+
+    if (klevbyFeedSoftRefreshInProgress) {
+      klevbyFeedSoftRefreshPending = true;
+      return false;
+    }
+
+    klevbyFeedSoftRefreshInProgress = true;
+    klevbyFeedLastSoftRefreshAt = Date.now();
+
+    try {
+      await Promise.resolve(renderProfileFeed());
+
+      window.dispatchEvent(new CustomEvent("klevby-feed-soft-refreshed", {
+        detail: {
+          reason,
+          at: new Date().toISOString()
+        }
+      }));
+
+      return true;
+    } catch (error) {
+      console.warn("Klevby feed: мягкое обновление ленты не сработало", error);
+      return false;
+    } finally {
+      klevbyFeedSoftRefreshInProgress = false;
+
+      if (klevbyFeedSoftRefreshPending) {
+        klevbyFeedSoftRefreshPending = false;
+
+        scheduleSoftFeedRefresh("pending_after_" + reason, {
+          delay: 500,
+          force
+        });
+      }
+    }
+  }
+
+  function bindSoftFeedRefreshHooks() {
+    if (klevbyFeedSoftRefreshBound) return;
+
+    klevbyFeedSoftRefreshBound = true;
+
+    window.addEventListener("klevby-feed-updated", (event) => {
+      const action = event?.detail?.action || "feed_updated";
+
+      scheduleSoftFeedRefresh(action, {
+        delay: 550
+      });
+    });
+
+    window.addEventListener("klevby-feed-module-ready", () => {
+      scheduleSoftFeedRefresh("module_ready", {
+        delay: 700
+      });
+    });
+
+    window.addEventListener("focus", () => {
+      scheduleSoftFeedRefresh("window_focus", {
+        delay: 250
+      });
+    });
+
+    window.addEventListener("online", () => {
+      scheduleSoftFeedRefresh("browser_online", {
+        delay: 350
+      });
+    });
+
+    window.addEventListener("pageshow", () => {
+      scheduleSoftFeedRefresh("page_show", {
+        delay: 350
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        scheduleSoftFeedRefresh("visibility_visible", {
+          delay: 300
+        });
+      }
+    });
+  }
+
+  function startSoftFeedAutoRefresh() {
+    if (klevbyFeedSoftRefreshInterval) return;
+
+    klevbyFeedSoftRefreshInterval = setInterval(() => {
+      scheduleSoftFeedRefresh("soft_auto_interval", {
+        delay: 0
+      });
+    }, KLEVB_FEED_AUTO_REFRESH_MS);
+  }
+
+  function stopSoftFeedAutoRefresh() {
+    if (!klevbyFeedSoftRefreshInterval) return;
+
+    clearInterval(klevbyFeedSoftRefreshInterval);
+    klevbyFeedSoftRefreshInterval = null;
+  }
+
+  function startRealtimeFallbackSubscription() {
+    if (klevbyFeedRealtimeFallbackStarted) return;
+
+    const api = getApi();
+
+    if (typeof api.subscribeToFeedChanges !== "function") {
+      return;
+    }
+
+    klevbyFeedRealtimeFallbackStarted = true;
+
+    try {
+      api.subscribeToFeedChanges((payload) => {
+        const table =
+          payload?.table ||
+          payload?.schema ||
+          payload?.new?.id ||
+          payload?.old?.id ||
+          "supabase_realtime";
+
+        scheduleSoftFeedRefresh("realtime_" + table, {
+          delay: 500
+        });
+      });
+    } catch (error) {
+      klevbyFeedRealtimeFallbackStarted = false;
+      console.warn("Klevby feed: fallback realtime не подключился", error);
+    }
   }
 
   function getProfileFeedItemsSafe() {
@@ -256,7 +451,10 @@
 
     if (typeof window.klevbyToggleFeedLike === "function") {
       return window.klevbyToggleFeedLike(postId)
-        .then(() => renderProfileFeed())
+        .then(() => scheduleSoftFeedRefresh("like_clicked", {
+          delay: 350,
+          force: true
+        }))
         .catch((error) => {
           console.warn("Klevby feed: лайк не сработал", error);
           alert(error?.message || "Не получилось поставить лайк.");
@@ -280,6 +478,14 @@
     window.closeFeedCommentModal = closeFeedCommentModal;
     window.submitFeedComment = submitFeedComment;
     window.deleteFeedComment = deleteFeedComment;
+
+    window.klevbySoftRefreshFeed = softRefreshFeed;
+    window.klevbyScheduleSoftFeedRefresh = scheduleSoftFeedRefresh;
+    window.refreshKlevbyFeedSilently = function refreshKlevbyFeedSilently() {
+      return softRefreshFeed("manual_global", {
+        force: true
+      });
+    };
   }
 
   function warmUpModules() {
@@ -297,6 +503,9 @@
     if (typeof events.startFeedAutoRefresh === "function") {
       events.startFeedAutoRefresh();
     }
+
+    bindSoftFeedRefreshHooks();
+    startSoftFeedAutoRefresh();
   }
 
   function startRealtimeLater() {
@@ -307,12 +516,23 @@
       setTimeout(events.tryStartRealtimeSubscription, 2600);
       setTimeout(events.tryStartRealtimeSubscription, 5000);
     }
+
+    setTimeout(startRealtimeFallbackSubscription, 1600);
+    setTimeout(startRealtimeFallbackSubscription, 3200);
+    setTimeout(startRealtimeFallbackSubscription, 5800);
   }
 
   function renderLater() {
     setTimeout(renderProfileFeed, 350);
     setTimeout(refreshFeedIfHomeVisible, 900);
     setTimeout(refreshFeedIfHomeVisible, 1600);
+
+    setTimeout(() => {
+      scheduleSoftFeedRefresh("initial_soft_refresh", {
+        delay: 300,
+        force: true
+      });
+    }, 2200);
   }
 
   function initKlevbyFeed() {
@@ -327,9 +547,11 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260507-feed-modular-1"
+        version: "20260507-feed-soft-refresh-1"
       }
     }));
+
+    console.log("Klevby feed main soft refresh loaded");
   }
 
   if (document.readyState === "loading") {
@@ -343,6 +565,10 @@
     exposeLegacyGlobals,
     renderProfileFeed,
     refreshFeedIfHomeVisible,
+    softRefreshFeed,
+    scheduleSoftFeedRefresh,
+    startSoftFeedAutoRefresh,
+    stopSoftFeedAutoRefresh,
     openKlevbyProfileSafe,
     openProfilePhotoFeedItem,
     openFeedCommentModal,
