@@ -57,7 +57,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260503-4">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260507-profile-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/chat-style.css?v=20260504-1">
 
@@ -89,6 +89,7 @@
         <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
         <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
         <button class="nav-btn nav-mine" onclick="setMode('mine')">Мои объявления</button>
+        <button class="nav-btn" onclick="openKlevbyProfile()">Профиль</button>
         <button class="nav-btn install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
         <button class="nav-btn nav-auth" onclick="showSection('auth')">Вход</button>
       </nav>
@@ -104,6 +105,7 @@
           <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Напарники</button>
           <button class="mobile-menu-item" onclick="showSection('market'); closeMobileMenu()">Барахолка</button>
           <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
+          <button class="mobile-menu-item" onclick="openKlevbyProfile(); closeMobileMenu()">👤 Профиль рыбака</button>
           <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
           <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
           <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои объявления</button>
@@ -266,6 +268,89 @@
 
       <div id="postsSection" class="grid">
         <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section id="profileSection" class="hidden">
+      <div class="profile-shell">
+        <div class="profile-cover">
+          <button class="profile-gear-btn" type="button" onclick="showSection('auth')" aria-label="Настройки профиля">⚙</button>
+        </div>
+
+        <div class="profile-main-card">
+          <label class="profile-avatar-wrap" for="profileAvatarInput" aria-label="Выбрать аватар">
+            <img id="profileAvatarImage" class="profile-avatar-image hidden" alt="Аватар профиля">
+            <span id="profileAvatarFallback" class="profile-avatar-fallback">A</span>
+          </label>
+
+          <input id="profileAvatarInput" class="profile-avatar-input" type="file" accept="image/*" onchange="handleLocalAvatarUpload(event)" />
+
+          <h2 id="profileNameText" class="profile-name">Alex</h2>
+          <p id="profileStatusText" class="profile-status">🎣 Рыбак Klevby</p>
+
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <span class="profile-stat-label">Отчётов</span>
+              <strong id="profileReportsCount">0</strong>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-label">Рейтинг</span>
+              <strong>4.8★</strong>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-label">Поездок</span>
+              <strong id="profileTripsCount">0</strong>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-label">Друзей</span>
+              <strong>0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-content-card">
+          <div class="profile-card-head">
+            <h3>Последние отчёты</h3>
+            <button type="button" onclick="setMode('mine'); showSection('home')">Мои</button>
+          </div>
+
+          <div class="profile-report-grid">
+            <div class="profile-report-card">
+              <div class="profile-report-img profile-report-img-1"></div>
+              <p>Ищу компанию на рыбалку...</p>
+              <div class="profile-report-meta"><span>📍 6</span><span>•••</span></div>
+            </div>
+
+            <div class="profile-report-card">
+              <div class="profile-report-img profile-report-img-2"></div>
+              <p>Выезд на водоём...</p>
+              <div class="profile-report-meta"><span>📍 3</span><span>•••</span></div>
+            </div>
+
+            <div class="profile-report-card">
+              <div class="profile-report-img profile-report-img-3"></div>
+              <p>Отчёт с места...</p>
+              <div class="profile-report-meta"><span>❤️ 5</span><span>•••</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-menu-card">
+          <button type="button" onclick="showSection('auth')">
+            <span>⚙️ Настройки аккаунта</span>
+            <b>›</b>
+          </button>
+
+          <button type="button" onclick="setMode('mine'); showSection('home')">
+            <span>🏷️ Мои объявления</span>
+            <b>›</b>
+          </button>
+
+          <button type="button" onclick="goMobileCreate()">
+            <span>➕ Создать выезд</span>
+            <b>›</b>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -510,6 +595,192 @@
     <button class="mobile-tab-btn" onclick="goMobileWeather()"><span class="mobile-tab-icon">☁</span><span class="mobile-tab-text">Погода</span></button>
     <button id="nav-chat" class="mobile-tab-btn"><span class="mobile-tab-icon">☵</span><span class="mobile-tab-text">Чат</span></button>
   </div>
+
+  <script>
+    function openKlevbyProfile() {
+      const sectionIds = [
+        "homeSection",
+        "marketSection",
+        "pondsSection",
+        "mapSection",
+        "authSection",
+        "profileSection"
+      ];
+
+      sectionIds.forEach((id) => {
+        const section = document.getElementById(id);
+        if (!section) return;
+
+        if (id === "profileSection") {
+          section.classList.remove("hidden");
+        } else {
+          section.classList.add("hidden");
+        }
+      });
+
+      closeMobileMenuSafe();
+      updateKlevbyProfileView();
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+
+    function closeMobileMenuSafe() {
+      try {
+        if (typeof closeMobileMenu === "function") {
+          closeMobileMenu();
+          return;
+        }
+
+        const menu = document.getElementById("mobileMenu");
+        const burger = document.getElementById("burgerBtn");
+
+        if (menu) menu.classList.remove("open");
+        if (burger) {
+          burger.classList.remove("open");
+          burger.setAttribute("aria-expanded", "false");
+        }
+      } catch (error) {
+        console.warn("Klevby profile: menu close skipped", error);
+      }
+    }
+
+    function updateKlevbyProfileView() {
+      const nameNode = document.getElementById("profileNameText");
+      const fallbackNode = document.getElementById("profileAvatarFallback");
+      const reportsNode = document.getElementById("profileReportsCount");
+      const tripsNode = document.getElementById("profileTripsCount");
+
+      const currentName =
+        getProfileNameFromInputs() ||
+        getProfileNameFromStorage() ||
+        "Alex";
+
+      if (nameNode) {
+        nameNode.textContent = currentName;
+      }
+
+      if (fallbackNode) {
+        fallbackNode.textContent = currentName.trim().charAt(0).toUpperCase() || "A";
+      }
+
+      try {
+        const postsArray = Array.isArray(window.posts) ? window.posts : [];
+        const ownerName = currentName.trim().toLowerCase();
+
+        const userPosts = postsArray.filter((post) => {
+          const postName = String(post?.name || "").trim().toLowerCase();
+          return postName && ownerName && postName === ownerName;
+        });
+
+        if (reportsNode) reportsNode.textContent = String(userPosts.length || 0);
+        if (tripsNode) tripsNode.textContent = String(userPosts.length || 0);
+      } catch (error) {
+        if (reportsNode) reportsNode.textContent = "0";
+        if (tripsNode) tripsNode.textContent = "0";
+      }
+
+      restoreLocalProfileAvatar();
+    }
+
+    function getProfileNameFromInputs() {
+      const nameInput = document.getElementById("nameInput");
+      const usernameInput = document.getElementById("usernameInput");
+
+      const nameValue = nameInput && nameInput.value ? nameInput.value.trim() : "";
+      const usernameValue = usernameInput && usernameInput.value ? usernameInput.value.trim() : "";
+
+      return nameValue || usernameValue || "";
+    }
+
+    function getProfileNameFromStorage() {
+      try {
+        return localStorage.getItem("klevby_profile_name") || "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function handleLocalAvatarUpload(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+
+      if (!file.type || !file.type.startsWith("image/")) {
+        alert("Выбери изображение для аватарки.");
+        return;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Картинка слишком тяжёлая. Выбери фото до 2 МБ.");
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = function () {
+        const result = String(reader.result || "");
+
+        try {
+          localStorage.setItem("klevby_profile_avatar", result);
+        } catch (error) {
+          console.warn("Klevby profile: avatar was not saved locally", error);
+        }
+
+        setProfileAvatar(result);
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function restoreLocalProfileAvatar() {
+      try {
+        const savedAvatar = localStorage.getItem("klevby_profile_avatar");
+        if (savedAvatar) {
+          setProfileAvatar(savedAvatar);
+        }
+      } catch (error) {
+        console.warn("Klevby profile: avatar restore skipped", error);
+      }
+    }
+
+    function setProfileAvatar(src) {
+      const image = document.getElementById("profileAvatarImage");
+      const fallback = document.getElementById("profileAvatarFallback");
+
+      if (!image || !fallback || !src) return;
+
+      image.src = src;
+      image.classList.remove("hidden");
+      fallback.classList.add("hidden");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      restoreLocalProfileAvatar();
+
+      const nameInput = document.getElementById("nameInput");
+      const usernameInput = document.getElementById("usernameInput");
+
+      [nameInput, usernameInput].forEach((input) => {
+        if (!input) return;
+
+        input.addEventListener("input", () => {
+          const value = input.value.trim();
+
+          try {
+            if (value) {
+              localStorage.setItem("klevby_profile_name", value);
+            }
+          } catch (error) {
+            console.warn("Klevby profile: name was not saved locally", error);
+          }
+
+          updateKlevbyProfileView();
+        });
+      });
+    });
+  </script>
 
   <script src="assets/js/config.js?v=20260503-4" defer></script>
   <script src="assets/js/weather.js?v=20260503-4" defer></script>
