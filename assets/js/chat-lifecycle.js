@@ -144,6 +144,7 @@
         const isChatOpen = modal && modal.classList.contains("open");
 
         if (!isChatOpen) {
+          unlockChatPage();
           return;
         }
 
@@ -209,6 +210,11 @@
         }, 150);
       } catch (error) {
         console.error("Klevby chat: ошибка открытия чата:", error);
+        if (modal) {
+          modal.classList.remove("open");
+          modal.classList.add("hidden");
+        }
+        unlockChatPage();
         setChatTabsLoading(false);
         showEmptyState("Не удалось открыть чат. Обнови страницу или проверь Console.");
       }
