@@ -1,3 +1,63 @@
+.mobile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  justify-self: end;
+  position: relative;
+  z-index: 2100;
+}
+
+.mobile-actions .mobile-menu-wrap {
+  justify-self: auto;
+}
+
+.mobile-profile-btn {
+  appearance: none;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(244,178,74,0.16);
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(244,178,74,0.18), transparent 44%),
+    rgba(255,255,255,0.08);
+  color: #fff8ea;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.32),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: 0.22s ease;
+}
+
+.mobile-profile-btn:active {
+  transform: scale(0.96);
+}
+
+.mobile-profile-avatar-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 10%, rgba(255,255,255,0.26), transparent 36%),
+    rgba(244,178,74,0.16);
+  border: 1px solid rgba(244,178,74,0.24);
+  color: #fff8ea;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 900;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
 .profile-shell {
   width: 100%;
   max-width: 760px;
@@ -50,6 +110,11 @@
     inset 0 1px 0 rgba(255,255,255,0.08);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  transition: 0.22s ease;
+}
+
+.profile-gear-btn:active {
+  transform: scale(0.96);
 }
 
 .profile-main-card {
@@ -323,6 +388,89 @@
   line-height: 1;
 }
 
+.profile-settings-modal {
+  position: relative;
+  max-width: 560px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(244,178,74,0.15), transparent 36%),
+    rgba(14, 20, 18, 0.97);
+  border-color: rgba(244,178,74,0.16);
+}
+
+.profile-settings-close {
+  appearance: none;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(244,178,74,0.14);
+  border-radius: 15px;
+  background: rgba(255,255,255,0.06);
+  color: #fff8ea;
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profile-settings-subtitle {
+  margin: -4px 0 16px;
+  color: rgba(255,248,234,0.64);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.profile-settings-avatar-action {
+  appearance: none;
+  width: 100%;
+  min-height: 54px;
+  margin: 0 0 10px;
+  padding: 0 14px;
+  border: 1px solid rgba(244,178,74,0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+    rgba(255,255,255,0.04);
+  color: #fff8ea;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.profile-settings-avatar-action span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(244,178,74,0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-settings-avatar-action strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.profile-settings-modal textarea {
+  min-height: 96px;
+}
+
+.profile-settings-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.profile-settings-actions .red {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .profile-shell {
     margin: 5px auto 44px;
@@ -352,6 +500,16 @@
 }
 
 @media (max-width: 520px) {
+  .mobile-actions {
+    gap: 9px;
+  }
+
+  .mobile-profile-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 19px;
+  }
+
   .profile-shell {
     margin: 4px auto 42px;
   }
@@ -434,9 +592,33 @@
   .profile-report-meta {
     padding: 0 8px 8px;
   }
+
+  .profile-settings-modal {
+    padding: 24px 18px 20px;
+  }
+
+  .profile-settings-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 380px) {
+  .mobile-actions {
+    gap: 8px;
+  }
+
+  .mobile-profile-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 18px;
+  }
+
+  .mobile-profile-avatar-icon {
+    width: 29px;
+    height: 29px;
+    font-size: 17px;
+  }
+
   .profile-cover {
     min-height: 205px;
   }
