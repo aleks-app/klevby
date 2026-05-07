@@ -33,6 +33,7 @@ nav {
 .nav-btn,
 .burger-btn,
 .mobile-menu-item,
+.mobile-profile-btn,
 .home-float-btn {
   appearance: none;
 }
@@ -55,7 +56,9 @@ nav {
   text-align: center;
   cursor: pointer;
   transition: 0.22s ease;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.07);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   white-space: nowrap;
@@ -66,7 +69,10 @@ nav {
   color: #ffffff;
   background: linear-gradient(180deg, rgba(61, 48, 30, 1), rgba(27, 28, 22, 1));
   border-color: rgba(244,178,74,0.22);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.28), 0 0 24px rgba(244,178,74,0.10), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,0.28),
+    0 0 24px rgba(244,178,74,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.08);
   transform: translateY(-1px);
 }
 
@@ -77,7 +83,9 @@ nav {
   border: 1px solid rgba(244,178,74,0.12);
   border-top-color: rgba(255,255,255,0.10);
   background: linear-gradient(180deg, rgba(39, 35, 27, 0.98), rgba(18, 22, 19, 0.98));
-  box-shadow: 0 8px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.06);
   font-weight: 700;
 }
 
@@ -86,10 +94,96 @@ nav {
   border: 1px solid rgba(244,178,74,0.12) !important;
   border-top-color: rgba(255,255,255,0.10) !important;
   background: linear-gradient(180deg, rgba(39, 35, 27, 0.98), rgba(18, 22, 19, 0.98)) !important;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.06) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   font-weight: 700;
+}
+
+.mobile-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  justify-self: end;
+  position: relative;
+  z-index: 2100;
+}
+
+.mobile-profile-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 1px solid rgba(244,178,74,0.16);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(244,178,74,0.18), transparent 44%),
+    rgba(255,255,255,0.08);
+  color: #fff8ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.mobile-profile-btn:hover {
+  filter: brightness(1.06);
+  border-color: rgba(244,178,74,0.28);
+}
+
+.mobile-profile-btn:active {
+  transform: scale(0.94);
+  filter: brightness(0.94);
+  box-shadow:
+    0 7px 18px rgba(0,0,0,0.32),
+    inset 0 2px 8px rgba(0,0,0,0.24);
+}
+
+.mobile-profile-btn.has-avatar {
+  background: rgba(8,14,13,0.96);
+}
+
+.mobile-profile-avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: inherit;
+}
+
+.mobile-profile-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 10%, rgba(255,255,255,0.22), transparent 38%),
+    linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #1b1004;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.4px;
 }
 
 .mobile-menu-wrap {
@@ -111,9 +205,29 @@ nav {
   justify-content: center;
   gap: 5px;
   cursor: pointer;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.08);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.burger-btn:hover {
+  filter: brightness(1.06);
+  border-color: rgba(244,178,74,0.28);
+}
+
+.burger-btn:active {
+  transform: scale(0.94);
+  filter: brightness(0.94);
+  box-shadow:
+    0 7px 18px rgba(0,0,0,0.32),
+    inset 0 2px 8px rgba(0,0,0,0.24);
 }
 
 .burger-btn span {
@@ -170,10 +284,22 @@ nav {
   font-weight: 700;
   text-align: left;
   cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.mobile-menu-item:hover {
+  filter: brightness(1.06);
+  border-color: rgba(244,178,74,0.18);
 }
 
 .mobile-menu-item:active {
   transform: scale(0.98);
+  filter: brightness(0.94);
+  background: rgba(244,178,74,0.10);
 }
 
 .mobile-tabbar,
@@ -213,7 +339,8 @@ nav {
     visibility 0.24s ease,
     transform 0.24s ease,
     background 0.24s ease,
-    border-color 0.24s ease;
+    border-color 0.24s ease,
+    filter 0.16s ease;
 }
 
 .home-float-btn.show {
@@ -221,4 +348,61 @@ nav {
   visibility: visible;
   pointer-events: auto;
   transform: translateY(0) scale(1);
+}
+
+.home-float-btn.show:active {
+  transform: translateY(0) scale(0.94);
+  filter: brightness(0.94);
+}
+
+@media (min-width: 901px) {
+  .mobile-header-actions {
+    display: none;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-header-actions {
+    gap: 8px;
+  }
+
+  .mobile-profile-btn,
+  .burger-btn {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    min-height: 46px;
+    border-radius: 18px;
+  }
+
+  .mobile-profile-avatar-fallback {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobile-header-actions {
+    gap: 7px;
+  }
+
+  .mobile-profile-btn,
+  .burger-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 17px;
+  }
+
+  .mobile-profile-avatar-fallback {
+    font-size: 18px;
+  }
 }
