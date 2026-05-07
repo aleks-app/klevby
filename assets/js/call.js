@@ -1,7 +1,8 @@
 (function () {
-  if (window.__klevbyCallLoadedV8) return;
-  window.__klevbyCallLoadedV8 = true;
+  if (window.__klevbyCallLoadedV9) return;
+  window.__klevbyCallLoadedV9 = true;
 
+  window.__klevbyCallLoadedV8 = true;
   window.__klevbyCallLoadedV7 = true;
   window.__klevbyCallLoadedV6 = true;
   window.__klevbyCallLoadedV5 = true;
@@ -36,8 +37,6 @@
 
   let callState = "idle";
   let callId = null;
-  let callChannel = null;
-  let personalChannel = null;
 
   let peerConnection = null;
   let localStream = null;
@@ -45,19 +44,15 @@
 
   let callTimeoutTimer = null;
 
-  let personalChannelUserId = "";
-
   let userRefreshPromise = null;
   let lastUserRefreshAt = 0;
-
-  let personalChannelPromise = null;
-  let lastPersonalChannelEnsureAt = 0;
 
   let pendingRemoteIceCandidates = [];
   let callRecordCreated = false;
 
   let callAudioMissingWarned = false;
   let callUiMissingWarned = false;
+  let callRealtimeMissingWarned = false;
 
   function $(selector) {
     return document.querySelector(selector);
@@ -77,6 +72,10 @@
 
   function getCallUIApi() {
     return window.KlevbyCallUI || null;
+  }
+
+  function getCallRealtimeApi() {
+    return window.KlevbyCallRealtime || null;
   }
 
   function initCallAudioBridge() {
@@ -129,6 +128,33 @@
     });
   }
 
+  function initCallRealtimeBridge() {
+    const api = getCallRealtimeApi();
+
+    if (!api || typeof api.init !== "function") {
+      warn("assets/js/call-realtime.js не подключён. Сигналинг звонков может не работать.");
+      return;
+    }
+
+    api.init({
+      log,
+      warn,
+
+      getClient: getMainSupabaseClient,
+      refreshUser,
+      getMyId,
+      getCurrentUser: () => currentUser,
+      getCallState: () => callState,
+
+      onAnswer: handleSignalAnswer,
+      onIce: handleSignalIce,
+      onEnd: handleSignalEnd,
+      onIncomingCall: handleIncomingCallSignal,
+
+      personalChannelThrottleMs: PERSONAL_CHANNEL_THROTTLE_MS
+    });
+  }
+
   function callAudio(name, fallback, ...args) {
     const api = getCallAudioApi();
 
@@ -165,6 +191,21 @@
     }
 
     return fallback;
+  }
+
+  function getRequiredCallRealtimeApi() {
+    const api = getCallRealtimeApi();
+
+    if (api) {
+      return api;
+    }
+
+    if (!callRealtimeMissingWarned) {
+      callRealtimeMissingWarned = true;
+      warn("call-realtime.js не найден или не готов. Проверь подключение перед call.js.");
+    }
+
+    throw new Error("Модуль звонков call-realtime.js не подключён.");
   }
 
   function unlockAudioForMobile() {
@@ -249,21 +290,6 @@
     }
   }
 
-  function fallbackLockPage() {
-    document.documentElement.classList.add("klevby-chat-lock");
-    document.body.classList.add("klevby-chat-lock");
-  }
-
-  function fallbackUnlockPageIfChatClosed() {
-    const chatModal = $("#klevby-chat-modal");
-    const chatIsOpen = chatModal && chatModal.classList.contains("open");
-
-    if (!chatIsOpen) {
-      document.documentElement.classList.remove("klevby-chat-lock");
-      document.body.classList.remove("klevby-chat-lock");
-    }
-  }
-
   function fallbackCloseOverlaysOnly() {
     const outgoing = $("#klevbyCallOverlay");
     const incoming = $("#klevbyIncomingCallOverlay");
@@ -274,6 +300,16 @@
 
     if (incoming) {
       incoming.remove();
+    }
+  }
+
+  function fallbackUnlockPageIfChatClosed() {
+    const chatModal = $("#klevby-chat-modal");
+    const chatIsOpen = chatModal && chatModal.classList.contains("open");
+
+    if (!chatIsOpen) {
+      document.documentElement.classList.remove("klevby-chat-lock");
+      document.body.classList.remove("klevby-chat-lock");
     }
   }
 
@@ -307,24 +343,8 @@
     return callUI("openIncomingOverlay", null, payload);
   }
 
-  function closeOverlaysOnly() {
-    return callUI("closeOverlaysOnly", fallbackCloseOverlaysOnly);
-  }
-
-  function lockPage() {
-    return callUI("lockPage", fallbackLockPage);
-  }
-
-  function unlockPageIfChatClosed() {
-    return callUI("unlockPageIfChatClosed", fallbackUnlockPageIfChatClosed);
-  }
-
   function ensureCallButton() {
     return callUI("ensureCallButton", null);
-  }
-
-  function updateCallButtonVisibility() {
-    return callUI("updateCallButtonVisibility", null);
   }
 
   function scheduleButtonUpdate() {
@@ -547,6 +567,124 @@
     return makeUuid();
   }
 
+  async function createCallChannel(id) {
+    const api = getRequiredCallRealtimeApi();
+
+    if (typeof api.createCallChannel !== "function") {
+      throw new Error("Модуль call-realtime.js загружен неправильно.");
+    }
+
+    return api.createCallChannel(id);
+  }
+
+  async function removeCallChannel() {
+    const api = getCallRealtimeApi();
+
+    if (api && typeof api.removeCallChannel === "function") {
+      return api.removeCallChannel();
+    }
+  }
+
+  async function sendCallEvent(event, payload) {
+    const api = getRequiredCallRealtimeApi();
+
+    if (typeof api.sendCallEvent !== "function") {
+      throw new Error("Модуль call-realtime.js загружен неправильно.");
+    }
+
+    return api.sendCallEvent(event, payload);
+  }
+
+  async function ensurePersonalChannel(options = {}) {
+    const api = getCallRealtimeApi();
+
+    if (!api || typeof api.ensurePersonalChannel !== "function") {
+      if (!callRealtimeMissingWarned) {
+        callRealtimeMissingWarned = true;
+        warn("call-realtime.js не найден или не готов. Проверь подключение перед call.js.");
+      }
+
+      return;
+    }
+
+    return api.ensurePersonalChannel(options);
+  }
+
+  async function resetPersonalChannel() {
+    const api = getCallRealtimeApi();
+
+    if (api && typeof api.resetPersonalChannel === "function") {
+      return api.resetPersonalChannel();
+    }
+  }
+
+  async function sendToPersonalChannel(userId, event, payload) {
+    const api = getRequiredCallRealtimeApi();
+
+    if (typeof api.sendToPersonalChannel !== "function") {
+      throw new Error("Модуль call-realtime.js загружен неправильно.");
+    }
+
+    return api.sendToPersonalChannel(userId, event, payload);
+  }
+
+  async function handleSignalAnswer(payload) {
+    if (!payload || payload.to !== getMyId()) return;
+    if (!peerConnection || !payload.answer) return;
+
+    try {
+      log("answer received");
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+      await flushPendingRemoteIceCandidates();
+
+      setCallStatus("Соединение установлено");
+      stopRingSound();
+      tryPlayRemoteAudio();
+      startRemoteAudioRetry();
+    } catch (error) {
+      warn("answer failed", error);
+      endCall("error", "Не удалось принять ответ вызова.");
+    }
+  }
+
+  async function handleSignalIce(payload) {
+    if (!payload || payload.to !== getMyId()) return;
+    if (!payload.candidate) return;
+
+    log("remote ice received");
+    await addRemoteIceCandidate(payload.candidate);
+  }
+
+  async function handleSignalEnd(payload) {
+    if (!payload || payload.to !== getMyId()) return;
+
+    await cleanupCall(false);
+    showToast("Вызов завершён");
+  }
+
+  async function handleIncomingCallSignal(payload) {
+    if (!payload || payload.to !== getMyId()) return;
+
+    if (callState !== "idle") {
+      return;
+    }
+
+    callState = "incoming";
+    callId = payload.callId;
+    callRecordCreated = false;
+    pendingRemoteIceCandidates = [];
+
+    activePeer = {
+      id: String(payload.from),
+      name: cleanDisplayName(payload.callerName) || "Собеседник",
+      offer: payload.offer
+    };
+
+    openIncomingOverlay(payload);
+    await createCallChannel(callId);
+  }
+
   async function waitForIceGatheringComplete(pc, label = "") {
     if (!pc) return;
 
@@ -658,241 +796,6 @@
     for (const candidate of candidates) {
       await addRemoteIceCandidate(candidate);
     }
-  }
-
-  async function createCallChannel(id) {
-    const client = getMainSupabaseClient();
-
-    if (!client || !id) {
-      throw new Error("Нет подключения к Supabase.");
-    }
-
-    if (callChannel) {
-      try {
-        await client.removeChannel(callChannel);
-      } catch (error) {}
-      callChannel = null;
-    }
-
-    callChannel = client.channel(`klevby_call_${id}`, {
-      config: {
-        broadcast: {
-          self: false,
-          ack: true
-        }
-      }
-    });
-
-    callChannel.on("broadcast", { event: "answer" }, async ({ payload }) => {
-      if (!payload || payload.to !== getMyId()) return;
-      if (!peerConnection || !payload.answer) return;
-
-      try {
-        log("answer received");
-
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
-        await flushPendingRemoteIceCandidates();
-
-        setCallStatus("Соединение установлено");
-        stopRingSound();
-        tryPlayRemoteAudio();
-        startRemoteAudioRetry();
-      } catch (error) {
-        warn("answer failed", error);
-        endCall("error", "Не удалось принять ответ вызова.");
-      }
-    });
-
-    callChannel.on("broadcast", { event: "ice" }, async ({ payload }) => {
-      if (!payload || payload.to !== getMyId()) return;
-      if (!payload.candidate) return;
-
-      log("remote ice received");
-      await addRemoteIceCandidate(payload.candidate);
-    });
-
-    callChannel.on("broadcast", { event: "end" }, ({ payload }) => {
-      if (!payload || payload.to !== getMyId()) return;
-      cleanupCall(false);
-      showToast("Вызов завершён");
-    });
-
-    await new Promise((resolve, reject) => {
-      callChannel.subscribe((status) => {
-        log("call channel status", status);
-
-        if (status === "SUBSCRIBED") resolve();
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          reject(new Error("Не удалось подключить канал звонка."));
-        }
-      });
-    });
-
-    return callChannel;
-  }
-
-  async function ensurePersonalChannel(options = {}) {
-    const force = Boolean(options.force);
-    const now = Date.now();
-
-    if (!force && personalChannelPromise) {
-      return personalChannelPromise;
-    }
-
-    if (
-      !force &&
-      personalChannel &&
-      personalChannelUserId &&
-      currentUser?.id &&
-      personalChannelUserId === String(currentUser.id) &&
-      now - lastPersonalChannelEnsureAt < PERSONAL_CHANNEL_THROTTLE_MS
-    ) {
-      return;
-    }
-
-    personalChannelPromise = (async () => {
-      lastPersonalChannelEnsureAt = Date.now();
-
-      await refreshUser({ force });
-
-      const client = getMainSupabaseClient();
-      const myId = getMyId();
-
-      if (!client || !myId) return;
-
-      if (personalChannel && personalChannelUserId === myId) {
-        return;
-      }
-
-      if (personalChannel) {
-        try {
-          await client.removeChannel(personalChannel);
-        } catch (error) {}
-        personalChannel = null;
-        personalChannelUserId = "";
-      }
-
-      personalChannelUserId = myId;
-
-      personalChannel = client.channel(`klevby_user_calls_${myId}`, {
-        config: {
-          broadcast: {
-            self: false,
-            ack: true
-          }
-        }
-      });
-
-      personalChannel.on("broadcast", { event: "incoming_call" }, async ({ payload }) => {
-        if (!payload || payload.to !== myId) return;
-
-        log("incoming_call received", payload.callId);
-
-        await refreshUser();
-
-        if (!currentUser || String(currentUser.id) !== myId) {
-          return;
-        }
-
-        if (callState !== "idle") {
-          const busyChannel = client.channel(`klevby_call_${payload.callId}`, {
-            config: {
-              broadcast: {
-                self: false,
-                ack: true
-              }
-            }
-          });
-
-          busyChannel.subscribe(async (status) => {
-            if (status === "SUBSCRIBED") {
-              await busyChannel.send({
-                type: "broadcast",
-                event: "end",
-                payload: {
-                  callId: payload.callId,
-                  from: myId,
-                  to: payload.from,
-                  reason: "busy"
-                }
-              });
-
-              client.removeChannel(busyChannel);
-            }
-          });
-
-          return;
-        }
-
-        callState = "incoming";
-        callId = payload.callId;
-        callRecordCreated = false;
-        pendingRemoteIceCandidates = [];
-
-        activePeer = {
-          id: String(payload.from),
-          name: cleanDisplayName(payload.callerName) || "Собеседник",
-          offer: payload.offer
-        };
-
-        openIncomingOverlay(payload);
-        await createCallChannel(callId);
-      });
-
-      personalChannel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          log("personal channel ready", myId);
-        }
-      });
-    })();
-
-    try {
-      return await personalChannelPromise;
-    } finally {
-      personalChannelPromise = null;
-    }
-  }
-
-  async function sendToPersonalChannel(userId, event, payload) {
-    const client = getMainSupabaseClient();
-
-    if (!client || !userId) {
-      throw new Error("Нет подключения к Supabase.");
-    }
-
-    const channel = client.channel(`klevby_user_calls_${userId}`, {
-      config: {
-        broadcast: {
-          self: false,
-          ack: true
-        }
-      }
-    });
-
-    await new Promise((resolve, reject) => {
-      channel.subscribe((status) => {
-        log("temporary personal channel status", status);
-
-        if (status === "SUBSCRIBED") resolve();
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          reject(new Error("Собеседник сейчас недоступен."));
-        }
-      });
-    });
-
-    await channel.send({
-      type: "broadcast",
-      event,
-      payload
-    });
-
-    log("personal event sent", event, userId);
-
-    setTimeout(() => {
-      try {
-        client.removeChannel(channel);
-      } catch (error) {}
-    }, 1600);
   }
 
   async function updateCallRecord(status) {
@@ -1044,18 +947,12 @@
 
       log("local ice candidate", candidatePayload.type || "candidate");
 
-      if (!callChannel) return;
-
       try {
-        await callChannel.send({
-          type: "broadcast",
-          event: "ice",
-          payload: {
-            callId,
-            from: myId,
-            to: peerId,
-            candidate: candidatePayload
-          }
+        await sendCallEvent("ice", {
+          callId,
+          from: myId,
+          to: peerId,
+          candidate: candidatePayload
         });
       } catch (error) {
         warn("send ice failed", error);
@@ -1221,10 +1118,6 @@
       openActiveCallOverlay(activePeer.name);
       setCallStatus("Подключаем микрофон...");
 
-      if (!callChannel && callId) {
-        await createCallChannel(callId);
-      }
-
       await setupPeerConnection();
 
       await peerConnection.setRemoteDescription(new RTCSessionDescription(activePeer.offer));
@@ -1234,15 +1127,11 @@
       await peerConnection.setLocalDescription(answer);
       await waitForIceGatheringComplete(peerConnection, "answer");
 
-      await callChannel.send({
-        type: "broadcast",
-        event: "answer",
-        payload: {
-          callId,
-          from: getMyId(),
-          to: activePeer.id,
-          answer: peerConnection.localDescription
-        }
+      await sendCallEvent("answer", {
+        callId,
+        from: getMyId(),
+        to: activePeer.id,
+        answer: peerConnection.localDescription
       });
 
       callState = "connected";
@@ -1257,17 +1146,13 @@
   }
 
   async function declineCall() {
-    if (activePeer?.id && callChannel) {
+    if (activePeer?.id) {
       try {
-        await callChannel.send({
-          type: "broadcast",
-          event: "end",
-          payload: {
-            callId,
-            from: getMyId(),
-            to: activePeer.id,
-            reason: "declined"
-          }
+        await sendCallEvent("end", {
+          callId,
+          from: getMyId(),
+          to: activePeer.id,
+          reason: "declined"
         });
       } catch (error) {}
     }
@@ -1280,17 +1165,13 @@
   async function endCall(reason = "ended", toastText = "Вызов завершён") {
     const peerId = activePeer?.id;
 
-    if (peerId && callChannel) {
+    if (peerId) {
       try {
-        await callChannel.send({
-          type: "broadcast",
-          event: "end",
-          payload: {
-            callId,
-            from: getMyId(),
-            to: peerId,
-            reason
-          }
+        await sendCallEvent("end", {
+          callId,
+          from: getMyId(),
+          to: peerId,
+          reason
         });
       } catch (error) {}
     }
@@ -1335,15 +1216,8 @@
       });
     }
 
-    const client = getMainSupabaseClient();
+    await removeCallChannel();
 
-    if (client && callChannel) {
-      try {
-        await client.removeChannel(callChannel);
-      } catch (error) {}
-    }
-
-    callChannel = null;
     peerConnection = null;
     localStream = null;
     remoteStream = null;
@@ -1440,9 +1314,10 @@
     injectStyles();
     initCallAudioBridge();
     initCallUIBridge();
+    initCallRealtimeBridge();
     removeOldTestCallButton();
 
-    log("script loaded", "v8 ui module bridge");
+    log("script loaded", "v9 realtime module bridge");
 
     const waitForClient = setInterval(async () => {
       const client = getMainSupabaseClient();
@@ -1481,24 +1356,7 @@
 
   window.addEventListener("klevby-auth-changed", async () => {
     await refreshUser({ force: true });
-
-    const client = getMainSupabaseClient();
-    const myId = getMyId();
-
-    if (personalChannel && personalChannelUserId === myId) {
-      scheduleButtonUpdate();
-      return;
-    }
-
-    if (personalChannel) {
-      try {
-        if (client) await client.removeChannel(personalChannel);
-      } catch (error) {}
-
-      personalChannel = null;
-      personalChannelUserId = "";
-    }
-
+    await resetPersonalChannel();
     await ensurePersonalChannel({ force: true });
     scheduleButtonUpdate();
   });
