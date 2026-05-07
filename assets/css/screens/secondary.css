@@ -1,1 +1,84 @@
+.ponds-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
 
+.market-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  padding: 24px;
+  margin: 14px 0;
+  background:
+    linear-gradient(135deg, rgba(3,6,5,0.88), rgba(33,24,13,0.82)),
+    radial-gradient(circle at 10% 0%, rgba(244,178,74,0.18), transparent 34%),
+    radial-gradient(circle at 90% 0%, rgba(255,159,46,0.12), transparent 36%);
+  border: 1px solid rgba(244,178,74,0.12);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.market-hero h2 {
+  margin: 0 0 10px;
+  font-size: clamp(28px, 5vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -1px;
+}
+
+.market-hero p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.market-shell {
+  margin: 14px 0 44px;
+}
+
+#marketRoot {
+  min-height: 180px;
+}
+
+.map-placeholder {
+  min-height: 410px;
+  border-radius: var(--radius-card);
+  border: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.72), rgba(0,0,0,0.22)),
+    url("https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=85") center/cover no-repeat;
+  display: flex;
+  align-items: flex-end;
+  padding: 30px;
+  box-shadow: var(--shadow);
+}
+
+.map-card {
+  max-width: 620px;
+  background: rgba(14,20,18,0.84);
+  border: 0;
+  border-radius: var(--radius-card);
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.24);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.map-card h2 {
+  margin: 0 0 10px;
+  font-size: 30px;
+  letter-spacing: -0.6px;
+  color: var(--text);
+  font-weight: 800 !important;
+}
+
+.map-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 16px;
+  font-weight: 500;
+}
