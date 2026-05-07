@@ -1,4 +1,14 @@
 (function () {
+  const KLEVB_FEED_AUTO_REFRESH_MS = 8000;
+  const KLEVB_FEED_RESUME_RECONNECT_GAP = 5500;
+  const KLEVB_FEED_RESUME_REFRESH_DELAYS = [0, 450, 1400, 3200, 7000, 14000];
+
+  let klevbyFeedRefreshDebounceTimer = null;
+  let klevbyFeedRefreshInProgress = false;
+  let klevbyFeedRefreshPending = false;
+  let klevbyFeedLastRealtimeReconnectAt = 0;
+  let klevbyFeedResumeTimers = [];
+
   function getState() {
     return window.KlevbyFeedState || {};
   }
@@ -15,6 +25,31 @@
     return window.KlevbyFeedModals || {};
   }
 
+  function getRealtimeApi() {
+    return window.klevbyFeedSupabase || getApi() || {};
+  }
+
+  function setRealtimeStarted(value) {
+    const state = getState();
+
+    if (typeof state.setRealtimeStarted === "function") {
+      state.setRealtimeStarted(Boolean(value));
+      return;
+    }
+
+    state.realtimeStarted = Boolean(value);
+  }
+
+  function getRealtimeStarted() {
+    const state = getState();
+
+    if (typeof state.getRealtimeStarted === "function") {
+      return Boolean(state.getRealtimeStarted());
+    }
+
+    return Boolean(state.realtimeStarted);
+  }
+
   function renderFeed() {
     const render = getRender();
 
@@ -29,20 +64,87 @@
     return Promise.resolve();
   }
 
-  function refreshFeedIfHomeVisible() {
-    const render = getRender();
-
-    if (typeof render.refreshFeedIfHomeVisible === "function") {
-      return render.refreshFeedIfHomeVisible();
-    }
-
+  function isHomeFeedVisible() {
     const homeSection = document.getElementById("homeSection");
+    const feedSection = document.getElementById("profileFeedSection");
 
-    if (homeSection && !homeSection.classList.contains("hidden")) {
-      return renderFeed();
+    return Boolean(
+      homeSection &&
+      feedSection &&
+      !homeSection.classList.contains("hidden")
+    );
+  }
+
+  function refreshFeedIfHomeVisible(options = {}) {
+    const force = Boolean(options.force);
+
+    if (!force && !isHomeFeedVisible()) {
+      return Promise.resolve(false);
     }
 
-    return Promise.resolve();
+    if (!document.getElementById("profileFeedSection")) {
+      return Promise.resolve(false);
+    }
+
+    return refreshFeedNow(options.reason || "refresh_home_visible", {
+      force
+    });
+  }
+
+  function queueFeedRefresh(reason = "queued_refresh", delay = 250, options = {}) {
+    clearTimeout(klevbyFeedRefreshDebounceTimer);
+
+    klevbyFeedRefreshDebounceTimer = setTimeout(() => {
+      refreshFeedIfHomeVisible({
+        reason,
+        force: Boolean(options.force)
+      });
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  async function refreshFeedNow(reason = "manual", options = {}) {
+    const force = Boolean(options.force);
+
+    if (!force && document.visibilityState === "hidden") {
+      return false;
+    }
+
+    if (!force && !isHomeFeedVisible()) {
+      return false;
+    }
+
+    if (klevbyFeedRefreshInProgress) {
+      klevbyFeedRefreshPending = true;
+      return false;
+    }
+
+    klevbyFeedRefreshInProgress = true;
+
+    try {
+      await Promise.resolve(renderFeed());
+
+      window.dispatchEvent(new CustomEvent("klevby-feed-silent-refresh-done", {
+        detail: {
+          reason,
+          at: new Date().toISOString()
+        }
+      }));
+
+      return true;
+    } catch (error) {
+      console.warn("Klevby feed: тихое обновление ленты не сработало", error);
+      return false;
+    } finally {
+      klevbyFeedRefreshInProgress = false;
+
+      if (klevbyFeedRefreshPending) {
+        klevbyFeedRefreshPending = false;
+
+        queueFeedRefresh("pending_after_" + reason, 500, {
+          force
+        });
+      }
+    }
   }
 
   function loadCommentsIntoActiveModal() {
@@ -65,6 +167,14 @@
     return Promise.resolve();
   }
 
+  function queueCommentsRefresh(delay = 280) {
+    setTimeout(() => {
+      loadCommentsIntoActiveModal().catch((error) => {
+        console.warn("Klevby feed: комментарии не обновились", error);
+      });
+    }, Math.max(0, Number(delay || 0)));
+  }
+
   function closeOpenFeedWindows() {
     const modals = getModals();
 
@@ -81,6 +191,37 @@
     }
   }
 
+  function clearResumeTimers() {
+    klevbyFeedResumeTimers.forEach((timer) => {
+      clearTimeout(timer);
+    });
+
+    klevbyFeedResumeTimers = [];
+  }
+
+  function handleAppResume(reason = "resume") {
+    if (document.visibilityState === "hidden") return;
+
+    clearResumeTimers();
+
+    tryStartRealtimeSubscription({
+      force: true,
+      reason
+    }).catch((error) => {
+      console.warn("Klevby feed: realtime не переподключился после возврата", error);
+    });
+
+    klevbyFeedResumeTimers = KLEVB_FEED_RESUME_REFRESH_DELAYS.map((delay) => {
+      return setTimeout(() => {
+        queueFeedRefresh(reason + "_refresh_" + delay, 0, {
+          force: true
+        });
+
+        queueCommentsRefresh(180);
+      }, delay);
+    });
+  }
+
   function bindFeedRefreshHooks() {
     if (window.__klevbyFeedRefreshBound) return;
 
@@ -95,31 +236,42 @@
         key === "klevby_profile_settings" ||
         key === "klevby_profile_name"
       ) {
-        setTimeout(refreshFeedIfHomeVisible, 80);
+        queueFeedRefresh("storage_" + key, 80, {
+          force: true
+        });
       }
     });
 
     window.addEventListener("pageshow", () => {
-      setTimeout(refreshFeedIfHomeVisible, 120);
+      handleAppResume("pageshow");
     });
 
     window.addEventListener("focus", () => {
-      setTimeout(refreshFeedIfHomeVisible, 160);
+      handleAppResume("focus");
+    });
+
+    window.addEventListener("online", () => {
+      handleAppResume("online");
     });
 
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        setTimeout(refreshFeedIfHomeVisible, 160);
-        setTimeout(loadCommentsIntoActiveModal, 220);
+        handleAppResume("visibility_visible");
       }
     });
 
     window.addEventListener("klevby-auth-changed", () => {
-      setTimeout(refreshFeedIfHomeVisible, 180);
+      queueFeedRefresh("auth_changed", 180, {
+        force: true
+      });
     });
 
     window.addEventListener("klevby-feed-updated", (event) => {
-      setTimeout(renderFeed, 220);
+      const action = String(event?.detail?.action || "feed_updated");
+
+      queueFeedRefresh(action, 240, {
+        force: true
+      });
 
       const modal = document.getElementById("klevbyFeedCommentModal");
       const activePostId = String(modal?.dataset?.postId || "");
@@ -131,8 +283,14 @@
         activePostId &&
         (!changedPostId || changedPostId === activePostId)
       ) {
-        setTimeout(loadCommentsIntoActiveModal, 260);
+        queueCommentsRefresh(280);
       }
+    });
+
+    window.addEventListener("klevby-feed-module-ready", () => {
+      queueFeedRefresh("feed_module_ready", 350, {
+        force: true
+      });
     });
 
     document.addEventListener("click", (event) => {
@@ -142,7 +300,9 @@
 
       if (!target) return;
 
-      setTimeout(refreshFeedIfHomeVisible, 180);
+      queueFeedRefresh("navigation_click", 180, {
+        force: true
+      });
     });
 
     document.addEventListener("keydown", (event) => {
@@ -160,9 +320,13 @@
     const timer = setInterval(() => {
       if (document.visibilityState !== "visible") return;
 
-      refreshFeedIfHomeVisible();
-      loadCommentsIntoActiveModal();
-    }, 6000);
+      refreshFeedIfHomeVisible({
+        reason: "auto_interval",
+        force: false
+      });
+
+      queueCommentsRefresh(200);
+    }, KLEVB_FEED_AUTO_REFRESH_MS);
 
     if (typeof state.setAutoRefreshTimer === "function") {
       state.setAutoRefreshTimer(timer);
@@ -172,56 +336,85 @@
     state.autoRefreshTimer = timer;
   }
 
-  function tryStartRealtimeSubscription() {
-    const state = getState();
+  async function stopRealtimeSubscription() {
+    const api = getRealtimeApi();
 
-    if (state.realtimeStarted) return;
+    try {
+      if (api && typeof api.unsubscribe === "function") {
+        await api.unsubscribe();
+      } else if (typeof window.klevbyUnsubscribeFromFeedChanges === "function") {
+        await window.klevbyUnsubscribeFromFeedChanges();
+      }
+    } catch (error) {
+      console.warn("Klevby feed: старый realtime канал не отключился", error);
+    }
 
-    const api = window.klevbyFeedSupabase;
+    setRealtimeStarted(false);
+  }
 
-    if (!api) return;
+  async function tryStartRealtimeSubscription(options = {}) {
+    const force = Boolean(options.force);
+    const now = Date.now();
 
-    const refresh = () => {
-      setTimeout(refreshFeedIfHomeVisible, 120);
-      setTimeout(loadCommentsIntoActiveModal, 180);
+    if (!force && getRealtimeStarted()) {
+      return true;
+    }
+
+    if (
+      force &&
+      now - klevbyFeedLastRealtimeReconnectAt < KLEVB_FEED_RESUME_RECONNECT_GAP
+    ) {
+      return false;
+    }
+
+    klevbyFeedLastRealtimeReconnectAt = now;
+
+    const api = getRealtimeApi();
+
+    if (!api) return false;
+
+    if (force) {
+      await stopRealtimeSubscription();
+    }
+
+    const refresh = (payload) => {
+      const postId =
+        payload?.postId ||
+        payload?.new?.post_id ||
+        payload?.old?.post_id ||
+        payload?.new?.id ||
+        payload?.old?.id ||
+        "";
+
+      queueFeedRefresh("realtime_" + (postId || "feed"), 160, {
+        force: true
+      });
+
+      queueCommentsRefresh(240);
     };
 
     try {
+      let channel = null;
+
       if (typeof api.subscribeToFeedChanges === "function") {
-        api.subscribeToFeedChanges(refresh);
-
-        if (typeof state.setRealtimeStarted === "function") {
-          state.setRealtimeStarted(true);
-        } else {
-          state.realtimeStarted = true;
-        }
-
-        return;
+        channel = api.subscribeToFeedChanges(refresh);
+      } else if (typeof api.subscribeToChanges === "function") {
+        channel = api.subscribeToChanges(refresh);
+      } else if (typeof api.subscribe === "function") {
+        channel = api.subscribe(refresh);
       }
 
-      if (typeof api.subscribeToChanges === "function") {
-        api.subscribeToChanges(refresh);
-
-        if (typeof state.setRealtimeStarted === "function") {
-          state.setRealtimeStarted(true);
-        } else {
-          state.realtimeStarted = true;
-        }
-
-        return;
+      if (channel) {
+        setRealtimeStarted(true);
+        return true;
       }
 
-      if (typeof api.subscribe === "function") {
-        api.subscribe(refresh);
-
-        if (typeof state.setRealtimeStarted === "function") {
-          state.setRealtimeStarted(true);
-        } else {
-          state.realtimeStarted = true;
-        }
-      }
+      setRealtimeStarted(false);
+      return false;
     } catch (error) {
+      setRealtimeStarted(false);
       console.warn("Klevby feed: realtime пока не подключился", error);
+      return false;
     }
   }
 
@@ -230,6 +423,9 @@
     startFeedAutoRefresh,
     tryStartRealtimeSubscription,
     refreshFeedIfHomeVisible,
+    refreshFeedNow,
+    queueFeedRefresh,
+    handleAppResume,
     loadCommentsIntoActiveModal,
     closeOpenFeedWindows
   };
