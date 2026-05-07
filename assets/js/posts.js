@@ -290,264 +290,6 @@ function getCardImage(post) {
   return images[Math.abs(sum) % images.length];
 }
 
-function getProfileFeedItemsSafe() {
-  try {
-    if (typeof window.getProfileFeedItems === "function") {
-      const items = window.getProfileFeedItems();
-      return Array.isArray(items) ? items.filter(Boolean) : [];
-    }
-  } catch (error) {
-    console.warn("Klevby feed: не удалось получить фото профиля", error);
-  }
-
-  return [];
-}
-
-function getProfileFeedAvatarSafe() {
-  try {
-    return localStorage.getItem("klevby_profile_avatar") || "";
-  } catch (error) {
-    return "";
-  }
-}
-
-function getProfileFeedSearchText(item) {
-  return normalizeText([
-    item?.type,
-    item?.authorName,
-    item?.authorCity,
-    item?.authorTelegram,
-    item?.title,
-    "фото",
-    "рыбалка",
-    "профиль",
-    "отчет",
-    "отчёт"
-  ].join(" "));
-}
-
-function getFilteredProfileFeedItems(options = {}) {
-  const search = normalizeText(options.search);
-  const selectedCity = normalizeText(options.selectedCity);
-  const selectedType = normalizeText(options.selectedType);
-  const telegramOnly = Boolean(options.telegramOnly);
-
-  let items = getProfileFeedItemsSafe();
-
-  items = items.filter((item) => {
-    if (!item || item.type !== "profile_photo" || !item.image) {
-      return false;
-    }
-
-    if (search && !getProfileFeedSearchText(item).includes(search)) {
-      return false;
-    }
-
-    if (selectedCity && !normalizeText(item.authorCity).includes(selectedCity)) {
-      return false;
-    }
-
-    if (selectedType) {
-      const typeText = getProfileFeedSearchText(item);
-
-      if (!typeText.includes(selectedType)) {
-        return false;
-      }
-    }
-
-    if (telegramOnly && !cleanTelegram(item.authorTelegram)) {
-      return false;
-    }
-
-    return true;
-  });
-
-  return items;
-}
-
-function formatProfileFeedDate(value) {
-  if (!value) return "";
-
-  try {
-    return new Date(value).toLocaleString("ru-RU", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  } catch (error) {
-    return "";
-  }
-}
-
-function openKlevbyProfileSafe() {
-  if (typeof window.openKlevbyProfile === "function") {
-    window.openKlevbyProfile();
-    return;
-  }
-
-  if (typeof window.showSection === "function") {
-    window.showSection("profile");
-  }
-}
-
-function openProfilePhotoFeedItem(photoId) {
-  const cleanId = String(photoId || "");
-
-  if (typeof window.openProfilePhotoViewer === "function") {
-    window.openProfilePhotoViewer(cleanId);
-    return;
-  }
-
-  openKlevbyProfileSafe();
-}
-
-function profilePhotoCardHtml(item) {
-  const safeId = escapeAttr(item?.id || "");
-  const safeImage = escapeAttr(item?.image || "");
-  const authorName = item?.authorName || "Рыбак";
-  const authorCity = item?.authorCity || "";
-  const title = item?.title || "Фото с рыбалки";
-  const sizeKb = Number(item?.savedSizeKb || 0);
-  const date = formatProfileFeedDate(item?.createdAt);
-  const avatar = getProfileFeedAvatarSafe();
-  const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
-
-  const avatarHtml = avatar
-    ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
-    : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
-
-  return `
-    <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
-      <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${safeImage}')"></div>
-
-      <div class="card-body profile-feed-body">
-        <button
-          class="profile-feed-author"
-          type="button"
-          onclick="event.stopPropagation(); openKlevbyProfileSafe()"
-          aria-label="Открыть профиль автора"
-        >
-          ${avatarHtml}
-
-          <span class="profile-feed-author-text">
-            <span class="profile-feed-author-name">${escapeHtml(authorName)}</span>
-            <span class="profile-feed-author-action">добавил фото с рыбалки</span>
-          </span>
-        </button>
-
-        <div class="trip-title profile-feed-title">
-          <span class="trip-name">${escapeHtml(authorName)}</span>
-          <span> добавил </span>
-          <span class="trip-destination">${escapeHtml(title)}</span>
-        </div>
-
-        <p class="trip-description profile-feed-description">
-          Новое фото в профиле рыбака. Нажми на карточку, чтобы открыть фото на весь экран.
-        </p>
-
-        <div class="tags profile-feed-tags">
-          <span class="tag">📸 фото</span>
-          <span class="tag">🎣 лента</span>
-          ${authorCity ? `<span class="tag">📍 ${escapeHtml(authorCity)}</span>` : ""}
-          ${sizeKb ? `<span class="tag">${escapeHtml(String(sizeKb))} КБ</span>` : ""}
-          ${date ? `<span class="tag">🕒 ${escapeHtml(date)}</span>` : ""}
-        </div>
-
-        <div class="actions profile-feed-actions">
-          <button class="small-btn green" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть фото</button>
-          <button class="small-btn gray" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-function profileFeedEmptyHtml() {
-  return `
-    <div class="home-empty-card">
-      <div class="home-empty-icon">📸</div>
-      <h3>В ленте пока нет фото</h3>
-      <p>Добавь первое фото в профиле — оно появится здесь как пост в ленте.</p>
-      <div class="actions">
-        <button class="small-btn green" type="button" onclick="openKlevbyProfileSafe()">Открыть профиль</button>
-        <button class="small-btn gray" type="button" onclick="setMode('all')">Напарники</button>
-      </div>
-    </div>
-  `;
-}
-
-function renderProfileFeed() {
-  const list = document.getElementById("profileFeedSection");
-  if (!list) return;
-
-  const items = getFilteredProfileFeedItems({});
-
-  if (!items.length) {
-    list.innerHTML = profileFeedEmptyHtml();
-    return;
-  }
-
-  const cards = items
-    .map((item) => {
-      try {
-        return profilePhotoCardHtml(item);
-      } catch (error) {
-        console.error("Ошибка отрисовки фото профиля:", item, error);
-        return "";
-      }
-    })
-    .filter(Boolean)
-    .join("");
-
-  list.innerHTML = cards || profileFeedEmptyHtml();
-}
-
-function refreshKlevbyFeedsIfVisible() {
-  const homeSection = document.getElementById("homeSection");
-  const tripsSection = document.getElementById("tripsSection");
-
-  if (homeSection && !homeSection.classList.contains("hidden")) {
-    renderProfileFeed();
-  }
-
-  if (tripsSection && !tripsSection.classList.contains("hidden")) {
-    renderPosts();
-  }
-}
-
-function bindProfileFeedRefreshHooks() {
-  if (window.__klevbyProfileFeedRefreshBound) return;
-  window.__klevbyProfileFeedRefreshBound = true;
-
-  window.addEventListener("storage", (event) => {
-    const key = String(event?.key || "");
-
-    if (
-      key === "klevby_profile_photos" ||
-      key === "klevby_profile_avatar" ||
-      key === "klevby_profile_settings" ||
-      key === "klevby_profile_name"
-    ) {
-      setTimeout(refreshKlevbyFeedsIfVisible, 80);
-    }
-  });
-
-  window.addEventListener("pageshow", () => {
-    setTimeout(refreshKlevbyFeedsIfVisible, 120);
-  });
-
-  document.addEventListener("click", (event) => {
-    const target = event.target?.closest?.(
-      "#homeFloatBtn, #nav-home, .mobile-tab-btn, [onclick*='goHomeTop'], [onclick*='showSection'], [onclick*='setMode']"
-    );
-
-    if (!target) return;
-
-    setTimeout(refreshKlevbyFeedsIfVisible, 180);
-  });
-}
-
 function saveAuthorLocal(name, telegram) {
   localStorage.setItem("klevby_author_name", name || "");
   localStorage.setItem("klevby_author_telegram", telegram || "");
@@ -647,7 +389,6 @@ async function loadPosts(options = {}) {
         postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
       }
 
-      renderProfileFeed();
       schedulePostsLoad(900);
       return;
     }
@@ -680,7 +421,6 @@ async function loadPosts(options = {}) {
         `;
       }
 
-      renderProfileFeed();
       return;
     }
 
@@ -708,7 +448,6 @@ async function loadPosts(options = {}) {
         `;
       }
 
-      renderProfileFeed();
       return;
     }
 
@@ -716,7 +455,6 @@ async function loadPosts(options = {}) {
 
     setPostsArray(loadedPosts);
     renderPosts();
-    renderProfileFeed();
   })();
 
   try {
@@ -1309,14 +1047,6 @@ async function deletePost(id) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  bindProfileFeedRefreshHooks();
-
-  setTimeout(renderProfileFeed, 300);
-  setTimeout(refreshKlevbyFeedsIfVisible, 800);
-  setTimeout(refreshKlevbyFeedsIfVisible, 1400);
-});
-
 window.getOwnerId = getOwnerId;
 window.getCurrentUserSafe = getCurrentUserSafe;
 window.getCurrentAuthReady = getCurrentAuthReady;
@@ -1331,16 +1061,10 @@ window.escapeHtml = escapeHtml;
 window.escapeAttr = escapeAttr;
 window.getFishingTypeClass = getFishingTypeClass;
 window.getCardImage = getCardImage;
-window.getProfileFeedItemsSafe = getProfileFeedItemsSafe;
-window.getFilteredProfileFeedItems = getFilteredProfileFeedItems;
-window.openKlevbyProfileSafe = openKlevbyProfileSafe;
-window.openProfilePhotoFeedItem = openProfilePhotoFeedItem;
-window.renderProfileFeed = renderProfileFeed;
 window.saveAuthorLocal = saveAuthorLocal;
 window.loadPosts = loadPosts;
 window.renderPosts = renderPosts;
 window.cardHtml = cardHtml;
-window.profilePhotoCardHtml = profilePhotoCardHtml;
 window.openPostModal = openPostModal;
 window.closePostModal = closePostModal;
 window.handlePostModalBackdrop = handlePostModalBackdrop;
