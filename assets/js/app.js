@@ -6,11 +6,8 @@ const SUPABASE_STORAGE_KEY = KLEVB_CONFIG.SUPABASE_STORAGE_KEY || "sb-klevby-aut
 const TELEGRAM_GROUP = KLEVB_CONFIG.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
 const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
 
-const KLEVB_SUPABASE_FETCH_TIMEOUT_MS = 25000;
-const KLEVB_SUPABASE_STORAGE_TIMEOUT_MS = 60000;
-const KLEVB_SUPABASE_AUTH_TIMEOUT_MS = 22000;
-const KLEVB_APP_RESUME_DEBOUNCE_MS = 700;
-const KLEVB_APP_SLEEP_RESET_AFTER_MS = 1200;
+const KLEVB_APP_RESUME_DEBOUNCE_MS = 650;
+const KLEVB_APP_RESUME_MIN_INTERVAL_MS = 1400;
 
 window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
@@ -41,11 +38,10 @@ let lastPondsReloadAt = 0;
 let klevbyProfileOpenPatched = false;
 let klevbyOriginalOpenProfile = null;
 
-let klevbyAppHiddenAt = 0;
 let klevbyAppResumeTimer = null;
 let klevbyAppResumeInProgress = false;
 let klevbyLastAppResumeAt = 0;
-let klevbySupabaseClientCreatedAt = 0;
+let klevbyAppHiddenAt = 0;
 
 const splashStartedAt = Date.now();
 
@@ -133,110 +129,6 @@ function syncGlobalAuthState(options = {}) {
   }));
 }
 
-function getSupabaseTimeoutForRequest(resource) {
-  const url = String(
-    typeof resource === "string"
-      ? resource
-      : resource?.url || ""
-  );
-
-  if (url.includes("/storage/v1/")) {
-    return KLEVB_SUPABASE_STORAGE_TIMEOUT_MS;
-  }
-
-  if (url.includes("/auth/v1/")) {
-    return KLEVB_SUPABASE_AUTH_TIMEOUT_MS;
-  }
-
-  return KLEVB_SUPABASE_FETCH_TIMEOUT_MS;
-}
-
-function createKlevbySupabaseFetch() {
-  return async function klevbySupabaseFetch(resource, options = {}) {
-    const timeoutMs = getSupabaseTimeoutForRequest(resource);
-    const controller = new AbortController();
-    const originalSignal = options?.signal || null;
-
-    let timedOut = false;
-    let timeoutId = null;
-
-    const abortFromOriginalSignal = () => {
-      try {
-        controller.abort(originalSignal?.reason || "aborted");
-      } catch (error) {
-        controller.abort();
-      }
-    };
-
-    if (originalSignal) {
-      if (originalSignal.aborted) {
-        abortFromOriginalSignal();
-      } else {
-        originalSignal.addEventListener("abort", abortFromOriginalSignal, {
-          once: true
-        });
-      }
-    }
-
-    timeoutId = setTimeout(() => {
-      timedOut = true;
-
-      try {
-        controller.abort("klevby_timeout");
-      } catch (error) {
-        controller.abort();
-      }
-    }, timeoutMs);
-
-    try {
-      return await fetch(resource, {
-        ...options,
-        signal: controller.signal
-      });
-    } catch (error) {
-      if (timedOut) {
-        const requestUrl = String(
-          typeof resource === "string"
-            ? resource
-            : resource?.url || "Supabase request"
-        );
-
-        throw new Error(`Klevby: Supabase не ответил за ${Math.round(timeoutMs / 1000)} сек. Проверь интернет и повтори. ${requestUrl}`);
-      }
-
-      throw error;
-    } finally {
-      clearTimeout(timeoutId);
-
-      if (originalSignal) {
-        try {
-          originalSignal.removeEventListener("abort", abortFromOriginalSignal);
-        } catch (error) {
-          // no-op
-        }
-      }
-    }
-  };
-}
-
-async function cleanupSupabaseRealtimeChannels(client) {
-  if (!client) return;
-
-  try {
-    if (typeof client.getChannels === "function" && typeof client.removeChannel === "function") {
-      const channels = client.getChannels();
-
-      if (Array.isArray(channels) && channels.length) {
-        await Promise.allSettled(
-          channels.map((channel) => client.removeChannel(channel))
-        );
-      }
-    }
-  } catch (error) {
-    console.warn("Klevby: старые Supabase realtime-каналы не закрылись", error);
-  }
-}
-
 function reloadPondsIfReady(options = {}) {
   const force = Boolean(options.force);
   const delay = Number(options.delay || 450);
@@ -276,9 +168,7 @@ function reloadPondsIfReady(options = {}) {
   }, delay);
 }
 
-function initSupabase(options = {}) {
-  const force = Boolean(options.force);
-
+function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     showStatus("Supabase не настроен. Проверь assets/js/config.js.", true);
     console.error("Klevby: SUPABASE_URL или SUPABASE_ANON_KEY пустые.");
@@ -291,12 +181,10 @@ function initSupabase(options = {}) {
     return false;
   }
 
-  if (supabaseClient && !force) {
+  if (supabaseClient) {
     syncGlobalAuthState();
     return true;
   }
-
-  const previousClient = supabaseClient;
 
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -307,16 +195,9 @@ function initSupabase(options = {}) {
       flowType: "pkce"
     },
     global: {
-      fetch: createKlevbySupabaseFetch()
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 8
-      }
+      fetch: (...args) => fetch(...args)
     }
   });
-
-  klevbySupabaseClientCreatedAt = Date.now();
 
   window.klevbySupabase = supabaseClient;
   window.supabaseClient = supabaseClient;
@@ -332,10 +213,6 @@ function initSupabase(options = {}) {
   window.klevbyIsAdmin = function () {
     return isAdmin();
   };
-
-  if (previousClient && previousClient !== supabaseClient) {
-    cleanupSupabaseRealtimeChannels(previousClient);
-  }
 
   if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -379,252 +256,8 @@ function initSupabase(options = {}) {
     });
   }
 
-  syncGlobalAuthState({
-    notify: true,
-    forceNotify: true
-  });
-
-  window.dispatchEvent(new CustomEvent("klevby-supabase-client-ready", {
-    detail: {
-      supabase: supabaseClient,
-      forced: force,
-      createdAt: klevbySupabaseClientCreatedAt
-    }
-  }));
-
+  syncGlobalAuthState({ notify: true, forceNotify: true });
   return true;
-}
-
-async function resetSupabaseAfterSleep(reason = "resume") {
-  const previousUser = currentUser;
-
-  try {
-    const previousClient = supabaseClient;
-
-    if (previousClient) {
-      await cleanupSupabaseRealtimeChannels(previousClient);
-    }
-
-    supabaseClient = null;
-
-    const ok = initSupabase({
-      force: true
-    });
-
-    if (!ok) {
-      currentUser = previousUser;
-      syncGlobalAuthState({
-        notify: true,
-        forceNotify: true
-      });
-
-      return false;
-    }
-
-    syncGlobalAuthState({
-      notify: true,
-      forceNotify: true
-    });
-
-    window.dispatchEvent(new CustomEvent("klevby-app-supabase-reset", {
-      detail: {
-        reason,
-        supabase: supabaseClient
-      }
-    }));
-
-    return true;
-  } catch (error) {
-    console.warn("Klevby: Supabase не перезапустился после сна", error);
-
-    currentUser = previousUser;
-    syncGlobalAuthState({
-      notify: true,
-      forceNotify: true
-    });
-
-    return false;
-  }
-}
-
-function scheduleKlevbyAppResume(reason = "resume", options = {}) {
-  const force = Boolean(options.force);
-
-  clearTimeout(klevbyAppResumeTimer);
-
-  klevbyAppResumeTimer = setTimeout(() => {
-    handleKlevbyAppResume(reason, {
-      force
-    });
-  }, KLEVB_APP_RESUME_DEBOUNCE_MS);
-}
-
-async function handleKlevbyAppResume(reason = "resume", options = {}) {
-  const force = Boolean(options.force);
-  const now = Date.now();
-
-  if (klevbyAppResumeInProgress) return false;
-
-  if (!force && now - klevbyLastAppResumeAt < 1300) {
-    return false;
-  }
-
-  klevbyAppResumeInProgress = true;
-  klevbyLastAppResumeAt = now;
-
-  const sleptFor = klevbyAppHiddenAt ? now - klevbyAppHiddenAt : 0;
-  const shouldResetSupabase =
-    force ||
-    reason === "online" ||
-    reason === "pageshow" ||
-    reason === "visibilitychange" ||
-    sleptFor >= KLEVB_APP_SLEEP_RESET_AFTER_MS;
-
-  try {
-    if (shouldResetSupabase) {
-      await resetSupabaseAfterSleep(reason);
-    } else {
-      syncGlobalAuthState({
-        notify: true,
-        forceNotify: true
-      });
-    }
-
-    if (typeof window.restoreAuthState === "function") {
-      try {
-        await window.restoreAuthState("app_resume_" + reason, true);
-      } catch (error) {
-        console.warn("Klevby: вход не восстановился после пробуждения", error);
-      }
-    }
-
-    refreshCurrentScreenAfterResume(reason);
-
-    window.dispatchEvent(new CustomEvent("klevby-app-resumed", {
-      detail: {
-        reason,
-        sleptFor,
-        supabase: supabaseClient,
-        user: currentUser
-      }
-    }));
-
-    return true;
-  } catch (error) {
-    console.warn("Klevby: ошибка пробуждения приложения", reason, error);
-    return false;
-  } finally {
-    klevbyAppResumeInProgress = false;
-  }
-}
-
-function refreshCurrentScreenAfterResume(reason = "resume") {
-  const visibleSection = getVisibleSectionName();
-
-  try {
-    if (visibleSection === "home" || visibleSection === "profile") {
-      if (typeof window.klevbyWakeFeed === "function") {
-        window.klevbyWakeFeed();
-      }
-
-      if (typeof window.renderProfileFeed === "function") {
-        window.renderProfileFeed();
-      }
-
-      if (typeof window.syncLocalProfilePhotosToSupabaseFeed === "function") {
-        setTimeout(() => {
-          window.syncLocalProfilePhotosToSupabaseFeed(true);
-        }, 900);
-      }
-    }
-
-    if (visibleSection === "trips") {
-      if (typeof window.loadPosts === "function") {
-        window.loadPosts({ force: true });
-      } else if (typeof window.renderPosts === "function") {
-        window.renderPosts();
-      }
-    }
-
-    if (visibleSection === "market" && typeof window.klevbyLoadMarket === "function") {
-      window.klevbyLoadMarket();
-    }
-
-    if (visibleSection === "ponds") {
-      reloadPondsIfReady({ force: true, delay: 250 });
-    }
-
-    if (visibleSection === "map" && typeof window.klevbyReloadMap === "function") {
-      window.klevbyReloadMap();
-    }
-
-    if (typeof window.klevbyRestartChatRealtime === "function") {
-      window.klevbyRestartChatRealtime(reason);
-    }
-
-    if (typeof window.klevbyReloadChatAfterResume === "function") {
-      window.klevbyReloadChatAfterResume(reason);
-    }
-
-    if (typeof window.klevbyReconnectCallsAfterResume === "function") {
-      window.klevbyReconnectCallsAfterResume(reason);
-    }
-  } catch (error) {
-    console.warn("Klevby: текущий экран не обновился после пробуждения", error);
-  }
-}
-
-function setupKlevbyAppLifecycle() {
-  if (window.__klevbyAppLifecycleBound) return;
-
-  window.__klevbyAppLifecycleBound = true;
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      klevbyAppHiddenAt = Date.now();
-      return;
-    }
-
-    scheduleKlevbyAppResume("visibilitychange", {
-      force: true
-    });
-  });
-
-  window.addEventListener("pageshow", () => {
-    scheduleKlevbyAppResume("pageshow", {
-      force: true
-    });
-  });
-
-  window.addEventListener("focus", () => {
-    scheduleKlevbyAppResume("focus", {
-      force: false
-    });
-  });
-
-  window.addEventListener("online", () => {
-    scheduleKlevbyAppResume("online", {
-      force: true
-    });
-  });
-
-  window.addEventListener("resume", () => {
-    scheduleKlevbyAppResume("resume", {
-      force: true
-    });
-  });
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      const type = event?.data?.type || "";
-
-      if (type === "KLEVB_SW_ACTIVATED" || type === "KLEVB_CACHE_CLEARED") {
-        scheduleKlevbyAppResume(type.toLowerCase(), {
-          force: true
-        });
-      }
-    });
-  }
 }
 
 function showStatus(message, isError = false) {
@@ -953,6 +586,138 @@ function handleGlobalScrollOrResize() {
   }
 }
 
+function scheduleKlevbyAppResume(reason = "resume", options = {}) {
+  clearTimeout(klevbyAppResumeTimer);
+
+  klevbyAppResumeTimer = setTimeout(() => {
+    handleKlevbyAppResume(reason, options);
+  }, KLEVB_APP_RESUME_DEBOUNCE_MS);
+}
+
+async function handleKlevbyAppResume(reason = "resume", options = {}) {
+  const force = Boolean(options.force);
+  const now = Date.now();
+
+  if (klevbyAppResumeInProgress) return false;
+
+  if (!force && now - klevbyLastAppResumeAt < KLEVB_APP_RESUME_MIN_INTERVAL_MS) {
+    return false;
+  }
+
+  klevbyAppResumeInProgress = true;
+  klevbyLastAppResumeAt = now;
+
+  const sleptFor = klevbyAppHiddenAt ? now - klevbyAppHiddenAt : 0;
+
+  try {
+    syncGlobalAuthState({
+      notify: true,
+      forceNotify: true
+    });
+
+    if (typeof window.restoreAuthState === "function") {
+      try {
+        await window.restoreAuthState("app_resume_" + reason, false);
+      } catch (error) {
+        console.warn("Klevby: вход не восстановился после возврата:", reason, error);
+      }
+    }
+
+    refreshCurrentScreenAfterResume(reason);
+
+    window.dispatchEvent(new CustomEvent("klevby-app-resumed", {
+      detail: {
+        reason,
+        sleptFor,
+        user: currentUser,
+        supabase: supabaseClient
+      }
+    }));
+
+    return true;
+  } catch (error) {
+    console.warn("Klevby: ошибка пробуждения приложения:", reason, error);
+    return false;
+  } finally {
+    klevbyAppResumeInProgress = false;
+  }
+}
+
+function refreshCurrentScreenAfterResume(reason = "resume") {
+  const visibleSection = getVisibleSectionName();
+
+  try {
+    if (visibleSection === "home" || visibleSection === "profile") {
+      if (typeof window.renderProfileFeed === "function") {
+        setTimeout(() => window.renderProfileFeed(), 250);
+      }
+
+      if (typeof window.syncLocalProfilePhotosToSupabaseFeed === "function") {
+        setTimeout(() => {
+          window.syncLocalProfilePhotosToSupabaseFeed(true);
+        }, 900);
+      }
+    }
+
+    if (visibleSection === "trips") {
+      if (typeof window.loadPosts === "function") {
+        window.loadPosts({ force: true });
+      } else if (typeof window.renderPosts === "function") {
+        window.renderPosts();
+      }
+    }
+
+    if (visibleSection === "market" && typeof window.klevbyLoadMarket === "function") {
+      window.klevbyLoadMarket();
+    }
+
+    if (visibleSection === "ponds") {
+      reloadPondsIfReady({ force: true, delay: 250 });
+    }
+
+    if (visibleSection === "map" && typeof window.klevbyReloadMap === "function") {
+      window.klevbyReloadMap();
+    }
+
+    if (window.KlevbyChatLifecycle && typeof window.KlevbyChatLifecycle.scheduleChatResume === "function") {
+      window.KlevbyChatLifecycle.scheduleChatResume(reason);
+    }
+
+    if (typeof window.klevbyReloadChatAfterResume === "function") {
+      window.klevbyReloadChatAfterResume(reason);
+    }
+  } catch (error) {
+    console.warn("Klevby: текущий экран не обновился после возврата:", error);
+  }
+}
+
+function setupKlevbyAppLifecycle() {
+  if (window.__klevbyAppLifecycleBound) return;
+
+  window.__klevbyAppLifecycleBound = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      klevbyAppHiddenAt = Date.now();
+      return;
+    }
+
+    scheduleKlevbyAppResume("visibilitychange", { force: true });
+  });
+
+  window.addEventListener("pageshow", () => {
+    scheduleKlevbyAppResume("pageshow", { force: true });
+  });
+
+  window.addEventListener("focus", () => {
+    scheduleKlevbyAppResume("focus", { force: false });
+  });
+
+  window.addEventListener("online", () => {
+    scheduleKlevbyAppResume("online", { force: true });
+  });
+}
+
 window.addEventListener("scroll", handleGlobalScrollOrResize, { passive: true });
 window.addEventListener("resize", handleGlobalScrollOrResize);
 
@@ -1026,9 +791,8 @@ window.isAdmin = isAdmin;
 window.syncGlobalAuthState = syncGlobalAuthState;
 window.reloadPondsIfReady = reloadPondsIfReady;
 window.initSupabase = initSupabase;
-window.resetSupabaseAfterSleep = resetSupabaseAfterSleep;
-window.handleKlevbyAppResume = handleKlevbyAppResume;
 window.scheduleKlevbyAppResume = scheduleKlevbyAppResume;
+window.handleKlevbyAppResume = handleKlevbyAppResume;
 window.refreshCurrentScreenAfterResume = refreshCurrentScreenAfterResume;
 window.setupKlevbyAppLifecycle = setupKlevbyAppLifecycle;
 window.showStatus = showStatus;
