@@ -1,13 +1,18 @@
 (function () {
-  const KLEVB_FEED_AUTO_REFRESH_MS = 8000;
-  const KLEVB_FEED_RESUME_RECONNECT_GAP = 5500;
-  const KLEVB_FEED_RESUME_REFRESH_DELAYS = [0, 450, 1400, 3200, 7000, 14000];
+  const KLEVB_FEED_VISIBLE_REFRESH_MS = 4000;
+  const KLEVB_FEED_HIDDEN_REFRESH_MS = 30000;
+  const KLEVB_FEED_DEBOUNCE_MS = 450;
+  const KLEVB_FEED_RESUME_DELAYS = [0, 600, 1800, 4200, 8000];
 
-  let klevbyFeedRefreshDebounceTimer = null;
+  let klevbyFeedRefreshTimer = null;
+  let klevbyFeedIntervalTimer = null;
+  let klevbyFeedHiddenIntervalTimer = null;
   let klevbyFeedRefreshInProgress = false;
   let klevbyFeedRefreshPending = false;
-  let klevbyFeedLastRealtimeReconnectAt = 0;
+  let klevbyFeedHooksBound = false;
+  let klevbyFeedRealtimeStarted = false;
   let klevbyFeedResumeTimers = [];
+  let klevbyFeedLastRenderAt = 0;
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -29,25 +34,19 @@
     return window.klevbyFeedSupabase || getApi() || {};
   }
 
-  function setRealtimeStarted(value) {
-    const state = getState();
+  function isHomeFeedVisible() {
+    const homeSection = document.getElementById("homeSection");
+    const feedSection = document.getElementById("profileFeedSection");
 
-    if (typeof state.setRealtimeStarted === "function") {
-      state.setRealtimeStarted(Boolean(value));
-      return;
-    }
-
-    state.realtimeStarted = Boolean(value);
+    return Boolean(
+      homeSection &&
+      feedSection &&
+      !homeSection.classList.contains("hidden")
+    );
   }
 
-  function getRealtimeStarted() {
-    const state = getState();
-
-    if (typeof state.getRealtimeStarted === "function") {
-      return Boolean(state.getRealtimeStarted());
-    }
-
-    return Boolean(state.realtimeStarted);
+  function isPageVisible() {
+    return document.visibilityState !== "hidden";
   }
 
   function renderFeed() {
@@ -64,52 +63,18 @@
     return Promise.resolve();
   }
 
-  function isHomeFeedVisible() {
-    const homeSection = document.getElementById("homeSection");
-    const feedSection = document.getElementById("profileFeedSection");
-
-    return Boolean(
-      homeSection &&
-      feedSection &&
-      !homeSection.classList.contains("hidden")
-    );
-  }
-
-  function refreshFeedIfHomeVisible(options = {}) {
-    const force = Boolean(options.force);
-
-    if (!force && !isHomeFeedVisible()) {
-      return Promise.resolve(false);
-    }
-
-    if (!document.getElementById("profileFeedSection")) {
-      return Promise.resolve(false);
-    }
-
-    return refreshFeedNow(options.reason || "refresh_home_visible", {
-      force
-    });
-  }
-
-  function queueFeedRefresh(reason = "queued_refresh", delay = 250, options = {}) {
-    clearTimeout(klevbyFeedRefreshDebounceTimer);
-
-    klevbyFeedRefreshDebounceTimer = setTimeout(() => {
-      refreshFeedIfHomeVisible({
-        reason,
-        force: Boolean(options.force)
-      });
-    }, Math.max(0, Number(delay || 0)));
-  }
-
   async function refreshFeedNow(reason = "manual", options = {}) {
     const force = Boolean(options.force);
 
-    if (!force && document.visibilityState === "hidden") {
+    if (!force && !isPageVisible()) {
       return false;
     }
 
     if (!force && !isHomeFeedVisible()) {
+      return false;
+    }
+
+    if (!document.getElementById("profileFeedSection")) {
       return false;
     }
 
@@ -122,6 +87,8 @@
 
     try {
       await Promise.resolve(renderFeed());
+
+      klevbyFeedLastRenderAt = Date.now();
 
       window.dispatchEvent(new CustomEvent("klevby-feed-silent-refresh-done", {
         detail: {
@@ -139,12 +106,27 @@
 
       if (klevbyFeedRefreshPending) {
         klevbyFeedRefreshPending = false;
-
-        queueFeedRefresh("pending_after_" + reason, 500, {
+        queueFeedRefresh("pending_after_" + reason, 650, {
           force
         });
       }
     }
+  }
+
+  function queueFeedRefresh(reason = "queued", delay = KLEVB_FEED_DEBOUNCE_MS, options = {}) {
+    clearTimeout(klevbyFeedRefreshTimer);
+
+    klevbyFeedRefreshTimer = setTimeout(() => {
+      refreshFeedNow(reason, {
+        force: Boolean(options.force)
+      });
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  function refreshFeedIfHomeVisible(options = {}) {
+    return refreshFeedNow(options.reason || "refresh_home_visible", {
+      force: Boolean(options.force)
+    });
   }
 
   function loadCommentsIntoActiveModal() {
@@ -167,7 +149,7 @@
     return Promise.resolve();
   }
 
-  function queueCommentsRefresh(delay = 280) {
+  function queueCommentsRefresh(delay = 250) {
     setTimeout(() => {
       loadCommentsIntoActiveModal().catch((error) => {
         console.warn("Klevby feed: комментарии не обновились", error);
@@ -200,20 +182,13 @@
   }
 
   function handleAppResume(reason = "resume") {
-    if (document.visibilityState === "hidden") return;
-
     clearResumeTimers();
 
-    tryStartRealtimeSubscription({
-      force: true,
-      reason
-    }).catch((error) => {
-      console.warn("Klevby feed: realtime не переподключился после возврата", error);
-    });
+    tryStartRealtimeSubscription();
 
-    klevbyFeedResumeTimers = KLEVB_FEED_RESUME_REFRESH_DELAYS.map((delay) => {
+    klevbyFeedResumeTimers = KLEVB_FEED_RESUME_DELAYS.map((delay) => {
       return setTimeout(() => {
-        queueFeedRefresh(reason + "_refresh_" + delay, 0, {
+        queueFeedRefresh(reason + "_burst_" + delay, 0, {
           force: true
         });
 
@@ -223,9 +198,10 @@
   }
 
   function bindFeedRefreshHooks() {
-    if (window.__klevbyFeedRefreshBound) return;
+    if (klevbyFeedHooksBound || window.__klevbyFeedRefreshBoundV2) return;
 
-    window.__klevbyFeedRefreshBound = true;
+    klevbyFeedHooksBound = true;
+    window.__klevbyFeedRefreshBoundV2 = true;
 
     window.addEventListener("storage", (event) => {
       const key = String(event?.key || "");
@@ -257,11 +233,14 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         handleAppResume("visibility_visible");
+        restartFeedAutoRefresh();
+      } else {
+        startHiddenWakeRefresh();
       }
     });
 
     window.addEventListener("klevby-auth-changed", () => {
-      queueFeedRefresh("auth_changed", 180, {
+      queueFeedRefresh("auth_changed", 120, {
         force: true
       });
     });
@@ -269,7 +248,7 @@
     window.addEventListener("klevby-feed-updated", (event) => {
       const action = String(event?.detail?.action || "feed_updated");
 
-      queueFeedRefresh(action, 240, {
+      queueFeedRefresh(action, 120, {
         force: true
       });
 
@@ -283,12 +262,12 @@
         activePostId &&
         (!changedPostId || changedPostId === activePostId)
       ) {
-        queueCommentsRefresh(280);
+        queueCommentsRefresh(220);
       }
     });
 
     window.addEventListener("klevby-feed-module-ready", () => {
-      queueFeedRefresh("feed_module_ready", 350, {
+      queueFeedRefresh("feed_module_ready", 250, {
         force: true
       });
     });
@@ -300,7 +279,7 @@
 
       if (!target) return;
 
-      queueFeedRefresh("navigation_click", 180, {
+      queueFeedRefresh("navigation_click", 160, {
         force: true
       });
     });
@@ -313,27 +292,55 @@
   }
 
   function startFeedAutoRefresh() {
-    const state = getState();
+    if (klevbyFeedIntervalTimer) return;
 
-    if (state.autoRefreshTimer) return;
+    klevbyFeedIntervalTimer = setInterval(() => {
+      if (!isPageVisible()) return;
 
-    const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
+      if (!isHomeFeedVisible()) return;
 
-      refreshFeedIfHomeVisible({
-        reason: "auto_interval",
-        force: false
+      refreshFeedNow("visible_interval", {
+        force: true
       });
 
       queueCommentsRefresh(200);
-    }, KLEVB_FEED_AUTO_REFRESH_MS);
+    }, KLEVB_FEED_VISIBLE_REFRESH_MS);
+
+    const state = getState();
 
     if (typeof state.setAutoRefreshTimer === "function") {
-      state.setAutoRefreshTimer(timer);
-      return;
+      state.setAutoRefreshTimer(klevbyFeedIntervalTimer);
+    } else {
+      state.autoRefreshTimer = klevbyFeedIntervalTimer;
+    }
+  }
+
+  function restartFeedAutoRefresh() {
+    if (klevbyFeedHiddenIntervalTimer) {
+      clearInterval(klevbyFeedHiddenIntervalTimer);
+      klevbyFeedHiddenIntervalTimer = null;
     }
 
-    state.autoRefreshTimer = timer;
+    if (!klevbyFeedIntervalTimer) {
+      startFeedAutoRefresh();
+    }
+
+    queueFeedRefresh("restart_visible_refresh", 100, {
+      force: true
+    });
+  }
+
+  function startHiddenWakeRefresh() {
+    if (klevbyFeedHiddenIntervalTimer) return;
+
+    klevbyFeedHiddenIntervalTimer = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+
+      clearInterval(klevbyFeedHiddenIntervalTimer);
+      klevbyFeedHiddenIntervalTimer = null;
+
+      handleAppResume("hidden_timer_resume");
+    }, KLEVB_FEED_HIDDEN_REFRESH_MS);
   }
 
   async function stopRealtimeSubscription() {
@@ -346,35 +353,21 @@
         await window.klevbyUnsubscribeFromFeedChanges();
       }
     } catch (error) {
-      console.warn("Klevby feed: старый realtime канал не отключился", error);
+      console.warn("Klevby feed: realtime канал не отключился", error);
     }
 
-    setRealtimeStarted(false);
+    klevbyFeedRealtimeStarted = false;
   }
 
-  async function tryStartRealtimeSubscription(options = {}) {
-    const force = Boolean(options.force);
-    const now = Date.now();
-
-    if (!force && getRealtimeStarted()) {
+  function tryStartRealtimeSubscription() {
+    if (klevbyFeedRealtimeStarted) {
       return true;
     }
 
-    if (
-      force &&
-      now - klevbyFeedLastRealtimeReconnectAt < KLEVB_FEED_RESUME_RECONNECT_GAP
-    ) {
-      return false;
-    }
-
-    klevbyFeedLastRealtimeReconnectAt = now;
-
     const api = getRealtimeApi();
 
-    if (!api) return false;
-
-    if (force) {
-      await stopRealtimeSubscription();
+    if (!api) {
+      return false;
     }
 
     const refresh = (payload) => {
@@ -386,11 +379,11 @@
         payload?.old?.id ||
         "";
 
-      queueFeedRefresh("realtime_" + (postId || "feed"), 160, {
+      queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
         force: true
       });
 
-      queueCommentsRefresh(240);
+      queueCommentsRefresh(180);
     };
 
     try {
@@ -405,14 +398,14 @@
       }
 
       if (channel) {
-        setRealtimeStarted(true);
+        klevbyFeedRealtimeStarted = true;
         return true;
       }
 
-      setRealtimeStarted(false);
+      klevbyFeedRealtimeStarted = false;
       return false;
     } catch (error) {
-      setRealtimeStarted(false);
+      klevbyFeedRealtimeStarted = false;
       console.warn("Klevby feed: realtime пока не подключился", error);
       return false;
     }
@@ -421,12 +414,28 @@
   window.KlevbyFeedEvents = {
     bindFeedRefreshHooks,
     startFeedAutoRefresh,
+    restartFeedAutoRefresh,
+    startHiddenWakeRefresh,
     tryStartRealtimeSubscription,
+    stopRealtimeSubscription,
     refreshFeedIfHomeVisible,
     refreshFeedNow,
     queueFeedRefresh,
     handleAppResume,
     loadCommentsIntoActiveModal,
     closeOpenFeedWindows
+  };
+
+  window.refreshKlevbyFeedSilently = function refreshKlevbyFeedSilently() {
+    return refreshFeedNow("manual_global", {
+      force: true
+    });
+  };
+
+  window.klevbyWakeFeed = function klevbyWakeFeed() {
+    handleAppResume("manual_wake");
+    return refreshFeedNow("manual_wake", {
+      force: true
+    });
   };
 })();
