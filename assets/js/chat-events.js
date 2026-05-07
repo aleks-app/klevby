@@ -147,23 +147,30 @@
         ? options.setChatTabsLoading
         : () => {};
 
-    addListener(document, "visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        scheduleChatResume("visibilitychange");
-      }
+    addListener(window, "klevby-app-resumed", (event) => {
+      const reason = String(event?.detail?.reason || "app_resumed");
+      scheduleChatResume(reason);
     });
 
-    addListener(window, "pageshow", () => {
-      scheduleChatResume("pageshow");
-    });
+    if (!window.__klevbyCentralResumeRouter) {
+      addListener(document, "visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          scheduleChatResume("visibilitychange");
+        }
+      });
 
-    addListener(window, "focus", () => {
-      scheduleChatResume("focus");
-    });
+      addListener(window, "pageshow", () => {
+        scheduleChatResume("pageshow");
+      });
 
-    addListener(window, "online", () => {
-      scheduleChatResume("online");
-    });
+      addListener(window, "focus", () => {
+        scheduleChatResume("focus");
+      });
+
+      addListener(window, "online", () => {
+        scheduleChatResume("online");
+      });
+    }
 
     addListener(document, "click", async (event) => {
       try {

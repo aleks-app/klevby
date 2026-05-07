@@ -228,23 +228,30 @@
 
     klevbyFeedMainResumeBound = true;
 
-    window.addEventListener("focus", () => {
-      runMainResumeBurst("window_focus");
+    window.addEventListener("klevby-app-resumed", (event) => {
+      const reason = String(event?.detail?.reason || "app_resumed");
+      runMainResumeBurst(reason);
     });
 
-    window.addEventListener("pageshow", () => {
-      runMainResumeBurst("page_show");
-    });
+    if (!window.__klevbyCentralResumeRouter) {
+      window.addEventListener("focus", () => {
+        runMainResumeBurst("window_focus");
+      });
 
-    window.addEventListener("online", () => {
-      runMainResumeBurst("browser_online");
-    });
+      window.addEventListener("pageshow", () => {
+        runMainResumeBurst("page_show");
+      });
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        runMainResumeBurst("visibility_visible");
-      }
-    });
+      window.addEventListener("online", () => {
+        runMainResumeBurst("browser_online");
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          runMainResumeBurst("visibility_visible");
+        }
+      });
+    }
 
     window.addEventListener("klevby-feed-updated", (event) => {
       const action = String(event?.detail?.action || "feed_updated");
