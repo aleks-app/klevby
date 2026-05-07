@@ -124,6 +124,33 @@
         ? options.showEmptyState
         : () => {};
 
+    function resetGhostChatUiState({ keepChatOpen = false } = {}) {
+      const html = document.documentElement;
+      const body = document.body;
+
+      if (html) {
+        html.classList.remove("klevby-chat-lock", "klevby-chat-mobile-lock");
+      }
+
+      if (body) {
+        body.classList.remove(
+          "klevby-chat-lock",
+          "klevby-chat-mobile-lock",
+          "klevby-chat-keyboard-open"
+        );
+      }
+
+      if (!modal) return;
+
+      if (!keepChatOpen) {
+        modal.classList.remove("open");
+        modal.classList.add("hidden");
+      } else if (modal.classList.contains("hidden")) {
+        modal.classList.remove("hidden");
+        modal.classList.add("open");
+      }
+    }
+
     async function reloadChatAfterResume(reason = "resume") {
       const now = Date.now();
 
@@ -144,6 +171,7 @@
         const isChatOpen = modal && modal.classList.contains("open");
 
         if (!isChatOpen) {
+          resetGhostChatUiState({ keepChatOpen: false });
           unlockChatPage();
           return;
         }
@@ -189,6 +217,7 @@
           return;
         }
 
+        resetGhostChatUiState({ keepChatOpen: false });
         updateViewportVars();
         lockChatPage();
 
@@ -214,6 +243,7 @@
           modal.classList.remove("open");
           modal.classList.add("hidden");
         }
+        resetGhostChatUiState({ keepChatOpen: false });
         unlockChatPage();
         setChatTabsLoading(false);
         showEmptyState("Не удалось открыть чат. Обнови страницу или проверь Console.");
@@ -235,7 +265,51 @@
       clearReply();
       hideMessageMenu();
       unlockChatPage();
+      resetGhostChatUiState({ keepChatOpen: false });
     }
+
+    window.klevbyDebugChatUiState = function klevbyDebugChatUiState() {
+      const html = document.documentElement;
+      const body = document.body;
+      const centerX = Math.round(window.innerWidth / 2);
+      const centerY = Math.round(window.innerHeight / 2);
+      const modalComputed = modal ? window.getComputedStyle(modal) : null;
+      const stack = document
+        .elementsFromPoint(centerX, centerY)
+        .slice(0, 8)
+        .map((element) => ({
+          tag: element.tagName,
+          id: element.id || null,
+          className: element.className || "",
+          pointerEvents: window.getComputedStyle(element).pointerEvents,
+          zIndex: window.getComputedStyle(element).zIndex
+        }));
+
+      const snapshot = {
+        htmlClassName: html ? html.className : "",
+        bodyClassName: body ? body.className : "",
+        chatOpen: Boolean(modal && modal.classList.contains("open")),
+        chatHidden: Boolean(modal && modal.classList.contains("hidden")),
+        hasChatLockWhenClosed:
+          Boolean(body && body.classList.contains("klevby-chat-lock")) &&
+          Boolean(modal && !modal.classList.contains("open")),
+        modal: modal
+          ? {
+              display: modalComputed.display,
+              visibility: modalComputed.visibility,
+              opacity: modalComputed.opacity,
+              pointerEvents: modalComputed.pointerEvents,
+              zIndex: modalComputed.zIndex
+            }
+          : null,
+        elementsFromCenter: stack
+      };
+
+      console.group("klevbyDebugChatUiState");
+      console.log(snapshot);
+      console.groupEnd();
+      return snapshot;
+    };
 
     lifecycleApi = {
       openChat,
