@@ -1,33 +1,109 @@
 (function () {
-  const KLEVB_FEED_PROFILE_PHOTOS_KEY = "klevby_profile_photos";
-  const KLEVB_FEED_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
-  const KLEVB_FEED_PROFILE_SETTINGS_KEY = "klevby_profile_settings";
+  const KLEVB_FEED_BUCKET = "feed-photos";
+  const KLEVB_FEED_TABLE = "feed_posts";
+  const KLEVB_FEED_LIKES_TABLE = "feed_likes";
+  const KLEVB_FEED_COMMENTS_TABLE = "feed_comments";
+  const KLEVB_FEED_VIEWS_TABLE = "feed_post_views";
+
+  const KLEVB_FEED_PROFILE_STORAGE_KEY = "klevby_profile_settings";
   const KLEVB_FEED_PROFILE_NAME_KEY = "klevby_profile_name";
+  const KLEVB_FEED_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
+  const KLEVB_FEED_VIEWER_KEY = "klevby_feed_viewer_key";
 
-  let klevbyFeedRenderToken = 0;
-  let klevbyFeedLastItems = [];
-  let klevbyFeedItemsCache = {};
-  let klevbyFeedAutoRefreshTimer = null;
-  let klevbyFeedRealtimeStarted = false;
+  let klevbyFeedRealtimeChannel = null;
+  let klevbyFeedRealtimeCallback = null;
 
-  function klevbyFeedEscapeHtml(value) {
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+  function klevbyFeedSupabaseGetClient() {
+    if (window.supabaseClient) return window.supabaseClient;
+    if (window.klevbySupabase) return window.klevbySupabase;
+
+    if (typeof window.klevbyGetSupabase === "function") {
+      return window.klevbyGetSupabase();
+    }
+
+    return null;
   }
 
-  function klevbyFeedEscapeAttr(value) {
-    return klevbyFeedEscapeHtml(value).replaceAll("`", "&#096;");
+  function klevbyFeedSupabaseGetCurrentUser() {
+    if (window.currentUser) return window.currentUser;
+    if (window.klevbyCurrentUser) return window.klevbyCurrentUser;
+    if (window.klevbyUser) return window.klevbyUser;
+
+    if (typeof window.klevbyGetCurrentUser === "function") {
+      return window.klevbyGetCurrentUser();
+    }
+
+    return null;
   }
 
-  function klevbyFeedNormalizeText(value) {
-    return String(value || "").toLowerCase().trim();
+  async function klevbyFeedSupabaseEnsureUser() {
+    let user = klevbyFeedSupabaseGetCurrentUser();
+
+    if (user && user.id) {
+      return user;
+    }
+
+    if (typeof window.restoreAuthState === "function") {
+      try {
+        await window.restoreAuthState("feed_supabase_action", false);
+      } catch (error) {
+        console.warn("Klevby feed: не удалось восстановить вход", error);
+      }
+    }
+
+    user = klevbyFeedSupabaseGetCurrentUser();
+
+    if (user && user.id) {
+      return user;
+    }
+
+    return null;
   }
 
-  function klevbyFeedCleanTelegram(value) {
+  function klevbyFeedSupabaseReadProfileData() {
+    try {
+      const raw = localStorage.getItem(KLEVB_FEED_PROFILE_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const user = klevbyFeedSupabaseGetCurrentUser();
+      const meta = user?.user_metadata || {};
+
+      const fallbackName =
+        localStorage.getItem(KLEVB_FEED_PROFILE_NAME_KEY) ||
+        meta.username ||
+        meta.name ||
+        meta.full_name ||
+        user?.email?.split("@")?.[0] ||
+        "";
+
+      let avatar = "";
+
+      try {
+        avatar = localStorage.getItem(KLEVB_FEED_PROFILE_AVATAR_KEY) || "";
+      } catch (avatarError) {
+        avatar = "";
+      }
+
+      return {
+        name: String(parsed.name || fallbackName || "Рыбак").trim(),
+        city: String(parsed.city || "").trim(),
+        telegram: String(parsed.telegram || "").trim(),
+        about: String(parsed.about || "").trim(),
+        avatar: String(avatar || "").trim()
+      };
+    } catch (error) {
+      console.warn("Klevby feed: не удалось прочитать данные профиля", error);
+
+      return {
+        name: "Рыбак",
+        city: "",
+        telegram: "",
+        about: "",
+        avatar: ""
+      };
+    }
+  }
+
+  function klevbyFeedSupabaseCleanTelegram(value) {
     let cleanValue = String(value || "").trim();
 
     cleanValue = cleanValue.replace(/^@/, "");
@@ -41,188 +117,209 @@
     return cleanValue;
   }
 
-  function klevbyFeedGetCurrentUser() {
-    return (
-      window.currentUser ||
-      window.klevbyCurrentUser ||
-      window.klevbyUser ||
-      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
-      null
-    );
-  }
-
-  function klevbyFeedIsAdmin() {
-    if (typeof window.isAdmin === "function") {
-      try {
-        return Boolean(window.isAdmin());
-      } catch (error) {
-        return false;
-      }
+  function klevbyFeedSupabaseMakeIdPart() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
     }
 
-    return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
+    return [
+      Date.now(),
+      Math.random().toString(16).slice(2),
+      Math.random().toString(16).slice(2)
+    ].join("-");
   }
 
-  function klevbyFeedReadProfileData() {
+  function klevbyFeedSupabaseGetViewerKey() {
     try {
-      const raw = localStorage.getItem(KLEVB_FEED_PROFILE_SETTINGS_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      const user = klevbyFeedGetCurrentUser();
-      const meta = user?.user_metadata || {};
+      let key = localStorage.getItem(KLEVB_FEED_VIEWER_KEY);
 
-      const fallbackName =
-        parsed.name ||
-        localStorage.getItem(KLEVB_FEED_PROFILE_NAME_KEY) ||
-        meta.username ||
-        meta.name ||
-        meta.full_name ||
-        user?.email?.split("@")?.[0] ||
-        "Рыбак";
+      if (!key || key.length < 12) {
+        key = `viewer_${klevbyFeedSupabaseMakeIdPart()}`;
+        localStorage.setItem(KLEVB_FEED_VIEWER_KEY, key);
+      }
 
-      return {
-        name: String(fallbackName || "Рыбак").trim(),
-        city: String(parsed.city || "").trim(),
-        telegram: String(parsed.telegram || "").trim(),
-        about: String(parsed.about || "").trim()
-      };
+      return key;
     } catch (error) {
-      return {
-        name: "Рыбак",
-        city: "",
-        telegram: "",
-        about: ""
-      };
+      return `viewer_${klevbyFeedSupabaseMakeIdPart()}`;
     }
   }
 
-  function klevbyGetProfileFeedItemsSafe() {
-    try {
-      if (typeof window.getProfileFeedItems === "function") {
-        const items = window.getProfileFeedItems();
+  function klevbyFeedSupabaseDataUrlToBlob(dataUrl) {
+    const value = String(dataUrl || "");
+    const parts = value.split(",");
 
-        return Array.isArray(items)
-          ? items
-              .filter(Boolean)
-              .map((item) => ({
-                ...item,
-                source: "local",
-                userId: klevbyFeedGetCurrentUser()?.id || ""
-              }))
-          : [];
-      }
-    } catch (error) {
-      console.warn("Klevby feed: не удалось получить локальные фото профиля", error);
+    if (parts.length < 2) {
+      throw new Error("Некорректный формат изображения.");
     }
 
-    return [];
-  }
+    const header = parts[0] || "";
+    const base64 = parts[1] || "";
+    const mimeMatch = header.match(/data:([^;]+);base64/i);
+    const mime = mimeMatch && mimeMatch[1] ? mimeMatch[1] : "image/jpeg";
 
-  function klevbyGetProfileFeedAvatarSafe(item = null) {
-    const itemAvatar =
-      item?.authorAvatar ||
-      item?.authorAvatarUrl ||
-      item?.avatar ||
-      item?.avatarUrl ||
-      "";
+    const binaryString = atob(base64);
+    const length = binaryString.length;
+    const bytes = new Uint8Array(length);
 
-    if (itemAvatar) {
-      return itemAvatar;
+    for (let i = 0; i < length; i += 1) {
+      bytes[i] = binaryString.charCodeAt(i);
     }
 
-    try {
-      return localStorage.getItem(KLEVB_FEED_PROFILE_AVATAR_KEY) || "";
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function klevbyGetProfileFeedSearchText(item) {
-    return klevbyFeedNormalizeText([
-      item?.type,
-      item?.authorName,
-      item?.authorCity,
-      item?.authorTelegram,
-      item?.title,
-      item?.caption,
-      item?.source,
-      "фото",
-      "рыбалка",
-      "профиль",
-      "отчет",
-      "отчёт",
-      "лента",
-      "соцсеть"
-    ].join(" "));
-  }
-
-  function klevbyGetFilteredProfileFeedItems(options = {}) {
-    const search = klevbyFeedNormalizeText(options.search);
-    const selectedCity = klevbyFeedNormalizeText(options.selectedCity);
-    const selectedType = klevbyFeedNormalizeText(options.selectedType);
-    const telegramOnly = Boolean(options.telegramOnly);
-
-    let items = klevbyGetProfileFeedItemsSafe();
-
-    items = items.filter((item) => {
-      if (!item || item.type !== "profile_photo" || !item.image) {
-        return false;
-      }
-
-      if (search && !klevbyGetProfileFeedSearchText(item).includes(search)) {
-        return false;
-      }
-
-      if (selectedCity && !klevbyFeedNormalizeText(item.authorCity).includes(selectedCity)) {
-        return false;
-      }
-
-      if (selectedType) {
-        const typeText = klevbyGetProfileFeedSearchText(item);
-
-        if (!typeText.includes(selectedType)) {
-          return false;
-        }
-      }
-
-      if (telegramOnly && !klevbyFeedCleanTelegram(item.authorTelegram)) {
-        return false;
-      }
-
-      return true;
+    return new Blob([bytes], {
+      type: mime
     });
-
-    return items;
   }
 
-  async function klevbyLoadSupabaseFeedItems() {
-    if (!window.klevbyFeedSupabase || typeof window.klevbyFeedSupabase.loadPosts !== "function") {
+  function klevbyFeedSupabaseNormalizePost(row) {
+    if (!row) return null;
+
+    return {
+      type: row.type || "profile_photo",
+      id: row.id,
+      userId: row.user_id || "",
+      authorName: row.author_name || "Рыбак",
+      authorCity: row.author_city || "",
+      authorTelegram: row.author_telegram || "",
+      authorAvatar: row.author_avatar_url || row.author_avatar || "",
+      authorAvatarUrl: row.author_avatar_url || row.author_avatar || "",
+      title: row.caption || "Фото с рыбалки",
+      caption: row.caption || "",
+      image: row.image_url || "",
+      imagePath: row.image_path || "",
+      imageUrl: row.image_url || "",
+      width: Number(row.image_width || 0),
+      height: Number(row.image_height || 0),
+      savedSizeKb: Number(row.image_size_kb || 0),
+      likesCount: Number(row.likes_count || 0),
+      commentsCount: Number(row.comments_count || 0),
+      viewsCount: Number(row.views_count || 0),
+      engagementScore: Number(row.engagement_score || 0),
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || "",
+      source: "supabase"
+    };
+  }
+
+  function klevbyFeedSupabaseDispatch(action, detail = {}) {
+    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+      detail: {
+        action,
+        ...detail
+      }
+    }));
+
+    if (typeof klevbyFeedRealtimeCallback === "function") {
+      try {
+        klevbyFeedRealtimeCallback({
+          action,
+          ...detail
+        });
+      } catch (error) {
+        console.warn("Klevby feed: callback realtime не сработал", error);
+      }
+    }
+  }
+
+  function klevbyFeedSupabaseGetPostSelectColumns(includeAvatar = true) {
+    const columns = [
+      "id",
+      "user_id",
+      "type",
+      "author_name",
+      "author_city",
+      "author_telegram",
+      "caption",
+      "image_path",
+      "image_url",
+      "image_width",
+      "image_height",
+      "image_size_kb",
+      "likes_count",
+      "comments_count",
+      "views_count",
+      "engagement_score",
+      "created_at",
+      "updated_at"
+    ];
+
+    if (includeAvatar) {
+      columns.push("author_avatar_url");
+    }
+
+    return columns.join(",");
+  }
+
+  async function klevbyRunFeedPostsQuery(db, limit) {
+    let result = await db
+      .from(KLEVB_FEED_TABLE)
+      .select(klevbyFeedSupabaseGetPostSelectColumns(true))
+      .order("engagement_score", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (
+      result.error &&
+      String(result.error.message || "").toLowerCase().includes("author_avatar")
+    ) {
+      result = await db
+        .from(KLEVB_FEED_TABLE)
+        .select(klevbyFeedSupabaseGetPostSelectColumns(false))
+        .order("engagement_score", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(limit);
+    }
+
+    if (
+      result.error &&
+      String(result.error.message || "").toLowerCase().includes("engagement_score")
+    ) {
+      result = await db
+        .from(KLEVB_FEED_TABLE)
+        .select(klevbyFeedSupabaseGetPostSelectColumns(false))
+        .order("created_at", { ascending: false })
+        .limit(limit);
+    }
+
+    return result;
+  }
+
+  async function klevbyLoadFeedPostsFromSupabase(options = {}) {
+    const db = klevbyFeedSupabaseGetClient();
+
+    if (!db) {
       return {
         ok: false,
         items: [],
-        error: new Error("feed-supabase.js ещё не готов")
+        error: new Error("Supabase ещё не готов")
       };
     }
 
-    try {
-      const result = await window.klevbyFeedSupabase.loadPosts({
-        limit: 40
-      });
+    const limit = Math.min(Math.max(Number(options.limit || 40), 1), 80);
 
-      if (!result || !result.ok) {
+    try {
+      const result = await klevbyRunFeedPostsQuery(db, limit);
+
+      if (result.error) {
+        console.error("Klevby feed: ошибка загрузки feed_posts", result.error);
+
         return {
           ok: false,
           items: [],
-          error: result?.error || new Error("Supabase-лента не загрузилась")
+          error: result.error
         };
       }
 
+      const items = Array.isArray(result.data)
+        ? result.data.map(klevbyFeedSupabaseNormalizePost).filter(Boolean)
+        : [];
+
       return {
         ok: true,
-        items: Array.isArray(result.items) ? result.items.filter(Boolean) : [],
+        items,
         error: null
       };
     } catch (error) {
-      console.warn("Klevby feed: Supabase-лента временно недоступна", error);
+      console.error("Klevby feed: ошибка загрузки Supabase-ленты", error);
 
       return {
         ok: false,
@@ -232,1375 +329,579 @@
     }
   }
 
-  async function klevbyGetFeedItemsForRender() {
-    const supabaseResult = await klevbyLoadSupabaseFeedItems();
+  async function klevbyCreateFeedPhotoPost(photoData = {}) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (supabaseResult.ok && supabaseResult.items.length) {
-      return {
-        source: "supabase",
-        items: supabaseResult.items
-      };
+    if (!db) {
+      throw new Error("Supabase ещё не готов. Обнови страницу.");
     }
 
-    const localItems = klevbyGetFilteredProfileFeedItems({});
+    const user = await klevbyFeedSupabaseEnsureUser();
 
-    if (localItems.length) {
-      return {
-        source: "local",
-        items: localItems
-      };
+    if (!user || !user.id) {
+      throw new Error("Сначала войди или создай профиль, чтобы фото было видно в общей ленте.");
     }
 
-    return {
-      source: supabaseResult.ok ? "supabase_empty" : "local_empty",
-      items: []
-    };
-  }
+    const dataUrl = String(photoData.dataUrl || photoData.src || "");
 
-  function klevbyFormatProfileFeedDate(value) {
-    if (!value) return "";
+    if (!dataUrl) {
+      throw new Error("Фото не найдено для загрузки.");
+    }
 
-    try {
-      return new Date(value).toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit"
+    const profile = klevbyFeedSupabaseReadProfileData();
+    const cleanTelegram = klevbyFeedSupabaseCleanTelegram(profile.telegram);
+    const blob = klevbyFeedSupabaseDataUrlToBlob(dataUrl);
+
+    if (blob.size > 5 * 1024 * 1024) {
+      throw new Error("Фото больше 5 МБ. Нужно выбрать фото меньше или сильнее сжать.");
+    }
+
+    const extension = blob.type === "image/webp"
+      ? "webp"
+      : blob.type === "image/png"
+        ? "png"
+        : "jpg";
+
+    const fileName = `${Date.now()}-${klevbyFeedSupabaseMakeIdPart()}.${extension}`;
+    const imagePath = `${user.id}/${fileName}`;
+
+    const uploadResult = await db.storage
+      .from(KLEVB_FEED_BUCKET)
+      .upload(imagePath, blob, {
+        cacheControl: "31536000",
+        contentType: blob.type || "image/jpeg",
+        upsert: false
       });
-    } catch (error) {
-      return "";
-    }
-  }
 
-  function klevbyOpenKlevbyProfileSafe() {
-    if (typeof window.openKlevbyProfile === "function") {
-      window.openKlevbyProfile();
-      return;
+    if (uploadResult.error) {
+      console.error("Klevby feed: ошибка загрузки фото в Storage", uploadResult.error);
+      throw new Error("Фото не загрузилось в Supabase Storage: " + uploadResult.error.message);
     }
 
-    if (typeof window.showSection === "function") {
-      window.showSection("profile");
-    }
-  }
+    const publicUrlResult = db.storage
+      .from(KLEVB_FEED_BUCKET)
+      .getPublicUrl(imagePath);
 
-  function klevbyCanManageFeedItem(item) {
-    if (!item) return false;
+    const imageUrl = publicUrlResult?.data?.publicUrl || "";
 
-    if (item.source === "local") {
-      return true;
+    if (!imageUrl) {
+      throw new Error("Supabase не вернул публичную ссылку на фото.");
     }
 
-    const user = klevbyFeedGetCurrentUser();
-    const userId = user?.id || "";
-
-    return Boolean(
-      klevbyFeedIsAdmin() ||
-      (userId && item.userId && String(userId) === String(item.userId))
-    );
-  }
-
-  function klevbyCanManageComment(comment) {
-    if (!comment) return false;
-
-    const user = klevbyFeedGetCurrentUser();
-    const userId = user?.id || "";
-
-    return Boolean(
-      klevbyFeedIsAdmin() ||
-      (userId && comment.user_id && String(userId) === String(comment.user_id))
-    );
-  }
-
-  function klevbyEnsureFeedStyles() {
-    if (document.getElementById("klevbyFeedStyles")) return;
-
-    const style = document.createElement("style");
-    style.id = "klevbyFeedStyles";
-    style.textContent = `
-      .profile-feed-avatar-img,
-      .profile-feed-avatar-fallback {
-        width: 38px;
-        height: 38px;
-        border-radius: 999px;
-        display: inline-flex;
-        flex: 0 0 auto;
-        border: 1px solid rgba(244,178,74,0.24);
-        box-shadow: 0 10px 24px rgba(0,0,0,0.25);
-      }
-
-      .profile-feed-avatar-img {
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-      }
-
-      .profile-feed-avatar-fallback {
-        align-items: center;
-        justify-content: center;
-        background: rgba(244,178,74,0.14);
-        color: #fff8ea;
-        font-weight: 900;
-      }
-
-      .profile-feed-author {
-        appearance: none;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0;
-        margin: 0 0 12px;
-        border: 0;
-        background: transparent;
-        color: inherit;
-        text-align: left;
-        cursor: pointer;
-      }
-
-      .profile-feed-author-text {
-        min-width: 0;
-        display: block;
-      }
-
-      .profile-feed-author-name {
-        display: block;
-        font-size: 14px;
-        font-weight: 900;
-        line-height: 1.2;
-        color: #fff8ea;
-      }
-
-      .profile-feed-author-action {
-        display: block;
-        margin-top: 3px;
-        font-size: 12px;
-        font-weight: 700;
-        color: rgba(255,248,234,0.56);
-      }
-
-      .profile-feed-description {
-        margin-top: 6px !important;
-      }
-
-      .profile-feed-tags {
-        margin-top: 14px;
-      }
-
-      .profile-feed-actions {
-        margin-top: 13px;
-      }
-
-      .profile-feed-actions .small-btn {
-        min-width: 0;
-      }
-
-      .profile-feed-comment-btn {
-        background: rgba(255,255,255,0.075) !important;
-        border-color: rgba(244,178,74,0.16) !important;
-        color: rgba(255,248,234,0.88) !important;
-      }
-
-      .home-empty-card {
-        grid-column: 1 / -1;
-        width: 100%;
-        padding: 22px;
-        border-radius: 26px;
-        border: 1px solid rgba(244,178,74,0.14);
-        background:
-          radial-gradient(circle at 0% 0%, rgba(244,178,74,0.14), transparent 38%),
-          rgba(13, 20, 17, 0.86);
-        box-shadow: 0 12px 32px rgba(0,0,0,0.34);
-      }
-
-      .home-empty-icon {
-        width: 54px;
-        height: 54px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 14px;
-        border-radius: 20px;
-        background: rgba(244,178,74,0.14);
-        font-size: 26px;
-      }
-
-      .home-empty-card h3 {
-        margin: 0 0 8px;
-        color: #fff8ea;
-        font-size: 22px;
-        line-height: 1.15;
-        font-weight: 900;
-      }
-
-      .home-empty-card p {
-        margin: 0 0 16px;
-        color: rgba(255,248,234,0.66);
-        font-size: 14px;
-        line-height: 1.5;
-        font-weight: 600;
-      }
-
-      .klevby-feed-viewer.hidden,
-      .klevby-feed-comment-modal.hidden {
-        display: none !important;
-      }
-
-      .klevby-feed-viewer,
-      .klevby-feed-comment-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
-      }
-
-      .klevby-feed-viewer-backdrop,
-      .klevby-feed-comment-backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.78);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-      }
-
-      .klevby-feed-viewer-sheet,
-      .klevby-feed-comment-sheet {
-        position: relative;
-        z-index: 2;
-        width: min(100%, 760px);
-        max-height: 90vh;
-        border: 1px solid rgba(244,178,74,0.18);
-        border-radius: 28px;
-        overflow: hidden;
-        background:
-          radial-gradient(circle at 50% 0%, rgba(244,178,74,0.12), transparent 42%),
-          rgba(10, 14, 12, 0.96);
-        box-shadow:
-          0 28px 90px rgba(0,0,0,0.72),
-          inset 0 1px 0 rgba(255,255,255,0.08);
-      }
-
-      .klevby-feed-viewer-close,
-      .klevby-feed-comment-close {
-        appearance: none;
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        z-index: 3;
-        width: 42px;
-        height: 42px;
-        border: 1px solid rgba(244,178,74,0.18);
-        border-radius: 16px;
-        background: rgba(0,0,0,0.45);
-        color: #fff8ea;
-        font-size: 28px;
-        line-height: 1;
-        font-weight: 900;
-        cursor: pointer;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-      }
-
-      .klevby-feed-viewer-image {
-        width: 100%;
-        max-height: 72vh;
-        display: block;
-        object-fit: contain;
-        background: #050807;
-      }
-
-      .klevby-feed-viewer-info {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 14px;
-        color: #fff8ea;
-      }
-
-      .klevby-feed-viewer-info strong {
-        display: block;
-        font-size: 15px;
-        font-weight: 900;
-        line-height: 1.25;
-      }
-
-      .klevby-feed-viewer-info span {
-        display: block;
-        margin-top: 4px;
-        color: rgba(255,248,234,0.55);
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .klevby-feed-viewer-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
-
-      .klevby-feed-viewer-actions button {
-        appearance: none;
-        min-height: 40px;
-        padding: 0 14px;
-        border-radius: 15px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: 900;
-        cursor: pointer;
-        white-space: nowrap;
-        transition: 0.18s ease;
-      }
-
-      #klevbyFeedViewerLikeBtn,
-      #klevbyFeedViewerCommentBtn {
-        border: 1px solid rgba(244,178,74,0.20);
-        background: rgba(244,178,74,0.18);
-        color: #fff8ea !important;
-      }
-
-      #klevbyFeedViewerDeleteBtn {
-        border: 1px solid rgba(228,88,88,0.24);
-        background: rgba(228,88,88,0.92);
-      }
-
-      #klevbyFeedViewerDeleteBtn.hidden,
-      #klevbyFeedViewerLikeBtn.hidden,
-      #klevbyFeedViewerCommentBtn.hidden {
-        display: none !important;
-      }
-
-      .klevby-feed-comment-sheet {
-        width: min(100%, 620px);
-        padding: 22px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .klevby-feed-comment-sheet h3 {
-        margin: 0 44px 8px 0;
-        color: #fff8ea;
-        font-size: 22px;
-        line-height: 1.18;
-        font-weight: 900;
-      }
-
-      .klevby-feed-comment-sheet p {
-        margin: 0 0 14px;
-        color: rgba(255,248,234,0.62);
-        font-size: 13px;
-        line-height: 1.5;
-        font-weight: 650;
-      }
-
-      .klevby-feed-comments-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 280px;
-        overflow-y: auto;
-        margin: 0 0 14px;
-        padding: 4px 2px 2px;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .klevby-feed-comment-item {
-        padding: 12px;
-        border-radius: 18px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(244,178,74,0.11);
-      }
-
-      .klevby-feed-comment-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 7px;
-      }
-
-      .klevby-feed-comment-author {
-        display: block;
-        color: #fff8ea;
-        font-size: 13px;
-        line-height: 1.2;
-        font-weight: 900;
-      }
-
-      .klevby-feed-comment-date {
-        display: block;
-        margin-top: 2px;
-        color: rgba(255,248,234,0.45);
-        font-size: 11px;
-        line-height: 1.2;
-        font-weight: 700;
-      }
-
-      .klevby-feed-comment-delete {
-        appearance: none;
-        border: 1px solid rgba(228,88,88,0.22);
-        background: rgba(228,88,88,0.12);
-        color: #ffd2d2;
-        border-radius: 999px;
-        min-height: 28px;
-        padding: 0 10px;
-        font-size: 11px;
-        line-height: 1;
-        font-weight: 900;
-        cursor: pointer;
-        flex: 0 0 auto;
-      }
-
-      .klevby-feed-comment-text {
-        margin: 0;
-        color: rgba(255,248,234,0.82);
-        font-size: 13px;
-        line-height: 1.5;
-        font-weight: 650;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      .klevby-feed-comments-empty {
-        padding: 14px;
-        border-radius: 18px;
-        background: rgba(255,255,255,0.045);
-        border: 1px dashed rgba(244,178,74,0.16);
-        color: rgba(255,248,234,0.62);
-        font-size: 13px;
-        line-height: 1.5;
-        font-weight: 700;
-      }
-
-      .klevby-feed-comment-textarea {
-        width: 100%;
-        min-height: 110px;
-        resize: vertical;
-        padding: 14px;
-        border-radius: 20px;
-        border: 1px solid rgba(244,178,74,0.16);
-        outline: none;
-        background: rgba(255,255,255,0.07);
-        color: #fff8ea;
-        font: inherit;
-        font-size: 15px;
-        line-height: 1.5;
-        font-weight: 650;
-      }
-
-      .klevby-feed-comment-textarea::placeholder {
-        color: rgba(255,248,234,0.42);
-      }
-
-      .klevby-feed-comment-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 14px;
-      }
-
-      .klevby-feed-comment-actions .small-btn {
-        flex: 1;
-      }
-
-      .klevby-feed-comment-message {
-        min-height: 22px;
-        margin-top: 12px;
-        color: rgba(255,248,234,0.62);
-        font-size: 13px;
-        line-height: 1.45;
-        font-weight: 700;
-      }
-
-      .klevby-feed-comment-message.error-line {
-        color: #ffd2d2;
-        background: transparent;
-        border: 0;
-        padding: 0;
-        box-shadow: none;
-      }
-
-      @media (max-width: 520px) {
-        .profile-feed-actions {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-        }
-
-        .profile-feed-actions .small-btn:first-child {
-          grid-column: 1 / -1;
-        }
-
-        .klevby-feed-viewer {
-          align-items: center;
-          padding: 12px;
-        }
-
-        .klevby-feed-viewer-sheet {
-          border-radius: 24px;
-          max-height: 88vh;
-        }
-
-        .klevby-feed-viewer-image {
-          max-height: 62vh;
-        }
-
-        .klevby-feed-viewer-info {
-          align-items: flex-start;
-          flex-direction: column;
-        }
-
-        .klevby-feed-viewer-actions {
-          width: 100%;
-          justify-content: stretch;
-        }
-
-        .klevby-feed-viewer-actions button {
-          flex: 1;
-        }
-
-        .klevby-feed-comment-modal {
-          align-items: flex-end;
-          padding: 12px;
-        }
-
-        .klevby-feed-comment-sheet {
-          border-radius: 24px;
-          padding: 20px;
-          max-height: 88vh;
-        }
-
-        .klevby-feed-comments-list {
-          max-height: 260px;
-        }
-      }
-    `;
-
-    document.body.appendChild(style);
-  }
-
-  function klevbyProfilePhotoCardHtml(item) {
-    const safeId = klevbyFeedEscapeAttr(item?.id || "");
-    const safeImage = klevbyFeedEscapeAttr(item?.image || item?.imageUrl || "");
-    const authorName = item?.authorName || "Рыбак";
-    const authorCity = item?.authorCity || "";
-    const title = item?.title || item?.caption || "Фото с рыбалки";
-    const likesCount = Number(item?.likesCount || 0);
-    const commentsCount = Number(item?.commentsCount || 0);
-    const date = klevbyFormatProfileFeedDate(item?.createdAt);
-    const avatar = klevbyGetProfileFeedAvatarSafe(item);
-    const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
-    const isSupabase = item?.source === "supabase";
-
-    const avatarHtml = avatar
-      ? `<span class="profile-feed-avatar-img" style="background-image: url('${klevbyFeedEscapeAttr(avatar)}');" aria-hidden="true"></span>`
-      : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${klevbyFeedEscapeHtml(authorInitial)}</span>`;
-
-    const likeButton = isSupabase
-      ? `<button class="small-btn gray" type="button" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
-      : `<button class="small-btn gray" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
-
-    const commentButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">${commentsCount ? `💬 ${commentsCount}` : "💬 Комментарии"}</button>`
-      : `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
-
-    return `
-      <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${safeImage}')"></div>
-
-        <div class="card-body profile-feed-body">
-          <button
-            class="profile-feed-author"
-            type="button"
-            onclick="event.stopPropagation(); openKlevbyProfileSafe()"
-            aria-label="Открыть профиль автора"
-          >
-            ${avatarHtml}
-
-            <span class="profile-feed-author-text">
-              <span class="profile-feed-author-name">${klevbyFeedEscapeHtml(authorName)}</span>
-              <span class="profile-feed-author-action">добавил фото с рыбалки</span>
-            </span>
-          </button>
-
-          <div class="trip-title profile-feed-title">
-            <span class="trip-name">${klevbyFeedEscapeHtml(authorName)}</span>
-            <span> добавил </span>
-            <span class="trip-destination">${klevbyFeedEscapeHtml(title)}</span>
-          </div>
-
-          <p class="trip-description profile-feed-description">
-            Новое фото в ленте Klevby. Можно поставить лайк или открыть комментарии.
-          </p>
-
-          <div class="tags profile-feed-tags">
-            ${authorCity ? `<span class="tag">📍 ${klevbyFeedEscapeHtml(authorCity)}</span>` : ""}
-            ${date ? `<span class="tag">🕒 ${klevbyFeedEscapeHtml(date)}</span>` : ""}
-          </div>
-
-          <div class="actions profile-feed-actions">
-            <button class="small-btn green" type="button" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть</button>
-            ${likeButton}
-            ${commentButton}
-          </div>
-        </div>
-      </article>
-    `;
-  }
-
-  function klevbyProfileFeedEmptyHtml() {
-    return `
-      <div class="home-empty-card">
-        <div class="home-empty-icon">📸</div>
-        <h3>В ленте пока нет фото</h3>
-        <p>Добавь первое фото в профиле — оно появится в общей ленте Klevby.</p>
-        <div class="actions">
-          <button class="small-btn green" type="button" onclick="openKlevbyProfileSafe()">Открыть профиль</button>
-          <button class="small-btn gray" type="button" onclick="setMode('all')">Напарники</button>
-        </div>
-      </div>
-    `;
-  }
-
-  function klevbyProfileFeedLoadingHtml() {
-    return `
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-    `;
-  }
-
-  async function klevbyRenderProfileFeed() {
-    const list = document.getElementById("profileFeedSection");
-    if (!list) return;
-
-    klevbyEnsureFeedStyles();
-
-    const renderToken = ++klevbyFeedRenderToken;
-
-    if (!klevbyFeedLastItems.length) {
-      list.innerHTML = klevbyProfileFeedLoadingHtml();
+    const caption = String(
+      photoData.caption ||
+      photoData.title ||
+      "Фото с рыбалки"
+    ).trim();
+
+    const payload = {
+      user_id: user.id,
+      type: "profile_photo",
+      author_name: profile.name || "Рыбак",
+      author_city: profile.city || "",
+      author_telegram: cleanTelegram,
+      caption: caption || "Фото с рыбалки",
+      image_path: imagePath,
+      image_url: imageUrl,
+      image_width: Number(photoData.width || 0),
+      image_height: Number(photoData.height || 0),
+      image_size_kb: Number(photoData.sizeKb || photoData.savedSizeKb || Math.round(blob.size / 1024) || 0)
+    };
+
+    if (profile.avatar) {
+      payload.author_avatar_url = profile.avatar;
     }
 
-    const result = await klevbyGetFeedItemsForRender();
+    let insertResult = await db
+      .from(KLEVB_FEED_TABLE)
+      .insert([payload])
+      .select(klevbyFeedSupabaseGetPostSelectColumns(true))
+      .single();
 
-    if (renderToken !== klevbyFeedRenderToken) {
-      return;
+    if (
+      insertResult.error &&
+      String(insertResult.error.message || "").toLowerCase().includes("author_avatar")
+    ) {
+      delete payload.author_avatar_url;
+
+      insertResult = await db
+        .from(KLEVB_FEED_TABLE)
+        .insert([payload])
+        .select(klevbyFeedSupabaseGetPostSelectColumns(false))
+        .single();
     }
 
-    const items = Array.isArray(result.items) ? result.items : [];
+    if (insertResult.error) {
+      console.error("Klevby feed: запись feed_posts не создалась", insertResult.error);
 
-    klevbyFeedLastItems = items;
-    klevbyFeedItemsCache = {};
-
-    items.forEach((item) => {
-      if (item && item.id) {
-        klevbyFeedItemsCache[String(item.id)] = item;
+      try {
+        await db.storage
+          .from(KLEVB_FEED_BUCKET)
+          .remove([imagePath]);
+      } catch (removeError) {
+        console.warn("Klevby feed: не удалось удалить фото после ошибки записи", removeError);
       }
+
+      throw new Error("Пост ленты не создался: " + insertResult.error.message);
+    }
+
+    const item = klevbyFeedSupabaseNormalizePost(insertResult.data);
+
+    klevbyFeedSupabaseDispatch("created", {
+      item,
+      postId: item?.id || ""
     });
 
-    if (!items.length) {
-      list.innerHTML = klevbyProfileFeedEmptyHtml();
-      return;
-    }
-
-    const cards = items
-      .map((item) => {
-        try {
-          return klevbyProfilePhotoCardHtml(item);
-        } catch (error) {
-          console.error("Ошибка отрисовки фото ленты:", item, error);
-          return "";
-        }
-      })
-      .filter(Boolean)
-      .join("");
-
-    list.innerHTML = cards || klevbyProfileFeedEmptyHtml();
+    return item;
   }
 
-  function klevbyRefreshFeedIfHomeVisible() {
-    const homeSection = document.getElementById("homeSection");
+  async function klevbyDeleteFeedPostFromSupabase(postId, imagePath = "") {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (homeSection && !homeSection.classList.contains("hidden")) {
-      klevbyRenderProfileFeed();
+    if (!db) {
+      throw new Error("Supabase ещё не готов.");
     }
+
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      throw new Error("Не указан id поста.");
+    }
+
+    const { error } = await db
+      .from(KLEVB_FEED_TABLE)
+      .delete()
+      .eq("id", cleanPostId);
+
+    if (error) {
+      console.error("Klevby feed: ошибка удаления feed_posts", error);
+      throw new Error("Не получилось удалить пост: " + error.message);
+    }
+
+    if (imagePath) {
+      try {
+        await db.storage
+          .from(KLEVB_FEED_BUCKET)
+          .remove([imagePath]);
+      } catch (storageError) {
+        console.warn("Klevby feed: пост удалён, но файл Storage удалить не получилось", storageError);
+      }
+    }
+
+    klevbyFeedSupabaseDispatch("deleted", {
+      postId: cleanPostId
+    });
+
+    return true;
   }
 
-  function ensureKlevbyFeedPhotoViewer() {
-    klevbyEnsureFeedStyles();
+  async function klevbyToggleFeedLike(postId) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    let viewer = document.getElementById("klevbyFeedPhotoViewer");
-
-    if (viewer) return viewer;
-
-    viewer = document.createElement("div");
-    viewer.id = "klevbyFeedPhotoViewer";
-    viewer.className = "klevby-feed-viewer hidden";
-    viewer.setAttribute("role", "dialog");
-    viewer.setAttribute("aria-modal", "true");
-
-    viewer.innerHTML = `
-      <div class="klevby-feed-viewer-backdrop" onclick="closeFeedPhotoViewer()"></div>
-      <div class="klevby-feed-viewer-sheet">
-        <button class="klevby-feed-viewer-close" type="button" onclick="closeFeedPhotoViewer()" aria-label="Закрыть фото">×</button>
-        <img id="klevbyFeedPhotoViewerImage" class="klevby-feed-viewer-image" alt="Фото из ленты">
-        <div class="klevby-feed-viewer-info">
-          <div>
-            <strong id="klevbyFeedPhotoViewerTitle">Фото с рыбалки</strong>
-            <span id="klevbyFeedPhotoViewerMeta">Лента Klevby</span>
-          </div>
-
-          <div class="klevby-feed-viewer-actions">
-            <button id="klevbyFeedViewerLikeBtn" type="button">👍 0</button>
-            <button id="klevbyFeedViewerCommentBtn" type="button">💬 Комментарии</button>
-            <button id="klevbyFeedViewerDeleteBtn" type="button">Удалить</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(viewer);
-
-    return viewer;
-  }
-
-  function klevbyOpenProfilePhotoFeedItem(photoId) {
-    const cleanId = String(photoId || "");
-    const cachedItem = klevbyFeedItemsCache[cleanId];
-
-    if (cachedItem) {
-      openKlevbyFeedPhotoViewer(cachedItem);
-      return;
+    if (!db) {
+      throw new Error("Supabase ещё не готов.");
     }
 
-    if (typeof window.openProfilePhotoViewer === "function") {
-      window.openProfilePhotoViewer(cleanId);
-      return;
+    const user = await klevbyFeedSupabaseEnsureUser();
+
+    if (!user || !user.id) {
+      throw new Error("Сначала войди, чтобы поставить лайк.");
     }
 
-    klevbyOpenKlevbyProfileSafe();
-  }
+    const cleanPostId = String(postId || "").trim();
 
-  function openKlevbyFeedPhotoViewer(item) {
-    if (!item) return;
-
-    const viewer = ensureKlevbyFeedPhotoViewer();
-    const image = document.getElementById("klevbyFeedPhotoViewerImage");
-    const title = document.getElementById("klevbyFeedPhotoViewerTitle");
-    const meta = document.getElementById("klevbyFeedPhotoViewerMeta");
-    const deleteButton = document.getElementById("klevbyFeedViewerDeleteBtn");
-    const likeButton = document.getElementById("klevbyFeedViewerLikeBtn");
-    const commentButton = document.getElementById("klevbyFeedViewerCommentBtn");
-
-    const imageUrl = item.image || item.imageUrl || "";
-    const titleText = item.title || item.caption || "Фото с рыбалки";
-    const dateText = klevbyFormatProfileFeedDate(item.createdAt);
-    const cityText = item.authorCity ? `📍 ${item.authorCity}` : "";
-    const likesText = item.source === "supabase" ? `👍 ${Number(item.likesCount || 0)}` : "";
-    const commentsText = item.source === "supabase" ? `💬 ${Number(item.commentsCount || 0)}` : "";
-
-    if (image) image.src = imageUrl;
-    if (title) title.textContent = titleText;
-
-    if (meta) {
-      meta.textContent = [
-        cityText,
-        dateText,
-        likesText,
-        commentsText
-      ].filter(Boolean).join(" • ");
+    if (!cleanPostId) {
+      throw new Error("Не указан id поста.");
     }
 
-    if (deleteButton) {
-      const canDelete = klevbyCanManageFeedItem(item);
+    const existing = await db
+      .from(KLEVB_FEED_LIKES_TABLE)
+      .select("id")
+      .eq("post_id", cleanPostId)
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-      deleteButton.classList.toggle("hidden", !canDelete);
-      deleteButton.onclick = () => klevbyDeleteFeedItem(item);
+    if (existing.error) {
+      console.error("Klevby feed: ошибка проверки лайка", existing.error);
+      throw new Error("Не получилось проверить лайк: " + existing.error.message);
     }
 
-    if (likeButton) {
-      const isSupabase = item.source === "supabase";
+    if (existing.data && existing.data.id) {
+      const removeResult = await db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .delete()
+        .eq("id", existing.data.id);
 
-      likeButton.classList.toggle("hidden", !isSupabase);
-      likeButton.textContent = `👍 ${Number(item.likesCount || 0)}`;
-      likeButton.onclick = () => klevbyToggleFeedLikeFromViewer(item.id);
-    }
+      if (removeResult.error) {
+        console.error("Klevby feed: ошибка удаления лайка", removeResult.error);
+        throw new Error("Не получилось убрать лайк: " + removeResult.error.message);
+      }
 
-    if (commentButton) {
-      const isSupabase = item.source === "supabase";
-
-      commentButton.classList.toggle("hidden", !isSupabase);
-      commentButton.textContent = item.commentsCount ? `💬 ${Number(item.commentsCount || 0)}` : "💬 Комментарии";
-      commentButton.onclick = () => klevbyOpenFeedCommentModal(item.id);
-    }
-
-    viewer.classList.remove("hidden");
-    document.body.classList.add("post-modal-open");
-
-    if (item.source === "supabase" && typeof window.klevbyRegisterFeedView === "function") {
-      window.klevbyRegisterFeedView(item.id).then((added) => {
-        if (added) {
-          setTimeout(klevbyRenderProfileFeed, 550);
-        }
+      klevbyFeedSupabaseDispatch("like_removed", {
+        postId: cleanPostId
       });
+
+      return {
+        liked: false
+      };
     }
 
-    if (navigator.vibrate) {
-      navigator.vibrate(10);
-    }
-  }
+    const addResult = await db
+      .from(KLEVB_FEED_LIKES_TABLE)
+      .insert([{
+        post_id: cleanPostId,
+        user_id: user.id
+      }]);
 
-  function closeKlevbyFeedPhotoViewer() {
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
-    const image = document.getElementById("klevbyFeedPhotoViewerImage");
-
-    if (viewer) {
-      viewer.classList.add("hidden");
-    }
-
-    if (image) {
-      image.removeAttribute("src");
+    if (addResult.error) {
+      console.error("Klevby feed: ошибка добавления лайка", addResult.error);
+      throw new Error("Не получилось поставить лайк: " + addResult.error.message);
     }
 
-    document.body.classList.remove("post-modal-open");
-  }
-
-  function ensureKlevbyFeedCommentModal() {
-    klevbyEnsureFeedStyles();
-
-    let modal = document.getElementById("klevbyFeedCommentModal");
-
-    if (modal) return modal;
-
-    modal = document.createElement("div");
-    modal.id = "klevbyFeedCommentModal";
-    modal.className = "klevby-feed-comment-modal hidden";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-
-    modal.innerHTML = `
-      <div class="klevby-feed-comment-backdrop" onclick="closeFeedCommentModal()"></div>
-      <div class="klevby-feed-comment-sheet">
-        <button class="klevby-feed-comment-close" type="button" onclick="closeFeedCommentModal()" aria-label="Закрыть комментарии">×</button>
-
-        <h3>Комментарии</h3>
-        <p id="klevbyFeedCommentSubtitle">Смотри отзывы рыбаков и добавляй свой.</p>
-
-        <div id="klevbyFeedCommentsList" class="klevby-feed-comments-list">
-          <div class="klevby-feed-comments-empty">Загружаем комментарии...</div>
-        </div>
-
-        <textarea
-          id="klevbyFeedCommentText"
-          class="klevby-feed-comment-textarea"
-          maxlength="700"
-          placeholder="Напиши свой комментарий..."
-        ></textarea>
-
-        <div class="klevby-feed-comment-actions">
-          <button class="small-btn green" type="button" onclick="submitFeedComment()">Отправить</button>
-          <button class="small-btn gray" type="button" onclick="closeFeedCommentModal()">Закрыть</button>
-        </div>
-
-        <div id="klevbyFeedCommentMessage" class="klevby-feed-comment-message"></div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    return modal;
-  }
-
-  function klevbyCommentHtml(comment) {
-    const authorName = comment?.author_name || "Рыбак";
-    const city = comment?.author_city || "";
-    const text = comment?.text || "";
-    const date = klevbyFormatProfileFeedDate(comment?.created_at);
-    const canDelete = klevbyCanManageComment(comment);
-
-    return `
-      <div class="klevby-feed-comment-item">
-        <div class="klevby-feed-comment-top">
-          <div>
-            <span class="klevby-feed-comment-author">
-              ${klevbyFeedEscapeHtml(authorName)}
-              ${city ? ` · ${klevbyFeedEscapeHtml(city)}` : ""}
-            </span>
-            ${date ? `<span class="klevby-feed-comment-date">${klevbyFeedEscapeHtml(date)}</span>` : ""}
-          </div>
-
-          ${
-            canDelete
-              ? `<button class="klevby-feed-comment-delete" type="button" onclick="deleteFeedComment('${klevbyFeedEscapeAttr(comment.id || "")}')">Удалить</button>`
-              : ""
-          }
-        </div>
-
-        <p class="klevby-feed-comment-text">${klevbyFeedEscapeHtml(text)}</p>
-      </div>
-    `;
-  }
-
-  async function klevbyRunLoadFeedComments(postId) {
-    if (typeof window.klevbyLoadFeedComments === "function") {
-      return window.klevbyLoadFeedComments(postId);
-    }
-
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.loadComments === "function"
-    ) {
-      return window.klevbyFeedSupabase.loadComments(postId);
-    }
+    klevbyFeedSupabaseDispatch("like_added", {
+      postId: cleanPostId
+    });
 
     return {
-      ok: false,
-      comments: [],
-      error: new Error("Загрузка комментариев ещё не подключена.")
+      liked: true
     };
   }
 
-  async function klevbyLoadCommentsIntoModal(postId) {
-    const list = document.getElementById("klevbyFeedCommentsList");
-    const message = document.getElementById("klevbyFeedCommentMessage");
+  async function klevbyLoadFeedComments(postId) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (!list) return;
-
-    list.innerHTML = `<div class="klevby-feed-comments-empty">Загружаем комментарии...</div>`;
-
-    try {
-      const result = await klevbyRunLoadFeedComments(postId);
-
-      if (!result || !result.ok) {
-        const errorMessage = result?.error?.message || "Не удалось загрузить комментарии.";
-
-        list.innerHTML = `<div class="klevby-feed-comments-empty">${klevbyFeedEscapeHtml(errorMessage)}</div>`;
-        return;
-      }
-
-      const comments = Array.isArray(result.comments) ? result.comments : [];
-
-      if (!comments.length) {
-        list.innerHTML = `<div class="klevby-feed-comments-empty">Комментариев пока нет. Напиши первый.</div>`;
-        return;
-      }
-
-      list.innerHTML = comments.map(klevbyCommentHtml).join("");
-
-      requestAnimationFrame(() => {
-        list.scrollTop = list.scrollHeight;
-      });
-
-      if (message) {
-        message.textContent = "";
-        message.classList.remove("error-line");
-      }
-    } catch (error) {
-      console.warn("Klevby feed: комментарии не загрузились", error);
-      list.innerHTML = `<div class="klevby-feed-comments-empty">${klevbyFeedEscapeHtml(error?.message || "Не удалось загрузить комментарии.")}</div>`;
+    if (!db) {
+      return {
+        ok: false,
+        comments: [],
+        error: new Error("Supabase ещё не готов")
+      };
     }
+
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return {
+        ok: false,
+        comments: [],
+        error: new Error("Не указан id поста")
+      };
+    }
+
+    const { data, error } = await db
+      .from(KLEVB_FEED_COMMENTS_TABLE)
+      .select(`
+        id,
+        post_id,
+        user_id,
+        author_name,
+        author_city,
+        author_telegram,
+        text,
+        created_at,
+        updated_at
+      `)
+      .eq("post_id", cleanPostId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Klevby feed: ошибка загрузки комментариев", error);
+
+      return {
+        ok: false,
+        comments: [],
+        error
+      };
+    }
+
+    return {
+      ok: true,
+      comments: Array.isArray(data) ? data : [],
+      error: null
+    };
   }
 
-  function klevbyOpenFeedCommentModal(postId) {
-    const cleanId = String(postId || "");
-    const item = klevbyFeedItemsCache[cleanId];
+  async function klevbyAddFeedComment(postId, text) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (!item) {
-      alert("Фото не найдено в ленте. Обнови страницу и попробуй ещё раз.");
-      return;
+    if (!db) {
+      throw new Error("Supabase ещё не готов.");
     }
 
-    if (item.source !== "supabase") {
-      alert("Это фото ещё локальное. Комментарии работают для фото из общей ленты.");
-      return;
+    const user = await klevbyFeedSupabaseEnsureUser();
+
+    if (!user || !user.id) {
+      throw new Error("Сначала войди, чтобы оставить комментарий.");
     }
 
-    const modal = ensureKlevbyFeedCommentModal();
-    const textarea = document.getElementById("klevbyFeedCommentText");
-    const message = document.getElementById("klevbyFeedCommentMessage");
-    const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
+    const cleanPostId = String(postId || "").trim();
+    const cleanText = String(text || "").trim();
 
-    modal.dataset.postId = cleanId;
-
-    if (textarea) textarea.value = "";
-    if (message) {
-      message.textContent = "";
-      message.classList.remove("error-line");
+    if (!cleanPostId) {
+      throw new Error("Не указан id поста.");
     }
 
-    if (subtitle) {
-      subtitle.textContent = `${item.authorName || "Рыбак"} добавил фото. Ниже комментарии и поле для твоего отзыва.`;
+    if (!cleanText) {
+      throw new Error("Комментарий пустой.");
     }
 
-    modal.classList.remove("hidden");
-    document.body.classList.add("post-modal-open");
+    if (cleanText.length > 700) {
+      throw new Error("Комментарий слишком длинный. Максимум 700 символов.");
+    }
 
-    klevbyLoadCommentsIntoModal(cleanId);
+    const profile = klevbyFeedSupabaseReadProfileData();
 
-    setTimeout(() => {
-      if (textarea) textarea.focus({ preventScroll: true });
-    }, 220);
+    const { data, error } = await db
+      .from(KLEVB_FEED_COMMENTS_TABLE)
+      .insert([{
+        post_id: cleanPostId,
+        user_id: user.id,
+        author_name: profile.name || "Рыбак",
+        author_city: profile.city || "",
+        author_telegram: klevbyFeedSupabaseCleanTelegram(profile.telegram),
+        text: cleanText
+      }])
+      .select(`
+        id,
+        post_id,
+        user_id,
+        author_name,
+        author_city,
+        author_telegram,
+        text,
+        created_at,
+        updated_at
+      `)
+      .single();
+
+    if (error) {
+      console.error("Klevby feed: ошибка добавления комментария", error);
+      throw new Error("Не получилось добавить комментарий: " + error.message);
+    }
+
+    klevbyFeedSupabaseDispatch("comment_added", {
+      postId: cleanPostId,
+      comment: data
+    });
+
+    return data;
   }
 
-  function closeKlevbyFeedCommentModal() {
-    const modal = document.getElementById("klevbyFeedCommentModal");
+  async function klevbyDeleteFeedComment(commentId) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (modal) {
-      modal.classList.add("hidden");
-      modal.dataset.postId = "";
+    if (!db) {
+      throw new Error("Supabase ещё не готов.");
     }
-
-    document.body.classList.remove("post-modal-open");
-  }
-
-  async function klevbyRunAddFeedComment(postId, text) {
-    if (typeof window.klevbyAddFeedComment === "function") {
-      return window.klevbyAddFeedComment(postId, text);
-    }
-
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.addComment === "function"
-    ) {
-      return window.klevbyFeedSupabase.addComment(postId, text);
-    }
-
-    throw new Error("Комментарии ещё не подключены в feed-supabase.js.");
-  }
-
-  async function klevbySubmitFeedComment() {
-    const modal = document.getElementById("klevbyFeedCommentModal");
-    const textarea = document.getElementById("klevbyFeedCommentText");
-    const message = document.getElementById("klevbyFeedCommentMessage");
-
-    if (!modal || !textarea) return;
-
-    const postId = String(modal.dataset.postId || "");
-    const text = String(textarea.value || "").trim();
-
-    if (!postId) {
-      if (message) {
-        message.textContent = "Фото не найдено. Закрой окно и попробуй ещё раз.";
-        message.classList.add("error-line");
-      }
-      return;
-    }
-
-    if (!text) {
-      if (message) {
-        message.textContent = "Напиши комментарий перед отправкой.";
-        message.classList.add("error-line");
-      }
-      textarea.focus();
-      return;
-    }
-
-    if (text.length > 700) {
-      if (message) {
-        message.textContent = "Комментарий слишком длинный. Сделай короче.";
-        message.classList.add("error-line");
-      }
-      textarea.focus();
-      return;
-    }
-
-    if (message) {
-      message.textContent = "Отправляем комментарий...";
-      message.classList.remove("error-line");
-    }
-
-    try {
-      await klevbyRunAddFeedComment(postId, text);
-
-      textarea.value = "";
-
-      if (message) {
-        message.textContent = "✅ Комментарий отправлен.";
-        message.classList.remove("error-line");
-      }
-
-      if (navigator.vibrate) {
-        navigator.vibrate(16);
-      }
-
-      await klevbyLoadCommentsIntoModal(postId);
-      await klevbyRenderProfileFeed();
-    } catch (error) {
-      console.warn("Klevby feed: комментарий не отправился", error);
-
-      if (message) {
-        message.textContent = error?.message || "Не получилось отправить комментарий.";
-        message.classList.add("error-line");
-      }
-    }
-  }
-
-  async function klevbyDeleteFeedCommentFromModal(commentId) {
-    const modal = document.getElementById("klevbyFeedCommentModal");
-    const message = document.getElementById("klevbyFeedCommentMessage");
-    const postId = String(modal?.dataset?.postId || "");
 
     const cleanCommentId = String(commentId || "").trim();
 
-    if (!cleanCommentId) return;
-
-    if (!confirm("Удалить комментарий?")) {
-      return;
+    if (!cleanCommentId) {
+      throw new Error("Не указан id комментария.");
     }
 
-    try {
-      if (typeof window.klevbyDeleteFeedComment === "function") {
-        await window.klevbyDeleteFeedComment(cleanCommentId);
-      } else if (
-        window.klevbyFeedSupabase &&
-        typeof window.klevbyFeedSupabase.deleteComment === "function"
-      ) {
-        await window.klevbyFeedSupabase.deleteComment(cleanCommentId);
-      } else {
-        throw new Error("Удаление комментариев ещё не подключено.");
-      }
+    const { error } = await db
+      .from(KLEVB_FEED_COMMENTS_TABLE)
+      .delete()
+      .eq("id", cleanCommentId);
 
-      if (message) {
-        message.textContent = "Комментарий удалён.";
-        message.classList.remove("error-line");
-      }
-
-      if (postId) {
-        await klevbyLoadCommentsIntoModal(postId);
-      }
-
-      await klevbyRenderProfileFeed();
-    } catch (error) {
-      console.warn("Klevby feed: комментарий не удалился", error);
-
-      if (message) {
-        message.textContent = error?.message || "Не получилось удалить комментарий.";
-        message.classList.add("error-line");
-      }
+    if (error) {
+      console.error("Klevby feed: ошибка удаления комментария", error);
+      throw new Error("Не получилось удалить комментарий: " + error.message);
     }
+
+    klevbyFeedSupabaseDispatch("comment_deleted", {
+      commentId: cleanCommentId
+    });
+
+    return true;
   }
 
-  async function klevbyDeleteFeedItem(item) {
-    if (!item || !item.id) return;
+  async function klevbyRegisterFeedView(postId) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (!confirm("Удалить фото из ленты? Это действие нельзя отменить.")) {
-      return;
+    if (!db) {
+      return false;
     }
 
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return false;
+    }
+
+    const user = klevbyFeedSupabaseGetCurrentUser();
+    const viewerKey = user && user.id
+      ? `user_${user.id}`
+      : klevbyFeedSupabaseGetViewerKey();
+
     try {
-      if (item.source === "supabase") {
-        if (typeof window.klevbyDeleteFeedPostFromSupabase !== "function") {
-          alert("Модуль удаления Supabase ещё не готов.");
-          return;
+      const { error } = await db
+        .from(KLEVB_FEED_VIEWS_TABLE)
+        .insert([{
+          post_id: cleanPostId,
+          user_id: user?.id || null,
+          viewer_key: viewerKey
+        }]);
+
+      if (error) {
+        const message = String(error.message || "").toLowerCase();
+
+        if (
+          message.includes("duplicate") ||
+          message.includes("unique") ||
+          error.code === "23505"
+        ) {
+          return false;
         }
 
-        await window.klevbyDeleteFeedPostFromSupabase(item.id, item.imagePath || "");
-      } else if (typeof window.removeProfilePhoto === "function") {
-        window.removeProfilePhoto(item.id);
+        console.warn("Klevby feed: просмотр не записался", error);
+        return false;
       }
 
-      closeKlevbyFeedPhotoViewer();
-      await klevbyRenderProfileFeed();
+      klevbyFeedSupabaseDispatch("view_added", {
+        postId: cleanPostId
+      });
 
-      if (navigator.vibrate) {
-        navigator.vibrate(18);
-      }
+      return true;
     } catch (error) {
-      console.error("Klevby feed: не удалось удалить фото", error);
-      alert(error?.message || "Не получилось удалить фото.");
+      console.warn("Klevby feed: ошибка записи просмотра", error);
+      return false;
     }
   }
 
-  async function klevbyToggleFeedLikeFromCard(postId) {
-    const cleanId = String(postId || "");
+  function klevbySubscribeToFeedChanges(callback) {
+    const db = klevbyFeedSupabaseGetClient();
 
-    if (!cleanId) return;
+    if (!db || typeof db.channel !== "function") {
+      return null;
+    }
 
-    if (typeof window.klevbyToggleFeedLike !== "function") {
-      alert("Лайки ещё не подключены.");
+    klevbyFeedRealtimeCallback = typeof callback === "function" ? callback : null;
+
+    if (klevbyFeedRealtimeChannel) {
+      return klevbyFeedRealtimeChannel;
+    }
+
+    try {
+      klevbyFeedRealtimeChannel = db
+        .channel("klevby-feed-realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: KLEVB_FEED_TABLE
+          },
+          (payload) => {
+            klevbyFeedSupabaseDispatch("feed_post_changed", {
+              payload,
+              postId: payload?.new?.id || payload?.old?.id || ""
+            });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: KLEVB_FEED_LIKES_TABLE
+          },
+          (payload) => {
+            klevbyFeedSupabaseDispatch("feed_like_changed", {
+              payload,
+              postId: payload?.new?.post_id || payload?.old?.post_id || ""
+            });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: KLEVB_FEED_COMMENTS_TABLE
+          },
+          (payload) => {
+            klevbyFeedSupabaseDispatch("feed_comment_changed", {
+              payload,
+              postId: payload?.new?.post_id || payload?.old?.post_id || ""
+            });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: KLEVB_FEED_VIEWS_TABLE
+          },
+          (payload) => {
+            klevbyFeedSupabaseDispatch("feed_view_changed", {
+              payload,
+              postId: payload?.new?.post_id || payload?.old?.post_id || ""
+            });
+          }
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("Klevby feed: realtime подключён");
+          }
+
+          if (status === "CHANNEL_ERROR") {
+            console.warn("Klevby feed: realtime канал вернул ошибку");
+          }
+        });
+
+      return klevbyFeedRealtimeChannel;
+    } catch (error) {
+      console.warn("Klevby feed: realtime не подключился", error);
+      klevbyFeedRealtimeChannel = null;
+      return null;
+    }
+  }
+
+  async function klevbyUnsubscribeFromFeedChanges() {
+    const db = klevbyFeedSupabaseGetClient();
+
+    if (!db || !klevbyFeedRealtimeChannel) {
+      klevbyFeedRealtimeChannel = null;
+      klevbyFeedRealtimeCallback = null;
       return;
     }
 
     try {
-      await window.klevbyToggleFeedLike(cleanId);
-      await klevbyRenderProfileFeed();
-
-      if (navigator.vibrate) {
-        navigator.vibrate(12);
-      }
+      await db.removeChannel(klevbyFeedRealtimeChannel);
     } catch (error) {
-      console.warn("Klevby feed: лайк не сработал", error);
-      alert(error?.message || "Не получилось поставить лайк.");
+      console.warn("Klevby feed: не удалось отключить realtime", error);
     }
+
+    klevbyFeedRealtimeChannel = null;
+    klevbyFeedRealtimeCallback = null;
   }
 
-  async function klevbyToggleFeedLikeFromViewer(postId) {
-    await klevbyToggleFeedLikeFromCard(postId);
+  window.klevbyFeedSupabase = {
+    loadPosts: klevbyLoadFeedPostsFromSupabase,
+    createPhotoPost: klevbyCreateFeedPhotoPost,
+    deletePost: klevbyDeleteFeedPostFromSupabase,
+    toggleLike: klevbyToggleFeedLike,
+    loadComments: klevbyLoadFeedComments,
+    addComment: klevbyAddFeedComment,
+    deleteComment: klevbyDeleteFeedComment,
+    registerView: klevbyRegisterFeedView,
+    subscribeToFeedChanges: klevbySubscribeToFeedChanges,
+    subscribeToChanges: klevbySubscribeToFeedChanges,
+    subscribe: klevbySubscribeToFeedChanges,
+    unsubscribe: klevbyUnsubscribeFromFeedChanges
+  };
 
-    const cleanId = String(postId || "");
-    const updatedItem = klevbyFeedItemsCache[cleanId];
-
-    if (updatedItem) {
-      openKlevbyFeedPhotoViewer(updatedItem);
-    }
-  }
-
-  function klevbyTryStartRealtimeSubscription() {
-    if (klevbyFeedRealtimeStarted) return;
-
-    const api = window.klevbyFeedSupabase;
-
-    if (!api) return;
-
-    const refresh = () => {
-      setTimeout(klevbyRefreshFeedIfHomeVisible, 120);
-
-      const modal = document.getElementById("klevbyFeedCommentModal");
-      const postId = String(modal?.dataset?.postId || "");
-
-      if (modal && !modal.classList.contains("hidden") && postId) {
-        setTimeout(() => {
-          klevbyLoadCommentsIntoModal(postId);
-        }, 180);
-      }
-    };
-
-    try {
-      if (typeof api.subscribeToFeedChanges === "function") {
-        api.subscribeToFeedChanges(refresh);
-        klevbyFeedRealtimeStarted = true;
-        return;
-      }
-
-      if (typeof api.subscribeToChanges === "function") {
-        api.subscribeToChanges(refresh);
-        klevbyFeedRealtimeStarted = true;
-        return;
-      }
-
-      if (typeof api.subscribe === "function") {
-        api.subscribe(refresh);
-        klevbyFeedRealtimeStarted = true;
-      }
-    } catch (error) {
-      console.warn("Klevby feed: realtime пока не подключился", error);
-    }
-  }
-
-  function klevbyStartFeedAutoRefresh() {
-    if (klevbyFeedAutoRefreshTimer) return;
-
-    klevbyFeedAutoRefreshTimer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-
-      klevbyRefreshFeedIfHomeVisible();
-
-      const modal = document.getElementById("klevbyFeedCommentModal");
-      const postId = String(modal?.dataset?.postId || "");
-
-      if (modal && !modal.classList.contains("hidden") && postId) {
-        klevbyLoadCommentsIntoModal(postId);
-      }
-    }, 6000);
-  }
-
-  function klevbyBindFeedRefreshHooks() {
-    if (window.__klevbyFeedRefreshBound) return;
-    window.__klevbyFeedRefreshBound = true;
-
-    window.addEventListener("storage", (event) => {
-      const key = String(event?.key || "");
-
-      if (
-        key === KLEVB_FEED_PROFILE_PHOTOS_KEY ||
-        key === KLEVB_FEED_PROFILE_AVATAR_KEY ||
-        key === KLEVB_FEED_PROFILE_SETTINGS_KEY ||
-        key === KLEVB_FEED_PROFILE_NAME_KEY
-      ) {
-        setTimeout(klevbyRefreshFeedIfHomeVisible, 80);
-      }
-    });
-
-    window.addEventListener("pageshow", () => {
-      setTimeout(klevbyRefreshFeedIfHomeVisible, 120);
-    });
-
-    window.addEventListener("focus", () => {
-      setTimeout(klevbyRefreshFeedIfHomeVisible, 160);
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        setTimeout(klevbyRefreshFeedIfHomeVisible, 160);
-      }
-    });
-
-    window.addEventListener("klevby-auth-changed", () => {
-      setTimeout(klevbyRefreshFeedIfHomeVisible, 180);
-    });
-
-    window.addEventListener("klevby-feed-updated", (event) => {
-      setTimeout(klevbyRenderProfileFeed, 220);
-
-      const modal = document.getElementById("klevbyFeedCommentModal");
-      const activePostId = String(modal?.dataset?.postId || "");
-      const changedPostId = String(event?.detail?.postId || "");
-
-      if (
-        modal &&
-        !modal.classList.contains("hidden") &&
-        activePostId &&
-        (!changedPostId || changedPostId === activePostId)
-      ) {
-        setTimeout(() => {
-          klevbyLoadCommentsIntoModal(activePostId);
-        }, 260);
-      }
-    });
-
-    document.addEventListener("click", (event) => {
-      const target = event.target?.closest?.(
-        "#homeFloatBtn, #nav-home, .mobile-tab-btn, [onclick*='goHomeTop'], [onclick*='showSection'], [onclick*='setMode']"
-      );
-
-      if (!target) return;
-
-      setTimeout(klevbyRefreshFeedIfHomeVisible, 180);
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeKlevbyFeedPhotoViewer();
-        closeKlevbyFeedCommentModal();
-      }
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    klevbyEnsureFeedStyles();
-    klevbyBindFeedRefreshHooks();
-    klevbyStartFeedAutoRefresh();
-
-    setTimeout(klevbyRenderProfileFeed, 350);
-    setTimeout(klevbyRefreshFeedIfHomeVisible, 900);
-    setTimeout(klevbyRefreshFeedIfHomeVisible, 1600);
-    setTimeout(klevbyTryStartRealtimeSubscription, 1200);
-    setTimeout(klevbyTryStartRealtimeSubscription, 2600);
-  });
-
-  window.getProfileFeedItemsSafe = klevbyGetProfileFeedItemsSafe;
-  window.getFilteredProfileFeedItems = klevbyGetFilteredProfileFeedItems;
-  window.openKlevbyProfileSafe = klevbyOpenKlevbyProfileSafe;
-  window.openProfilePhotoFeedItem = klevbyOpenProfilePhotoFeedItem;
-  window.renderProfileFeed = klevbyRenderProfileFeed;
-  window.profilePhotoCardHtml = klevbyProfilePhotoCardHtml;
-  window.toggleFeedLike = klevbyToggleFeedLikeFromCard;
-  window.closeFeedPhotoViewer = closeKlevbyFeedPhotoViewer;
-  window.openFeedCommentModal = klevbyOpenFeedCommentModal;
-  window.closeFeedCommentModal = closeKlevbyFeedCommentModal;
-  window.submitFeedComment = klevbySubmitFeedComment;
-  window.deleteFeedComment = klevbyDeleteFeedCommentFromModal;
+  window.klevbyLoadFeedPostsFromSupabase = klevbyLoadFeedPostsFromSupabase;
+  window.klevbyCreateFeedPhotoPost = klevbyCreateFeedPhotoPost;
+  window.klevbyDeleteFeedPostFromSupabase = klevbyDeleteFeedPostFromSupabase;
+  window.klevbyToggleFeedLike = klevbyToggleFeedLike;
+  window.klevbyLoadFeedComments = klevbyLoadFeedComments;
+  window.klevbyAddFeedComment = klevbyAddFeedComment;
+  window.klevbyDeleteFeedComment = klevbyDeleteFeedComment;
+  window.klevbyRegisterFeedView = klevbyRegisterFeedView;
+  window.klevbySubscribeToFeedChanges = klevbySubscribeToFeedChanges;
+  window.klevbyUnsubscribeFromFeedChanges = klevbyUnsubscribeFromFeedChanges;
 })();
