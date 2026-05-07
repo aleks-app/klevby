@@ -57,7 +57,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260507-profile-1">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260507-profile-2">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/chat-style.css?v=20260504-1">
 
@@ -94,24 +94,30 @@
         <button class="nav-btn nav-auth" onclick="showSection('auth')">Вход</button>
       </nav>
 
-      <div class="mobile-menu-wrap">
-        <button class="burger-btn" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Открыть меню" aria-expanded="false">
-          <span></span>
-          <span></span>
-          <span></span>
+      <div class="mobile-actions">
+        <button class="mobile-profile-btn" id="mobileProfileBtn" type="button" onclick="openKlevbyProfile()" aria-label="Открыть профиль рыбака">
+          <span id="mobileProfileAvatarIcon" class="mobile-profile-avatar-icon">👤</span>
         </button>
 
-        <div class="mobile-menu" id="mobileMenu">
-          <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Напарники</button>
-          <button class="mobile-menu-item" onclick="showSection('market'); closeMobileMenu()">Барахолка</button>
-          <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
-          <button class="mobile-menu-item" onclick="openKlevbyProfile(); closeMobileMenu()">👤 Профиль рыбака</button>
-          <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
-          <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
-          <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои объявления</button>
-          <button class="mobile-menu-item pwa-install-trigger" onclick="handleInstallClick(); closeMobileMenu()">📱 Приложение</button>
-          <button class="mobile-menu-item" onclick="forceAppUpdate(); closeMobileMenu()">🔄 Обновить приложение</button>
-          <button class="mobile-menu-item" onclick="showSection('auth'); closeMobileMenu()">Вход</button>
+        <div class="mobile-menu-wrap">
+          <button class="burger-btn" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Открыть меню" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <div class="mobile-menu" id="mobileMenu">
+            <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Напарники</button>
+            <button class="mobile-menu-item" onclick="showSection('market'); closeMobileMenu()">Барахолка</button>
+            <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
+            <button class="mobile-menu-item" onclick="openKlevbyProfile(); closeMobileMenu()">👤 Профиль рыбака</button>
+            <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
+            <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
+            <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои объявления</button>
+            <button class="mobile-menu-item pwa-install-trigger" onclick="handleInstallClick(); closeMobileMenu()">📱 Приложение</button>
+            <button class="mobile-menu-item" onclick="forceAppUpdate(); closeMobileMenu()">🔄 Обновить приложение</button>
+            <button class="mobile-menu-item" onclick="showSection('auth'); closeMobileMenu()">Вход</button>
+          </div>
         </div>
       </div>
     </div>
@@ -274,7 +280,7 @@
     <section id="profileSection" class="hidden">
       <div class="profile-shell">
         <div class="profile-cover">
-          <button class="profile-gear-btn" type="button" onclick="showSection('auth')" aria-label="Настройки профиля">⚙</button>
+          <button class="profile-gear-btn" type="button" onclick="openProfileSettingsModal()" aria-label="Настройки профиля">⚙</button>
         </div>
 
         <div class="profile-main-card">
@@ -336,7 +342,7 @@
         </div>
 
         <div class="profile-menu-card">
-          <button type="button" onclick="showSection('auth')">
+          <button type="button" onclick="openProfileSettingsModal()">
             <span>⚙️ Настройки аккаунта</span>
             <b>›</b>
           </button>
@@ -562,6 +568,42 @@
     </div>
   </div>
 
+  <div id="profileSettingsModal" class="modal-bg hidden" onclick="handleProfileSettingsBackdrop(event)">
+    <div class="modal profile-settings-modal" role="dialog" aria-modal="true" aria-labelledby="profileSettingsTitle" onclick="event.stopPropagation()">
+      <button class="profile-settings-close" type="button" onclick="closeProfileSettingsModal()" aria-label="Закрыть настройки">×</button>
+
+      <h2 id="profileSettingsTitle">Настройки профиля</h2>
+      <p class="profile-settings-subtitle">
+        Настрой имя, Telegram, город и описание. Аватар можно поменять здесь или нажатием на фото профиля.
+      </p>
+
+      <button class="profile-settings-avatar-action" type="button" onclick="triggerProfileAvatarInput()">
+        <span>👤</span>
+        <strong>Сменить аватар</strong>
+      </button>
+
+      <label class="auth-label" for="profileSettingsNameInput">Nickname</label>
+      <input id="profileSettingsNameInput" type="text" placeholder="Например: alex822alex" maxlength="32" autocomplete="nickname" />
+
+      <label class="auth-label" for="profileSettingsTelegramInput">Telegram</label>
+      <input id="profileSettingsTelegramInput" type="text" placeholder="@username или https://t.me/username" autocomplete="off" />
+
+      <label class="auth-label" for="profileSettingsCityInput">Город / область</label>
+      <input id="profileSettingsCityInput" type="text" placeholder="Минск, Гомель, Брест..." autocomplete="address-level2" />
+
+      <label class="auth-label" for="profileSettingsAboutInput">О себе</label>
+      <textarea id="profileSettingsAboutInput" placeholder="Например: люблю спиннинг, часто езжу на Нарочь, ищу напарников на выходные"></textarea>
+
+      <div class="profile-settings-actions">
+        <button class="small-btn yellow" type="button" onclick="saveProfileSettings()">Сохранить</button>
+        <button class="small-btn gray" type="button" onclick="closeProfileSettingsModal()">Закрыть</button>
+        <button class="small-btn red" type="button" onclick="logoutFromProfileSettings()">Выйти</button>
+      </div>
+
+      <div id="profileSettingsMessage" class="auth-status"></div>
+    </div>
+  </div>
+
   <div id="installBanner" class="install-banner hidden" role="dialog" aria-live="polite">
     <div class="install-inner">
       <div class="install-icon">🎣</div>
@@ -596,198 +638,12 @@
     <button id="nav-chat" class="mobile-tab-btn"><span class="mobile-tab-icon">☵</span><span class="mobile-tab-text">Чат</span></button>
   </div>
 
-  <script>
-    function openKlevbyProfile() {
-      const sectionIds = [
-        "homeSection",
-        "marketSection",
-        "pondsSection",
-        "mapSection",
-        "authSection",
-        "profileSection"
-      ];
-
-      sectionIds.forEach((id) => {
-        const section = document.getElementById(id);
-        if (!section) return;
-
-        if (id === "profileSection") {
-          section.classList.remove("hidden");
-        } else {
-          section.classList.add("hidden");
-        }
-      });
-
-      closeMobileMenuSafe();
-      updateKlevbyProfileView();
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
-    }
-
-    function closeMobileMenuSafe() {
-      try {
-        if (typeof closeMobileMenu === "function") {
-          closeMobileMenu();
-          return;
-        }
-
-        const menu = document.getElementById("mobileMenu");
-        const burger = document.getElementById("burgerBtn");
-
-        if (menu) menu.classList.remove("open");
-        if (burger) {
-          burger.classList.remove("open");
-          burger.setAttribute("aria-expanded", "false");
-        }
-      } catch (error) {
-        console.warn("Klevby profile: menu close skipped", error);
-      }
-    }
-
-    function updateKlevbyProfileView() {
-      const nameNode = document.getElementById("profileNameText");
-      const fallbackNode = document.getElementById("profileAvatarFallback");
-      const reportsNode = document.getElementById("profileReportsCount");
-      const tripsNode = document.getElementById("profileTripsCount");
-
-      const currentName =
-        getProfileNameFromInputs() ||
-        getProfileNameFromStorage() ||
-        "Alex";
-
-      if (nameNode) {
-        nameNode.textContent = currentName;
-      }
-
-      if (fallbackNode) {
-        fallbackNode.textContent = currentName.trim().charAt(0).toUpperCase() || "A";
-      }
-
-      try {
-        const postsArray = Array.isArray(window.posts) ? window.posts : [];
-        const ownerName = currentName.trim().toLowerCase();
-
-        const userPosts = postsArray.filter((post) => {
-          const postName = String(post?.name || "").trim().toLowerCase();
-          return postName && ownerName && postName === ownerName;
-        });
-
-        if (reportsNode) reportsNode.textContent = String(userPosts.length || 0);
-        if (tripsNode) tripsNode.textContent = String(userPosts.length || 0);
-      } catch (error) {
-        if (reportsNode) reportsNode.textContent = "0";
-        if (tripsNode) tripsNode.textContent = "0";
-      }
-
-      restoreLocalProfileAvatar();
-    }
-
-    function getProfileNameFromInputs() {
-      const nameInput = document.getElementById("nameInput");
-      const usernameInput = document.getElementById("usernameInput");
-
-      const nameValue = nameInput && nameInput.value ? nameInput.value.trim() : "";
-      const usernameValue = usernameInput && usernameInput.value ? usernameInput.value.trim() : "";
-
-      return nameValue || usernameValue || "";
-    }
-
-    function getProfileNameFromStorage() {
-      try {
-        return localStorage.getItem("klevby_profile_name") || "";
-      } catch (error) {
-        return "";
-      }
-    }
-
-    function handleLocalAvatarUpload(event) {
-      const file = event?.target?.files?.[0];
-      if (!file) return;
-
-      if (!file.type || !file.type.startsWith("image/")) {
-        alert("Выбери изображение для аватарки.");
-        return;
-      }
-
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Картинка слишком тяжёлая. Выбери фото до 2 МБ.");
-        return;
-      }
-
-      const reader = new FileReader();
-
-      reader.onload = function () {
-        const result = String(reader.result || "");
-
-        try {
-          localStorage.setItem("klevby_profile_avatar", result);
-        } catch (error) {
-          console.warn("Klevby profile: avatar was not saved locally", error);
-        }
-
-        setProfileAvatar(result);
-      };
-
-      reader.readAsDataURL(file);
-    }
-
-    function restoreLocalProfileAvatar() {
-      try {
-        const savedAvatar = localStorage.getItem("klevby_profile_avatar");
-        if (savedAvatar) {
-          setProfileAvatar(savedAvatar);
-        }
-      } catch (error) {
-        console.warn("Klevby profile: avatar restore skipped", error);
-      }
-    }
-
-    function setProfileAvatar(src) {
-      const image = document.getElementById("profileAvatarImage");
-      const fallback = document.getElementById("profileAvatarFallback");
-
-      if (!image || !fallback || !src) return;
-
-      image.src = src;
-      image.classList.remove("hidden");
-      fallback.classList.add("hidden");
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      restoreLocalProfileAvatar();
-
-      const nameInput = document.getElementById("nameInput");
-      const usernameInput = document.getElementById("usernameInput");
-
-      [nameInput, usernameInput].forEach((input) => {
-        if (!input) return;
-
-        input.addEventListener("input", () => {
-          const value = input.value.trim();
-
-          try {
-            if (value) {
-              localStorage.setItem("klevby_profile_name", value);
-            }
-          } catch (error) {
-            console.warn("Klevby profile: name was not saved locally", error);
-          }
-
-          updateKlevbyProfileView();
-        });
-      });
-    });
-  </script>
-
   <script src="assets/js/config.js?v=20260503-4" defer></script>
   <script src="assets/js/weather.js?v=20260503-4" defer></script>
   <script src="assets/js/pwa.js?v=20260503-4" defer></script>
   <script src="assets/js/auth.js?v=20260503-4" defer></script>
   <script src="assets/js/posts.js?v=20260503-4" defer></script>
-  <script src="assets/js/ui.js?v=20260503-4" defer></script>
+  <script src="assets/js/ui.js?v=20260507-profile-2" defer></script>
   <script src="assets/js/app.js?v=20260503-4" defer></script>
   <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
   <script src="assets/js/chat-state.js?v=20260506-1" defer></script>
