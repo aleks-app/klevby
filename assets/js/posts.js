@@ -414,116 +414,104 @@ function profilePhotoCardHtml(item) {
   const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
 
   const avatarHtml = avatar
-    ? `
-      <span
-        class="profile-feed-avatar-img"
-        style="
-          width: 38px;
-          height: 38px;
-          border-radius: 999px;
-          display: inline-flex;
-          flex: 0 0 auto;
-          background-image: url('${escapeAttr(avatar)}');
-          background-size: cover;
-          background-position: center;
-          border: 1px solid rgba(244,178,74,0.24);
-          box-shadow: 0 10px 24px rgba(0,0,0,0.25);
-        "
-        aria-hidden="true"
-      ></span>
-    `
-    : `
-      <span
-        class="profile-feed-avatar-img"
-        style="
-          width: 38px;
-          height: 38px;
-          border-radius: 999px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          flex: 0 0 auto;
-          background: rgba(244,178,74,0.14);
-          border: 1px solid rgba(244,178,74,0.24);
-          color: #fff8ea;
-          font-weight: 900;
-          box-shadow: 0 10px 24px rgba(0,0,0,0.25);
-        "
-        aria-hidden="true"
-      >${escapeHtml(authorInitial)}</span>
-    `;
+    ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
+    : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
 
   return `
-    <div class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
-      <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${safeImage}')"></div>
+    <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
+      <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${safeImage}')"></div>
 
-      <div class="card-body">
+      <div class="card-body profile-feed-body">
         <button
+          class="profile-feed-author"
           type="button"
           onclick="event.stopPropagation(); openKlevbyProfileSafe()"
-          style="
-            appearance: none;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 0;
-            margin: 0 0 12px;
-            border: 0;
-            background: transparent;
-            color: inherit;
-            text-align: left;
-            cursor: pointer;
-          "
           aria-label="Открыть профиль автора"
         >
           ${avatarHtml}
 
-          <span style="min-width: 0; display: block;">
-            <span style="display: block; font-size: 14px; font-weight: 900; line-height: 1.2; color: #fff8ea;">
-              ${escapeHtml(authorName)}
-            </span>
-
-            <span style="display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: rgba(255,248,234,0.56);">
-              добавил фото с рыбалки
-            </span>
+          <span class="profile-feed-author-text">
+            <span class="profile-feed-author-name">${escapeHtml(authorName)}</span>
+            <span class="profile-feed-author-action">добавил фото с рыбалки</span>
           </span>
         </button>
 
-        <div class="trip-title">
+        <div class="trip-title profile-feed-title">
           <span class="trip-name">${escapeHtml(authorName)}</span>
           <span> добавил </span>
           <span class="trip-destination">${escapeHtml(title)}</span>
         </div>
 
-        <p class="trip-description">
+        <p class="trip-description profile-feed-description">
           Новое фото в профиле рыбака. Нажми на карточку, чтобы открыть фото на весь экран.
         </p>
 
-        <div class="tags">
+        <div class="tags profile-feed-tags">
           <span class="tag">📸 фото</span>
-          <span class="tag">🎣 профиль</span>
+          <span class="tag">🎣 лента</span>
           ${authorCity ? `<span class="tag">📍 ${escapeHtml(authorCity)}</span>` : ""}
           ${sizeKb ? `<span class="tag">${escapeHtml(String(sizeKb))} КБ</span>` : ""}
           ${date ? `<span class="tag">🕒 ${escapeHtml(date)}</span>` : ""}
         </div>
 
-        <div class="actions">
+        <div class="actions profile-feed-actions">
           <button class="small-btn green" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть фото</button>
-          <button class="small-btn gray" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль автора</button>
+          <button class="small-btn gray" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>
         </div>
+      </div>
+    </article>
+  `;
+}
+
+function profileFeedEmptyHtml() {
+  return `
+    <div class="home-empty-card">
+      <div class="home-empty-icon">📸</div>
+      <h3>В ленте пока нет фото</h3>
+      <p>Добавь первое фото в профиле — оно появится здесь как пост в ленте.</p>
+      <div class="actions">
+        <button class="small-btn green" type="button" onclick="openKlevbyProfileSafe()">Открыть профиль</button>
+        <button class="small-btn gray" type="button" onclick="setMode('all')">Напарники</button>
       </div>
     </div>
   `;
 }
 
-function refreshPostsIfHomeVisible() {
+function renderProfileFeed() {
+  const list = document.getElementById("profileFeedSection");
+  if (!list) return;
+
+  const items = getFilteredProfileFeedItems({});
+
+  if (!items.length) {
+    list.innerHTML = profileFeedEmptyHtml();
+    return;
+  }
+
+  const cards = items
+    .map((item) => {
+      try {
+        return profilePhotoCardHtml(item);
+      } catch (error) {
+        console.error("Ошибка отрисовки фото профиля:", item, error);
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .join("");
+
+  list.innerHTML = cards || profileFeedEmptyHtml();
+}
+
+function refreshKlevbyFeedsIfVisible() {
   const homeSection = document.getElementById("homeSection");
-  const postsSection = document.getElementById("postsSection");
+  const tripsSection = document.getElementById("tripsSection");
 
-  if (!homeSection || !postsSection) return;
+  if (homeSection && !homeSection.classList.contains("hidden")) {
+    renderProfileFeed();
+  }
 
-  if (!homeSection.classList.contains("hidden")) {
+  if (tripsSection && !tripsSection.classList.contains("hidden")) {
     renderPosts();
   }
 }
@@ -541,22 +529,22 @@ function bindProfileFeedRefreshHooks() {
       key === "klevby_profile_settings" ||
       key === "klevby_profile_name"
     ) {
-      setTimeout(refreshPostsIfHomeVisible, 80);
+      setTimeout(refreshKlevbyFeedsIfVisible, 80);
     }
   });
 
   window.addEventListener("pageshow", () => {
-    setTimeout(refreshPostsIfHomeVisible, 120);
+    setTimeout(refreshKlevbyFeedsIfVisible, 120);
   });
 
   document.addEventListener("click", (event) => {
     const target = event.target?.closest?.(
-      "#homeFloatBtn, #nav-home, .mobile-tab-btn, [onclick*='goHomeTop'], [onclick*='showSection']"
+      "#homeFloatBtn, #nav-home, .mobile-tab-btn, [onclick*='goHomeTop'], [onclick*='showSection'], [onclick*='setMode']"
     );
 
     if (!target) return;
 
-    setTimeout(refreshPostsIfHomeVisible, 180);
+    setTimeout(refreshKlevbyFeedsIfVisible, 180);
   });
 }
 
@@ -653,16 +641,13 @@ async function loadPosts(options = {}) {
     const db = getSupabaseClientSafe();
 
     if (!db) {
-      const localFeedItems = getProfileFeedItemsSafe();
-
       showStatusSafe("Supabase ещё не готов. Повторяем загрузку объявлений...");
 
-      if (localFeedItems.length) {
-        renderPosts();
-      } else if (postsSection && !existingPosts.length) {
+      if (postsSection && !existingPosts.length) {
         postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
       }
 
+      renderProfileFeed();
       schedulePostsLoad(900);
       return;
     }
@@ -688,19 +673,14 @@ async function loadPosts(options = {}) {
       showStatusSafe(message, true);
 
       if (postsSection && !existingPosts.length) {
-        const localFeedItems = getProfileFeedItemsSafe();
-
-        if (localFeedItems.length) {
-          renderPosts();
-        } else {
-          postsSection.innerHTML = `
-            <div class="info-line error-line">
-              Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-            </div>
-          `;
-        }
+        postsSection.innerHTML = `
+          <div class="info-line error-line">
+            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+          </div>
+        `;
       }
 
+      renderProfileFeed();
       return;
     }
 
@@ -721,19 +701,14 @@ async function loadPosts(options = {}) {
       showStatusSafe(message, true);
 
       if (postsSection && !existingPosts.length) {
-        const localFeedItems = getProfileFeedItemsSafe();
-
-        if (localFeedItems.length) {
-          renderPosts();
-        } else {
-          postsSection.innerHTML = `
-            <div class="info-line error-line">
-              Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-            </div>
-          `;
-        }
+        postsSection.innerHTML = `
+          <div class="info-line error-line">
+            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+          </div>
+        `;
       }
 
+      renderProfileFeed();
       return;
     }
 
@@ -741,6 +716,7 @@ async function loadPosts(options = {}) {
 
     setPostsArray(loadedPosts);
     renderPosts();
+    renderProfileFeed();
   })();
 
   try {
@@ -764,20 +740,11 @@ function renderPosts() {
 
   let filtered = [...allPosts];
 
-  const profileFeedItems = mode === "all"
-    ? getFilteredProfileFeedItems({
-        search,
-        selectedCity,
-        selectedType,
-        telegramOnly
-      })
-    : [];
-
   if (mode === "mine") {
     filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
-    showStatusSafe("Сейчас показаны: мои объявления.");
+    showStatusSafe("Сейчас показаны: мои выезды.");
   } else {
-    showStatusSafe("Сейчас показаны: все объявления и фото из профиля.");
+    showStatusSafe("Сейчас показаны: все объявления о выездах.");
   }
 
   if (search) {
@@ -805,12 +772,19 @@ function renderPosts() {
     filtered = filtered.filter(post => cleanTelegram(post.telegram));
   }
 
-  if (!filtered.length && !profileFeedItems.length) {
-    const emptyText = allPosts.length || getProfileFeedItemsSafe().length
+  if (!filtered.length) {
+    const emptyText = allPosts.length
       ? "По фильтрам ничего не найдено."
-      : "Пока объявлений и фото нет.";
+      : "Пока объявлений о выездах нет.";
 
-    list.innerHTML = `<div class="info-line">${emptyText}</div>`;
+    list.innerHTML = `
+      <div class="info-line">
+        ${emptyText}
+        <div style="margin-top:12px;">
+          <button class="small-btn green" type="button" onclick="showSection('create')">Создать выезд</button>
+        </div>
+      </div>
+    `;
 
     if (typeof window.updateHomeFloatButton === "function") {
       setTimeout(window.updateHomeFloatButton, 80);
@@ -819,19 +793,7 @@ function renderPosts() {
     return;
   }
 
-  const profileCards = profileFeedItems
-    .map((item) => {
-      try {
-        return profilePhotoCardHtml(item);
-      } catch (error) {
-        console.error("Ошибка отрисовки фото профиля:", item, error);
-        return "";
-      }
-    })
-    .filter(Boolean)
-    .join("");
-
-  const postCards = filtered
+  const cards = filtered
     .map((post) => {
       try {
         return cardHtml(post);
@@ -843,12 +805,10 @@ function renderPosts() {
     .filter(Boolean)
     .join("");
 
-  const cards = [profileCards, postCards].filter(Boolean).join("");
-
   if (!cards) {
     list.innerHTML = `
       <div class="info-line error-line">
-        Лента загрузилась, но карточки не отрисовались. Смотри Console.
+        Объявления загрузились, но карточки не отрисовались. Смотри Console.
       </div>
     `;
     return;
@@ -909,7 +869,7 @@ function cardHtml(post) {
     : "";
 
   return `
-    <div class="card ${isFull ? "full" : ""}" onclick="openPostModal('${safeId}')">
+    <div class="card trip-card ${isFull ? "full" : ""}" onclick="openPostModal('${safeId}')">
       <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
       <div class="card-body">
@@ -1201,6 +1161,12 @@ async function savePost() {
   if (typeof window.klevbyReloadMap === "function") {
     window.klevbyReloadMap();
   }
+
+  if (typeof window.setMode === "function") {
+    window.setMode("all");
+  } else if (typeof window.showSection === "function") {
+    window.showSection("trips");
+  }
 }
 
 function editPost(id) {
@@ -1230,7 +1196,6 @@ function editPost(id) {
 
   const formTitle = document.getElementById("formTitle");
   const cancelEditBtn = document.getElementById("cancelEditBtn");
-  const createPanel = document.getElementById("createPanel");
 
   if (formTitle) {
     formTitle.innerText = "Редактировать выезд";
@@ -1240,8 +1205,10 @@ function editPost(id) {
     cancelEditBtn.classList.remove("hidden");
   }
 
-  if (createPanel) {
-    createPanel.scrollIntoView({ behavior: "smooth" });
+  if (typeof window.showCreatePostScreen === "function") {
+    window.showCreatePostScreen();
+  } else if (typeof window.showSection === "function") {
+    window.showSection("create");
   }
 
   if (typeof window.updateHomeFloatButton === "function") {
@@ -1345,8 +1312,9 @@ async function deletePost(id) {
 document.addEventListener("DOMContentLoaded", () => {
   bindProfileFeedRefreshHooks();
 
-  setTimeout(refreshPostsIfHomeVisible, 500);
-  setTimeout(refreshPostsIfHomeVisible, 1200);
+  setTimeout(renderProfileFeed, 300);
+  setTimeout(refreshKlevbyFeedsIfVisible, 800);
+  setTimeout(refreshKlevbyFeedsIfVisible, 1400);
 });
 
 window.getOwnerId = getOwnerId;
@@ -1367,6 +1335,7 @@ window.getProfileFeedItemsSafe = getProfileFeedItemsSafe;
 window.getFilteredProfileFeedItems = getFilteredProfileFeedItems;
 window.openKlevbyProfileSafe = openKlevbyProfileSafe;
 window.openProfilePhotoFeedItem = openProfilePhotoFeedItem;
+window.renderProfileFeed = renderProfileFeed;
 window.saveAuthorLocal = saveAuthorLocal;
 window.loadPosts = loadPosts;
 window.renderPosts = renderPosts;
