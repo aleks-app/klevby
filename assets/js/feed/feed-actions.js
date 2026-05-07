@@ -264,20 +264,27 @@
       }
     });
 
-    window.addEventListener("pageshow", () => {
+    window.addEventListener("klevby-app-resumed", () => {
       setTimeout(refreshFeedIfHomeVisible, 120);
+      refreshOpenCommentsIfNeeded(220);
     });
 
-    window.addEventListener("focus", () => {
-      setTimeout(refreshFeedIfHomeVisible, 160);
-    });
+    if (!window.__klevbyCentralResumeRouter) {
+      window.addEventListener("pageshow", () => {
+        setTimeout(refreshFeedIfHomeVisible, 120);
+      });
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
+      window.addEventListener("focus", () => {
         setTimeout(refreshFeedIfHomeVisible, 160);
-        refreshOpenCommentsIfNeeded(220);
-      }
-    });
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          setTimeout(refreshFeedIfHomeVisible, 160);
+          refreshOpenCommentsIfNeeded(220);
+        }
+      });
+    }
 
     window.addEventListener("klevby-auth-changed", () => {
       setTimeout(refreshFeedIfHomeVisible, 180);

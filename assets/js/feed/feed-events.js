@@ -218,26 +218,40 @@
       }
     });
 
-    window.addEventListener("pageshow", () => {
-      handleAppResume("pageshow");
+    window.addEventListener("klevby-app-resumed", (event) => {
+      const reason = String(event?.detail?.reason || "app_resumed");
+      handleAppResume(reason);
+      restartFeedAutoRefresh();
     });
 
-    window.addEventListener("focus", () => {
-      handleAppResume("focus");
-    });
+    if (!window.__klevbyCentralResumeRouter) {
+      window.addEventListener("pageshow", () => {
+        handleAppResume("pageshow");
+      });
 
-    window.addEventListener("online", () => {
-      handleAppResume("online");
-    });
+      window.addEventListener("focus", () => {
+        handleAppResume("focus");
+      });
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        handleAppResume("visibility_visible");
-        restartFeedAutoRefresh();
-      } else {
-        startHiddenWakeRefresh();
-      }
-    });
+      window.addEventListener("online", () => {
+        handleAppResume("online");
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          handleAppResume("visibility_visible");
+          restartFeedAutoRefresh();
+        } else {
+          startHiddenWakeRefresh();
+        }
+      });
+    } else {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          startHiddenWakeRefresh();
+        }
+      });
+    }
 
     window.addEventListener("klevby-auth-changed", () => {
       queueFeedRefresh("auth_changed", 120, {

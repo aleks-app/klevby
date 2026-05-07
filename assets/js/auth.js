@@ -160,6 +160,10 @@ function scheduleAuthRestore(reason = "resume", reloadData = false) {
 }
 
 function setupAuthResumeHandlers() {
+  if (window.__klevbyCentralResumeRouter) {
+    return;
+  }
+
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       scheduleAuthRestore("visibilitychange", true);
