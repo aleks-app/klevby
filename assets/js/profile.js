@@ -87,9 +87,10 @@ function openKlevbyProfile() {
   });
 
   closeMobileMenuSafe();
-  closeProfileSettingsModal();
+  closeProfileSettingsModal(false);
   hideProfileTopGearButton();
   applyProfileTabbar();
+  patchProfileCardButtons();
   setProfileTabActive(0);
   updateKlevbyProfileView();
 
@@ -98,9 +99,7 @@ function openKlevbyProfile() {
     behavior: "smooth"
   });
 
-  setTimeout(() => {
-    updateProfileHomeFloatButton();
-  }, 150);
+  setTimeout(updateProfileHomeFloatButton, 150);
 }
 
 function closeMobileMenuSafe() {
@@ -150,7 +149,9 @@ function openProfileSettingsModal() {
   modal.classList.remove("hidden");
   document.body.classList.add("post-modal-open");
 
+  applyProfileTabbar();
   setProfileTabActive(3);
+  updateProfileHomeFloatButton();
 
   setTimeout(() => {
     const nameInput = document.getElementById("profileSettingsNameInput");
@@ -158,7 +159,7 @@ function openProfileSettingsModal() {
   }, 120);
 }
 
-function closeProfileSettingsModal() {
+function closeProfileSettingsModal(updateButton = true) {
   const modal = document.getElementById("profileSettingsModal");
 
   if (modal) {
@@ -166,11 +167,15 @@ function closeProfileSettingsModal() {
   }
 
   document.body.classList.remove("post-modal-open");
+
+  if (updateButton) {
+    setTimeout(updateProfileHomeFloatButton, 80);
+  }
 }
 
 function handleProfileSettingsBackdrop(event) {
   if (!event || event.target?.id !== "profileSettingsModal") return;
-  closeProfileSettingsModal();
+  closeProfileSettingsModal(true);
 }
 
 function fillProfileSettingsForm() {
@@ -231,7 +236,7 @@ function saveProfileSettings() {
   }
 
   setTimeout(() => {
-    closeProfileSettingsModal();
+    closeProfileSettingsModal(false);
     openKlevbyProfile();
   }, 420);
 }
@@ -504,7 +509,7 @@ function logoutFromProfileSettings() {
     console.warn("Klevby profile: выход не сработал", error);
   }
 
-  closeProfileSettingsModal();
+  closeProfileSettingsModal(true);
 }
 
 function bindProfileInputSync() {
@@ -624,6 +629,7 @@ function setProfileTabActive(index) {
 function openProfilePhotoAction() {
   applyProfileTabbar();
   setProfileTabActive(0);
+  updateProfileHomeFloatButton();
   triggerProfileAvatarInput();
 }
 
@@ -706,7 +712,7 @@ function hideProfileSectionOnly() {
     profileSection.classList.add("hidden");
   }
 
-  closeProfileSettingsModal();
+  closeProfileSettingsModal(false);
 }
 
 function setProfileReturnMode(isActive) {
@@ -732,15 +738,38 @@ function isProfileReturnMode() {
   }
 }
 
+function isProfileSectionVisible() {
+  const profileSection = document.getElementById("profileSection");
+
+  return Boolean(profileSection && !profileSection.classList.contains("hidden"));
+}
+
+function isProfileSettingsModalVisible() {
+  const modal = document.getElementById("profileSettingsModal");
+
+  return Boolean(modal && !modal.classList.contains("hidden"));
+}
+
+function shouldShowProfileBackButton() {
+  return isProfileReturnMode() || isProfileSettingsModalVisible();
+}
+
 function updateProfileHomeFloatButton() {
   const btn = document.getElementById("homeFloatBtn");
 
   if (!btn) return;
 
-  if (isProfileReturnMode()) {
+  if (shouldShowProfileBackButton()) {
     btn.textContent = "← Профиль";
     btn.setAttribute("aria-label", "Вернуться в профиль");
     btn.classList.add("show");
+    return;
+  }
+
+  if (isProfileSectionVisible()) {
+    btn.textContent = "⌂ Главная";
+    btn.setAttribute("aria-label", "Вернуться на главную");
+    btn.classList.remove("show");
     return;
   }
 
@@ -761,7 +790,8 @@ function patchHomeFloatButton() {
     klevbyOriginalGoHomeTop = window.goHomeTop;
 
     window.goHomeTop = function patchedGoHomeTop() {
-      if (isProfileReturnMode()) {
+      if (shouldShowProfileBackButton()) {
+        closeProfileSettingsModal(false);
         openKlevbyProfile();
         return;
       }
@@ -780,7 +810,7 @@ function patchHomeFloatButton() {
     klevbyOriginalUpdateHomeFloatButton = window.updateHomeFloatButton;
 
     window.updateHomeFloatButton = function patchedUpdateHomeFloatButton() {
-      if (isProfileReturnMode()) {
+      if (shouldShowProfileBackButton() || isProfileSectionVisible()) {
         updateProfileHomeFloatButton();
         return;
       }
@@ -815,9 +845,7 @@ function patchShowSectionForProfile() {
       openKlevbyProfile();
     }
 
-    setTimeout(() => {
-      updateProfileHomeFloatButton();
-    }, 120);
+    setTimeout(updateProfileHomeFloatButton, 120);
 
     return result;
   };
@@ -825,9 +853,31 @@ function patchShowSectionForProfile() {
   window.__klevbyProfileShowSectionPatched = true;
 }
 
+function patchProfileCardButtons() {
+  const profileMineButton = document.querySelector(".profile-card-head button");
+  const menuButtons = document.querySelectorAll(".profile-menu-card button");
+
+  if (profileMineButton) {
+    profileMineButton.setAttribute("onclick", "openProfileTripsView()");
+  }
+
+  if (menuButtons[0]) {
+    menuButtons[0].setAttribute("onclick", "openProfileSettingsModal()");
+  }
+
+  if (menuButtons[1]) {
+    menuButtons[1].setAttribute("onclick", "openProfileTripsView()");
+  }
+
+  if (menuButtons[2]) {
+    menuButtons[2].setAttribute("onclick", "openProfileCreateView()");
+  }
+}
+
 function initKlevbyProfileNavigation() {
   saveMainTabbarSnapshot();
   patchHomeFloatButton();
+  patchProfileCardButtons();
 
   setTimeout(patchShowSectionForProfile, 0);
   setTimeout(patchShowSectionForProfile, 250);
