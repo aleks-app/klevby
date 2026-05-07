@@ -9,5 +9,6 @@
 
 @import url("./screens/home.css");
 @import url("./screens/secondary.css");
+@import url("./screens/profile.css");
 
 @import url("./responsive/mobile.css");
