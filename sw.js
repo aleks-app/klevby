@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v9-css-modules-2026-05-07";
+const CACHE_NAME = "klevby-cache-v10-fast-refresh-2026-05-07";
 
 const APP_FILES = [
   "/",
@@ -19,6 +19,7 @@ const APP_FILES = [
 
   "/assets/css/screens/home.css",
   "/assets/css/screens/secondary.css",
+  "/assets/css/screens/profile.css",
 
   "/assets/css/responsive/mobile.css",
 
@@ -30,6 +31,18 @@ const APP_FILES = [
   "/assets/js/posts.js",
   "/assets/js/ui.js",
   "/assets/js/app.js",
+
+  "/assets/js/feed/feed-state.js",
+  "/assets/js/feed/feed-utils.js",
+  "/assets/js/feed/feed-api.js",
+  "/assets/js/feed/feed-render.js",
+  "/assets/js/feed/feed-modals.js",
+  "/assets/js/feed/feed-actions.js",
+  "/assets/js/feed/feed-events.js",
+  "/assets/js/feed/feed-main.js",
+  "/assets/js/feed.js",
+  "/assets/js/feed-supabase.js",
+  "/assets/js/profile.js",
 
   "/assets/js/chat-shell.js",
   "/assets/js/chat-state.js",
@@ -71,22 +84,40 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
-        );
-      })
+    clearOldCaches()
       .then(() => self.clients.claim())
+      .then(() => notifyClients({
+        type: "KLEVB_SW_ACTIVATED",
+        cacheName: CACHE_NAME
+      }))
   );
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
+  const data = event.data || {};
+
+  if (data.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (data.type === "KLEVB_CLEAR_CACHE") {
+    event.waitUntil(
+      clearAllCaches()
+        .then(() => notifyClients({
+          type: "KLEVB_CACHE_CLEARED"
+        }))
+    );
+    return;
+  }
+
+  if (data.type === "KLEVB_GET_SW_VERSION") {
+    if (event.source && typeof event.source.postMessage === "function") {
+      event.source.postMessage({
+        type: "KLEVB_SW_VERSION",
+        cacheName: CACHE_NAME
+      });
+    }
   }
 });
 
@@ -176,9 +207,15 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
 
-  if (request.method !== "GET") return;
+  if (!request || request.method !== "GET") {
+    return;
+  }
 
   const url = new URL(request.url);
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return;
+  }
 
   if (url.origin !== location.origin) {
     return;
@@ -189,22 +226,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const isHtml =
-    request.mode === "navigate" ||
-    url.pathname === "/" ||
-    url.pathname.endsWith(".html");
+  if (isSupabaseLikePath(url.pathname)) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
-  const isFreshFile =
-    url.pathname.endsWith(".js") ||
-    url.pathname.endsWith(".css") ||
-    url.pathname.endsWith(".html");
+  if (isHtmlRequest(request, url)) {
+    event.respondWith(networkFirst(request, {
+      cacheHtmlFallback: true
+    }));
+    return;
+  }
 
-  if (isHtml || isFreshFile) {
+  if (isFreshAsset(url.pathname)) {
     event.respondWith(networkFirst(request));
     return;
   }
 
-  event.respondWith(cacheFirst(request));
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+
+  event.respondWith(networkFirst(request));
 });
 
 async function precacheAppFiles() {
@@ -215,7 +259,8 @@ async function precacheAppFiles() {
       try {
         const request = new Request(path, {
           method: "GET",
-          cache: "reload"
+          cache: "reload",
+          credentials: "same-origin"
         });
 
         const response = await fetch(request);
@@ -233,10 +278,90 @@ async function precacheAppFiles() {
   return results;
 }
 
-async function networkFirst(request) {
+async function clearOldCaches() {
+  const cacheNames = await caches.keys();
+
+  return Promise.all(
+    cacheNames
+      .filter((name) => name !== CACHE_NAME)
+      .map((name) => caches.delete(name))
+  );
+}
+
+async function clearAllCaches() {
+  const cacheNames = await caches.keys();
+
+  return Promise.all(
+    cacheNames.map((name) => caches.delete(name))
+  );
+}
+
+async function notifyClients(message) {
+  const clientList = await clients.matchAll({
+    type: "window",
+    includeUncontrolled: true
+  });
+
+  return Promise.all(
+    clientList.map((client) => {
+      try {
+        client.postMessage(message);
+      } catch (error) {
+        return null;
+      }
+
+      return null;
+    })
+  );
+}
+
+function isHtmlRequest(request, url) {
+  return (
+    request.mode === "navigate" ||
+    url.pathname === "/" ||
+    url.pathname.endsWith(".html")
+  );
+}
+
+function isFreshAsset(pathname) {
+  return (
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".css") ||
+    pathname.endsWith(".html") ||
+    pathname.endsWith(".json") ||
+    pathname.endsWith(".webmanifest")
+  );
+}
+
+function isStaticAsset(pathname) {
+  return (
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".webp") ||
+    pathname.endsWith(".gif") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".woff") ||
+    pathname.endsWith(".woff2") ||
+    pathname.endsWith(".ttf")
+  );
+}
+
+function isSupabaseLikePath(pathname) {
+  return (
+    pathname.includes("/rest/v1/") ||
+    pathname.includes("/storage/v1/") ||
+    pathname.includes("/auth/v1/") ||
+    pathname.includes("/realtime/v1/")
+  );
+}
+
+async function networkFirst(request, options = {}) {
   try {
     const freshResponse = await fetch(request, {
-      cache: "no-store"
+      cache: "no-store",
+      credentials: "same-origin"
     });
 
     const cache = await caches.open(CACHE_NAME);
@@ -250,23 +375,44 @@ async function networkFirst(request) {
       return cachedResponse;
     }
 
+    if (options.cacheHtmlFallback) {
+      const htmlFallback = await caches.match("/index.html");
+
+      if (htmlFallback) {
+        return htmlFallback;
+      }
+    }
+
     throw error;
   }
 }
 
-async function cacheFirst(request) {
+async function staleWhileRevalidate(request) {
   const cachedResponse = await caches.match(request);
+
+  const freshPromise = fetch(request, {
+    cache: "reload",
+    credentials: "same-origin"
+  })
+    .then(async (freshResponse) => {
+      const cache = await caches.open(CACHE_NAME);
+      await safeCachePut(cache, request, freshResponse);
+
+      return freshResponse;
+    })
+    .catch(() => null);
 
   if (cachedResponse) {
     return cachedResponse;
   }
 
-  const freshResponse = await fetch(request);
+  const freshResponse = await freshPromise;
 
-  const cache = await caches.open(CACHE_NAME);
-  await safeCachePut(cache, request, freshResponse);
+  if (freshResponse) {
+    return freshResponse;
+  }
 
-  return freshResponse;
+  throw new Error("Klevby SW: ресурс недоступен и не найден в кэше.");
 }
 
 async function safeCachePut(cache, request, response) {
