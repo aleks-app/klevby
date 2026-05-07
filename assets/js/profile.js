@@ -769,7 +769,7 @@ function updateProfileHomeFloatButton() {
   if (isProfileSectionVisible()) {
     btn.textContent = "⌂ Главная";
     btn.setAttribute("aria-label", "Вернуться на главную");
-    btn.classList.remove("show");
+    btn.classList.add("show");
     return;
   }
 
@@ -796,13 +796,26 @@ function patchHomeFloatButton() {
         return;
       }
 
+      if (isProfileSectionVisible()) {
+        setProfileReturnMode(false);
+        restoreMainTabbar();
+
+        if (typeof klevbyOriginalGoHomeTop === "function") {
+          return klevbyOriginalGoHomeTop.apply(this, arguments);
+        }
+
+        showHomeSectionFallback();
+        return;
+      }
+
       restoreMainTabbar();
 
       if (typeof klevbyOriginalGoHomeTop === "function") {
         return klevbyOriginalGoHomeTop.apply(this, arguments);
       }
 
-      return undefined;
+      showHomeSectionFallback();
+      return;
     };
   }
 
@@ -824,6 +837,39 @@ function patchHomeFloatButton() {
       return undefined;
     };
   }
+}
+
+function showHomeSectionFallback() {
+  const sectionIds = [
+    "homeSection",
+    "marketSection",
+    "pondsSection",
+    "mapSection",
+    "authSection",
+    "profileSection"
+  ];
+
+  sectionIds.forEach((id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+
+    if (id === "homeSection") {
+      section.classList.remove("hidden");
+    } else {
+      section.classList.add("hidden");
+    }
+  });
+
+  if (typeof setMobileTabActive === "function") {
+    setMobileTabActive(0);
+  }
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+  setTimeout(updateProfileHomeFloatButton, 120);
 }
 
 function patchShowSectionForProfile() {
