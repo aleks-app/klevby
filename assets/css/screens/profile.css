@@ -58,6 +58,21 @@
   overflow: hidden;
 }
 
+body.profile-screen-open header,
+body:has(#profileSection:not(.hidden)) header {
+  display: none !important;
+}
+
+body.profile-screen-open .footer,
+body:has(#profileSection:not(.hidden)) .footer {
+  display: none !important;
+}
+
+body.profile-screen-open main.wrap,
+body:has(#profileSection:not(.hidden)) main.wrap {
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+}
+
 .profile-shell {
   width: 100%;
   max-width: 760px;
@@ -472,6 +487,28 @@
 }
 
 @media (max-width: 900px) {
+  body.profile-screen-open,
+  body:has(#profileSection:not(.hidden)) {
+    padding-top: 0;
+  }
+
+  body.profile-screen-open main.wrap,
+  body:has(#profileSection:not(.hidden)) main.wrap {
+    width: min(92%, 760px);
+    padding-top: calc(env(safe-area-inset-top) + 10px);
+  }
+
+  body.profile-screen-open .profile-shell,
+  body:has(#profileSection:not(.hidden)) .profile-shell {
+    margin-top: 0;
+    margin-bottom: 42px;
+  }
+
+  body.profile-screen-open .profile-cover,
+  body:has(#profileSection:not(.hidden)) .profile-cover {
+    border-radius: 32px 32px 30px 30px;
+  }
+
   .profile-shell {
     margin: 5px auto 44px;
   }
@@ -510,8 +547,19 @@
     border-radius: 19px;
   }
 
+  body.profile-screen-open main.wrap,
+  body:has(#profileSection:not(.hidden)) main.wrap {
+    width: 92%;
+    padding-top: calc(env(safe-area-inset-top) + 8px);
+  }
+
   .profile-shell {
     margin: 4px auto 42px;
+  }
+
+  body.profile-screen-open .profile-shell,
+  body:has(#profileSection:not(.hidden)) .profile-shell {
+    margin-top: 0;
   }
 
   .profile-cover {
