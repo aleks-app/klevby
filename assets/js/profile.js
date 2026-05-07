@@ -105,16 +105,20 @@ function getProfileFeedItems() {
   return photos.map((photo) => {
     return {
       type: "profile_photo",
-      id: photo.id,
+      id: photo.feedPostId || photo.id,
+      localId: photo.id,
+      feedPostId: photo.feedPostId || "",
+      feedImagePath: photo.feedImagePath || "",
       authorName: data.name || getProfileNameFromCurrentUser() || "Рыбак",
       authorCity: data.city || "",
       authorTelegram: data.telegram || "",
-      image: photo.src || "",
+      image: photo.feedImageUrl || photo.src || "",
       title: photo.title || "Фото с рыбалки",
       createdAt: photo.createdAt || "",
       savedSizeKb: photo.savedSizeKb || 0,
       width: photo.width || 0,
-      height: photo.height || 0
+      height: photo.height || 0,
+      source: photo.source || "local"
     };
   });
 }
@@ -158,6 +162,8 @@ function openKlevbyProfile() {
 
   const sectionIds = [
     "homeSection",
+    "tripsSection",
+    "createSection",
     "marketSection",
     "pondsSection",
     "mapSection",
@@ -452,6 +458,8 @@ function getCurrentProfileUser() {
   return (
     window.currentUser ||
     window.klevbyCurrentUser ||
+    window.klevbyUser ||
+    (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
     null
   );
 }
@@ -759,6 +767,39 @@ function triggerProfilePhotoInput() {
   }
 }
 
+async function uploadProfilePhotoToSupabaseFeed(compressedPhoto, file) {
+  if (typeof window.klevbyCreateFeedPhotoPost !== "function") {
+    throw new Error("Модуль Supabase-ленты ещё не подключён.");
+  }
+
+  return window.klevbyCreateFeedPhotoPost({
+    dataUrl: compressedPhoto.dataUrl,
+    title: "Фото с рыбалки",
+    caption: "Фото с рыбалки",
+    width: compressedPhoto.width,
+    height: compressedPhoto.height,
+    sizeKb: compressedPhoto.sizeKb,
+    originalSizeKb: Math.round((file?.size || 0) / 1024)
+  });
+}
+
+function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
+  return {
+    id: `photo_${Date.now()}`,
+    src: compressedPhoto.dataUrl,
+    title: "Фото с рыбалки",
+    createdAt: new Date().toISOString(),
+    originalSizeKb: Math.round((file?.size || 0) / 1024),
+    savedSizeKb: compressedPhoto.sizeKb,
+    width: compressedPhoto.width,
+    height: compressedPhoto.height,
+    source: feedItem ? "supabase" : "local",
+    feedPostId: feedItem?.id || "",
+    feedImagePath: feedItem?.imagePath || "",
+    feedImageUrl: feedItem?.imageUrl || feedItem?.image || ""
+  };
+}
+
 async function handleProfilePhotoUpload(event) {
   const file = event?.target?.files?.[0];
 
@@ -776,25 +817,46 @@ async function handleProfilePhotoUpload(event) {
       outputType: "image/jpeg"
     });
 
-    const photos = readProfilePhotos();
+    let feedItem = null;
+    let supabaseError = null;
 
-    photos.unshift({
-      id: `photo_${Date.now()}`,
-      src: compressedPhoto.dataUrl,
-      title: "Фото с рыбалки",
-      createdAt: new Date().toISOString(),
-      originalSizeKb: Math.round(file.size / 1024),
-      savedSizeKb: compressedPhoto.sizeKb,
-      width: compressedPhoto.width,
-      height: compressedPhoto.height
-    });
+    try {
+      feedItem = await uploadProfilePhotoToSupabaseFeed(compressedPhoto, file);
+    } catch (error) {
+      supabaseError = error;
+      console.warn("Klevby profile: фото сохранится локально, Supabase не принял загрузку", error);
+    }
+
+    const photos = readProfilePhotos();
+    const localPhoto = makeLocalProfilePhoto(compressedPhoto, file, feedItem);
+
+    photos.unshift(localPhoto);
 
     saveProfilePhotos(photos);
     updateKlevbyProfileView();
     openKlevbyProfile();
 
+    if (typeof window.renderProfileFeed === "function") {
+      setTimeout(window.renderProfileFeed, 350);
+    }
+
+    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+      detail: {
+        action: feedItem ? "profile_photo_uploaded_to_supabase" : "profile_photo_saved_locally",
+        item: feedItem || localPhoto,
+        error: supabaseError ? String(supabaseError.message || supabaseError) : ""
+      }
+    }));
+
     if (navigator.vibrate) {
       navigator.vibrate(18);
+    }
+
+    if (supabaseError) {
+      alert(
+        "Фото добавлено в профиль на этом устройстве, но пока не попало в общую ленту. " +
+        (supabaseError.message || "Проверь вход, Supabase Storage и RLS.")
+      );
     }
   } catch (error) {
     console.warn("Klevby profile: фото не обработалось", error);
@@ -880,13 +942,41 @@ function estimateDataUrlSizeKb(dataUrl) {
   return Math.round(bytes / 1024);
 }
 
-function removeProfilePhoto(photoId) {
+async function removeProfilePhoto(photoId) {
   const cleanId = String(photoId || "");
-  const photos = readProfilePhotos().filter((photo) => String(photo.id) !== cleanId);
+  const photos = readProfilePhotos();
+  const photo = photos.find((item) => String(item.id) === cleanId || String(item.feedPostId) === cleanId);
 
-  saveProfilePhotos(photos);
+  if (!photo) return;
+
+  if (photo.feedPostId && typeof window.klevbyDeleteFeedPostFromSupabase === "function") {
+    try {
+      await window.klevbyDeleteFeedPostFromSupabase(photo.feedPostId, photo.feedImagePath || "");
+    } catch (error) {
+      console.warn("Klevby profile: Supabase-фото не удалилось", error);
+      alert(error?.message || "Не получилось удалить фото из общей ленты.");
+      return;
+    }
+  }
+
+  const updatedPhotos = photos.filter((item) => {
+    return String(item.id) !== cleanId && String(item.feedPostId || "") !== cleanId;
+  });
+
+  saveProfilePhotos(updatedPhotos);
   updateKlevbyProfileView();
   closeProfilePhotoViewer();
+
+  if (typeof window.renderProfileFeed === "function") {
+    setTimeout(window.renderProfileFeed, 250);
+  }
+
+  window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+    detail: {
+      action: "profile_photo_deleted",
+      photoId: cleanId
+    }
+  }));
 }
 
 function cleanupOldProfileReportGrid(contentCard) {
@@ -932,11 +1022,12 @@ function renderProfilePhotos() {
   gallery.className = "profile-photo-gallery profile-report-grid";
 
   gallery.innerHTML = photos.map((photo) => {
-    const safeId = escapeHtml(photo.id || "");
+    const safeId = escapeHtml(photo.id || photo.feedPostId || "");
     const safeTitle = escapeHtml(photo.title || "Фото с рыбалки");
-    const safeSrc = escapeHtml(photo.src || "");
+    const safeSrc = escapeHtml(photo.feedImageUrl || photo.src || "");
     const savedSize = Number(photo.savedSizeKb || 0);
     const sizeLabel = savedSize ? `${savedSize} КБ` : "Фото";
+    const sourceLabel = photo.feedPostId ? "🌐 в ленте" : "📱 локально";
 
     return `
       <button class="profile-report-card profile-photo-card" type="button" onclick="openProfilePhotoViewer('${safeId}')" aria-label="Открыть фото">
@@ -944,7 +1035,7 @@ function renderProfilePhotos() {
         <p>${safeTitle}</p>
         <div class="profile-report-meta">
           <span>📸 ${escapeHtml(sizeLabel)}</span>
-          <span>Открыть</span>
+          <span>${escapeHtml(sourceLabel)}</span>
         </div>
       </button>
     `;
@@ -1113,7 +1204,9 @@ function ensureProfilePhotoViewer() {
 
 function openProfilePhotoViewer(photoId) {
   const cleanId = String(photoId || "");
-  const photo = readProfilePhotos().find((item) => String(item.id) === cleanId);
+  const photo = readProfilePhotos().find((item) => {
+    return String(item.id) === cleanId || String(item.feedPostId || "") === cleanId;
+  });
 
   if (!photo) return;
 
@@ -1123,17 +1216,18 @@ function openProfilePhotoViewer(photoId) {
   const meta = document.getElementById("profilePhotoViewerMeta");
   const deleteButton = document.getElementById("profilePhotoViewerDelete");
 
-  if (image) image.src = photo.src || "";
+  if (image) image.src = photo.feedImageUrl || photo.src || "";
   if (title) title.textContent = photo.title || "Фото с рыбалки";
 
   if (meta) {
     const sizeText = photo.savedSizeKb ? `${photo.savedSizeKb} КБ` : "сжато для профиля";
     const dimensionText = photo.width && photo.height ? `${photo.width}×${photo.height}` : "";
-    meta.textContent = [dimensionText, sizeText].filter(Boolean).join(" • ");
+    const sourceText = photo.feedPostId ? "общая лента Supabase" : "локальное фото";
+    meta.textContent = [sourceText, dimensionText, sizeText].filter(Boolean).join(" • ");
   }
 
   if (deleteButton) {
-    deleteButton.onclick = () => removeProfilePhoto(cleanId);
+    deleteButton.onclick = () => removeProfilePhoto(photo.id || cleanId);
   }
 
   viewer.classList.remove("hidden");
@@ -1187,7 +1281,7 @@ function openProfileTripsView() {
   try {
     if (typeof showSection === "function") {
       window.__klevbyProfileInternalNavigation = true;
-      showSection("home");
+      showSection("trips");
       window.__klevbyProfileInternalNavigation = false;
     }
   } catch (error) {
@@ -1221,7 +1315,7 @@ function openProfileCreateView() {
   try {
     if (typeof showSection === "function") {
       window.__klevbyProfileInternalNavigation = true;
-      showSection("home");
+      showSection("create");
       window.__klevbyProfileInternalNavigation = false;
     }
   } catch (error) {
@@ -1383,6 +1477,8 @@ function patchHomeFloatButton() {
 function showHomeSectionFallback() {
   const sectionIds = [
     "homeSection",
+    "tripsSection",
+    "createSection",
     "marketSection",
     "pondsSection",
     "mapSection",
