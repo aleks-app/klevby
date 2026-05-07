@@ -1,6 +1,12 @@
 const KLEVB_PROFILE_STORAGE_KEY = "klevby_profile_settings";
 const KLEVB_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
 const KLEVB_PROFILE_NAME_KEY = "klevby_profile_name";
+const KLEVB_PROFILE_RETURN_KEY = "klevby_profile_return_mode";
+
+let klevbyMainTabbarSnapshot = null;
+let klevbyOriginalGoHomeTop = null;
+let klevbyOriginalUpdateHomeFloatButton = null;
+let klevbyOriginalShowSection = null;
 
 function getDefaultProfileData() {
   return {
@@ -58,6 +64,8 @@ function saveProfileData(data) {
 }
 
 function openKlevbyProfile() {
+  setProfileReturnMode(false);
+
   const sectionIds = [
     "homeSection",
     "marketSection",
@@ -79,11 +87,10 @@ function openKlevbyProfile() {
   });
 
   closeMobileMenuSafe();
-
-  if (typeof setMobileTabActive === "function") {
-    setMobileTabActive(-1);
-  }
-
+  closeProfileSettingsModal();
+  hideProfileTopGearButton();
+  applyProfileTabbar();
+  setProfileTabActive(0);
   updateKlevbyProfileView();
 
   window.scrollTo({
@@ -92,9 +99,7 @@ function openKlevbyProfile() {
   });
 
   setTimeout(() => {
-    if (typeof updateHomeFloatButton === "function") {
-      updateHomeFloatButton();
-    }
+    updateProfileHomeFloatButton();
   }, 150);
 }
 
@@ -119,6 +124,16 @@ function closeMobileMenuSafe() {
   }
 }
 
+function hideProfileTopGearButton() {
+  const gearButton = document.querySelector(".profile-gear-btn");
+
+  if (gearButton) {
+    gearButton.classList.add("hidden");
+    gearButton.setAttribute("aria-hidden", "true");
+    gearButton.tabIndex = -1;
+  }
+}
+
 function openProfileSettingsModal() {
   const modal = document.getElementById("profileSettingsModal");
   const message = document.getElementById("profileSettingsMessage");
@@ -134,6 +149,8 @@ function openProfileSettingsModal() {
 
   modal.classList.remove("hidden");
   document.body.classList.add("post-modal-open");
+
+  setProfileTabActive(3);
 
   setTimeout(() => {
     const nameInput = document.getElementById("profileSettingsNameInput");
@@ -206,12 +223,17 @@ function saveProfileSettings() {
 
   if (message) {
     message.classList.remove("error-line");
-    message.textContent = "✅ Профиль сохранён. Данные уже обновились на странице.";
+    message.textContent = "✅ Анкета сохранена.";
   }
 
   if (navigator.vibrate) {
     navigator.vibrate(18);
   }
+
+  setTimeout(() => {
+    closeProfileSettingsModal();
+    openKlevbyProfile();
+  }, 420);
 }
 
 function syncProfileDataToMainInputs(data) {
@@ -260,6 +282,7 @@ function updateKlevbyProfileView() {
     "Рыбак";
 
   const city = data.city || "";
+  const telegram = data.telegram || "";
   const about = data.about || "";
 
   const nameNode = document.getElementById("profileNameText");
@@ -273,8 +296,13 @@ function updateKlevbyProfileView() {
   }
 
   if (statusNode) {
-    if (city) {
-      statusNode.textContent = `📍 ${city}`;
+    const statusParts = [];
+
+    if (city) statusParts.push(`📍 ${city}`);
+    if (telegram) statusParts.push(formatTelegramLabel(telegram));
+
+    if (statusParts.length) {
+      statusNode.textContent = statusParts.join(" • ");
     } else if (about) {
       statusNode.textContent = about;
     } else {
@@ -351,6 +379,19 @@ function getProfileNameFromInputs() {
   const usernameValue = usernameInput && usernameInput.value ? usernameInput.value.trim() : "";
 
   return nameValue || usernameValue || "";
+}
+
+function formatTelegramLabel(value) {
+  const cleanValue = String(value || "").trim();
+
+  if (!cleanValue) return "";
+
+  if (cleanValue.startsWith("@")) return cleanValue;
+
+  const match = cleanValue.match(/t\.me\/([^/?#]+)/i);
+  if (match && match[1]) return `@${match[1]}`;
+
+  return cleanValue;
 }
 
 function triggerProfileAvatarInput() {
@@ -492,8 +533,316 @@ function bindProfileInputSync() {
   });
 }
 
+function saveMainTabbarSnapshot() {
+  if (klevbyMainTabbarSnapshot) return;
+
+  const tabbar = document.querySelector(".mobile-tabbar");
+  if (!tabbar) return;
+
+  const buttons = Array.from(tabbar.querySelectorAll(".mobile-tab-btn"));
+
+  klevbyMainTabbarSnapshot = buttons.map((button) => {
+    return {
+      html: button.innerHTML,
+      className: button.className,
+      onclick: button.getAttribute("onclick"),
+      id: button.id || ""
+    };
+  });
+}
+
+function restoreMainTabbar() {
+  const tabbar = document.querySelector(".mobile-tabbar");
+  if (!tabbar || !klevbyMainTabbarSnapshot) return;
+
+  const buttons = Array.from(tabbar.querySelectorAll(".mobile-tab-btn"));
+
+  buttons.forEach((button, index) => {
+    const saved = klevbyMainTabbarSnapshot[index];
+    if (!saved) return;
+
+    button.innerHTML = saved.html;
+    button.className = saved.className;
+
+    if (saved.id) {
+      button.id = saved.id;
+    }
+
+    if (saved.onclick) {
+      button.setAttribute("onclick", saved.onclick);
+    } else {
+      button.removeAttribute("onclick");
+    }
+
+    button.classList.remove("profile-tab-active");
+  });
+}
+
+function applyProfileTabbar() {
+  saveMainTabbarSnapshot();
+
+  const tabbar = document.querySelector(".mobile-tabbar");
+  if (!tabbar) return;
+
+  const buttons = Array.from(tabbar.querySelectorAll(".mobile-tab-btn"));
+  if (buttons.length < 5) return;
+
+  setProfileTabButton(buttons[0], "▧", "Фото", "openProfilePhotoAction()");
+  setProfileTabButton(buttons[1], "▣", "Выезды", "openProfileTripsView()");
+  setProfileTabButton(buttons[2], "+", "Создать", "openProfileCreateView()", true);
+  setProfileTabButton(buttons[3], "⚙", "Анкета", "openProfileSettingsModal()");
+
+  const chatButton = buttons[4];
+  chatButton.innerHTML = '<span class="mobile-tab-icon">☵</span><span class="mobile-tab-text">Чат</span>';
+  chatButton.classList.remove("active");
+  chatButton.classList.remove("profile-tab-active");
+
+  if (!chatButton.id) {
+    chatButton.id = "nav-chat";
+  }
+}
+
+function setProfileTabButton(button, icon, text, action, isCreate = false) {
+  if (!button) return;
+
+  button.className = isCreate
+    ? "mobile-tab-btn mobile-tab-create"
+    : "mobile-tab-btn";
+
+  button.innerHTML = `<span class="mobile-tab-icon">${icon}</span><span class="mobile-tab-text">${text}</span>`;
+  button.setAttribute("onclick", action);
+}
+
+function setProfileTabActive(index) {
+  const buttons = document.querySelectorAll(".mobile-tab-btn");
+
+  buttons.forEach((button, i) => {
+    button.classList.toggle("active", Number.isInteger(index) && i === index);
+  });
+}
+
+function openProfilePhotoAction() {
+  applyProfileTabbar();
+  setProfileTabActive(0);
+  triggerProfileAvatarInput();
+}
+
+function openProfileTripsView() {
+  setProfileReturnMode(true);
+  applyProfileTabbar();
+  setProfileTabActive(1);
+
+  hideProfileSectionOnly();
+
+  try {
+    if (typeof setMode === "function") {
+      setMode("mine");
+    }
+  } catch (error) {
+    console.warn("Klevby profile: не удалось открыть мои выезды", error);
+  }
+
+  try {
+    if (typeof showSection === "function") {
+      window.__klevbyProfileInternalNavigation = true;
+      showSection("home");
+      window.__klevbyProfileInternalNavigation = false;
+    }
+  } catch (error) {
+    window.__klevbyProfileInternalNavigation = false;
+  }
+
+  setTimeout(() => {
+    applyProfileTabbar();
+    setProfileTabActive(1);
+    updateProfileHomeFloatButton();
+
+    const posts = document.getElementById("postsSection");
+    if (posts) {
+      posts.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  }, 100);
+}
+
+function openProfileCreateView() {
+  setProfileReturnMode(true);
+  applyProfileTabbar();
+  setProfileTabActive(2);
+
+  hideProfileSectionOnly();
+
+  try {
+    if (typeof showSection === "function") {
+      window.__klevbyProfileInternalNavigation = true;
+      showSection("home");
+      window.__klevbyProfileInternalNavigation = false;
+    }
+  } catch (error) {
+    window.__klevbyProfileInternalNavigation = false;
+  }
+
+  setTimeout(() => {
+    applyProfileTabbar();
+    setProfileTabActive(2);
+    updateProfileHomeFloatButton();
+
+    const panel = document.getElementById("createPanel");
+    if (panel) {
+      panel.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  }, 100);
+}
+
+function hideProfileSectionOnly() {
+  const profileSection = document.getElementById("profileSection");
+
+  if (profileSection) {
+    profileSection.classList.add("hidden");
+  }
+
+  closeProfileSettingsModal();
+}
+
+function setProfileReturnMode(isActive) {
+  try {
+    if (isActive) {
+      sessionStorage.setItem(KLEVB_PROFILE_RETURN_KEY, "1");
+    } else {
+      sessionStorage.removeItem(KLEVB_PROFILE_RETURN_KEY);
+    }
+  } catch (error) {
+    window.__klevbyProfileReturnMode = Boolean(isActive);
+  }
+
+  window.__klevbyProfileReturnMode = Boolean(isActive);
+  updateProfileHomeFloatButton();
+}
+
+function isProfileReturnMode() {
+  try {
+    return sessionStorage.getItem(KLEVB_PROFILE_RETURN_KEY) === "1";
+  } catch (error) {
+    return Boolean(window.__klevbyProfileReturnMode);
+  }
+}
+
+function updateProfileHomeFloatButton() {
+  const btn = document.getElementById("homeFloatBtn");
+
+  if (!btn) return;
+
+  if (isProfileReturnMode()) {
+    btn.textContent = "← Профиль";
+    btn.setAttribute("aria-label", "Вернуться в профиль");
+    btn.classList.add("show");
+    return;
+  }
+
+  btn.textContent = "⌂ Главная";
+  btn.setAttribute("aria-label", "Вернуться на главную");
+
+  if (typeof klevbyOriginalUpdateHomeFloatButton === "function") {
+    try {
+      klevbyOriginalUpdateHomeFloatButton();
+    } catch (error) {
+      console.warn("Klevby profile: home float update skipped", error);
+    }
+  }
+}
+
+function patchHomeFloatButton() {
+  if (typeof window.goHomeTop === "function" && !klevbyOriginalGoHomeTop) {
+    klevbyOriginalGoHomeTop = window.goHomeTop;
+
+    window.goHomeTop = function patchedGoHomeTop() {
+      if (isProfileReturnMode()) {
+        openKlevbyProfile();
+        return;
+      }
+
+      restoreMainTabbar();
+
+      if (typeof klevbyOriginalGoHomeTop === "function") {
+        return klevbyOriginalGoHomeTop.apply(this, arguments);
+      }
+
+      return undefined;
+    };
+  }
+
+  if (typeof window.updateHomeFloatButton === "function" && !klevbyOriginalUpdateHomeFloatButton) {
+    klevbyOriginalUpdateHomeFloatButton = window.updateHomeFloatButton;
+
+    window.updateHomeFloatButton = function patchedUpdateHomeFloatButton() {
+      if (isProfileReturnMode()) {
+        updateProfileHomeFloatButton();
+        return;
+      }
+
+      if (typeof klevbyOriginalUpdateHomeFloatButton === "function") {
+        const result = klevbyOriginalUpdateHomeFloatButton.apply(this, arguments);
+        updateProfileHomeFloatButton();
+        return result;
+      }
+
+      return undefined;
+    };
+  }
+}
+
+function patchShowSectionForProfile() {
+  if (window.__klevbyProfileShowSectionPatched) return;
+  if (typeof window.showSection !== "function") return;
+
+  klevbyOriginalShowSection = window.showSection;
+
+  window.showSection = function patchedShowSection(sectionName) {
+    const result = klevbyOriginalShowSection.apply(this, arguments);
+
+    if (sectionName !== "profile" && !window.__klevbyProfileInternalNavigation) {
+      hideProfileSectionOnly();
+      restoreMainTabbar();
+      setProfileReturnMode(false);
+    }
+
+    if (sectionName === "profile") {
+      openKlevbyProfile();
+    }
+
+    setTimeout(() => {
+      updateProfileHomeFloatButton();
+    }, 120);
+
+    return result;
+  };
+
+  window.__klevbyProfileShowSectionPatched = true;
+}
+
+function initKlevbyProfileNavigation() {
+  saveMainTabbarSnapshot();
+  patchHomeFloatButton();
+
+  setTimeout(patchShowSectionForProfile, 0);
+  setTimeout(patchShowSectionForProfile, 250);
+  setTimeout(patchShowSectionForProfile, 800);
+
+  if (isProfileReturnMode()) {
+    applyProfileTabbar();
+    updateProfileHomeFloatButton();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   bindProfileInputSync();
+  hideProfileTopGearButton();
+  initKlevbyProfileNavigation();
   updateKlevbyProfileView();
 });
 
@@ -506,3 +855,9 @@ window.triggerProfileAvatarInput = triggerProfileAvatarInput;
 window.handleLocalAvatarUpload = handleLocalAvatarUpload;
 window.updateKlevbyProfileView = updateKlevbyProfileView;
 window.logoutFromProfileSettings = logoutFromProfileSettings;
+
+window.applyProfileTabbar = applyProfileTabbar;
+window.restoreMainTabbar = restoreMainTabbar;
+window.openProfilePhotoAction = openProfilePhotoAction;
+window.openProfileTripsView = openProfileTripsView;
+window.openProfileCreateView = openProfileCreateView;
