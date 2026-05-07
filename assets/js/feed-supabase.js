@@ -253,8 +253,8 @@
     let result = await db
       .from(KLEVB_FEED_TABLE)
       .select(klevbyFeedSupabaseGetPostSelectColumns(true))
-      .order("engagement_score", { ascending: false })
       .order("created_at", { ascending: false })
+      .order("engagement_score", { ascending: false })
       .limit(limit);
 
     if (
@@ -264,8 +264,8 @@
       result = await db
         .from(KLEVB_FEED_TABLE)
         .select(klevbyFeedSupabaseGetPostSelectColumns(false))
-        .order("engagement_score", { ascending: false })
         .order("created_at", { ascending: false })
+        .order("engagement_score", { ascending: false })
         .limit(limit);
     }
 
