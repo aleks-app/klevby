@@ -15,6 +15,8 @@ let klevbyOriginalGoHomeTop = null;
 let klevbyOriginalUpdateHomeFloatButton = null;
 let klevbyOriginalShowSection = null;
 let klevbyHeaderDisplaySnapshot = null;
+let klevbyProfileFeedSyncInProgress = false;
+let klevbyProfileFeedSyncTimer = null;
 
 function getDefaultProfileData() {
   return {
@@ -118,7 +120,7 @@ function getProfileFeedItems() {
       savedSizeKb: photo.savedSizeKb || 0,
       width: photo.width || 0,
       height: photo.height || 0,
-      source: photo.source || "local"
+      source: photo.feedPostId ? "supabase" : (photo.source || "local")
     };
   });
 }
@@ -796,8 +798,135 @@ function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
     source: feedItem ? "supabase" : "local",
     feedPostId: feedItem?.id || "",
     feedImagePath: feedItem?.imagePath || "",
-    feedImageUrl: feedItem?.imageUrl || feedItem?.image || ""
+    feedImageUrl: feedItem?.imageUrl || feedItem?.image || "",
+    feedSyncError: ""
   };
+}
+
+function updateLocalPhotoWithFeedItem(photo, feedItem) {
+  if (!photo || !feedItem) return photo;
+
+  return {
+    ...photo,
+    source: "supabase",
+    feedPostId: feedItem.id || photo.feedPostId || "",
+    feedImagePath: feedItem.imagePath || photo.feedImagePath || "",
+    feedImageUrl: feedItem.imageUrl || feedItem.image || photo.feedImageUrl || "",
+    feedSyncError: ""
+  };
+}
+
+function scheduleProfileFeedSync(delay = 1200) {
+  clearTimeout(klevbyProfileFeedSyncTimer);
+
+  klevbyProfileFeedSyncTimer = setTimeout(() => {
+    syncLocalProfilePhotosToSupabaseFeed(false).catch((error) => {
+      console.warn("Klevby profile: автосинхронизация фото не сработала", error);
+    });
+  }, delay);
+}
+
+async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
+  if (klevbyProfileFeedSyncInProgress) return false;
+
+  if (typeof window.klevbyCreateFeedPhotoPost !== "function") {
+    if (force) {
+      console.warn("Klevby profile: feed-supabase.js ещё не готов для синхронизации фото");
+    }
+
+    return false;
+  }
+
+  const currentUser = getCurrentProfileUser();
+
+  if (!currentUser || !currentUser.id) {
+    if (force) {
+      console.warn("Klevby profile: нет пользователя для загрузки локальных фото в Supabase");
+    }
+
+    return false;
+  }
+
+  const photos = readProfilePhotos();
+
+  const pendingPhotos = photos.filter((photo) => {
+    return (
+      photo &&
+      photo.src &&
+      !photo.feedPostId &&
+      !photo.feedImageUrl
+    );
+  });
+
+  if (!pendingPhotos.length) return false;
+
+  klevbyProfileFeedSyncInProgress = true;
+
+  let changed = false;
+
+  try {
+    for (const pendingPhoto of pendingPhotos) {
+      try {
+        const feedItem = await window.klevbyCreateFeedPhotoPost({
+          dataUrl: pendingPhoto.src,
+          title: pendingPhoto.title || "Фото с рыбалки",
+          caption: pendingPhoto.title || "Фото с рыбалки",
+          width: pendingPhoto.width || 0,
+          height: pendingPhoto.height || 0,
+          sizeKb: pendingPhoto.savedSizeKb || 0,
+          originalSizeKb: pendingPhoto.originalSizeKb || 0
+        });
+
+        const currentPhotos = readProfilePhotos();
+        const updatedPhotos = currentPhotos.map((photo) => {
+          if (String(photo.id) !== String(pendingPhoto.id)) {
+            return photo;
+          }
+
+          return updateLocalPhotoWithFeedItem(photo, feedItem);
+        });
+
+        saveProfilePhotos(updatedPhotos);
+        changed = true;
+
+        window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+          detail: {
+            action: "local_profile_photo_synced_to_supabase",
+            item: feedItem
+          }
+        }));
+      } catch (error) {
+        console.warn("Klevby profile: локальное фото не удалось отправить в Supabase", error);
+
+        const currentPhotos = readProfilePhotos();
+        const updatedPhotos = currentPhotos.map((photo) => {
+          if (String(photo.id) !== String(pendingPhoto.id)) {
+            return photo;
+          }
+
+          return {
+            ...photo,
+            source: "local",
+            feedSyncError: String(error?.message || error || "Ошибка Supabase")
+          };
+        });
+
+        saveProfilePhotos(updatedPhotos);
+      }
+    }
+  } finally {
+    klevbyProfileFeedSyncInProgress = false;
+  }
+
+  if (changed) {
+    updateKlevbyProfileView();
+
+    if (typeof window.renderProfileFeed === "function") {
+      setTimeout(window.renderProfileFeed, 250);
+    }
+  }
+
+  return changed;
 }
 
 async function handleProfilePhotoUpload(event) {
@@ -857,6 +986,8 @@ async function handleProfilePhotoUpload(event) {
         "Фото добавлено в профиль на этом устройстве, но пока не попало в общую ленту. " +
         (supabaseError.message || "Проверь вход, Supabase Storage и RLS.")
       );
+
+      scheduleProfileFeedSync(1800);
     }
   } catch (error) {
     console.warn("Klevby profile: фото не обработалось", error);
@@ -1512,111 +1643,3 @@ function showHomeSectionFallback() {
 
   setTimeout(updateProfileHomeFloatButton, 120);
 }
-
-function patchShowSectionForProfile() {
-  if (window.__klevbyProfileShowSectionPatched) return;
-  if (typeof window.showSection !== "function") return;
-
-  klevbyOriginalShowSection = window.showSection;
-
-  window.showSection = function patchedShowSection(sectionName) {
-    const result = klevbyOriginalShowSection.apply(this, arguments);
-
-    if (sectionName !== "profile" && !window.__klevbyProfileInternalNavigation) {
-      hideProfileSectionOnly();
-      restoreMainTabbar();
-      setProfileReturnMode(false);
-      setProfileScreenChrome(false);
-    }
-
-    if (sectionName === "profile") {
-      openKlevbyProfile();
-    }
-
-    if (window.__klevbyProfileInternalNavigation || isProfileReturnMode()) {
-      setProfileScreenChrome(true);
-    }
-
-    setTimeout(updateProfileHomeFloatButton, 120);
-
-    return result;
-  };
-
-  window.__klevbyProfileShowSectionPatched = true;
-}
-
-function patchProfileCardButtons() {
-  const profilePhotoButton = document.querySelector(".profile-card-head button");
-  const menuButtons = document.querySelectorAll(".profile-menu-card button");
-
-  if (profilePhotoButton) {
-    profilePhotoButton.setAttribute("onclick", "openProfilePhotoAction()");
-  }
-
-  if (menuButtons[0]) {
-    menuButtons[0].setAttribute("onclick", "openProfilePhotoAction()");
-  }
-
-  if (menuButtons[1]) {
-    menuButtons[1].setAttribute("onclick", "openProfileTripsView()");
-  }
-
-  if (menuButtons[2]) {
-    menuButtons[2].setAttribute("onclick", "openProfileCreateView()");
-  }
-}
-
-function initKlevbyProfileNavigation() {
-  saveMainTabbarSnapshot();
-  patchHomeFloatButton();
-  patchProfileCardButtons();
-
-  setTimeout(patchShowSectionForProfile, 0);
-  setTimeout(patchShowSectionForProfile, 250);
-  setTimeout(patchShowSectionForProfile, 800);
-
-  if (isProfileReturnMode()) {
-    setProfileScreenChrome(true);
-    applyProfileTabbar();
-    updateProfileHomeFloatButton();
-  } else {
-    setProfileScreenChrome(isProfileSectionVisible());
-  }
-}
-
-function bindProfileKeyboardHandlers() {
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeProfilePhotoViewer();
-    }
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  bindProfileInputSync();
-  bindProfileKeyboardHandlers();
-  hideProfileTopGearButton();
-  initKlevbyProfileNavigation();
-  updateKlevbyProfileView();
-});
-
-window.openKlevbyProfile = openKlevbyProfile;
-window.openProfileSettingsModal = openProfileSettingsModal;
-window.closeProfileSettingsModal = closeProfileSettingsModal;
-window.handleProfileSettingsBackdrop = handleProfileSettingsBackdrop;
-window.saveProfileSettings = saveProfileSettings;
-window.triggerProfileAvatarInput = triggerProfileAvatarInput;
-window.handleLocalAvatarUpload = handleLocalAvatarUpload;
-window.updateKlevbyProfileView = updateKlevbyProfileView;
-window.logoutFromProfileSettings = logoutFromProfileSettings;
-
-window.applyProfileTabbar = applyProfileTabbar;
-window.restoreMainTabbar = restoreMainTabbar;
-window.openProfilePhotoAction = openProfilePhotoAction;
-window.openProfileTripsView = openProfileTripsView;
-window.openProfileCreateView = openProfileCreateView;
-window.setProfileScreenChrome = setProfileScreenChrome;
-window.removeProfilePhoto = removeProfilePhoto;
-window.openProfilePhotoViewer = openProfilePhotoViewer;
-window.closeProfilePhotoViewer = closeProfilePhotoViewer;
-window.getProfileFeedItems = getProfileFeedItems;
