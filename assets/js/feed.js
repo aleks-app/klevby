@@ -7,6 +7,8 @@
   let klevbyFeedRenderToken = 0;
   let klevbyFeedLastItems = [];
   let klevbyFeedItemsCache = {};
+  let klevbyFeedAutoRefreshTimer = null;
+  let klevbyFeedRealtimeStarted = false;
 
   function klevbyFeedEscapeHtml(value) {
     return String(value || "")
@@ -115,7 +117,18 @@
     return [];
   }
 
-  function klevbyGetProfileFeedAvatarSafe() {
+  function klevbyGetProfileFeedAvatarSafe(item = null) {
+    const itemAvatar =
+      item?.authorAvatar ||
+      item?.authorAvatarUrl ||
+      item?.avatar ||
+      item?.avatarUrl ||
+      "";
+
+    if (itemAvatar) {
+      return itemAvatar;
+    }
+
     try {
       return localStorage.getItem(KLEVB_FEED_PROFILE_AVATAR_KEY) || "";
     } catch (error) {
@@ -286,18 +299,396 @@
     );
   }
 
+  function klevbyEnsureFeedStyles() {
+    if (document.getElementById("klevbyFeedStyles")) return;
+
+    const style = document.createElement("style");
+    style.id = "klevbyFeedStyles";
+    style.textContent = `
+      .profile-feed-avatar-img,
+      .profile-feed-avatar-fallback {
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        display: inline-flex;
+        flex: 0 0 auto;
+        border: 1px solid rgba(244,178,74,0.24);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+      }
+
+      .profile-feed-avatar-img {
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      .profile-feed-avatar-fallback {
+        align-items: center;
+        justify-content: center;
+        background: rgba(244,178,74,0.14);
+        color: #fff8ea;
+        font-weight: 900;
+      }
+
+      .profile-feed-author {
+        appearance: none;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        margin: 0 0 12px;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .profile-feed-author-text {
+        min-width: 0;
+        display: block;
+      }
+
+      .profile-feed-author-name {
+        display: block;
+        font-size: 14px;
+        font-weight: 900;
+        line-height: 1.2;
+        color: #fff8ea;
+      }
+
+      .profile-feed-author-action {
+        display: block;
+        margin-top: 3px;
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(255,248,234,0.56);
+      }
+
+      .profile-feed-description {
+        margin-top: 6px !important;
+      }
+
+      .profile-feed-tags {
+        margin-top: 14px;
+      }
+
+      .profile-feed-actions {
+        margin-top: 13px;
+      }
+
+      .profile-feed-actions .small-btn {
+        min-width: 0;
+      }
+
+      .profile-feed-comment-btn {
+        background: rgba(255,255,255,0.075) !important;
+        border-color: rgba(244,178,74,0.16) !important;
+        color: rgba(255,248,234,0.88) !important;
+      }
+
+      .home-empty-card {
+        grid-column: 1 / -1;
+        width: 100%;
+        padding: 22px;
+        border-radius: 26px;
+        border: 1px solid rgba(244,178,74,0.14);
+        background:
+          radial-gradient(circle at 0% 0%, rgba(244,178,74,0.14), transparent 38%),
+          rgba(13, 20, 17, 0.86);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.34);
+      }
+
+      .home-empty-icon {
+        width: 54px;
+        height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 14px;
+        border-radius: 20px;
+        background: rgba(244,178,74,0.14);
+        font-size: 26px;
+      }
+
+      .home-empty-card h3 {
+        margin: 0 0 8px;
+        color: #fff8ea;
+        font-size: 22px;
+        line-height: 1.15;
+        font-weight: 900;
+      }
+
+      .home-empty-card p {
+        margin: 0 0 16px;
+        color: rgba(255,248,234,0.66);
+        font-size: 14px;
+        line-height: 1.5;
+        font-weight: 600;
+      }
+
+      .klevby-feed-viewer.hidden,
+      .klevby-feed-comment-modal.hidden {
+        display: none !important;
+      }
+
+      .klevby-feed-viewer,
+      .klevby-feed-comment-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+      }
+
+      .klevby-feed-viewer-backdrop,
+      .klevby-feed-comment-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .klevby-feed-viewer-sheet,
+      .klevby-feed-comment-sheet {
+        position: relative;
+        z-index: 2;
+        width: min(100%, 760px);
+        max-height: 90vh;
+        border: 1px solid rgba(244,178,74,0.18);
+        border-radius: 28px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(244,178,74,0.12), transparent 42%),
+          rgba(10, 14, 12, 0.96);
+        box-shadow:
+          0 28px 90px rgba(0,0,0,0.72),
+          inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+
+      .klevby-feed-viewer-close,
+      .klevby-feed-comment-close {
+        appearance: none;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 3;
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(244,178,74,0.18);
+        border-radius: 16px;
+        background: rgba(0,0,0,0.45);
+        color: #fff8ea;
+        font-size: 28px;
+        line-height: 1;
+        font-weight: 900;
+        cursor: pointer;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .klevby-feed-viewer-image {
+        width: 100%;
+        max-height: 72vh;
+        display: block;
+        object-fit: contain;
+        background: #050807;
+      }
+
+      .klevby-feed-viewer-info {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 14px;
+        color: #fff8ea;
+      }
+
+      .klevby-feed-viewer-info strong {
+        display: block;
+        font-size: 15px;
+        font-weight: 900;
+        line-height: 1.25;
+      }
+
+      .klevby-feed-viewer-info span {
+        display: block;
+        margin-top: 4px;
+        color: rgba(255,248,234,0.55);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .klevby-feed-viewer-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .klevby-feed-viewer-actions button {
+        appearance: none;
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 15px;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 900;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: 0.18s ease;
+      }
+
+      #klevbyFeedViewerLikeBtn,
+      #klevbyFeedViewerCommentBtn {
+        border: 1px solid rgba(244,178,74,0.20);
+        background: rgba(244,178,74,0.18);
+        color: #fff8ea !important;
+      }
+
+      #klevbyFeedViewerDeleteBtn {
+        border: 1px solid rgba(228,88,88,0.24);
+        background: rgba(228,88,88,0.92);
+      }
+
+      #klevbyFeedViewerDeleteBtn.hidden,
+      #klevbyFeedViewerLikeBtn.hidden,
+      #klevbyFeedViewerCommentBtn.hidden {
+        display: none !important;
+      }
+
+      .klevby-feed-comment-sheet {
+        width: min(100%, 560px);
+        padding: 22px;
+      }
+
+      .klevby-feed-comment-sheet h3 {
+        margin: 0 44px 8px 0;
+        color: #fff8ea;
+        font-size: 22px;
+        line-height: 1.18;
+        font-weight: 900;
+      }
+
+      .klevby-feed-comment-sheet p {
+        margin: 0 0 14px;
+        color: rgba(255,248,234,0.62);
+        font-size: 13px;
+        line-height: 1.5;
+        font-weight: 650;
+      }
+
+      .klevby-feed-comment-textarea {
+        width: 100%;
+        min-height: 128px;
+        resize: vertical;
+        padding: 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(244,178,74,0.16);
+        outline: none;
+        background: rgba(255,255,255,0.07);
+        color: #fff8ea;
+        font: inherit;
+        font-size: 15px;
+        line-height: 1.5;
+        font-weight: 650;
+      }
+
+      .klevby-feed-comment-textarea::placeholder {
+        color: rgba(255,248,234,0.42);
+      }
+
+      .klevby-feed-comment-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .klevby-feed-comment-actions .small-btn {
+        flex: 1;
+      }
+
+      .klevby-feed-comment-message {
+        min-height: 22px;
+        margin-top: 12px;
+        color: rgba(255,248,234,0.62);
+        font-size: 13px;
+        line-height: 1.45;
+        font-weight: 700;
+      }
+
+      .klevby-feed-comment-message.error-line {
+        color: #ffd2d2;
+        background: transparent;
+        border: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+
+      @media (max-width: 520px) {
+        .profile-feed-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+
+        .profile-feed-actions .small-btn:first-child {
+          grid-column: 1 / -1;
+        }
+
+        .klevby-feed-viewer {
+          align-items: center;
+          padding: 12px;
+        }
+
+        .klevby-feed-viewer-sheet {
+          border-radius: 24px;
+          max-height: 88vh;
+        }
+
+        .klevby-feed-viewer-image {
+          max-height: 62vh;
+        }
+
+        .klevby-feed-viewer-info {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .klevby-feed-viewer-actions {
+          width: 100%;
+          justify-content: stretch;
+        }
+
+        .klevby-feed-viewer-actions button {
+          flex: 1;
+        }
+
+        .klevby-feed-comment-sheet {
+          border-radius: 24px;
+          padding: 20px;
+        }
+      }
+    `;
+
+    document.body.appendChild(style);
+  }
+
   function klevbyProfilePhotoCardHtml(item) {
     const safeId = klevbyFeedEscapeAttr(item?.id || "");
     const safeImage = klevbyFeedEscapeAttr(item?.image || item?.imageUrl || "");
     const authorName = item?.authorName || "Рыбак";
     const authorCity = item?.authorCity || "";
     const title = item?.title || item?.caption || "Фото с рыбалки";
-    const sizeKb = Number(item?.savedSizeKb || item?.imageSizeKb || 0);
     const likesCount = Number(item?.likesCount || 0);
     const commentsCount = Number(item?.commentsCount || 0);
-    const viewsCount = Number(item?.viewsCount || 0);
     const date = klevbyFormatProfileFeedDate(item?.createdAt);
-    const avatar = klevbyGetProfileFeedAvatarSafe();
+    const avatar = klevbyGetProfileFeedAvatarSafe(item);
     const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
     const isSupabase = item?.source === "supabase";
 
@@ -305,13 +696,13 @@
       ? `<span class="profile-feed-avatar-img" style="background-image: url('${klevbyFeedEscapeAttr(avatar)}');" aria-hidden="true"></span>`
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${klevbyFeedEscapeHtml(authorInitial)}</span>`;
 
-    const sourceTag = isSupabase
-      ? `<span class="tag">🌐 общая лента</span>`
-      : `<span class="tag">📱 локально</span>`;
-
     const likeButton = isSupabase
-      ? `<button class="small-btn gray" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
-      : `<button class="small-btn gray" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
+      ? `<button class="small-btn gray" type="button" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
+      : `<button class="small-btn gray" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
+
+    const commentButton = isSupabase
+      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">${commentsCount ? `💬 ${commentsCount}` : "💬 Отзыв"}</button>`
+      : `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     return `
       <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
@@ -339,24 +730,18 @@
           </div>
 
           <p class="trip-description profile-feed-description">
-            Новое фото в ленте Klevby. Нажми на карточку, чтобы открыть фото на весь экран.
+            Новое фото в ленте Klevby. Можно поставить лайк или оставить отзыв.
           </p>
 
           <div class="tags profile-feed-tags">
-            <span class="tag">📸 фото</span>
-            <span class="tag">🎣 лента</span>
-            ${sourceTag}
             ${authorCity ? `<span class="tag">📍 ${klevbyFeedEscapeHtml(authorCity)}</span>` : ""}
-            ${isSupabase ? `<span class="tag">👍 ${likesCount}</span>` : ""}
-            ${isSupabase ? `<span class="tag">💬 ${commentsCount}</span>` : ""}
-            ${isSupabase ? `<span class="tag">👁️ ${viewsCount}</span>` : ""}
-            ${sizeKb ? `<span class="tag">${klevbyFeedEscapeHtml(String(sizeKb))} КБ</span>` : ""}
             ${date ? `<span class="tag">🕒 ${klevbyFeedEscapeHtml(date)}</span>` : ""}
           </div>
 
           <div class="actions profile-feed-actions">
-            <button class="small-btn green" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть</button>
+            <button class="small-btn green" type="button" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть</button>
             ${likeButton}
+            ${commentButton}
           </div>
         </div>
       </article>
@@ -368,7 +753,7 @@
       <div class="home-empty-card">
         <div class="home-empty-icon">📸</div>
         <h3>В ленте пока нет фото</h3>
-        <p>Добавь первое фото в профиле — после следующего шага оно будет сохраняться в Supabase и станет видно всем.</p>
+        <p>Добавь первое фото в профиле — оно появится в общей ленте Klevby.</p>
         <div class="actions">
           <button class="small-btn green" type="button" onclick="openKlevbyProfileSafe()">Открыть профиль</button>
           <button class="small-btn gray" type="button" onclick="setMode('all')">Напарники</button>
@@ -387,6 +772,8 @@
   async function klevbyRenderProfileFeed() {
     const list = document.getElementById("profileFeedSection");
     if (!list) return;
+
+    klevbyEnsureFeedStyles();
 
     const renderToken = ++klevbyFeedRenderToken;
 
@@ -440,184 +827,37 @@
   }
 
   function ensureKlevbyFeedPhotoViewer() {
+    klevbyEnsureFeedStyles();
+
     let viewer = document.getElementById("klevbyFeedPhotoViewer");
 
     if (viewer) return viewer;
 
     viewer = document.createElement("div");
     viewer.id = "klevbyFeedPhotoViewer";
-    viewer.className = "profile-photo-viewer hidden";
+    viewer.className = "klevby-feed-viewer hidden";
     viewer.setAttribute("role", "dialog");
     viewer.setAttribute("aria-modal", "true");
 
     viewer.innerHTML = `
-      <div class="profile-photo-viewer-backdrop" onclick="closeFeedPhotoViewer()"></div>
-      <div class="profile-photo-viewer-sheet">
-        <button class="profile-photo-viewer-close" type="button" onclick="closeFeedPhotoViewer()" aria-label="Закрыть фото">×</button>
-        <img id="klevbyFeedPhotoViewerImage" class="profile-photo-viewer-image" alt="Фото из ленты">
-        <div class="profile-photo-viewer-info">
+      <div class="klevby-feed-viewer-backdrop" onclick="closeFeedPhotoViewer()"></div>
+      <div class="klevby-feed-viewer-sheet">
+        <button class="klevby-feed-viewer-close" type="button" onclick="closeFeedPhotoViewer()" aria-label="Закрыть фото">×</button>
+        <img id="klevbyFeedPhotoViewerImage" class="klevby-feed-viewer-image" alt="Фото из ленты">
+        <div class="klevby-feed-viewer-info">
           <div>
             <strong id="klevbyFeedPhotoViewerTitle">Фото с рыбалки</strong>
             <span id="klevbyFeedPhotoViewerMeta">Лента Klevby</span>
           </div>
 
-          <div class="profile-photo-viewer-actions">
+          <div class="klevby-feed-viewer-actions">
             <button id="klevbyFeedViewerLikeBtn" type="button">👍 0</button>
+            <button id="klevbyFeedViewerCommentBtn" type="button">💬 Отзыв</button>
             <button id="klevbyFeedViewerDeleteBtn" type="button">Удалить</button>
           </div>
         </div>
       </div>
     `;
-
-    if (!document.getElementById("klevbyFeedPhotoViewerStyles")) {
-      const style = document.createElement("style");
-      style.id = "klevbyFeedPhotoViewerStyles";
-      style.textContent = `
-        #klevbyFeedPhotoViewer.hidden {
-          display: none !important;
-        }
-
-        #klevbyFeedPhotoViewer .profile-photo-viewer-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-        }
-
-        #klevbyFeedPhotoViewer .profile-photo-viewer-actions button {
-          appearance: none;
-          min-height: 40px;
-          padding: 0 14px;
-          border-radius: 15px;
-          color: #ffffff;
-          font-size: 13px;
-          font-weight: 900;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: 0.18s ease;
-        }
-
-        #klevbyFeedViewerLikeBtn {
-          border: 1px solid rgba(244,178,74,0.20);
-          background: rgba(244,178,74,0.18);
-          color: #fff8ea !important;
-        }
-
-        #klevbyFeedViewerDeleteBtn {
-          border: 1px solid rgba(228,88,88,0.24);
-          background: rgba(228,88,88,0.92);
-        }
-
-        #klevbyFeedViewerDeleteBtn.hidden,
-        #klevbyFeedViewerLikeBtn.hidden {
-          display: none !important;
-        }
-
-        .profile-feed-avatar-img,
-        .profile-feed-avatar-fallback {
-          width: 38px;
-          height: 38px;
-          border-radius: 999px;
-          display: inline-flex;
-          flex: 0 0 auto;
-          border: 1px solid rgba(244,178,74,0.24);
-          box-shadow: 0 10px 24px rgba(0,0,0,0.25);
-        }
-
-        .profile-feed-avatar-img {
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-        }
-
-        .profile-feed-avatar-fallback {
-          align-items: center;
-          justify-content: center;
-          background: rgba(244,178,74,0.14);
-          color: #fff8ea;
-          font-weight: 900;
-        }
-
-        .profile-feed-author {
-          appearance: none;
-          width: 100%;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 0;
-          margin: 0 0 12px;
-          border: 0;
-          background: transparent;
-          color: inherit;
-          text-align: left;
-          cursor: pointer;
-        }
-
-        .profile-feed-author-text {
-          min-width: 0;
-          display: block;
-        }
-
-        .profile-feed-author-name {
-          display: block;
-          font-size: 14px;
-          font-weight: 900;
-          line-height: 1.2;
-          color: #fff8ea;
-        }
-
-        .profile-feed-author-action {
-          display: block;
-          margin-top: 3px;
-          font-size: 12px;
-          font-weight: 700;
-          color: rgba(255,248,234,0.56);
-        }
-
-        .home-empty-card {
-          grid-column: 1 / -1;
-          width: 100%;
-          padding: 22px;
-          border-radius: 26px;
-          border: 1px solid rgba(244,178,74,0.14);
-          background:
-            radial-gradient(circle at 0% 0%, rgba(244,178,74,0.14), transparent 38%),
-            rgba(13, 20, 17, 0.86);
-          box-shadow: 0 12px 32px rgba(0,0,0,0.34);
-        }
-
-        .home-empty-icon {
-          width: 54px;
-          height: 54px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 14px;
-          border-radius: 20px;
-          background: rgba(244,178,74,0.14);
-          font-size: 26px;
-        }
-
-        .home-empty-card h3 {
-          margin: 0 0 8px;
-          color: #fff8ea;
-          font-size: 22px;
-          line-height: 1.15;
-          font-weight: 900;
-        }
-
-        .home-empty-card p {
-          margin: 0 0 16px;
-          color: rgba(255,248,234,0.66);
-          font-size: 14px;
-          line-height: 1.5;
-          font-weight: 600;
-        }
-      `;
-
-      document.body.appendChild(style);
-    }
 
     document.body.appendChild(viewer);
 
@@ -650,27 +890,24 @@
     const meta = document.getElementById("klevbyFeedPhotoViewerMeta");
     const deleteButton = document.getElementById("klevbyFeedViewerDeleteBtn");
     const likeButton = document.getElementById("klevbyFeedViewerLikeBtn");
+    const commentButton = document.getElementById("klevbyFeedViewerCommentBtn");
 
     const imageUrl = item.image || item.imageUrl || "";
     const titleText = item.title || item.caption || "Фото с рыбалки";
-    const sizeText = item.savedSizeKb ? `${item.savedSizeKb} КБ` : "";
-    const dimensionText = item.width && item.height ? `${item.width}×${item.height}` : "";
+    const dateText = klevbyFormatProfileFeedDate(item.createdAt);
+    const cityText = item.authorCity ? `📍 ${item.authorCity}` : "";
     const likesText = item.source === "supabase" ? `👍 ${Number(item.likesCount || 0)}` : "";
     const commentsText = item.source === "supabase" ? `💬 ${Number(item.commentsCount || 0)}` : "";
-    const viewsText = item.source === "supabase" ? `👁️ ${Number(item.viewsCount || 0)}` : "";
-    const sourceText = item.source === "supabase" ? "общая лента" : "локальное фото";
 
     if (image) image.src = imageUrl;
     if (title) title.textContent = titleText;
 
     if (meta) {
       meta.textContent = [
-        sourceText,
-        dimensionText,
-        sizeText,
+        cityText,
+        dateText,
         likesText,
-        commentsText,
-        viewsText
+        commentsText
       ].filter(Boolean).join(" • ");
     }
 
@@ -687,6 +924,14 @@
       likeButton.classList.toggle("hidden", !isSupabase);
       likeButton.textContent = `👍 ${Number(item.likesCount || 0)}`;
       likeButton.onclick = () => klevbyToggleFeedLikeFromViewer(item.id);
+    }
+
+    if (commentButton) {
+      const isSupabase = item.source === "supabase";
+
+      commentButton.classList.toggle("hidden", !isSupabase);
+      commentButton.textContent = item.commentsCount ? `💬 ${Number(item.commentsCount || 0)}` : "💬 Отзыв";
+      commentButton.onclick = () => klevbyOpenFeedCommentModal(item.id);
     }
 
     viewer.classList.remove("hidden");
@@ -718,6 +963,195 @@
     }
 
     document.body.classList.remove("post-modal-open");
+  }
+
+  function ensureKlevbyFeedCommentModal() {
+    klevbyEnsureFeedStyles();
+
+    let modal = document.getElementById("klevbyFeedCommentModal");
+
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "klevbyFeedCommentModal";
+    modal.className = "klevby-feed-comment-modal hidden";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+
+    modal.innerHTML = `
+      <div class="klevby-feed-comment-backdrop" onclick="closeFeedCommentModal()"></div>
+      <div class="klevby-feed-comment-sheet">
+        <button class="klevby-feed-comment-close" type="button" onclick="closeFeedCommentModal()" aria-label="Закрыть отзыв">×</button>
+
+        <h3>Оставить отзыв</h3>
+        <p id="klevbyFeedCommentSubtitle">Напиши короткий комментарий к фото.</p>
+
+        <textarea
+          id="klevbyFeedCommentText"
+          class="klevby-feed-comment-textarea"
+          maxlength="700"
+          placeholder="Например: красивое место, где это снято?"
+        ></textarea>
+
+        <div class="klevby-feed-comment-actions">
+          <button class="small-btn green" type="button" onclick="submitFeedComment()">Отправить</button>
+          <button class="small-btn gray" type="button" onclick="closeFeedCommentModal()">Закрыть</button>
+        </div>
+
+        <div id="klevbyFeedCommentMessage" class="klevby-feed-comment-message"></div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
+  }
+
+  function klevbyOpenFeedCommentModal(postId) {
+    const cleanId = String(postId || "");
+    const item = klevbyFeedItemsCache[cleanId];
+
+    if (!item) {
+      alert("Фото не найдено в ленте. Обнови страницу и попробуй ещё раз.");
+      return;
+    }
+
+    if (item.source !== "supabase") {
+      alert("Это фото ещё локальное. Отзывы будут работать для фото из общей ленты.");
+      return;
+    }
+
+    const user = klevbyFeedGetCurrentUser();
+
+    if (!user || !user.id) {
+      alert("Чтобы оставить отзыв, сначала войди в профиль.");
+      return;
+    }
+
+    const modal = ensureKlevbyFeedCommentModal();
+    const textarea = document.getElementById("klevbyFeedCommentText");
+    const message = document.getElementById("klevbyFeedCommentMessage");
+    const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
+
+    modal.dataset.postId = cleanId;
+
+    if (textarea) textarea.value = "";
+    if (message) {
+      message.textContent = "";
+      message.classList.remove("error-line");
+    }
+
+    if (subtitle) {
+      subtitle.textContent = `${item.authorName || "Рыбак"} добавил фото. Напиши короткий отзыв или вопрос.`;
+    }
+
+    modal.classList.remove("hidden");
+    document.body.classList.add("post-modal-open");
+
+    setTimeout(() => {
+      if (textarea) textarea.focus({ preventScroll: true });
+    }, 120);
+  }
+
+  function closeKlevbyFeedCommentModal() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.dataset.postId = "";
+    }
+
+    document.body.classList.remove("post-modal-open");
+  }
+
+  async function klevbyRunAddFeedComment(postId, text) {
+    if (typeof window.klevbyAddFeedComment === "function") {
+      return window.klevbyAddFeedComment(postId, text);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.addComment === "function"
+    ) {
+      try {
+        return await window.klevbyFeedSupabase.addComment({
+          postId,
+          text
+        });
+      } catch (firstError) {
+        return window.klevbyFeedSupabase.addComment(postId, text);
+      }
+    }
+
+    throw new Error("Комментарии ещё не подключены в feed-supabase.js. Следующим шагом подключим сохранение отзывов.");
+  }
+
+  async function klevbySubmitFeedComment() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const textarea = document.getElementById("klevbyFeedCommentText");
+    const message = document.getElementById("klevbyFeedCommentMessage");
+
+    if (!modal || !textarea) return;
+
+    const postId = String(modal.dataset.postId || "");
+    const text = String(textarea.value || "").trim();
+
+    if (!postId) {
+      if (message) {
+        message.textContent = "Фото не найдено. Закрой окно и попробуй ещё раз.";
+        message.classList.add("error-line");
+      }
+      return;
+    }
+
+    if (!text) {
+      if (message) {
+        message.textContent = "Напиши отзыв перед отправкой.";
+        message.classList.add("error-line");
+      }
+      textarea.focus();
+      return;
+    }
+
+    if (text.length > 700) {
+      if (message) {
+        message.textContent = "Отзыв слишком длинный. Сделай короче.";
+        message.classList.add("error-line");
+      }
+      textarea.focus();
+      return;
+    }
+
+    if (message) {
+      message.textContent = "Отправляем отзыв...";
+      message.classList.remove("error-line");
+    }
+
+    try {
+      await klevbyRunAddFeedComment(postId, text);
+
+      if (message) {
+        message.textContent = "✅ Отзыв отправлен.";
+        message.classList.remove("error-line");
+      }
+
+      if (navigator.vibrate) {
+        navigator.vibrate(16);
+      }
+
+      setTimeout(() => {
+        closeKlevbyFeedCommentModal();
+      }, 300);
+
+      await klevbyRenderProfileFeed();
+    } catch (error) {
+      console.warn("Klevby feed: отзыв не отправился", error);
+
+      if (message) {
+        message.textContent = error?.message || "Не получилось отправить отзыв.";
+        message.classList.add("error-line");
+      }
+    }
   }
 
   async function klevbyDeleteFeedItem(item) {
@@ -785,6 +1219,48 @@
     }
   }
 
+  function klevbyTryStartRealtimeSubscription() {
+    if (klevbyFeedRealtimeStarted) return;
+
+    const api = window.klevbyFeedSupabase;
+
+    if (!api) return;
+
+    const refresh = () => {
+      setTimeout(klevbyRefreshFeedIfHomeVisible, 120);
+    };
+
+    try {
+      if (typeof api.subscribeToFeedChanges === "function") {
+        api.subscribeToFeedChanges(refresh);
+        klevbyFeedRealtimeStarted = true;
+        return;
+      }
+
+      if (typeof api.subscribeToChanges === "function") {
+        api.subscribeToChanges(refresh);
+        klevbyFeedRealtimeStarted = true;
+        return;
+      }
+
+      if (typeof api.subscribe === "function") {
+        api.subscribe(refresh);
+        klevbyFeedRealtimeStarted = true;
+      }
+    } catch (error) {
+      console.warn("Klevby feed: realtime пока не подключился", error);
+    }
+  }
+
+  function klevbyStartFeedAutoRefresh() {
+    if (klevbyFeedAutoRefreshTimer) return;
+
+    klevbyFeedAutoRefreshTimer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      klevbyRefreshFeedIfHomeVisible();
+    }, 6000);
+  }
+
   function klevbyBindFeedRefreshHooks() {
     if (window.__klevbyFeedRefreshBound) return;
     window.__klevbyFeedRefreshBound = true;
@@ -804,6 +1280,16 @@
 
     window.addEventListener("pageshow", () => {
       setTimeout(klevbyRefreshFeedIfHomeVisible, 120);
+    });
+
+    window.addEventListener("focus", () => {
+      setTimeout(klevbyRefreshFeedIfHomeVisible, 160);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        setTimeout(klevbyRefreshFeedIfHomeVisible, 160);
+      }
     });
 
     window.addEventListener("klevby-auth-changed", () => {
@@ -827,16 +1313,21 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeKlevbyFeedPhotoViewer();
+        closeKlevbyFeedCommentModal();
       }
     });
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    klevbyEnsureFeedStyles();
     klevbyBindFeedRefreshHooks();
+    klevbyStartFeedAutoRefresh();
 
     setTimeout(klevbyRenderProfileFeed, 350);
     setTimeout(klevbyRefreshFeedIfHomeVisible, 900);
     setTimeout(klevbyRefreshFeedIfHomeVisible, 1600);
+    setTimeout(klevbyTryStartRealtimeSubscription, 1200);
+    setTimeout(klevbyTryStartRealtimeSubscription, 2600);
   });
 
   window.getProfileFeedItemsSafe = klevbyGetProfileFeedItemsSafe;
@@ -847,4 +1338,7 @@
   window.profilePhotoCardHtml = klevbyProfilePhotoCardHtml;
   window.toggleFeedLike = klevbyToggleFeedLikeFromCard;
   window.closeFeedPhotoViewer = closeKlevbyFeedPhotoViewer;
+  window.openFeedCommentModal = klevbyOpenFeedCommentModal;
+  window.closeFeedCommentModal = closeKlevbyFeedCommentModal;
+  window.submitFeedComment = klevbySubmitFeedComment;
 })();
