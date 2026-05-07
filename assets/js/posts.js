@@ -290,6 +290,276 @@ function getCardImage(post) {
   return images[Math.abs(sum) % images.length];
 }
 
+function getProfileFeedItemsSafe() {
+  try {
+    if (typeof window.getProfileFeedItems === "function") {
+      const items = window.getProfileFeedItems();
+      return Array.isArray(items) ? items.filter(Boolean) : [];
+    }
+  } catch (error) {
+    console.warn("Klevby feed: не удалось получить фото профиля", error);
+  }
+
+  return [];
+}
+
+function getProfileFeedAvatarSafe() {
+  try {
+    return localStorage.getItem("klevby_profile_avatar") || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function getProfileFeedSearchText(item) {
+  return normalizeText([
+    item?.type,
+    item?.authorName,
+    item?.authorCity,
+    item?.authorTelegram,
+    item?.title,
+    "фото",
+    "рыбалка",
+    "профиль",
+    "отчет",
+    "отчёт"
+  ].join(" "));
+}
+
+function getFilteredProfileFeedItems(options = {}) {
+  const search = normalizeText(options.search);
+  const selectedCity = normalizeText(options.selectedCity);
+  const selectedType = normalizeText(options.selectedType);
+  const telegramOnly = Boolean(options.telegramOnly);
+
+  let items = getProfileFeedItemsSafe();
+
+  items = items.filter((item) => {
+    if (!item || item.type !== "profile_photo" || !item.image) {
+      return false;
+    }
+
+    if (search && !getProfileFeedSearchText(item).includes(search)) {
+      return false;
+    }
+
+    if (selectedCity && !normalizeText(item.authorCity).includes(selectedCity)) {
+      return false;
+    }
+
+    if (selectedType) {
+      const typeText = getProfileFeedSearchText(item);
+
+      if (!typeText.includes(selectedType)) {
+        return false;
+      }
+    }
+
+    if (telegramOnly && !cleanTelegram(item.authorTelegram)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return items;
+}
+
+function formatProfileFeedDate(value) {
+  if (!value) return "";
+
+  try {
+    return new Date(value).toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (error) {
+    return "";
+  }
+}
+
+function openKlevbyProfileSafe() {
+  if (typeof window.openKlevbyProfile === "function") {
+    window.openKlevbyProfile();
+    return;
+  }
+
+  if (typeof window.showSection === "function") {
+    window.showSection("profile");
+  }
+}
+
+function openProfilePhotoFeedItem(photoId) {
+  const cleanId = String(photoId || "");
+
+  if (typeof window.openProfilePhotoViewer === "function") {
+    window.openProfilePhotoViewer(cleanId);
+    return;
+  }
+
+  openKlevbyProfileSafe();
+}
+
+function profilePhotoCardHtml(item) {
+  const safeId = escapeAttr(item?.id || "");
+  const safeImage = escapeAttr(item?.image || "");
+  const authorName = item?.authorName || "Рыбак";
+  const authorCity = item?.authorCity || "";
+  const title = item?.title || "Фото с рыбалки";
+  const sizeKb = Number(item?.savedSizeKb || 0);
+  const date = formatProfileFeedDate(item?.createdAt);
+  const avatar = getProfileFeedAvatarSafe();
+  const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
+
+  const avatarHtml = avatar
+    ? `
+      <span
+        class="profile-feed-avatar-img"
+        style="
+          width: 38px;
+          height: 38px;
+          border-radius: 999px;
+          display: inline-flex;
+          flex: 0 0 auto;
+          background-image: url('${escapeAttr(avatar)}');
+          background-size: cover;
+          background-position: center;
+          border: 1px solid rgba(244,178,74,0.24);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+        "
+        aria-hidden="true"
+      ></span>
+    `
+    : `
+      <span
+        class="profile-feed-avatar-img"
+        style="
+          width: 38px;
+          height: 38px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 auto;
+          background: rgba(244,178,74,0.14);
+          border: 1px solid rgba(244,178,74,0.24);
+          color: #fff8ea;
+          font-weight: 900;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+        "
+        aria-hidden="true"
+      >${escapeHtml(authorInitial)}</span>
+    `;
+
+  return `
+    <div class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
+      <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${safeImage}')"></div>
+
+      <div class="card-body">
+        <button
+          type="button"
+          onclick="event.stopPropagation(); openKlevbyProfileSafe()"
+          style="
+            appearance: none;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0;
+            margin: 0 0 12px;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+          "
+          aria-label="Открыть профиль автора"
+        >
+          ${avatarHtml}
+
+          <span style="min-width: 0; display: block;">
+            <span style="display: block; font-size: 14px; font-weight: 900; line-height: 1.2; color: #fff8ea;">
+              ${escapeHtml(authorName)}
+            </span>
+
+            <span style="display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: rgba(255,248,234,0.56);">
+              добавил фото с рыбалки
+            </span>
+          </span>
+        </button>
+
+        <div class="trip-title">
+          <span class="trip-name">${escapeHtml(authorName)}</span>
+          <span> добавил </span>
+          <span class="trip-destination">${escapeHtml(title)}</span>
+        </div>
+
+        <p class="trip-description">
+          Новое фото в профиле рыбака. Нажми на карточку, чтобы открыть фото на весь экран.
+        </p>
+
+        <div class="tags">
+          <span class="tag">📸 фото</span>
+          <span class="tag">🎣 профиль</span>
+          ${authorCity ? `<span class="tag">📍 ${escapeHtml(authorCity)}</span>` : ""}
+          ${sizeKb ? `<span class="tag">${escapeHtml(String(sizeKb))} КБ</span>` : ""}
+          ${date ? `<span class="tag">🕒 ${escapeHtml(date)}</span>` : ""}
+        </div>
+
+        <div class="actions">
+          <button class="small-btn green" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть фото</button>
+          <button class="small-btn gray" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль автора</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function refreshPostsIfHomeVisible() {
+  const homeSection = document.getElementById("homeSection");
+  const postsSection = document.getElementById("postsSection");
+
+  if (!homeSection || !postsSection) return;
+
+  if (!homeSection.classList.contains("hidden")) {
+    renderPosts();
+  }
+}
+
+function bindProfileFeedRefreshHooks() {
+  if (window.__klevbyProfileFeedRefreshBound) return;
+  window.__klevbyProfileFeedRefreshBound = true;
+
+  window.addEventListener("storage", (event) => {
+    const key = String(event?.key || "");
+
+    if (
+      key === "klevby_profile_photos" ||
+      key === "klevby_profile_avatar" ||
+      key === "klevby_profile_settings" ||
+      key === "klevby_profile_name"
+    ) {
+      setTimeout(refreshPostsIfHomeVisible, 80);
+    }
+  });
+
+  window.addEventListener("pageshow", () => {
+    setTimeout(refreshPostsIfHomeVisible, 120);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target?.closest?.(
+      "#homeFloatBtn, #nav-home, .mobile-tab-btn, [onclick*='goHomeTop'], [onclick*='showSection']"
+    );
+
+    if (!target) return;
+
+    setTimeout(refreshPostsIfHomeVisible, 180);
+  });
+}
+
 function saveAuthorLocal(name, telegram) {
   localStorage.setItem("klevby_author_name", name || "");
   localStorage.setItem("klevby_author_telegram", telegram || "");
@@ -383,9 +653,13 @@ async function loadPosts(options = {}) {
     const db = getSupabaseClientSafe();
 
     if (!db) {
+      const localFeedItems = getProfileFeedItemsSafe();
+
       showStatusSafe("Supabase ещё не готов. Повторяем загрузку объявлений...");
 
-      if (postsSection && !existingPosts.length) {
+      if (localFeedItems.length) {
+        renderPosts();
+      } else if (postsSection && !existingPosts.length) {
         postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
       }
 
@@ -414,11 +688,17 @@ async function loadPosts(options = {}) {
       showStatusSafe(message, true);
 
       if (postsSection && !existingPosts.length) {
-        postsSection.innerHTML = `
-          <div class="info-line error-line">
-            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-          </div>
-        `;
+        const localFeedItems = getProfileFeedItemsSafe();
+
+        if (localFeedItems.length) {
+          renderPosts();
+        } else {
+          postsSection.innerHTML = `
+            <div class="info-line error-line">
+              Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+            </div>
+          `;
+        }
       }
 
       return;
@@ -441,11 +721,17 @@ async function loadPosts(options = {}) {
       showStatusSafe(message, true);
 
       if (postsSection && !existingPosts.length) {
-        postsSection.innerHTML = `
-          <div class="info-line error-line">
-            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-          </div>
-        `;
+        const localFeedItems = getProfileFeedItemsSafe();
+
+        if (localFeedItems.length) {
+          renderPosts();
+        } else {
+          postsSection.innerHTML = `
+            <div class="info-line error-line">
+              Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+            </div>
+          `;
+        }
       }
 
       return;
@@ -478,11 +764,20 @@ function renderPosts() {
 
   let filtered = [...allPosts];
 
+  const profileFeedItems = mode === "all"
+    ? getFilteredProfileFeedItems({
+        search,
+        selectedCity,
+        selectedType,
+        telegramOnly
+      })
+    : [];
+
   if (mode === "mine") {
     filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
     showStatusSafe("Сейчас показаны: мои объявления.");
   } else {
-    showStatusSafe("Сейчас показаны: все объявления.");
+    showStatusSafe("Сейчас показаны: все объявления и фото из профиля.");
   }
 
   if (search) {
@@ -510,10 +805,10 @@ function renderPosts() {
     filtered = filtered.filter(post => cleanTelegram(post.telegram));
   }
 
-  if (!filtered.length) {
-    const emptyText = allPosts.length
+  if (!filtered.length && !profileFeedItems.length) {
+    const emptyText = allPosts.length || getProfileFeedItemsSafe().length
       ? "По фильтрам ничего не найдено."
-      : "Пока объявлений нет.";
+      : "Пока объявлений и фото нет.";
 
     list.innerHTML = `<div class="info-line">${emptyText}</div>`;
 
@@ -524,7 +819,19 @@ function renderPosts() {
     return;
   }
 
-  const cards = filtered
+  const profileCards = profileFeedItems
+    .map((item) => {
+      try {
+        return profilePhotoCardHtml(item);
+      } catch (error) {
+        console.error("Ошибка отрисовки фото профиля:", item, error);
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .join("");
+
+  const postCards = filtered
     .map((post) => {
       try {
         return cardHtml(post);
@@ -536,10 +843,12 @@ function renderPosts() {
     .filter(Boolean)
     .join("");
 
+  const cards = [profileCards, postCards].filter(Boolean).join("");
+
   if (!cards) {
     list.innerHTML = `
       <div class="info-line error-line">
-        Объявления загрузились, но карточки не отрисовались. Смотри Console.
+        Лента загрузилась, но карточки не отрисовались. Смотри Console.
       </div>
     `;
     return;
@@ -1033,6 +1342,13 @@ async function deletePost(id) {
   }
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  bindProfileFeedRefreshHooks();
+
+  setTimeout(refreshPostsIfHomeVisible, 500);
+  setTimeout(refreshPostsIfHomeVisible, 1200);
+});
+
 window.getOwnerId = getOwnerId;
 window.getCurrentUserSafe = getCurrentUserSafe;
 window.getCurrentAuthReady = getCurrentAuthReady;
@@ -1047,10 +1363,15 @@ window.escapeHtml = escapeHtml;
 window.escapeAttr = escapeAttr;
 window.getFishingTypeClass = getFishingTypeClass;
 window.getCardImage = getCardImage;
+window.getProfileFeedItemsSafe = getProfileFeedItemsSafe;
+window.getFilteredProfileFeedItems = getFilteredProfileFeedItems;
+window.openKlevbyProfileSafe = openKlevbyProfileSafe;
+window.openProfilePhotoFeedItem = openProfilePhotoFeedItem;
 window.saveAuthorLocal = saveAuthorLocal;
 window.loadPosts = loadPosts;
 window.renderPosts = renderPosts;
 window.cardHtml = cardHtml;
+window.profilePhotoCardHtml = profilePhotoCardHtml;
 window.openPostModal = openPostModal;
 window.closePostModal = closePostModal;
 window.handlePostModalBackdrop = handlePostModalBackdrop;
