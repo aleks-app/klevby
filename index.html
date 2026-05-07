@@ -57,7 +57,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260507-profile-3">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260507-feed-split-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/chat-style.css?v=20260504-1">
 
@@ -83,12 +83,12 @@
       <div class="logo">🎣💧 Klevby</div>
 
       <nav>
-        <button class="nav-btn" onclick="showSection('home')">Напарники</button>
+        <button class="nav-btn" onclick="showSection('home')">Лента</button>
+        <button class="nav-btn" onclick="setMode('all')">Напарники</button>
         <button class="nav-btn" onclick="showSection('market')">Барахолка</button>
         <button class="nav-btn" onclick="showSection('ponds')">Платные пруды</button>
         <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
-        <button class="nav-btn" onclick="setMode('all')">Все объявления</button>
-        <button class="nav-btn nav-mine" onclick="setMode('mine')">Мои объявления</button>
+        <button class="nav-btn nav-mine" onclick="setMode('mine')">Мои выезды</button>
         <button class="nav-btn" onclick="openKlevbyProfile()">Профиль</button>
         <button class="nav-btn install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
         <button class="nav-btn nav-auth" onclick="showSection('auth')">Вход</button>
@@ -107,13 +107,13 @@
           </button>
 
           <div class="mobile-menu" id="mobileMenu">
-            <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Напарники</button>
+            <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Лента</button>
+            <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Напарники</button>
             <button class="mobile-menu-item" onclick="showSection('market'); closeMobileMenu()">Барахолка</button>
             <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
             <button class="mobile-menu-item" onclick="openKlevbyProfile(); closeMobileMenu()">👤 Профиль рыбака</button>
             <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
-            <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Все объявления</button>
-            <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои объявления</button>
+            <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои выезды</button>
             <button class="mobile-menu-item pwa-install-trigger" onclick="handleInstallClick(); closeMobileMenu()">📱 Приложение</button>
             <button class="mobile-menu-item" onclick="forceAppUpdate(); closeMobileMenu()">🔄 Обновить приложение</button>
             <button class="mobile-menu-item" onclick="showSection('auth'); closeMobileMenu()">Вход</button>
@@ -128,8 +128,8 @@
       <div class="hero">
         <div class="hero-copy">
           <div class="badge">Карта клёва, отчёты и напарники</div>
-          <h1>Найди место и напарника</h1>
-          <p>Карта клёва, отчёты и поиск напарников по всей Беларуси.</p>
+          <h1>Живая лента рыбаков</h1>
+          <p>Фото, отчёты, выезды и места по всей Беларуси.</p>
 
           <div class="trust-bar">
             <div class="trust-item" onclick="showSection('map')" style="cursor:pointer;">
@@ -138,10 +138,10 @@
               <div class="trust-label">Открыть точки</div>
             </div>
 
-            <div class="trust-item" onclick="goMobileCreate()" style="cursor:pointer;">
-              <div class="trust-icon pin">📍</div>
-              <div class="trust-value">Точка</div>
-              <div class="trust-label">Добавить место</div>
+            <div class="trust-item" onclick="setMode('all')" style="cursor:pointer;">
+              <div class="trust-icon pin">🎣</div>
+              <div class="trust-value">Выезды</div>
+              <div class="trust-label">Найти напарника</div>
             </div>
           </div>
         </div>
@@ -195,7 +195,92 @@
         <div class="bite-line bite-medium-line" id="biteForecast">Прогноз средний, нужно пробовать.</div>
       </div>
 
+      <div class="home-feed-head">
+        <div>
+          <div class="section-kicker">Соцсеть Klevby</div>
+          <h2>Лента</h2>
+          <p>Здесь будут фото, отчёты и активность рыбаков. Выезды и поиск напарников теперь отдельно.</p>
+        </div>
+
+        <div class="home-feed-actions">
+          <button class="small-btn green" type="button" onclick="openKlevbyProfile()">Добавить фото</button>
+          <button class="small-btn gray" type="button" onclick="setMode('all')">Напарники</button>
+        </div>
+      </div>
+
+      <div id="profileFeedSection" class="grid social-feed-grid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+
+      <div class="home-trip-link-card">
+        <div>
+          <strong>Ищешь компанию на рыбалку?</strong>
+          <span>Выезды, свободные места, лодка, транспорт и объявления рыбаков вынесены в отдельный раздел.</span>
+        </div>
+        <button class="small-btn yellow" type="button" onclick="setMode('all')">Открыть напарников</button>
+      </div>
+    </section>
+
+    <section id="tripsSection" class="hidden">
+      <div class="trips-hero">
+        <div>
+          <div class="section-kicker">Напарники</div>
+          <h2>Выезды на рыбалку</h2>
+          <p>Здесь только объявления: кто куда едет, кто ищет компанию, у кого есть свободное место или лодка.</p>
+        </div>
+
+        <button class="small-btn green" type="button" onclick="showSection('create')">Создать выезд</button>
+      </div>
+
       <div id="statusLine" class="info-line">Загрузка объявлений...</div>
+
+      <div class="filter-card">
+        <div class="filter-title">
+          <h3>Фильтр объявлений</h3>
+          <span>Компактный поиск по выездам</span>
+        </div>
+
+        <div class="filters">
+          <input id="searchInput" placeholder="Поиск: лодка, карп, завтра..." oninput="renderPosts()" />
+
+          <select id="citySelect" onchange="renderPosts()">
+            <option value="">Выберите город</option>
+            <option value="Минск">Минск</option><option value="Гомель">Гомель</option><option value="Могилев">Могилев</option><option value="Витебск">Витебск</option><option value="Гродно">Гродно</option><option value="Брест">Брест</option><option value="Барановичи">Барановичи</option><option value="Бобруйск">Бобруйск</option><option value="Борисов">Борисов</option><option value="Пинск">Пинск</option><option value="Орша">Орша</option><option value="Мозырь">Мозырь</option><option value="Солигорск">Солигорск</option><option value="Новополоцк">Новополоцк</option><option value="Лида">Лида</option><option value="Молодечно">Молодечно</option><option value="Полоцк">Полоцк</option><option value="Жлобин">Жлобин</option><option value="Слуцк">Слуцк</option><option value="Светлогорск">Светлогорск</option><option value="Речица">Речица</option><option value="Жодино">Жодино</option><option value="Кобрин">Кобрин</option><option value="Сморгонь">Сморгонь</option><option value="Волковыск">Волковыск</option>
+          </select>
+
+          <select id="typeSelect" onchange="renderPosts()">
+            <option value="">Способ ловли</option>
+            <option value="Спиннинг">Спиннинг</option>
+            <option value="Фидер">Фидер</option>
+            <option value="Поплавок">Поплавок</option>
+            <option value="Карпфишинг">Карпфишинг</option>
+            <option value="Зимняя">Зимняя</option>
+          </select>
+
+          <label class="check">
+            <input type="checkbox" id="telegramOnly" onchange="renderPosts()" /> Telegram
+          </label>
+
+          <button class="filter-reset" onclick="resetFilters()">Сбросить</button>
+        </div>
+      </div>
+
+      <div id="postsSection" class="grid">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section id="createSection" class="hidden">
+      <div class="create-screen-head">
+        <div>
+          <div class="section-kicker">Создание</div>
+          <h2>Создать выезд</h2>
+          <p>Заполни объявление: куда едешь, когда, есть ли транспорт и сколько мест.</p>
+        </div>
+
+        <button class="small-btn gray" type="button" onclick="setMode('all')">К объявлениям</button>
+      </div>
 
       <div class="panel" id="createPanel">
         <h2 id="formTitle">Создать выезд</h2>
@@ -239,41 +324,6 @@
         </div>
 
         <div id="formMessage" class="auth-status"></div>
-      </div>
-
-      <div class="filter-card">
-        <div class="filter-title">
-          <h3>Фильтр объявлений</h3>
-          <span>Компактный поиск по ленте</span>
-        </div>
-
-        <div class="filters">
-          <input id="searchInput" placeholder="Поиск: лодка, карп, завтра..." oninput="renderPosts()" />
-
-          <select id="citySelect" onchange="renderPosts()">
-            <option value="">Выберите город</option>
-            <option value="Минск">Минск</option><option value="Гомель">Гомель</option><option value="Могилев">Могилев</option><option value="Витебск">Витебск</option><option value="Гродно">Гродно</option><option value="Брест">Брест</option><option value="Барановичи">Барановичи</option><option value="Бобруйск">Бобруйск</option><option value="Борисов">Борисов</option><option value="Пинск">Пинск</option><option value="Орша">Орша</option><option value="Мозырь">Мозырь</option><option value="Солигорск">Солигорск</option><option value="Новополоцк">Новополоцк</option><option value="Лида">Лида</option><option value="Молодечно">Молодечно</option><option value="Полоцк">Полоцк</option><option value="Жлобин">Жлобин</option><option value="Слуцк">Слуцк</option><option value="Светлогорск">Светлогорск</option><option value="Речица">Речица</option><option value="Жодино">Жодино</option><option value="Кобрин">Кобрин</option><option value="Сморгонь">Сморгонь</option><option value="Волковыск">Волковыск</option>
-          </select>
-
-          <select id="typeSelect" onchange="renderPosts()">
-            <option value="">Способ ловли</option>
-            <option value="Спиннинг">Спиннинг</option>
-            <option value="Фидер">Фидер</option>
-            <option value="Поплавок">Поплавок</option>
-            <option value="Карпфишинг">Карпфишинг</option>
-            <option value="Зимняя">Зимняя</option>
-          </select>
-
-          <label class="check">
-            <input type="checkbox" id="telegramOnly" onchange="renderPosts()" /> Telegram
-          </label>
-
-          <button class="filter-reset" onclick="resetFilters()">Сбросить</button>
-        </div>
-      </div>
-
-      <div id="postsSection" class="grid">
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
       </div>
     </section>
 
@@ -630,10 +680,10 @@
   <script src="assets/js/weather.js?v=20260503-4" defer></script>
   <script src="assets/js/pwa.js?v=20260503-4" defer></script>
   <script src="assets/js/auth.js?v=20260503-4" defer></script>
-  <script src="assets/js/posts.js?v=20260503-4" defer></script>
+  <script src="assets/js/posts.js?v=20260507-feed-split-1" defer></script>
   <script src="assets/js/ui.js?v=20260507-profile-2" defer></script>
   <script src="assets/js/profile.js?v=20260507-profile-3" defer></script>
-  <script src="assets/js/app.js?v=20260503-4" defer></script>
+  <script src="assets/js/app.js?v=20260507-feed-split-1" defer></script>
   <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
   <script src="assets/js/chat-state.js?v=20260506-1" defer></script>
   <script src="assets/js/chat-push.js?v=20260504-1" defer></script>
