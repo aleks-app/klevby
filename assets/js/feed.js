@@ -299,6 +299,18 @@
     );
   }
 
+  function klevbyCanManageComment(comment) {
+    if (!comment) return false;
+
+    const user = klevbyFeedGetCurrentUser();
+    const userId = user?.id || "";
+
+    return Boolean(
+      klevbyFeedIsAdmin() ||
+      (userId && comment.user_id && String(userId) === String(comment.user_id))
+    );
+  }
+
   function klevbyEnsureFeedStyles() {
     if (document.getElementById("klevbyFeedStyles")) return;
 
@@ -563,8 +575,10 @@
       }
 
       .klevby-feed-comment-sheet {
-        width: min(100%, 560px);
+        width: min(100%, 620px);
         padding: 22px;
+        display: flex;
+        flex-direction: column;
       }
 
       .klevby-feed-comment-sheet h3 {
@@ -583,9 +597,88 @@
         font-weight: 650;
       }
 
+      .klevby-feed-comments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 280px;
+        overflow-y: auto;
+        margin: 0 0 14px;
+        padding: 4px 2px 2px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .klevby-feed-comment-item {
+        padding: 12px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(244,178,74,0.11);
+      }
+
+      .klevby-feed-comment-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 7px;
+      }
+
+      .klevby-feed-comment-author {
+        display: block;
+        color: #fff8ea;
+        font-size: 13px;
+        line-height: 1.2;
+        font-weight: 900;
+      }
+
+      .klevby-feed-comment-date {
+        display: block;
+        margin-top: 2px;
+        color: rgba(255,248,234,0.45);
+        font-size: 11px;
+        line-height: 1.2;
+        font-weight: 700;
+      }
+
+      .klevby-feed-comment-delete {
+        appearance: none;
+        border: 1px solid rgba(228,88,88,0.22);
+        background: rgba(228,88,88,0.12);
+        color: #ffd2d2;
+        border-radius: 999px;
+        min-height: 28px;
+        padding: 0 10px;
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 900;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+
+      .klevby-feed-comment-text {
+        margin: 0;
+        color: rgba(255,248,234,0.82);
+        font-size: 13px;
+        line-height: 1.5;
+        font-weight: 650;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .klevby-feed-comments-empty {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.045);
+        border: 1px dashed rgba(244,178,74,0.16);
+        color: rgba(255,248,234,0.62);
+        font-size: 13px;
+        line-height: 1.5;
+        font-weight: 700;
+      }
+
       .klevby-feed-comment-textarea {
         width: 100%;
-        min-height: 128px;
+        min-height: 110px;
         resize: vertical;
         padding: 14px;
         border-radius: 20px;
@@ -669,9 +762,19 @@
           flex: 1;
         }
 
+        .klevby-feed-comment-modal {
+          align-items: flex-end;
+          padding: 12px;
+        }
+
         .klevby-feed-comment-sheet {
           border-radius: 24px;
           padding: 20px;
+          max-height: 88vh;
+        }
+
+        .klevby-feed-comments-list {
+          max-height: 260px;
         }
       }
     `;
@@ -701,7 +804,7 @@
       : `<button class="small-btn gray" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     const commentButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">${commentsCount ? `💬 ${commentsCount}` : "💬 Отзыв"}</button>`
+      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">${commentsCount ? `💬 ${commentsCount}` : "💬 Комментарии"}</button>`
       : `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     return `
@@ -730,7 +833,7 @@
           </div>
 
           <p class="trip-description profile-feed-description">
-            Новое фото в ленте Klevby. Можно поставить лайк или оставить отзыв.
+            Новое фото в ленте Klevby. Можно поставить лайк или открыть комментарии.
           </p>
 
           <div class="tags profile-feed-tags">
@@ -852,7 +955,7 @@
 
           <div class="klevby-feed-viewer-actions">
             <button id="klevbyFeedViewerLikeBtn" type="button">👍 0</button>
-            <button id="klevbyFeedViewerCommentBtn" type="button">💬 Отзыв</button>
+            <button id="klevbyFeedViewerCommentBtn" type="button">💬 Комментарии</button>
             <button id="klevbyFeedViewerDeleteBtn" type="button">Удалить</button>
           </div>
         </div>
@@ -930,7 +1033,7 @@
       const isSupabase = item.source === "supabase";
 
       commentButton.classList.toggle("hidden", !isSupabase);
-      commentButton.textContent = item.commentsCount ? `💬 ${Number(item.commentsCount || 0)}` : "💬 Отзыв";
+      commentButton.textContent = item.commentsCount ? `💬 ${Number(item.commentsCount || 0)}` : "💬 Комментарии";
       commentButton.onclick = () => klevbyOpenFeedCommentModal(item.id);
     }
 
@@ -981,16 +1084,20 @@
     modal.innerHTML = `
       <div class="klevby-feed-comment-backdrop" onclick="closeFeedCommentModal()"></div>
       <div class="klevby-feed-comment-sheet">
-        <button class="klevby-feed-comment-close" type="button" onclick="closeFeedCommentModal()" aria-label="Закрыть отзыв">×</button>
+        <button class="klevby-feed-comment-close" type="button" onclick="closeFeedCommentModal()" aria-label="Закрыть комментарии">×</button>
 
-        <h3>Оставить отзыв</h3>
-        <p id="klevbyFeedCommentSubtitle">Напиши короткий комментарий к фото.</p>
+        <h3>Комментарии</h3>
+        <p id="klevbyFeedCommentSubtitle">Смотри отзывы рыбаков и добавляй свой.</p>
+
+        <div id="klevbyFeedCommentsList" class="klevby-feed-comments-list">
+          <div class="klevby-feed-comments-empty">Загружаем комментарии...</div>
+        </div>
 
         <textarea
           id="klevbyFeedCommentText"
           class="klevby-feed-comment-textarea"
           maxlength="700"
-          placeholder="Например: красивое место, где это снято?"
+          placeholder="Напиши свой комментарий..."
         ></textarea>
 
         <div class="klevby-feed-comment-actions">
@@ -1007,6 +1114,96 @@
     return modal;
   }
 
+  function klevbyCommentHtml(comment) {
+    const authorName = comment?.author_name || "Рыбак";
+    const city = comment?.author_city || "";
+    const text = comment?.text || "";
+    const date = klevbyFormatProfileFeedDate(comment?.created_at);
+    const canDelete = klevbyCanManageComment(comment);
+
+    return `
+      <div class="klevby-feed-comment-item">
+        <div class="klevby-feed-comment-top">
+          <div>
+            <span class="klevby-feed-comment-author">
+              ${klevbyFeedEscapeHtml(authorName)}
+              ${city ? ` · ${klevbyFeedEscapeHtml(city)}` : ""}
+            </span>
+            ${date ? `<span class="klevby-feed-comment-date">${klevbyFeedEscapeHtml(date)}</span>` : ""}
+          </div>
+
+          ${
+            canDelete
+              ? `<button class="klevby-feed-comment-delete" type="button" onclick="deleteFeedComment('${klevbyFeedEscapeAttr(comment.id || "")}')">Удалить</button>`
+              : ""
+          }
+        </div>
+
+        <p class="klevby-feed-comment-text">${klevbyFeedEscapeHtml(text)}</p>
+      </div>
+    `;
+  }
+
+  async function klevbyRunLoadFeedComments(postId) {
+    if (typeof window.klevbyLoadFeedComments === "function") {
+      return window.klevbyLoadFeedComments(postId);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.loadComments === "function"
+    ) {
+      return window.klevbyFeedSupabase.loadComments(postId);
+    }
+
+    return {
+      ok: false,
+      comments: [],
+      error: new Error("Загрузка комментариев ещё не подключена.")
+    };
+  }
+
+  async function klevbyLoadCommentsIntoModal(postId) {
+    const list = document.getElementById("klevbyFeedCommentsList");
+    const message = document.getElementById("klevbyFeedCommentMessage");
+
+    if (!list) return;
+
+    list.innerHTML = `<div class="klevby-feed-comments-empty">Загружаем комментарии...</div>`;
+
+    try {
+      const result = await klevbyRunLoadFeedComments(postId);
+
+      if (!result || !result.ok) {
+        const errorMessage = result?.error?.message || "Не удалось загрузить комментарии.";
+
+        list.innerHTML = `<div class="klevby-feed-comments-empty">${klevbyFeedEscapeHtml(errorMessage)}</div>`;
+        return;
+      }
+
+      const comments = Array.isArray(result.comments) ? result.comments : [];
+
+      if (!comments.length) {
+        list.innerHTML = `<div class="klevby-feed-comments-empty">Комментариев пока нет. Напиши первый.</div>`;
+        return;
+      }
+
+      list.innerHTML = comments.map(klevbyCommentHtml).join("");
+
+      requestAnimationFrame(() => {
+        list.scrollTop = list.scrollHeight;
+      });
+
+      if (message) {
+        message.textContent = "";
+        message.classList.remove("error-line");
+      }
+    } catch (error) {
+      console.warn("Klevby feed: комментарии не загрузились", error);
+      list.innerHTML = `<div class="klevby-feed-comments-empty">${klevbyFeedEscapeHtml(error?.message || "Не удалось загрузить комментарии.")}</div>`;
+    }
+  }
+
   function klevbyOpenFeedCommentModal(postId) {
     const cleanId = String(postId || "");
     const item = klevbyFeedItemsCache[cleanId];
@@ -1017,14 +1214,7 @@
     }
 
     if (item.source !== "supabase") {
-      alert("Это фото ещё локальное. Отзывы будут работать для фото из общей ленты.");
-      return;
-    }
-
-    const user = klevbyFeedGetCurrentUser();
-
-    if (!user || !user.id) {
-      alert("Чтобы оставить отзыв, сначала войди в профиль.");
+      alert("Это фото ещё локальное. Комментарии работают для фото из общей ленты.");
       return;
     }
 
@@ -1042,15 +1232,17 @@
     }
 
     if (subtitle) {
-      subtitle.textContent = `${item.authorName || "Рыбак"} добавил фото. Напиши короткий отзыв или вопрос.`;
+      subtitle.textContent = `${item.authorName || "Рыбак"} добавил фото. Ниже комментарии и поле для твоего отзыва.`;
     }
 
     modal.classList.remove("hidden");
     document.body.classList.add("post-modal-open");
 
+    klevbyLoadCommentsIntoModal(cleanId);
+
     setTimeout(() => {
       if (textarea) textarea.focus({ preventScroll: true });
-    }, 120);
+    }, 220);
   }
 
   function closeKlevbyFeedCommentModal() {
@@ -1073,17 +1265,10 @@
       window.klevbyFeedSupabase &&
       typeof window.klevbyFeedSupabase.addComment === "function"
     ) {
-      try {
-        return await window.klevbyFeedSupabase.addComment({
-          postId,
-          text
-        });
-      } catch (firstError) {
-        return window.klevbyFeedSupabase.addComment(postId, text);
-      }
+      return window.klevbyFeedSupabase.addComment(postId, text);
     }
 
-    throw new Error("Комментарии ещё не подключены в feed-supabase.js. Следующим шагом подключим сохранение отзывов.");
+    throw new Error("Комментарии ещё не подключены в feed-supabase.js.");
   }
 
   async function klevbySubmitFeedComment() {
@@ -1106,7 +1291,7 @@
 
     if (!text) {
       if (message) {
-        message.textContent = "Напиши отзыв перед отправкой.";
+        message.textContent = "Напиши комментарий перед отправкой.";
         message.classList.add("error-line");
       }
       textarea.focus();
@@ -1115,7 +1300,7 @@
 
     if (text.length > 700) {
       if (message) {
-        message.textContent = "Отзыв слишком длинный. Сделай короче.";
+        message.textContent = "Комментарий слишком длинный. Сделай короче.";
         message.classList.add("error-line");
       }
       textarea.focus();
@@ -1123,15 +1308,17 @@
     }
 
     if (message) {
-      message.textContent = "Отправляем отзыв...";
+      message.textContent = "Отправляем комментарий...";
       message.classList.remove("error-line");
     }
 
     try {
       await klevbyRunAddFeedComment(postId, text);
 
+      textarea.value = "";
+
       if (message) {
-        message.textContent = "✅ Отзыв отправлен.";
+        message.textContent = "✅ Комментарий отправлен.";
         message.classList.remove("error-line");
       }
 
@@ -1139,16 +1326,58 @@
         navigator.vibrate(16);
       }
 
-      setTimeout(() => {
-        closeKlevbyFeedCommentModal();
-      }, 300);
+      await klevbyLoadCommentsIntoModal(postId);
+      await klevbyRenderProfileFeed();
+    } catch (error) {
+      console.warn("Klevby feed: комментарий не отправился", error);
+
+      if (message) {
+        message.textContent = error?.message || "Не получилось отправить комментарий.";
+        message.classList.add("error-line");
+      }
+    }
+  }
+
+  async function klevbyDeleteFeedCommentFromModal(commentId) {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const message = document.getElementById("klevbyFeedCommentMessage");
+    const postId = String(modal?.dataset?.postId || "");
+
+    const cleanCommentId = String(commentId || "").trim();
+
+    if (!cleanCommentId) return;
+
+    if (!confirm("Удалить комментарий?")) {
+      return;
+    }
+
+    try {
+      if (typeof window.klevbyDeleteFeedComment === "function") {
+        await window.klevbyDeleteFeedComment(cleanCommentId);
+      } else if (
+        window.klevbyFeedSupabase &&
+        typeof window.klevbyFeedSupabase.deleteComment === "function"
+      ) {
+        await window.klevbyFeedSupabase.deleteComment(cleanCommentId);
+      } else {
+        throw new Error("Удаление комментариев ещё не подключено.");
+      }
+
+      if (message) {
+        message.textContent = "Комментарий удалён.";
+        message.classList.remove("error-line");
+      }
+
+      if (postId) {
+        await klevbyLoadCommentsIntoModal(postId);
+      }
 
       await klevbyRenderProfileFeed();
     } catch (error) {
-      console.warn("Klevby feed: отзыв не отправился", error);
+      console.warn("Klevby feed: комментарий не удалился", error);
 
       if (message) {
-        message.textContent = error?.message || "Не получилось отправить отзыв.";
+        message.textContent = error?.message || "Не получилось удалить комментарий.";
         message.classList.add("error-line");
       }
     }
@@ -1228,6 +1457,15 @@
 
     const refresh = () => {
       setTimeout(klevbyRefreshFeedIfHomeVisible, 120);
+
+      const modal = document.getElementById("klevbyFeedCommentModal");
+      const postId = String(modal?.dataset?.postId || "");
+
+      if (modal && !modal.classList.contains("hidden") && postId) {
+        setTimeout(() => {
+          klevbyLoadCommentsIntoModal(postId);
+        }, 180);
+      }
     };
 
     try {
@@ -1257,7 +1495,15 @@
 
     klevbyFeedAutoRefreshTimer = setInterval(() => {
       if (document.visibilityState !== "visible") return;
+
       klevbyRefreshFeedIfHomeVisible();
+
+      const modal = document.getElementById("klevbyFeedCommentModal");
+      const postId = String(modal?.dataset?.postId || "");
+
+      if (modal && !modal.classList.contains("hidden") && postId) {
+        klevbyLoadCommentsIntoModal(postId);
+      }
     }, 6000);
   }
 
@@ -1296,8 +1542,23 @@
       setTimeout(klevbyRefreshFeedIfHomeVisible, 180);
     });
 
-    window.addEventListener("klevby-feed-updated", () => {
+    window.addEventListener("klevby-feed-updated", (event) => {
       setTimeout(klevbyRenderProfileFeed, 220);
+
+      const modal = document.getElementById("klevbyFeedCommentModal");
+      const activePostId = String(modal?.dataset?.postId || "");
+      const changedPostId = String(event?.detail?.postId || "");
+
+      if (
+        modal &&
+        !modal.classList.contains("hidden") &&
+        activePostId &&
+        (!changedPostId || changedPostId === activePostId)
+      ) {
+        setTimeout(() => {
+          klevbyLoadCommentsIntoModal(activePostId);
+        }, 260);
+      }
     });
 
     document.addEventListener("click", (event) => {
@@ -1341,4 +1602,5 @@
   window.openFeedCommentModal = klevbyOpenFeedCommentModal;
   window.closeFeedCommentModal = closeKlevbyFeedCommentModal;
   window.submitFeedComment = klevbySubmitFeedComment;
+  window.deleteFeedComment = klevbyDeleteFeedCommentFromModal;
 })();
