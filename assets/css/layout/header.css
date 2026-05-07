@@ -26,8 +26,9 @@ header {
   text-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
 
+/* ВАЖНО: верхнее desktop-меню пока скрываем, чтобы не было дубля с меню в кнопке */
 nav {
-  display: none;
+  display: none !important;
 }
 
 .nav-btn,
@@ -117,7 +118,7 @@ nav {
   height: 48px;
   min-width: 48px;
   min-height: 48px;
-  padding: 0;
+  padding: 0 !important;
   border: 1px solid rgba(244,178,74,0.16);
   border-radius: 17px;
   background:
@@ -125,8 +126,8 @@ nav {
     rgba(255,255,255,0.08);
   color: #fff8ea;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   cursor: pointer;
   overflow: hidden;
   box-shadow:
@@ -158,24 +159,50 @@ nav {
   background: rgba(8,14,13,0.96);
 }
 
-.mobile-profile-avatar-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-width: 100%;
-  min-height: 100%;
-  object-fit: cover;
-  object-position: center;
-  border-radius: inherit;
-}
-
-.mobile-profile-avatar-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
+/* Жёстко растягиваем аватар на всю кнопку, даже если внутри стоит маленький круг */
+.mobile-profile-btn img,
+.mobile-profile-btn picture,
+.mobile-profile-btn span,
+.mobile-profile-btn div,
+.mobile-profile-btn .profile-avatar-image,
+.mobile-profile-btn .mobile-profile-avatar-image,
+.mobile-profile-btn .profile-avatar-fallback,
+.mobile-profile-btn .mobile-profile-avatar-fallback,
+.mobile-profile-btn .profile-avatar-wrap,
+.mobile-profile-btn .mobile-profile-avatar,
+.mobile-profile-btn .mobile-profile-avatar-inner {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: inherit !important;
+  border: 0 !important;
+  object-fit: cover !important;
+  object-position: center !important;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.mobile-profile-btn img,
+.mobile-profile-btn .profile-avatar-image,
+.mobile-profile-btn .mobile-profile-avatar-image {
+  display: block;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+.mobile-profile-btn .hidden {
+  display: none !important;
+}
+
+.mobile-profile-avatar-fallback,
+.mobile-profile-btn .profile-avatar-fallback {
   background:
     radial-gradient(circle at 30% 10%, rgba(255,255,255,0.22), transparent 38%),
     linear-gradient(135deg, var(--gold), var(--gold2));
@@ -355,17 +382,9 @@ nav {
   filter: brightness(0.94);
 }
 
-@media (min-width: 901px) {
+@media (max-width: 900px) {
   .mobile-header-actions {
-    display: none;
-  }
-
-  nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    gap: 10px;
   }
 }
 
@@ -383,7 +402,8 @@ nav {
     border-radius: 18px;
   }
 
-  .mobile-profile-avatar-fallback {
+  .mobile-profile-avatar-fallback,
+  .mobile-profile-btn .profile-avatar-fallback {
     font-size: 19px;
   }
 }
@@ -402,7 +422,8 @@ nav {
     border-radius: 17px;
   }
 
-  .mobile-profile-avatar-fallback {
+  .mobile-profile-avatar-fallback,
+  .mobile-profile-btn .profile-avatar-fallback {
     font-size: 18px;
   }
 }
