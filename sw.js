@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v8-sw-206-fix-2026-05-06";
+const CACHE_NAME = "klevby-cache-v9-css-modules-2026-05-07";
 
 const APP_FILES = [
   "/",
@@ -7,6 +7,20 @@ const APP_FILES = [
   "/assets/css/main.css",
   "/assets/css/ponds.css",
   "/assets/css/chat-style.css",
+
+  "/assets/css/base/global.css",
+
+  "/assets/css/layout/header.css",
+  "/assets/css/layout/bottom-nav.css",
+
+  "/assets/css/components/buttons-forms.css",
+  "/assets/css/components/feed-cards.css",
+  "/assets/css/components/modals-install.css",
+
+  "/assets/css/screens/home.css",
+  "/assets/css/screens/secondary.css",
+
+  "/assets/css/responsive/mobile.css",
 
   "/assets/js/config.js",
   "/assets/js/pwa-manifest.js",
@@ -43,7 +57,8 @@ const APP_FILES = [
   "/assets/js/ponds.js",
 
   "/assets/img/klevby-icon-512.png",
-  "/assets/img/narach-bg.webp"
+  "/assets/img/narach-bg.webp",
+  "/assets/img/gold-lake-bg.webp"
 ];
 
 self.addEventListener("install", (event) => {
