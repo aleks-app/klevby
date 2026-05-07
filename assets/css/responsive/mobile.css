@@ -11,7 +11,7 @@
 
 @media (max-width: 900px) {
   body {
-    padding-bottom: 104px;
+    padding-bottom: 100px;
     background: #020403;
   }
 
@@ -27,14 +27,14 @@
     opacity: 1;
     z-index: -1;
     background:
-      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.16), transparent 34%),
-      linear-gradient(180deg, rgba(2,4,3,0.42) 0%, rgba(2,4,3,0.72) 34%, rgba(2,4,3,0.92) 72%, #020403 100%);
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.15), transparent 32%),
+      linear-gradient(180deg, rgba(2,4,3,0.38) 0%, rgba(2,4,3,0.68) 32%, rgba(2,4,3,0.92) 72%, #020403 100%);
   }
 
   header {
     position: relative;
     top: auto;
-    padding: calc(env(safe-area-inset-top) + 18px) 0 8px;
+    padding: calc(env(safe-area-inset-top) + 14px) 0 5px;
     background: transparent;
     z-index: 2000;
   }
@@ -49,17 +49,20 @@
   }
 
   .burger-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 19px;
     background:
       radial-gradient(circle at 30% 0%, rgba(244,178,74,0.18), transparent 44%),
       rgba(255,255,255,0.08);
     border-color: rgba(244,178,74,0.16);
+    box-shadow:
+      0 12px 28px rgba(0,0,0,0.32),
+      inset 0 1px 0 rgba(255,255,255,0.08);
   }
 
   .logo {
-    font-size: 22px;
+    font-size: 21px;
     line-height: 1;
     padding-top: 0;
     font-weight: 800 !important;
@@ -71,7 +74,7 @@
   .home-float-btn {
     top: auto;
     right: 18px;
-    bottom: calc(104px + env(safe-area-inset-bottom));
+    bottom: calc(100px + env(safe-area-inset-bottom));
     width: 50px;
     height: 50px;
     min-height: 50px;
@@ -101,7 +104,7 @@
     right: 10px;
     bottom: 8px;
     z-index: 1100;
-    height: 82px;
+    height: 78px;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: center;
@@ -121,20 +124,20 @@
 
   .hero {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 10px;
     align-items: stretch;
-    margin: 8px 0 14px;
-    padding: 18px 16px;
-    min-height: 315px;
-    border-radius: 32px;
+    margin: 5px 0 11px;
+    padding: 14px;
+    min-height: 265px;
+    border-radius: 30px;
     background:
-      linear-gradient(180deg, rgba(2,4,3,0.04) 0%, rgba(2,4,3,0.20) 24%, rgba(2,4,3,0.86) 100%),
-      linear-gradient(90deg, rgba(2,4,3,0.74) 0%, rgba(2,4,3,0.18) 100%),
+      linear-gradient(180deg, rgba(2,4,3,0.03) 0%, rgba(2,4,3,0.18) 24%, rgba(2,4,3,0.88) 100%),
+      linear-gradient(90deg, rgba(2,4,3,0.72) 0%, rgba(2,4,3,0.16) 100%),
       url("../../img/gold-lake-bg.webp") center / cover no-repeat;
     border: 1px solid rgba(244,178,74,0.18);
     box-shadow:
-      0 18px 52px rgba(0,0,0,0.44),
-      0 0 40px rgba(244,178,74,0.10),
+      0 16px 44px rgba(0,0,0,0.42),
+      0 0 34px rgba(244,178,74,0.09),
       inset 0 1px 0 rgba(255,255,255,0.08);
   }
 
@@ -143,31 +146,31 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at 72% 32%, rgba(244,178,74,0.26), transparent 28%),
-      linear-gradient(180deg, transparent 50%, rgba(2,4,3,0.76));
+      radial-gradient(circle at 72% 32%, rgba(244,178,74,0.22), transparent 28%),
+      linear-gradient(180deg, transparent 48%, rgba(2,4,3,0.78));
     pointer-events: none;
   }
 
   .hero-copy {
-    padding: 14px 2px 0;
+    padding: 10px 1px 0;
     max-width: none;
     justify-content: flex-end;
-    min-height: 275px;
+    min-height: 230px;
   }
 
   .badge {
-    margin-bottom: 12px;
-    font-size: 12px;
-    padding: 7px 11px;
+    margin-bottom: 10px;
+    font-size: 11.5px;
+    padding: 6px 10px;
     background: rgba(255,255,255,0.10);
     border-color: rgba(244,178,74,0.18);
     color: rgba(255,248,234,0.90);
   }
 
   .hero h1 {
-    font-size: 32px;
-    letter-spacing: -1.05px;
-    margin-bottom: 10px;
+    font-size: 29px;
+    letter-spacing: -0.95px;
+    margin-bottom: 8px;
     font-weight: 800 !important;
     line-height: 1.06;
   }
@@ -179,37 +182,38 @@
   }
 
   .hero p {
-    font-size: 15px;
-    margin-bottom: 16px;
+    font-size: 13.8px;
+    margin-bottom: 13px;
     color: rgba(255,248,234,0.78);
+    line-height: 1.42;
   }
 
   .trust-bar {
-    gap: 10px;
+    gap: 8px;
   }
 
   .trust-item {
-    min-height: 58px;
-    padding: 12px;
-    grid-template-columns: 30px 1fr;
-    column-gap: 10px;
-    border-radius: 20px;
+    min-height: 52px;
+    padding: 10px;
+    grid-template-columns: 28px 1fr;
+    column-gap: 9px;
+    border-radius: 18px;
     background: rgba(8,12,10,0.62);
     border-color: rgba(244,178,74,0.14);
   }
 
   .trust-icon {
-    width: 30px;
-    height: 30px;
-    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    font-size: 17px;
   }
 
   .trust-value {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .trust-label {
-    font-size: 11px;
+    font-size: 10.5px;
   }
 
   .hero-photo {
@@ -217,15 +221,15 @@
   }
 
   .forecast-panel {
-    margin: 14px 0;
-    padding: 18px;
+    margin: 10px 0;
+    padding: 15px;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
       rgba(14, 21, 18, 0.78);
     border: 1px solid rgba(244,178,74,0.15);
-    border-radius: 26px;
+    border-radius: 24px;
     box-shadow:
-      0 16px 44px rgba(0,0,0,0.34),
+      0 14px 38px rgba(0,0,0,0.32),
       inset 0 1px 0 rgba(255,255,255,0.07);
   }
 
@@ -242,12 +246,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 12px;
   }
 
   .mobile-weather-city {
-    font-size: 21px;
+    font-size: 20px;
     line-height: 1.1;
     font-weight: 800;
     letter-spacing: -0.35px;
@@ -257,26 +261,26 @@
   .mobile-weather-city::before {
     content: "Погода и клёв";
     display: block;
-    font-size: 18px;
-    margin-bottom: 7px;
+    font-size: 17px;
+    margin-bottom: 6px;
   }
 
   .mobile-weather-city::after {
     content: "📍 Минск";
     display: block;
     color: rgba(255,248,234,0.58);
-    font-size: 12px;
-    margin-top: 5px;
+    font-size: 11.5px;
+    margin-top: 4px;
   }
 
   .mobile-weather-condition {
-    min-height: 34px;
-    padding: 7px 11px;
-    border-radius: 16px;
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 15px;
     background: rgba(255,255,255,0.075);
     border: 1px solid rgba(244,178,74,0.10);
     color: rgba(255,248,234,0.88);
-    font-size: 13px;
+    font-size: 12.5px;
     line-height: 1;
     font-weight: 700;
     display: inline-flex;
@@ -294,13 +298,13 @@
     gap: 0;
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(244,178,74,0.08);
-    border-radius: 21px;
+    border-radius: 19px;
     overflow: hidden;
   }
 
   .forecast-item {
-    min-height: 82px;
-    padding: 13px 10px;
+    min-height: 74px;
+    padding: 11px 8px;
     display: grid;
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -327,13 +331,13 @@
 
   .forecast-icon {
     grid-area: icon;
-    width: 32px;
-    height: 32px;
-    margin: 0 0 5px;
+    width: 30px;
+    height: 30px;
+    margin: 0 0 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 13px;
+    border-radius: 12px;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(244,178,74,0.09);
     font-size: 0;
@@ -342,7 +346,7 @@
 
   .forecast-icon::before {
     content: attr(data-mobile-icon);
-    font-size: 20px;
+    font-size: 19px;
     line-height: 1;
   }
 
@@ -350,7 +354,7 @@
     grid-area: label;
     margin: 2px 0 0;
     color: rgba(255,248,234,0.56);
-    font-size: 10px;
+    font-size: 9.6px;
     line-height: 1.2;
     font-weight: 700;
     text-align: center;
@@ -358,7 +362,7 @@
 
   .forecast-value {
     grid-area: value;
-    font-size: 15px;
+    font-size: 14.5px;
     line-height: 1.2;
     font-weight: 800;
     letter-spacing: -0.15px;
@@ -371,14 +375,14 @@
 
   #statusLine.info-line {
     width: 100%;
-    margin: 18px 0 12px;
-    padding: 14px;
+    margin: 14px 0 10px;
+    padding: 12px 14px;
     text-align: center;
     background: rgba(14, 21, 18, 0.78);
     border: 1px solid rgba(244,178,74,0.14);
-    border-radius: 22px;
+    border-radius: 20px;
     color: var(--gold);
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 700;
   }
 
@@ -421,6 +425,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    margin-top: 12px;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
       rgba(14, 21, 18, 0.82);
@@ -466,7 +471,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    margin: 14px 0 44px;
+    margin: 12px 0 44px;
   }
 
   #postsSection.grid::before {
@@ -476,7 +481,7 @@
     font-size: 22px;
     font-weight: 800;
     letter-spacing: -0.4px;
-    margin: 4px 0 -2px;
+    margin: 3px 0 -2px;
     color: #fff8ea;
     text-shadow: 0 12px 34px rgba(0,0,0,0.45);
   }
@@ -627,30 +632,34 @@
   }
 
   header {
-    padding: calc(env(safe-area-inset-top) + 18px) 0 8px;
+    padding: calc(env(safe-area-inset-top) + 14px) 0 5px;
   }
 
   .logo {
-    font-size: 22px;
+    font-size: 21px;
     font-weight: 800 !important;
     position: relative;
     z-index: 2100;
   }
 
   .hero {
-    margin: 6px 0 14px;
-    padding: 16px;
-    gap: 12px;
-    min-height: 305px;
+    margin: 5px 0 10px;
+    padding: 14px;
+    gap: 10px;
+    min-height: 255px;
+  }
+
+  .hero-copy {
+    min-height: 222px;
   }
 
   .hero h1 {
-    font-size: 31px;
+    font-size: 28px;
     font-weight: 800 !important;
   }
 
   .hero p {
-    font-size: 14.5px;
+    font-size: 13.4px;
   }
 
   .hero-photo {
@@ -658,11 +667,11 @@
   }
 
   .panel {
-    padding: 20px;
+    padding: 18px;
   }
 
   .panel h2 {
-    font-size: 24px;
+    font-size: 23px;
     font-weight: 800 !important;
   }
 
@@ -758,6 +767,27 @@
 }
 
 @media (max-width: 380px) {
+  .hero {
+    min-height: 238px;
+    padding: 13px;
+  }
+
+  .hero-copy {
+    min-height: 207px;
+  }
+
+  .hero h1 {
+    font-size: 25.5px;
+  }
+
+  .hero p {
+    font-size: 12.8px;
+  }
+
+  .badge {
+    font-size: 10.8px;
+  }
+
   #postsSection.grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -793,7 +823,7 @@
 
   .home-float-btn {
     right: 14px;
-    bottom: calc(100px + env(safe-area-inset-bottom));
+    bottom: calc(96px + env(safe-area-inset-bottom));
     width: 48px;
     height: 48px;
     min-height: 48px;
