@@ -182,7 +182,7 @@ body.pwa-installed .install-hero-btn {
     background 0.34s cubic-bezier(.22,.9,.22,1),
     backdrop-filter 0.34s cubic-bezier(.22,.9,.22,1),
     -webkit-backdrop-filter 0.34s cubic-bezier(.22,.9,.22,1),
-    visibility 0s linear 0.34s;
+    visibility 0s linear 0.36s;
 }
 
 .post-modal-backdrop.open {
@@ -210,8 +210,8 @@ body.pwa-installed .install-hero-btn {
   box-shadow:
     0 24px 70px rgba(0,0,0,0.56),
     inset 0 1px 0 rgba(255,255,255,0.08);
-  transform: translateY(58px) scale(0.985);
-  transform-origin: center bottom;
+  transform: translateY(34px) scale(0.965);
+  transform-origin: center center;
   opacity: 0;
   -webkit-overflow-scrolling: touch;
   will-change: transform, opacity;
@@ -389,22 +389,83 @@ body.pwa-installed .install-hero-btn {
 
 @media (max-width: 900px) {
   .post-modal-backdrop.post-modal-backdrop {
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
-    padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+    padding:
+      max(14px, env(safe-area-inset-top))
+      14px
+      max(14px, env(safe-area-inset-bottom));
   }
 
   .post-modal-sheet.post-modal-sheet {
-    width: 100%;
-    max-height: 88vh;
-    border-radius: 30px 30px 24px 24px;
-    transform: translateY(110%) scale(1);
-    opacity: 1;
+    width: min(100%, 720px);
+    max-width: calc(100vw - 28px);
+    max-height: 82svh;
+    border-radius: 30px;
+    transform: translateY(42px) scale(0.965);
+    opacity: 0;
   }
 
   .post-modal-backdrop.open .post-modal-sheet.post-modal-sheet {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+
+  .post-modal-image {
+    height: 285px;
+  }
+
+  .post-modal-content {
+    padding: 0 14px 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .post-modal-backdrop.post-modal-backdrop {
+    padding:
+      max(12px, env(safe-area-inset-top))
+      12px
+      max(12px, env(safe-area-inset-bottom));
+  }
+
+  .post-modal-sheet.post-modal-sheet {
+    width: 100%;
+    max-width: calc(100vw - 24px);
+    max-height: 82svh;
+    border-radius: 28px;
+  }
+
+  .post-modal-image {
+    height: 260px;
+  }
+
+  .post-modal-card {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .post-modal-title {
+    font-size: clamp(27px, 8vw, 42px);
+  }
+
+  .post-modal-text {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+}
+
+@media (max-width: 380px) {
+  .post-modal-sheet.post-modal-sheet {
+    max-width: calc(100vw - 20px);
+    border-radius: 26px;
+  }
+
+  .post-modal-image {
+    height: 235px;
+  }
+
+  .post-modal-card {
+    padding: 16px;
   }
 }
 
