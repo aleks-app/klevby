@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v10-fast-refresh-2026-05-07";
+const CACHE_NAME = "klevby-cache-v11-lifecycle-resume-2026-05-07";
 
 const APP_FILES = [
   "/",
