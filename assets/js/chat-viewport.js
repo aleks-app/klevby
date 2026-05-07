@@ -84,7 +84,10 @@
 
   function unlockChatPage() {
     document.documentElement.classList.remove("klevby-chat-lock");
+    document.documentElement.classList.remove("klevby-chat-mobile-lock");
     document.body.classList.remove("klevby-chat-lock");
+    document.body.classList.remove("klevby-chat-mobile-lock");
+    document.body.classList.remove("klevby-chat-keyboard-open");
   }
 
   function init() {
