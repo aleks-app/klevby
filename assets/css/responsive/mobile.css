@@ -176,9 +176,8 @@
   }
 
   .hero h1::after {
-    content: " для рыбалки";
-    color: var(--gold);
-    display: block;
+    content: "";
+    display: none;
   }
 
   .hero p {
@@ -386,10 +385,55 @@
     font-weight: 700;
   }
 
+  .home-feed-head,
+  .trips-hero,
+  .create-screen-head,
+  .home-trip-link-card {
+    margin: 12px 0;
+    padding: 15px;
+    border-radius: 24px;
+  }
+
+  .home-feed-head,
+  .trips-hero,
+  .create-screen-head,
+  .home-trip-link-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .home-feed-head h2,
+  .trips-hero h2,
+  .create-screen-head h2 {
+    font-size: 25px;
+    letter-spacing: -0.55px;
+  }
+
+  .home-feed-head p,
+  .trips-hero p,
+  .create-screen-head p,
+  .home-trip-link-card span {
+    font-size: 12.8px;
+    line-height: 1.45;
+  }
+
+  .home-feed-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-feed-actions .small-btn,
+  .home-trip-link-card .small-btn,
+  .trips-hero .small-btn,
+  .create-screen-head .small-btn {
+    width: 100%;
+  }
+
   .filter-card {
     padding: 18px;
     margin: 14px 0;
-    display: none;
   }
 
   .filter-title {
@@ -419,6 +463,10 @@
 
   .filter-reset {
     width: 100%;
+  }
+
+  #createSection {
+    padding-bottom: 18px;
   }
 
   #createPanel {
@@ -467,6 +515,70 @@
     justify-content: center;
   }
 
+  #profileFeedSection.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin: 12px 0 24px;
+  }
+
+  #profileFeedSection.grid::before {
+    content: "Лента";
+    grid-column: 1 / -1;
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    margin: 3px 0 -2px;
+    color: #fff8ea;
+    text-shadow: 0 12px 34px rgba(0,0,0,0.45);
+  }
+
+  #profileFeedSection .card {
+    min-height: auto;
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.070), rgba(255,255,255,0.034)),
+      rgba(13, 20, 17, 0.84);
+    border: 1px solid rgba(244,178,74,0.14);
+    box-shadow:
+      0 12px 32px rgba(0,0,0,0.34),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  #profileFeedSection .card-img {
+    height: 255px;
+    border-radius: 24px 24px 0 0;
+  }
+
+  #profileFeedSection .card-body {
+    padding: 15px;
+  }
+
+  #profileFeedSection .trip-title {
+    font-size: 19px;
+    line-height: 1.16;
+  }
+
+  #profileFeedSection .card p {
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+
+  #profileFeedSection .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+
+  #profileFeedSection .small-btn {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    border-radius: 13px;
+    font-size: 11.5px;
+  }
+
   #postsSection.grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -475,7 +587,7 @@
   }
 
   #postsSection.grid::before {
-    content: "Лента";
+    content: "Напарники";
     grid-column: 1 / -1;
     display: block;
     font-size: 22px;
@@ -531,20 +643,20 @@
     text-overflow: ellipsis;
   }
 
-  .trip-title {
+  #postsSection .trip-title {
     font-size: 13.5px;
     line-height: 1.18;
     margin-bottom: 7px;
     letter-spacing: -0.18px;
   }
 
-  .trip-facts {
+  #postsSection .trip-facts {
     grid-template-columns: 1fr;
     gap: 6px;
     margin: 7px 0 8px;
   }
 
-  .trip-fact {
+  #postsSection .trip-fact {
     min-height: 38px;
     padding: 7px 8px;
     border-radius: 13px;
@@ -552,15 +664,15 @@
     border-color: rgba(244,178,74,0.09);
   }
 
-  .trip-fact:nth-child(n+3) {
+  #postsSection .trip-fact:nth-child(n+3) {
     display: none;
   }
 
-  .trip-fact-label {
+  #postsSection .trip-fact-label {
     font-size: 8.5px;
   }
 
-  .trip-fact-value {
+  #postsSection .trip-fact-value {
     font-size: 10px;
     -webkit-line-clamp: 1;
   }
@@ -689,6 +801,15 @@
     font-weight: 800 !important;
   }
 
+  #profileFeedSection.grid {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+
+  #profileFeedSection .card-img {
+    height: 240px;
+  }
+
   #postsSection.grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 11px;
@@ -786,6 +907,14 @@
 
   .badge {
     font-size: 10.8px;
+  }
+
+  #profileFeedSection .card-img {
+    height: 220px;
+  }
+
+  #profileFeedSection .trip-title {
+    font-size: 17px;
   }
 
   #postsSection.grid {
