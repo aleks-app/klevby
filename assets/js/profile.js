@@ -7,6 +7,7 @@ let klevbyMainTabbarSnapshot = null;
 let klevbyOriginalGoHomeTop = null;
 let klevbyOriginalUpdateHomeFloatButton = null;
 let klevbyOriginalShowSection = null;
+let klevbyHeaderDisplaySnapshot = null;
 
 function getDefaultProfileData() {
   return {
@@ -63,8 +64,42 @@ function saveProfileData(data) {
   return cleanData;
 }
 
+function setProfileScreenChrome(isActive) {
+  const html = document.documentElement;
+  const body = document.body;
+  const header = document.querySelector("header");
+
+  if (html) {
+    html.classList.toggle("profile-screen-open", Boolean(isActive));
+  }
+
+  if (body) {
+    body.classList.toggle("profile-screen-open", Boolean(isActive));
+  }
+
+  if (!header) return;
+
+  if (isActive) {
+    if (klevbyHeaderDisplaySnapshot === null) {
+      klevbyHeaderDisplaySnapshot = header.style.display || "";
+    }
+
+    header.style.display = "none";
+    header.setAttribute("aria-hidden", "true");
+    header.dataset.profileHidden = "1";
+    return;
+  }
+
+  if (header.dataset.profileHidden === "1") {
+    header.style.display = klevbyHeaderDisplaySnapshot || "";
+    header.removeAttribute("aria-hidden");
+    delete header.dataset.profileHidden;
+  }
+}
+
 function openKlevbyProfile() {
   setProfileReturnMode(false);
+  setProfileScreenChrome(true);
 
   const sectionIds = [
     "homeSection",
@@ -139,6 +174,7 @@ function openProfileSettingsModal() {
 
   if (!modal) return;
 
+  setProfileScreenChrome(true);
   fillProfileSettingsForm();
 
   if (message) {
@@ -627,6 +663,7 @@ function setProfileTabActive(index) {
 }
 
 function openProfilePhotoAction() {
+  setProfileScreenChrome(true);
   applyProfileTabbar();
   setProfileTabActive(0);
   updateProfileHomeFloatButton();
@@ -635,6 +672,7 @@ function openProfilePhotoAction() {
 
 function openProfileTripsView() {
   setProfileReturnMode(true);
+  setProfileScreenChrome(true);
   applyProfileTabbar();
   setProfileTabActive(1);
 
@@ -659,6 +697,7 @@ function openProfileTripsView() {
   }
 
   setTimeout(() => {
+    setProfileScreenChrome(true);
     applyProfileTabbar();
     setProfileTabActive(1);
     updateProfileHomeFloatButton();
@@ -675,6 +714,7 @@ function openProfileTripsView() {
 
 function openProfileCreateView() {
   setProfileReturnMode(true);
+  setProfileScreenChrome(true);
   applyProfileTabbar();
   setProfileTabActive(2);
 
@@ -691,6 +731,7 @@ function openProfileCreateView() {
   }
 
   setTimeout(() => {
+    setProfileScreenChrome(true);
     applyProfileTabbar();
     setProfileTabActive(2);
     updateProfileHomeFloatButton();
@@ -798,6 +839,7 @@ function patchHomeFloatButton() {
 
       if (isProfileSectionVisible()) {
         setProfileReturnMode(false);
+        setProfileScreenChrome(false);
         restoreMainTabbar();
 
         if (typeof klevbyOriginalGoHomeTop === "function") {
@@ -808,6 +850,7 @@ function patchHomeFloatButton() {
         return;
       }
 
+      setProfileScreenChrome(false);
       restoreMainTabbar();
 
       if (typeof klevbyOriginalGoHomeTop === "function") {
@@ -860,6 +903,10 @@ function showHomeSectionFallback() {
     }
   });
 
+  setProfileReturnMode(false);
+  setProfileScreenChrome(false);
+  restoreMainTabbar();
+
   if (typeof setMobileTabActive === "function") {
     setMobileTabActive(0);
   }
@@ -885,10 +932,15 @@ function patchShowSectionForProfile() {
       hideProfileSectionOnly();
       restoreMainTabbar();
       setProfileReturnMode(false);
+      setProfileScreenChrome(false);
     }
 
     if (sectionName === "profile") {
       openKlevbyProfile();
+    }
+
+    if (window.__klevbyProfileInternalNavigation || isProfileReturnMode()) {
+      setProfileScreenChrome(true);
     }
 
     setTimeout(updateProfileHomeFloatButton, 120);
@@ -930,8 +982,11 @@ function initKlevbyProfileNavigation() {
   setTimeout(patchShowSectionForProfile, 800);
 
   if (isProfileReturnMode()) {
+    setProfileScreenChrome(true);
     applyProfileTabbar();
     updateProfileHomeFloatButton();
+  } else {
+    setProfileScreenChrome(isProfileSectionVisible());
   }
 }
 
@@ -957,3 +1012,4 @@ window.restoreMainTabbar = restoreMainTabbar;
 window.openProfilePhotoAction = openProfilePhotoAction;
 window.openProfileTripsView = openProfileTripsView;
 window.openProfileCreateView = openProfileCreateView;
+window.setProfileScreenChrome = setProfileScreenChrome;
