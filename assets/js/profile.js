@@ -2,6 +2,7 @@ const KLEVB_PROFILE_STORAGE_KEY = "klevby_profile_settings";
 const KLEVB_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
 const KLEVB_PROFILE_NAME_KEY = "klevby_profile_name";
 const KLEVB_PROFILE_RETURN_KEY = "klevby_profile_return_mode";
+const KLEVB_PROFILE_PHOTOS_KEY = "klevby_profile_photos";
 
 let klevbyMainTabbarSnapshot = null;
 let klevbyOriginalGoHomeTop = null;
@@ -62,6 +63,31 @@ function saveProfileData(data) {
   }
 
   return cleanData;
+}
+
+function readProfilePhotos() {
+  try {
+    const raw = localStorage.getItem(KLEVB_PROFILE_PHOTOS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Klevby profile: не удалось прочитать фото", error);
+    return [];
+  }
+}
+
+function saveProfilePhotos(photos) {
+  const safePhotos = Array.isArray(photos) ? photos.slice(0, 8) : [];
+
+  try {
+    localStorage.setItem(KLEVB_PROFILE_PHOTOS_KEY, JSON.stringify(safePhotos));
+  } catch (error) {
+    console.warn("Klevby profile: не удалось сохранить фото", error);
+    alert("Фото не сохранилось. Попробуй выбрать картинку меньшего размера.");
+  }
+
+  return safePhotos;
 }
 
 function setProfileScreenChrome(isActive) {
@@ -331,6 +357,8 @@ function updateKlevbyProfileView() {
   const fallbackNode = document.getElementById("profileAvatarFallback");
   const reportsNode = document.getElementById("profileReportsCount");
   const tripsNode = document.getElementById("profileTripsCount");
+  const photosNode = document.getElementById("profilePhotosCount");
+  const friendsNode = document.getElementById("profileFriendsCount");
 
   if (nameNode) {
     nameNode.textContent = name;
@@ -356,11 +384,15 @@ function updateKlevbyProfileView() {
   }
 
   const userPostsCount = countUserPosts(name);
+  const photosCount = readProfilePhotos().length;
 
   if (reportsNode) reportsNode.textContent = String(userPostsCount);
   if (tripsNode) tripsNode.textContent = String(userPostsCount);
+  if (photosNode) photosNode.textContent = String(photosCount);
+  if (friendsNode) friendsNode.textContent = "0";
 
   restoreLocalProfileAvatar();
+  renderProfilePhotos();
 }
 
 function countUserPosts(profileName) {
@@ -667,7 +699,133 @@ function openProfilePhotoAction() {
   applyProfileTabbar();
   setProfileTabActive(0);
   updateProfileHomeFloatButton();
-  triggerProfileAvatarInput();
+  triggerProfilePhotoInput();
+}
+
+function ensureProfilePhotoInput() {
+  let input = document.getElementById("profilePhotoUploadInput");
+
+  if (input) return input;
+
+  input = document.createElement("input");
+  input.id = "profilePhotoUploadInput";
+  input.type = "file";
+  input.accept = "image/*";
+  input.className = "profile-avatar-input";
+  input.addEventListener("change", handleProfilePhotoUpload);
+
+  document.body.appendChild(input);
+
+  return input;
+}
+
+function triggerProfilePhotoInput() {
+  const input = ensureProfilePhotoInput();
+
+  if (input) {
+    input.value = "";
+    input.click();
+  }
+}
+
+function handleProfilePhotoUpload(event) {
+  const file = event?.target?.files?.[0];
+
+  if (!file) return;
+
+  if (!file.type || !file.type.startsWith("image/")) {
+    alert("Выбери фото для профиля.");
+    return;
+  }
+
+  if (file.size > 1500 * 1024) {
+    alert("Фото слишком тяжёлое. Выбери картинку до 1.5 МБ.");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function () {
+    const result = String(reader.result || "");
+
+    const photos = readProfilePhotos();
+
+    photos.unshift({
+      id: `photo_${Date.now()}`,
+      src: result,
+      title: "Фото с рыбалки",
+      createdAt: new Date().toISOString()
+    });
+
+    saveProfilePhotos(photos);
+    updateKlevbyProfileView();
+    openKlevbyProfile();
+
+    if (navigator.vibrate) {
+      navigator.vibrate(18);
+    }
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function removeProfilePhoto(photoId) {
+  const cleanId = String(photoId || "");
+  const photos = readProfilePhotos().filter((photo) => String(photo.id) !== cleanId);
+
+  saveProfilePhotos(photos);
+  updateKlevbyProfileView();
+}
+
+function renderProfilePhotos() {
+  const contentCard = document.querySelector(".profile-content-card");
+  if (!contentCard) return;
+
+  const emptyState = contentCard.querySelector(".profile-empty-state");
+  const oldGallery = contentCard.querySelector(".profile-photo-gallery");
+
+  if (oldGallery) {
+    oldGallery.remove();
+  }
+
+  const photos = readProfilePhotos();
+
+  if (!photos.length) {
+    if (emptyState) emptyState.classList.remove("hidden");
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add("hidden");
+
+  const gallery = document.createElement("div");
+  gallery.className = "profile-photo-gallery profile-report-grid";
+
+  gallery.innerHTML = photos.map((photo) => {
+    const safeId = escapeHtml(photo.id || "");
+    const safeTitle = escapeHtml(photo.title || "Фото с рыбалки");
+
+    return `
+      <div class="profile-report-card">
+        <div class="profile-report-img" style="background-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.32)), url('${photo.src}');"></div>
+        <p>${safeTitle}</p>
+        <div class="profile-report-meta">
+          <span>📸 Фото</span>
+          <button type="button" onclick="removeProfilePhoto('${safeId}')" aria-label="Удалить фото">×</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  contentCard.appendChild(gallery);
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function openProfileTripsView() {
@@ -952,15 +1110,15 @@ function patchShowSectionForProfile() {
 }
 
 function patchProfileCardButtons() {
-  const profileMineButton = document.querySelector(".profile-card-head button");
+  const profilePhotoButton = document.querySelector(".profile-card-head button");
   const menuButtons = document.querySelectorAll(".profile-menu-card button");
 
-  if (profileMineButton) {
-    profileMineButton.setAttribute("onclick", "openProfileTripsView()");
+  if (profilePhotoButton) {
+    profilePhotoButton.setAttribute("onclick", "openProfilePhotoAction()");
   }
 
   if (menuButtons[0]) {
-    menuButtons[0].setAttribute("onclick", "openProfileSettingsModal()");
+    menuButtons[0].setAttribute("onclick", "openProfilePhotoAction()");
   }
 
   if (menuButtons[1]) {
@@ -1013,3 +1171,4 @@ window.openProfilePhotoAction = openProfilePhotoAction;
 window.openProfileTripsView = openProfileTripsView;
 window.openProfileCreateView = openProfileCreateView;
 window.setProfileScreenChrome = setProfileScreenChrome;
+window.removeProfilePhoto = removeProfilePhoto;
