@@ -4,6 +4,12 @@ const KLEVB_PROFILE_NAME_KEY = "klevby_profile_name";
 const KLEVB_PROFILE_RETURN_KEY = "klevby_profile_return_mode";
 const KLEVB_PROFILE_PHOTOS_KEY = "klevby_profile_photos";
 
+const KLEVB_PROFILE_MAX_PHOTOS = 8;
+const KLEVB_PROFILE_PHOTO_MAX_SIDE = 1280;
+const KLEVB_PROFILE_PHOTO_QUALITY = 0.78;
+const KLEVB_PROFILE_AVATAR_MAX_SIDE = 640;
+const KLEVB_PROFILE_AVATAR_QUALITY = 0.82;
+
 let klevbyMainTabbarSnapshot = null;
 let klevbyOriginalGoHomeTop = null;
 let klevbyOriginalUpdateHomeFloatButton = null;
@@ -78,13 +84,15 @@ function readProfilePhotos() {
 }
 
 function saveProfilePhotos(photos) {
-  const safePhotos = Array.isArray(photos) ? photos.slice(0, 8) : [];
+  const safePhotos = Array.isArray(photos)
+    ? photos.slice(0, KLEVB_PROFILE_MAX_PHOTOS)
+    : [];
 
   try {
     localStorage.setItem(KLEVB_PROFILE_PHOTOS_KEY, JSON.stringify(safePhotos));
   } catch (error) {
     console.warn("Klevby profile: не удалось сохранить фото", error);
-    alert("Фото не сохранилось. Попробуй выбрать картинку меньшего размера.");
+    alert("Фото не сохранилось. Память браузера заполнена. Удали старые фото или выбери другое.");
   }
 
   return safePhotos;
@@ -472,7 +480,7 @@ function triggerProfileAvatarInput() {
   if (input) input.click();
 }
 
-function handleLocalAvatarUpload(event) {
+async function handleLocalAvatarUpload(event) {
   const file = event?.target?.files?.[0];
 
   if (!file) return;
@@ -482,33 +490,35 @@ function handleLocalAvatarUpload(event) {
     return;
   }
 
-  if (file.size > 2 * 1024 * 1024) {
-    alert("Картинка слишком тяжёлая. Выбери фото до 2 МБ.");
-    return;
-  }
-
-  const reader = new FileReader();
-
-  reader.onload = function () {
-    const result = String(reader.result || "");
+  try {
+    const compressedAvatar = await compressImageFile(file, {
+      maxSide: KLEVB_PROFILE_AVATAR_MAX_SIDE,
+      quality: KLEVB_PROFILE_AVATAR_QUALITY,
+      outputType: "image/jpeg"
+    });
 
     try {
-      localStorage.setItem(KLEVB_PROFILE_AVATAR_KEY, result);
+      localStorage.setItem(KLEVB_PROFILE_AVATAR_KEY, compressedAvatar.dataUrl);
     } catch (error) {
       console.warn("Klevby profile: аватар не сохранился", error);
       alert("Аватар не сохранился. Попробуй фото меньшего размера.");
       return;
     }
 
-    setProfileAvatar(result);
+    setProfileAvatar(compressedAvatar.dataUrl);
     showProfileAvatarSavedMessage();
 
     if (navigator.vibrate) {
       navigator.vibrate(18);
     }
-  };
-
-  reader.readAsDataURL(file);
+  } catch (error) {
+    console.warn("Klevby profile: аватар не обработался", error);
+    alert("Не получилось обработать аватар. Попробуй другое фото.");
+  } finally {
+    if (event?.target) {
+      event.target.value = "";
+    }
+  }
 }
 
 function showProfileAvatarSavedMessage() {
@@ -728,7 +738,7 @@ function triggerProfilePhotoInput() {
   }
 }
 
-function handleProfilePhotoUpload(event) {
+async function handleProfilePhotoUpload(event) {
   const file = event?.target?.files?.[0];
 
   if (!file) return;
@@ -738,23 +748,24 @@ function handleProfilePhotoUpload(event) {
     return;
   }
 
-  if (file.size > 1500 * 1024) {
-    alert("Фото слишком тяжёлое. Выбери картинку до 1.5 МБ.");
-    return;
-  }
-
-  const reader = new FileReader();
-
-  reader.onload = function () {
-    const result = String(reader.result || "");
+  try {
+    const compressedPhoto = await compressImageFile(file, {
+      maxSide: KLEVB_PROFILE_PHOTO_MAX_SIDE,
+      quality: KLEVB_PROFILE_PHOTO_QUALITY,
+      outputType: "image/jpeg"
+    });
 
     const photos = readProfilePhotos();
 
     photos.unshift({
       id: `photo_${Date.now()}`,
-      src: result,
+      src: compressedPhoto.dataUrl,
       title: "Фото с рыбалки",
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      originalSizeKb: Math.round(file.size / 1024),
+      savedSizeKb: compressedPhoto.sizeKb,
+      width: compressedPhoto.width,
+      height: compressedPhoto.height
     });
 
     saveProfilePhotos(photos);
@@ -764,9 +775,88 @@ function handleProfilePhotoUpload(event) {
     if (navigator.vibrate) {
       navigator.vibrate(18);
     }
-  };
+  } catch (error) {
+    console.warn("Klevby profile: фото не обработалось", error);
+    alert("Не получилось обработать фото. Попробуй другое изображение.");
+  } finally {
+    if (event?.target) {
+      event.target.value = "";
+    }
+  }
+}
 
-  reader.readAsDataURL(file);
+function compressImageFile(file, options = {}) {
+  const maxSide = Number(options.maxSide || 1280);
+  const quality = Number(options.quality || 0.78);
+  const outputType = options.outputType || "image/jpeg";
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const originalWidth = image.naturalWidth || image.width;
+        const originalHeight = image.naturalHeight || image.height;
+
+        if (!originalWidth || !originalHeight) {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Image has empty size"));
+          return;
+        }
+
+        const scale = Math.min(1, maxSide / Math.max(originalWidth, originalHeight));
+        const width = Math.max(1, Math.round(originalWidth * scale));
+        const height = Math.max(1, Math.round(originalHeight * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d", { alpha: false });
+
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Canvas context is not available"));
+          return;
+        }
+
+        ctx.fillStyle = "#07110f";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(image, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL(outputType, quality);
+        const sizeKb = estimateDataUrlSizeKb(dataUrl);
+
+        URL.revokeObjectURL(objectUrl);
+
+        resolve({
+          dataUrl,
+          width,
+          height,
+          sizeKb
+        });
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Image load error"));
+    };
+
+    image.src = objectUrl;
+  });
+}
+
+function estimateDataUrlSizeKb(dataUrl) {
+  const base64 = String(dataUrl || "").split(",")[1] || "";
+  const padding = (base64.match(/=+$/) || [""])[0].length;
+  const bytes = Math.max(0, Math.round((base64.length * 3) / 4) - padding);
+
+  return Math.round(bytes / 1024);
 }
 
 function removeProfilePhoto(photoId) {
@@ -775,6 +865,7 @@ function removeProfilePhoto(photoId) {
 
   saveProfilePhotos(photos);
   updateKlevbyProfileView();
+  closeProfilePhotoViewer();
 }
 
 function renderProfilePhotos() {
@@ -803,20 +894,222 @@ function renderProfilePhotos() {
   gallery.innerHTML = photos.map((photo) => {
     const safeId = escapeHtml(photo.id || "");
     const safeTitle = escapeHtml(photo.title || "Фото с рыбалки");
+    const safeSrc = escapeHtml(photo.src || "");
+    const savedSize = Number(photo.savedSizeKb || 0);
+    const sizeLabel = savedSize ? `${savedSize} КБ` : "Фото";
 
     return `
-      <div class="profile-report-card">
-        <div class="profile-report-img" style="background-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.32)), url('${photo.src}');"></div>
+      <button class="profile-report-card profile-photo-card" type="button" onclick="openProfilePhotoViewer('${safeId}')" aria-label="Открыть фото">
+        <div class="profile-report-img" style="background-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.32)), url('${safeSrc}');"></div>
         <p>${safeTitle}</p>
         <div class="profile-report-meta">
-          <span>📸 Фото</span>
-          <button type="button" onclick="removeProfilePhoto('${safeId}')" aria-label="Удалить фото">×</button>
+          <span>📸 ${escapeHtml(sizeLabel)}</span>
+          <span>Открыть</span>
         </div>
-      </div>
+      </button>
     `;
   }).join("");
 
   contentCard.appendChild(gallery);
+}
+
+function ensureProfilePhotoViewer() {
+  let viewer = document.getElementById("profilePhotoViewer");
+
+  if (viewer) return viewer;
+
+  viewer = document.createElement("div");
+  viewer.id = "profilePhotoViewer";
+  viewer.className = "profile-photo-viewer hidden";
+  viewer.setAttribute("role", "dialog");
+  viewer.setAttribute("aria-modal", "true");
+
+  viewer.innerHTML = `
+    <div class="profile-photo-viewer-backdrop" onclick="closeProfilePhotoViewer()"></div>
+    <div class="profile-photo-viewer-sheet">
+      <button class="profile-photo-viewer-close" type="button" onclick="closeProfilePhotoViewer()" aria-label="Закрыть фото">×</button>
+      <img id="profilePhotoViewerImage" class="profile-photo-viewer-image" alt="Фото профиля">
+      <div class="profile-photo-viewer-info">
+        <div>
+          <strong id="profilePhotoViewerTitle">Фото с рыбалки</strong>
+          <span id="profilePhotoViewerMeta">Фото профиля</span>
+        </div>
+        <button id="profilePhotoViewerDelete" type="button">Удалить</button>
+      </div>
+    </div>
+  `;
+
+  const style = document.createElement("style");
+  style.id = "profilePhotoViewerStyles";
+  style.textContent = `
+    .profile-photo-viewer.hidden {
+      display: none !important;
+    }
+
+    .profile-photo-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+    }
+
+    .profile-photo-viewer-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .profile-photo-viewer-sheet {
+      position: relative;
+      z-index: 2;
+      width: min(100%, 760px);
+      max-height: 90vh;
+      border: 1px solid rgba(244,178,74,0.18);
+      border-radius: 28px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(244,178,74,0.12), transparent 42%),
+        rgba(10, 14, 12, 0.96);
+      box-shadow:
+        0 28px 90px rgba(0,0,0,0.72),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .profile-photo-viewer-close {
+      appearance: none;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 3;
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(244,178,74,0.18);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.45);
+      color: #fff8ea;
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .profile-photo-viewer-image {
+      width: 100%;
+      max-height: 72vh;
+      display: block;
+      object-fit: contain;
+      background: #050807;
+    }
+
+    .profile-photo-viewer-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px;
+      color: #fff8ea;
+    }
+
+    .profile-photo-viewer-info strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .profile-photo-viewer-info span {
+      display: block;
+      margin-top: 4px;
+      color: rgba(255,248,234,0.55);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .profile-photo-viewer-info button {
+      appearance: none;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid rgba(228,88,88,0.24);
+      border-radius: 15px;
+      background: rgba(228,88,88,0.92);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .profile-photo-card {
+      width: 100%;
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .profile-photo-card:active {
+      transform: scale(0.985);
+    }
+  `;
+
+  document.body.appendChild(style);
+  document.body.appendChild(viewer);
+
+  return viewer;
+}
+
+function openProfilePhotoViewer(photoId) {
+  const cleanId = String(photoId || "");
+  const photo = readProfilePhotos().find((item) => String(item.id) === cleanId);
+
+  if (!photo) return;
+
+  const viewer = ensureProfilePhotoViewer();
+  const image = document.getElementById("profilePhotoViewerImage");
+  const title = document.getElementById("profilePhotoViewerTitle");
+  const meta = document.getElementById("profilePhotoViewerMeta");
+  const deleteButton = document.getElementById("profilePhotoViewerDelete");
+
+  if (image) image.src = photo.src || "";
+  if (title) title.textContent = photo.title || "Фото с рыбалки";
+
+  if (meta) {
+    const sizeText = photo.savedSizeKb ? `${photo.savedSizeKb} КБ` : "сжато для профиля";
+    const dimensionText = photo.width && photo.height ? `${photo.width}×${photo.height}` : "";
+    meta.textContent = [dimensionText, sizeText].filter(Boolean).join(" • ");
+  }
+
+  if (deleteButton) {
+    deleteButton.onclick = () => removeProfilePhoto(cleanId);
+  }
+
+  viewer.classList.remove("hidden");
+  document.body.classList.add("post-modal-open");
+
+  if (navigator.vibrate) {
+    navigator.vibrate(10);
+  }
+}
+
+function closeProfilePhotoViewer() {
+  const viewer = document.getElementById("profilePhotoViewer");
+  const image = document.getElementById("profilePhotoViewerImage");
+
+  if (viewer) {
+    viewer.classList.add("hidden");
+  }
+
+  if (image) {
+    image.removeAttribute("src");
+  }
+
+  document.body.classList.remove("post-modal-open");
 }
 
 function escapeHtml(value) {
@@ -1148,8 +1441,17 @@ function initKlevbyProfileNavigation() {
   }
 }
 
+function bindProfileKeyboardHandlers() {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeProfilePhotoViewer();
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   bindProfileInputSync();
+  bindProfileKeyboardHandlers();
   hideProfileTopGearButton();
   initKlevbyProfileNavigation();
   updateKlevbyProfileView();
@@ -1172,3 +1474,5 @@ window.openProfileTripsView = openProfileTripsView;
 window.openProfileCreateView = openProfileCreateView;
 window.setProfileScreenChrome = setProfileScreenChrome;
 window.removeProfilePhoto = removeProfilePhoto;
+window.openProfilePhotoViewer = openProfilePhotoViewer;
+window.closeProfilePhotoViewer = closeProfilePhotoViewer;
