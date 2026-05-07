@@ -57,7 +57,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260507-profile-2">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260507-profile-3">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/chat-style.css?v=20260504-1">
 
@@ -298,59 +298,49 @@
               <strong id="profileReportsCount">0</strong>
             </div>
             <div class="profile-stat">
-              <span class="profile-stat-label">Рейтинг</span>
-              <strong>4.8★</strong>
+              <span class="profile-stat-label">Фото</span>
+              <strong id="profilePhotosCount">0</strong>
             </div>
             <div class="profile-stat">
-              <span class="profile-stat-label">Поездок</span>
+              <span class="profile-stat-label">Выездов</span>
               <strong id="profileTripsCount">0</strong>
             </div>
             <div class="profile-stat">
-              <span class="profile-stat-label">Друзей</span>
-              <strong>0</strong>
+              <span class="profile-stat-label">Напарников</span>
+              <strong id="profileFriendsCount">0</strong>
             </div>
           </div>
         </div>
 
         <div class="profile-content-card">
           <div class="profile-card-head">
-            <h3>Последние отчёты</h3>
-            <button type="button" onclick="setMode('mine'); showSection('home')">Мои</button>
+            <h3>Мои фото и отчёты</h3>
+            <button type="button" onclick="openProfilePhotoAction()">Добавить</button>
           </div>
 
-          <div class="profile-report-grid">
-            <div class="profile-report-card">
-              <div class="profile-report-img profile-report-img-1"></div>
-              <p>Ищу компанию на рыбалку...</p>
-              <div class="profile-report-meta"><span>📍 6</span><span>•••</span></div>
-            </div>
-
-            <div class="profile-report-card">
-              <div class="profile-report-img profile-report-img-2"></div>
-              <p>Выезд на водоём...</p>
-              <div class="profile-report-meta"><span>📍 3</span><span>•••</span></div>
-            </div>
-
-            <div class="profile-report-card">
-              <div class="profile-report-img profile-report-img-3"></div>
-              <p>Отчёт с места...</p>
-              <div class="profile-report-meta"><span>❤️ 5</span><span>•••</span></div>
-            </div>
+          <div class="profile-empty-state">
+            <div class="profile-empty-icon">📸</div>
+            <h4>Пока нет фото и отчётов</h4>
+            <p>
+              Добавь первое фото с рыбалки. Позже здесь будут твои уловы,
+              точки, выезды и отчёты, которые смогут смотреть другие рыбаки.
+            </p>
+            <button type="button" onclick="openProfilePhotoAction()">Добавить фото</button>
           </div>
         </div>
 
         <div class="profile-menu-card">
-          <button type="button" onclick="openProfileSettingsModal()">
-            <span>⚙️ Настройки аккаунта</span>
+          <button type="button" onclick="openProfilePhotoAction()">
+            <span>📸 Мои фото и отчёты</span>
             <b>›</b>
           </button>
 
-          <button type="button" onclick="setMode('mine'); showSection('home')">
-            <span>🏷️ Мои объявления</span>
+          <button type="button" onclick="openProfileTripsView()">
+            <span>🏷️ Мои выезды</span>
             <b>›</b>
           </button>
 
-          <button type="button" onclick="goMobileCreate()">
+          <button type="button" onclick="openProfileCreateView()">
             <span>➕ Создать выезд</span>
             <b>›</b>
           </button>
@@ -642,7 +632,7 @@
   <script src="assets/js/auth.js?v=20260503-4" defer></script>
   <script src="assets/js/posts.js?v=20260503-4" defer></script>
   <script src="assets/js/ui.js?v=20260507-profile-2" defer></script>
-  <script src="assets/js/profile.js?v=20260507-profile-2" defer></script>
+  <script src="assets/js/profile.js?v=20260507-profile-3" defer></script>
   <script src="assets/js/app.js?v=20260503-4" defer></script>
   <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
   <script src="assets/js/chat-state.js?v=20260506-1" defer></script>
