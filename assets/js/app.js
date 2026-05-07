@@ -8,6 +8,9 @@ const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
 
 const KLEVB_APP_RESUME_DEBOUNCE_MS = 650;
 const KLEVB_APP_RESUME_MIN_INTERVAL_MS = 1400;
+const KLEVB_APP_RESUME_BURST_DELAYS = [350, 1600, 4200];
+
+window.__klevbyCentralResumeRouter = true;
 
 window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
@@ -623,16 +626,22 @@ async function handleKlevbyAppResume(reason = "resume", options = {}) {
       }
     }
 
-    refreshCurrentScreenAfterResume(reason);
-
     window.dispatchEvent(new CustomEvent("klevby-app-resumed", {
       detail: {
         reason,
         sleptFor,
         user: currentUser,
-        supabase: supabaseClient
+        supabase: supabaseClient,
+        source: "app"
       }
     }));
+
+    refreshCurrentScreenAfterResume(reason, {
+      force: true,
+      sleptFor
+    });
+
+    scheduleKlevbyResumeBurst(reason, sleptFor);
 
     return true;
   } catch (error) {
@@ -643,18 +652,44 @@ async function handleKlevbyAppResume(reason = "resume", options = {}) {
   }
 }
 
-function refreshCurrentScreenAfterResume(reason = "resume") {
+function scheduleKlevbyResumeBurst(reason = "resume", sleptFor = 0) {
+  KLEVB_APP_RESUME_BURST_DELAYS.forEach((delay, index) => {
+    setTimeout(() => {
+      if (document.visibilityState === "hidden") return;
+
+      refreshCurrentScreenAfterResume(reason + "_burst_" + (index + 1), {
+        burst: true,
+        sleptFor
+      });
+    }, delay);
+  });
+}
+
+function refreshCurrentScreenAfterResume(reason = "resume", options = {}) {
   const visibleSection = getVisibleSectionName();
+  const isBurst = Boolean(options.burst);
 
   try {
     if (visibleSection === "home" || visibleSection === "profile") {
       if (typeof window.renderProfileFeed === "function") {
-        setTimeout(() => window.renderProfileFeed(), 250);
+        const delay = isBurst ? 0 : 250;
+
+        setTimeout(() => {
+          try {
+            window.renderProfileFeed();
+          } catch (error) {
+            console.warn("Klevby: лента не обновилась после resume:", reason, error);
+          }
+        }, delay);
       }
 
-      if (typeof window.syncLocalProfilePhotosToSupabaseFeed === "function") {
+      if (!isBurst && typeof window.syncLocalProfilePhotosToSupabaseFeed === "function") {
         setTimeout(() => {
-          window.syncLocalProfilePhotosToSupabaseFeed(true);
+          try {
+            window.syncLocalProfilePhotosToSupabaseFeed(true);
+          } catch (error) {
+            console.warn("Klevby: синхронизация фото не запустилась после resume:", reason, error);
+          }
         }, 900);
       }
     }
@@ -679,11 +714,11 @@ function refreshCurrentScreenAfterResume(reason = "resume") {
       window.klevbyReloadMap();
     }
 
-    if (window.KlevbyChatLifecycle && typeof window.KlevbyChatLifecycle.scheduleChatResume === "function") {
+    if (!isBurst && window.KlevbyChatLifecycle && typeof window.KlevbyChatLifecycle.scheduleChatResume === "function") {
       window.KlevbyChatLifecycle.scheduleChatResume(reason);
     }
 
-    if (typeof window.klevbyReloadChatAfterResume === "function") {
+    if (!isBurst && typeof window.klevbyReloadChatAfterResume === "function") {
       window.klevbyReloadChatAfterResume(reason);
     }
   } catch (error) {
@@ -734,10 +769,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   const ok = initSupabase();
   if (!ok) return;
-
-  if (typeof window.setupAuthResumeHandlers === "function") {
-    window.setupAuthResumeHandlers();
-  }
 
   if (typeof window.setAuthMode === "function") {
     window.setAuthMode("register");
