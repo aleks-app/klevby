@@ -17,6 +17,8 @@ let klevbyOriginalShowSection = null;
 let klevbyHeaderDisplaySnapshot = null;
 let klevbyProfileFeedSyncInProgress = false;
 let klevbyProfileFeedSyncTimer = null;
+let klevbyProfilePhotoUploadInProgress = false;
+let klevbyProfileUploadStatusTimer = null;
 
 function getDefaultProfileData() {
   return {
@@ -188,9 +190,10 @@ function openKlevbyProfile() {
   closeProfileSettingsModal(false);
   hideProfileTopGearButton();
   applyProfileTabbar();
-  patchProfileCardButtons();
+  patchProfileCardButtonsSafe();
   setProfileTabActive(0);
   updateKlevbyProfileView();
+  setProfilePhotoButtonsDisabled(klevbyProfilePhotoUploadInProgress);
 
   window.scrollTo({
     top: 0,
@@ -198,6 +201,16 @@ function openKlevbyProfile() {
   });
 
   setTimeout(updateProfileHomeFloatButton, 150);
+}
+
+function patchProfileCardButtonsSafe() {
+  try {
+    if (typeof window.patchProfileCardButtons === "function") {
+      window.patchProfileCardButtons();
+    }
+  } catch (error) {
+    console.warn("Klevby profile: кнопки профиля не обновились", error);
+  }
 }
 
 function closeMobileMenuSafe() {
@@ -714,6 +727,8 @@ function applyProfileTabbar() {
   if (!chatButton.id) {
     chatButton.id = "nav-chat";
   }
+
+  setProfilePhotoButtonsDisabled(klevbyProfilePhotoUploadInProgress);
 }
 
 function setProfileTabButton(button, icon, text, action, isCreate = false) {
@@ -736,6 +751,11 @@ function setProfileTabActive(index) {
 }
 
 function openProfilePhotoAction() {
+  if (klevbyProfilePhotoUploadInProgress) {
+    showProfileUploadStatus("Фото уже загружается. Подожди пару секунд…", "loading");
+    return;
+  }
+
   setProfileScreenChrome(true);
   applyProfileTabbar();
   setProfileTabActive(0);
@@ -761,6 +781,11 @@ function ensureProfilePhotoInput() {
 }
 
 function triggerProfilePhotoInput() {
+  if (klevbyProfilePhotoUploadInProgress) {
+    showProfileUploadStatus("Предыдущее фото ещё загружается…", "loading");
+    return;
+  }
+
   const input = ensureProfilePhotoInput();
 
   if (input) {
@@ -786,9 +811,11 @@ async function uploadProfilePhotoToSupabaseFeed(compressedPhoto, file) {
 }
 
 function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
+  const uploadedUrl = feedItem?.imageUrl || feedItem?.image || "";
+
   return {
-    id: `photo_${Date.now()}`,
-    src: compressedPhoto.dataUrl,
+    id: `photo_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    src: uploadedUrl || compressedPhoto.dataUrl,
     title: "Фото с рыбалки",
     createdAt: new Date().toISOString(),
     originalSizeKb: Math.round((file?.size || 0) / 1024),
@@ -798,7 +825,7 @@ function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
     source: feedItem ? "supabase" : "local",
     feedPostId: feedItem?.id || "",
     feedImagePath: feedItem?.imagePath || "",
-    feedImageUrl: feedItem?.imageUrl || feedItem?.image || "",
+    feedImageUrl: uploadedUrl,
     feedSyncError: ""
   };
 }
@@ -806,14 +833,37 @@ function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
 function updateLocalPhotoWithFeedItem(photo, feedItem) {
   if (!photo || !feedItem) return photo;
 
+  const uploadedUrl = feedItem.imageUrl || feedItem.image || photo.feedImageUrl || "";
+
   return {
     ...photo,
+    src: uploadedUrl || photo.src,
     source: "supabase",
     feedPostId: feedItem.id || photo.feedPostId || "",
     feedImagePath: feedItem.imagePath || photo.feedImagePath || "",
-    feedImageUrl: feedItem.imageUrl || feedItem.image || photo.feedImageUrl || "",
+    feedImageUrl: uploadedUrl || photo.feedImageUrl || "",
     feedSyncError: ""
   };
+}
+
+function updateProfilePhotoByLocalId(localId, updater) {
+  const cleanId = String(localId || "");
+  const currentPhotos = readProfilePhotos();
+
+  const updatedPhotos = currentPhotos.map((photo) => {
+    if (String(photo.id) !== cleanId) {
+      return photo;
+    }
+
+    if (typeof updater === "function") {
+      return updater(photo);
+    }
+
+    return photo;
+  });
+
+  saveProfilePhotos(updatedPhotos);
+  return updatedPhotos;
 }
 
 function scheduleProfileFeedSync(delay = 1200) {
@@ -877,41 +927,23 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
           originalSizeKb: pendingPhoto.originalSizeKb || 0
         });
 
-        const currentPhotos = readProfilePhotos();
-        const updatedPhotos = currentPhotos.map((photo) => {
-          if (String(photo.id) !== String(pendingPhoto.id)) {
-            return photo;
-          }
-
+        updateProfilePhotoByLocalId(pendingPhoto.id, (photo) => {
           return updateLocalPhotoWithFeedItem(photo, feedItem);
         });
 
-        saveProfilePhotos(updatedPhotos);
         changed = true;
 
-        window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-          detail: {
-            action: "local_profile_photo_synced_to_supabase",
-            item: feedItem
-          }
-        }));
+        dispatchProfileFeedEvent("local_profile_photo_synced_to_supabase", feedItem);
       } catch (error) {
         console.warn("Klevby profile: локальное фото не удалось отправить в Supabase", error);
 
-        const currentPhotos = readProfilePhotos();
-        const updatedPhotos = currentPhotos.map((photo) => {
-          if (String(photo.id) !== String(pendingPhoto.id)) {
-            return photo;
-          }
-
+        updateProfilePhotoByLocalId(pendingPhoto.id, (photo) => {
           return {
             ...photo,
             source: "local",
             feedSyncError: String(error?.message || error || "Ошибка Supabase")
           };
         });
-
-        saveProfilePhotos(updatedPhotos);
       }
     }
   } finally {
@@ -920,10 +952,7 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
 
   if (changed) {
     updateKlevbyProfileView();
-
-    if (typeof window.renderProfileFeed === "function") {
-      setTimeout(window.renderProfileFeed, 250);
-    }
+    refreshProfileFeedSoon(250);
   }
 
   return changed;
@@ -934,69 +963,294 @@ async function handleProfilePhotoUpload(event) {
 
   if (!file) return;
 
+  if (klevbyProfilePhotoUploadInProgress) {
+    showProfileUploadStatus("Фото уже загружается. Подожди завершения…", "loading");
+
+    if (event?.target) {
+      event.target.value = "";
+    }
+
+    return;
+  }
+
   if (!file.type || !file.type.startsWith("image/")) {
     alert("Выбери фото для профиля.");
     return;
   }
 
+  let localPhoto = null;
+  let finished = false;
+
+  setProfileUploadBusy(true, "Сжимаю фото…", "loading");
+
   try {
+    await waitForFrame();
+
     const compressedPhoto = await compressImageFile(file, {
       maxSide: KLEVB_PROFILE_PHOTO_MAX_SIDE,
       quality: KLEVB_PROFILE_PHOTO_QUALITY,
       outputType: "image/jpeg"
     });
 
-    let feedItem = null;
-    let supabaseError = null;
-
-    try {
-      feedItem = await uploadProfilePhotoToSupabaseFeed(compressedPhoto, file);
-    } catch (error) {
-      supabaseError = error;
-      console.warn("Klevby profile: фото сохранится локально, Supabase не принял загрузку", error);
-    }
+    setProfileUploadBusy(true, "Показываю фото в профиле…", "loading");
 
     const photos = readProfilePhotos();
-    const localPhoto = makeLocalProfilePhoto(compressedPhoto, file, feedItem);
 
+    localPhoto = makeLocalProfilePhoto(compressedPhoto, file, null);
     photos.unshift(localPhoto);
 
     saveProfilePhotos(photos);
     updateKlevbyProfileView();
     openKlevbyProfile();
+    setProfilePhotoButtonsDisabled(true);
+    refreshProfileFeedSoon(120);
 
-    if (typeof window.renderProfileFeed === "function") {
-      setTimeout(window.renderProfileFeed, 350);
-    }
+    dispatchProfileFeedEvent("profile_photo_saved_locally", localPhoto);
 
-    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-      detail: {
-        action: feedItem ? "profile_photo_uploaded_to_supabase" : "profile_photo_saved_locally",
-        item: feedItem || localPhoto,
-        error: supabaseError ? String(supabaseError.message || supabaseError) : ""
+    setProfileUploadBusy(true, "Отправляю фото в общую ленту…", "loading");
+
+    let feedItem = null;
+
+    try {
+      feedItem = await uploadProfilePhotoToSupabaseFeed(compressedPhoto, file);
+
+      updateProfilePhotoByLocalId(localPhoto.id, (photo) => {
+        return updateLocalPhotoWithFeedItem(photo, feedItem);
+      });
+
+      updateKlevbyProfileView();
+      refreshProfileFeedSoon(180);
+
+      dispatchProfileFeedEvent("profile_photo_uploaded_to_supabase", feedItem);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(18);
       }
-    }));
 
-    if (navigator.vibrate) {
-      navigator.vibrate(18);
-    }
+      finishProfileUploadStatus("Фото добавлено в ленту ✅", "success", 1300);
+      finished = true;
+    } catch (supabaseError) {
+      console.warn("Klevby profile: фото сохранено локально, Supabase не принял загрузку", supabaseError);
 
-    if (supabaseError) {
-      alert(
-        "Фото добавлено в профиль на этом устройстве, но пока не попало в общую ленту. " +
-        (supabaseError.message || "Проверь вход, Supabase Storage и RLS.")
-      );
+      updateProfilePhotoByLocalId(localPhoto.id, (photo) => {
+        return {
+          ...photo,
+          source: "local",
+          feedSyncError: String(supabaseError?.message || supabaseError || "Ошибка Supabase")
+        };
+      });
 
-      scheduleProfileFeedSync(1800);
+      updateKlevbyProfileView();
+      refreshProfileFeedSoon(250);
+
+      dispatchProfileFeedEvent("profile_photo_saved_locally", localPhoto, supabaseError);
+
+      scheduleProfileFeedSync(2200);
+
+      finishProfileUploadStatus("Фото в профиле. Синхронизация ленты повторится…", "warning", 2600);
+      finished = true;
     }
   } catch (error) {
     console.warn("Klevby profile: фото не обработалось", error);
+    finishProfileUploadStatus("Не получилось обработать фото", "error", 2200);
     alert("Не получилось обработать фото. Попробуй другое изображение.");
+    finished = true;
   } finally {
+    if (!finished) {
+      finishProfileUploadStatus("", "success", 300);
+    }
+
     if (event?.target) {
       event.target.value = "";
     }
   }
+}
+
+function dispatchProfileFeedEvent(action, item = null, error = null) {
+  window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+    detail: {
+      action,
+      item,
+      error: error ? String(error?.message || error) : ""
+    }
+  }));
+}
+
+function refreshProfileFeedSoon(delay = 220) {
+  setTimeout(() => {
+    try {
+      if (typeof window.renderProfileFeed === "function") {
+        window.renderProfileFeed();
+      }
+    } catch (error) {
+      console.warn("Klevby profile: лента не обновилась после фото", error);
+    }
+  }, delay);
+}
+
+function ensureProfileUploadStatus() {
+  let node = document.getElementById("profileUploadStatus");
+
+  if (node) return node;
+
+  if (!document.getElementById("profileUploadStatusStyles")) {
+    const style = document.createElement("style");
+    style.id = "profileUploadStatusStyles";
+    style.textContent = `
+      .profile-upload-status.hidden {
+        display: none !important;
+      }
+
+      .profile-upload-status {
+        position: fixed;
+        left: max(12px, env(safe-area-inset-left));
+        right: max(12px, env(safe-area-inset-right));
+        bottom: calc(92px + env(safe-area-inset-bottom));
+        z-index: 100000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      .profile-upload-status-inner {
+        max-width: min(420px, 100%);
+        min-height: 48px;
+        padding: 12px 16px;
+        border-radius: 18px;
+        border: 1px solid rgba(244,178,74,0.26);
+        background:
+          radial-gradient(circle at 20% 0%, rgba(244,178,74,0.18), transparent 38%),
+          rgba(8, 13, 11, 0.94);
+        color: #fff8ea;
+        box-shadow:
+          0 18px 50px rgba(0,0,0,0.46),
+          inset 0 1px 0 rgba(255,255,255,0.08);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.32;
+        text-align: center;
+      }
+
+      .profile-upload-status.loading .profile-upload-status-inner::before {
+        content: "⏳ ";
+      }
+
+      .profile-upload-status.success .profile-upload-status-inner {
+        border-color: rgba(87,230,178,0.36);
+      }
+
+      .profile-upload-status.warning .profile-upload-status-inner {
+        border-color: rgba(244,178,74,0.42);
+      }
+
+      .profile-upload-status.error .profile-upload-status-inner {
+        border-color: rgba(228,88,88,0.38);
+      }
+
+      .profile-photo-uploading button[onclick*="openProfilePhotoAction"],
+      .profile-photo-uploading .profile-photo-add-btn {
+        opacity: 0.68;
+        cursor: wait !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  node = document.createElement("div");
+  node.id = "profileUploadStatus";
+  node.className = "profile-upload-status hidden";
+  node.setAttribute("role", "status");
+  node.setAttribute("aria-live", "polite");
+  node.innerHTML = `<div class="profile-upload-status-inner">Загрузка…</div>`;
+
+  document.body.appendChild(node);
+
+  return node;
+}
+
+function showProfileUploadStatus(message, state = "loading") {
+  clearTimeout(klevbyProfileUploadStatusTimer);
+
+  const node = ensureProfileUploadStatus();
+  const inner = node.querySelector(".profile-upload-status-inner");
+
+  node.className = `profile-upload-status ${state || "loading"}`;
+
+  if (inner) {
+    inner.textContent = String(message || "Загрузка…");
+  }
+}
+
+function hideProfileUploadStatus(delay = 0) {
+  clearTimeout(klevbyProfileUploadStatusTimer);
+
+  const hide = () => {
+    const node = document.getElementById("profileUploadStatus");
+    if (node) node.classList.add("hidden");
+  };
+
+  if (delay > 0) {
+    klevbyProfileUploadStatusTimer = setTimeout(hide, delay);
+    return;
+  }
+
+  hide();
+}
+
+function setProfileUploadBusy(isBusy, message = "", state = "loading") {
+  klevbyProfilePhotoUploadInProgress = Boolean(isBusy);
+
+  if (document.body) {
+    document.body.classList.toggle("profile-photo-uploading", klevbyProfilePhotoUploadInProgress);
+  }
+
+  setProfilePhotoButtonsDisabled(klevbyProfilePhotoUploadInProgress);
+
+  if (message) {
+    showProfileUploadStatus(message, state);
+  }
+}
+
+function finishProfileUploadStatus(message = "", state = "success", delay = 1200) {
+  klevbyProfilePhotoUploadInProgress = false;
+
+  if (document.body) {
+    document.body.classList.remove("profile-photo-uploading");
+  }
+
+  setProfilePhotoButtonsDisabled(false);
+
+  if (message) {
+    showProfileUploadStatus(message, state);
+    hideProfileUploadStatus(delay);
+  } else {
+    hideProfileUploadStatus(delay);
+  }
+}
+
+function setProfilePhotoButtonsDisabled(isDisabled) {
+  const input = document.getElementById("profilePhotoUploadInput");
+
+  if (input) {
+    input.disabled = Boolean(isDisabled);
+  }
+
+  const buttons = document.querySelectorAll('button[onclick*="openProfilePhotoAction"]');
+
+  buttons.forEach((button) => {
+    button.disabled = Boolean(isDisabled);
+    button.setAttribute("aria-busy", isDisabled ? "true" : "false");
+  });
+}
+
+function waitForFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
 }
 
 function compressImageFile(file, options = {}) {
@@ -1039,6 +1293,48 @@ function compressImageFile(file, options = {}) {
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(image, 0, 0, width, height);
 
+        if (typeof canvas.toBlob === "function") {
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              try {
+                const fallbackDataUrl = canvas.toDataURL(outputType, quality);
+
+                URL.revokeObjectURL(objectUrl);
+
+                resolve({
+                  dataUrl: fallbackDataUrl,
+                  width,
+                  height,
+                  sizeKb: estimateDataUrlSizeKb(fallbackDataUrl)
+                });
+              } catch (fallbackError) {
+                URL.revokeObjectURL(objectUrl);
+                reject(fallbackError);
+              }
+
+              return;
+            }
+
+            blobToDataUrl(blob)
+              .then((dataUrl) => {
+                URL.revokeObjectURL(objectUrl);
+
+                resolve({
+                  dataUrl,
+                  width,
+                  height,
+                  sizeKb: Math.max(1, Math.round(blob.size / 1024))
+                });
+              })
+              .catch((error) => {
+                URL.revokeObjectURL(objectUrl);
+                reject(error);
+              });
+          }, outputType, quality);
+
+          return;
+        }
+
         const dataUrl = canvas.toDataURL(outputType, quality);
         const sizeKb = estimateDataUrlSizeKb(dataUrl);
 
@@ -1061,7 +1357,24 @@ function compressImageFile(file, options = {}) {
       reject(new Error("Image load error"));
     };
 
+    image.decoding = "async";
     image.src = objectUrl;
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(String(reader.result || ""));
+    };
+
+    reader.onerror = () => {
+      reject(new Error("FileReader error"));
+    };
+
+    reader.readAsDataURL(blob);
   });
 }
 
@@ -1097,10 +1410,7 @@ async function removeProfilePhoto(photoId) {
   saveProfilePhotos(updatedPhotos);
   updateKlevbyProfileView();
   closeProfilePhotoViewer();
-
-  if (typeof window.renderProfileFeed === "function") {
-    setTimeout(window.renderProfileFeed, 250);
-  }
+  refreshProfileFeedSoon(250);
 
   window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
     detail: {
