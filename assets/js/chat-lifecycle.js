@@ -190,6 +190,23 @@
       }
     }
 
+    async function runOptionalChatStep(stepName, runner, opts = {}) {
+      const timeoutMs = Number(opts.timeoutMs || 3000);
+
+      try {
+        await withChatStepTimeout(stepName, runner, { ...opts, timeoutMs });
+        return true;
+      } catch (error) {
+        console.warn("[KlevbyChatLifecycle] optional chat step skipped", {
+          step: stepName,
+          reason: String(opts.reason || "open"),
+          timeoutMs,
+          error: String(error?.message || error)
+        });
+        return false;
+      }
+    }
+
     const syncSelectedPeerForCalls =
       typeof options.syncSelectedPeerForCalls === "function"
         ? options.syncSelectedPeerForCalls
@@ -272,7 +289,7 @@
         await withChatStepTimeout("refreshCurrentUser", () => refreshCurrentUser(), { reason });
         await withChatStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), { reason });
         await withChatStepTimeout("reconnectRealtimeConnections", () => reconnectRealtimeConnections(), { reason });
-        await withChatStepTimeout("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
+        await runOptionalChatStep("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
 
         const isChatOpen = modal && modal.classList.contains("open");
 
@@ -338,8 +355,8 @@
         await withChatStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), { reason });
         await withChatStepTimeout("reconnectRealtimeConnections", () => reconnectRealtimeConnections(), { reason });
         await withChatStepTimeout("loadPublicMessages", () => loadPublicMessages(), { reason });
-        await withChatStepTimeout("refreshPushButtonState", () => refreshPushButtonState(), { reason });
-        await withChatStepTimeout("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
+        await runOptionalChatStep("refreshPushButtonState", () => refreshPushButtonState(), { reason });
+        await runOptionalChatStep("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
 
         syncSelectedPeerForCalls();
 
