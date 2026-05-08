@@ -92,6 +92,28 @@
 
     const CHAT_STEP_TIMEOUT_MS = 7000;
 
+    const lifecycleOptionalSkipLogState = {
+      shown: false,
+      steps: new Set()
+    };
+
+    function logLifecycleOptionalSkip(stepName, reason = "open") {
+      const key = `${reason}:${stepName}`;
+
+      if (!lifecycleOptionalSkipLogState.steps.has(key)) {
+        lifecycleOptionalSkipLogState.steps.add(key);
+        console.debug("[KlevbyChatLifecycle] optional chat step detail", {
+          step: stepName,
+          reason
+        });
+      }
+
+      if (lifecycleOptionalSkipLogState.shown) return;
+
+      lifecycleOptionalSkipLogState.shown = true;
+      console.info("[KlevbyChatLifecycle] optional chat step skipped");
+    }
+
     function getSupabaseClientExists() {
       try {
         if (typeof window.klevbyGetSupabase === "function") {
@@ -117,14 +139,17 @@
     async function withChatStepTimeout(stepName, runner, opts = {}) {
       const timeoutMs = Number(opts.timeoutMs || CHAT_STEP_TIMEOUT_MS);
       const reason = String(opts.reason || "open");
+      const silent = opts.silent === true;
       const startedAt = Date.now();
 
-      console.info("[KlevbyChatLifecycle] chat open step start", {
-        step: stepName,
-        reason,
-        timeoutMs,
-        supabaseClientExists: getSupabaseClientExists()
-      });
+      if (!silent) {
+        console.info("[KlevbyChatLifecycle] chat open step start", {
+          step: stepName,
+          reason,
+          timeoutMs,
+          supabaseClientExists: getSupabaseClientExists()
+        });
+      }
 
       let timer = null;
 
@@ -138,33 +163,37 @@
           })
         ]);
 
-        console.info("[KlevbyChatLifecycle] chat open step end", {
-          step: stepName,
-          reason,
-          durationMs: Date.now() - startedAt,
-          supabaseClientExists: getSupabaseClientExists()
-        });
+        if (!silent) {
+          console.info("[KlevbyChatLifecycle] chat open step end", {
+            step: stepName,
+            reason,
+            durationMs: Date.now() - startedAt,
+            supabaseClientExists: getSupabaseClientExists()
+          });
+        }
 
         return result;
       } catch (error) {
-        const durationMs = Date.now() - startedAt;
+        if (!silent) {
+          const durationMs = Date.now() - startedAt;
 
-        if (error && error.code === "CHAT_STEP_TIMEOUT") {
-          console.warn("[KlevbyChatLifecycle] chat open step timeout", {
-            step: stepName,
-            reason,
-            durationMs,
-            timeoutMs,
-            supabaseClientExists: getSupabaseClientExists()
-          });
-        } else {
-          console.warn("[KlevbyChatLifecycle] chat open step fail", {
-            step: stepName,
-            reason,
-            durationMs,
-            supabaseClientExists: getSupabaseClientExists(),
-            error: String(error?.message || error)
-          });
+          if (error && error.code === "CHAT_STEP_TIMEOUT") {
+            console.warn("[KlevbyChatLifecycle] chat open step timeout", {
+              step: stepName,
+              reason,
+              durationMs,
+              timeoutMs,
+              supabaseClientExists: getSupabaseClientExists()
+            });
+          } else {
+            console.warn("[KlevbyChatLifecycle] chat open step fail", {
+              step: stepName,
+              reason,
+              durationMs,
+              supabaseClientExists: getSupabaseClientExists(),
+              error: String(error?.message || error)
+            });
+          }
         }
 
         throw error;
@@ -192,17 +221,13 @@
 
     async function runOptionalChatStep(stepName, runner, opts = {}) {
       const timeoutMs = Number(opts.timeoutMs || 3000);
+      const reason = String(opts.reason || "open");
 
       try {
-        await withChatStepTimeout(stepName, runner, { ...opts, timeoutMs });
+        await withChatStepTimeout(stepName, runner, { ...opts, timeoutMs, reason, silent: true });
         return true;
-      } catch (error) {
-        console.warn("[KlevbyChatLifecycle] optional chat step skipped", {
-          step: stepName,
-          reason: String(opts.reason || "open"),
-          timeoutMs,
-          error: String(error?.message || error)
-        });
+      } catch (_) {
+        logLifecycleOptionalSkip(stepName, reason);
         return false;
       }
     }
