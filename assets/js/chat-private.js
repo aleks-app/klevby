@@ -303,6 +303,31 @@
     }
   }
 
+  function getCurrentUserIdQuick() {
+    const directId = String(getCurrentUser()?.id || "").trim();
+    if (isValidSupabaseUuid(directId)) return directId;
+
+    const accessToken = getPrivateAccessTokenQuick();
+    if (!accessToken) return "";
+
+    try {
+      const payloadPart = accessToken.split(".")[1] || "";
+      const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+      const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+      const parsed = JSON.parse(decoded);
+      const sub = String(parsed?.sub || "").trim();
+      return isValidSupabaseUuid(sub) ? sub : "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function scrollChatToBottom() {
+    if (getCtx().scrollChatToBottom) {
+      getCtx().scrollChatToBottom();
+    }
+  }
+
   async function loadPrivateMessagesViaRest(signal) {
     const config = window.KLEVB_CONFIG || {};
     const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "")
@@ -319,7 +344,10 @@
       return { data: null, error: { code: "AUTH_REQUIRED", message: "access_token missing" }, status: 401 };
     }
 
-    const myId = String(getCurrentUser()?.id || "").trim();
+    const myId = String(getCurrentUserIdQuick() || "").trim();
+    if (!isValidSupabaseUuid(myId)) {
+      return { data: null, error: { code: "AUTH_REQUIRED", message: "current_user_id missing" }, status: 401 };
+    }
     const endpoint = `${supabaseUrl}/rest/v1/private_messages?select=sender_id,receiver_id,sender_name,content,created_at&or=(sender_id.eq.${encodeURIComponent(myId)},receiver_id.eq.${encodeURIComponent(myId)})&order=created_at.desc&limit=150`;
 
     console.info("[KlevbyPrivate] private_messages REST start", { endpoint, hasAccessToken: Boolean(accessToken) });
@@ -398,15 +426,16 @@
         activeModeBefore: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
         selectedPeerBefore: getSelectedPeer()
       });
-      await refreshCurrentUser();
-
-      if (isStaleNavigation(navToken)) return;
-
-      await withPrivateOptionalStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }));
-
-      if (isStaleNavigation(navToken)) return;
-
+      const currentUserId = getCurrentUserIdQuick();
       let currentChatUser = getCurrentUser();
+      Promise.resolve()
+        .then(() => ensureCurrentUserProfile({ soft: true }))
+        .catch((error) => {
+          console.warn("[KlevbyPrivate] ensureCurrentUserProfile skipped", {
+            scope: "loadPrivatePeople",
+            error: String(error?.message || error)
+          });
+        });
 
       setActiveMode("private");
       console.info("[KlevbyPrivate] activeMode after private click", { activeMode: getCtx().getActiveMode ? getCtx().getActiveMode() : null });
@@ -435,7 +464,7 @@
       syncSelectedPeerForCalls();
       clearMessages();
 
-      if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
+      if (!isValidSupabaseUuid(currentUserId)) {
         showEmptyState("Чтобы пользоваться личными сообщениями, войди или зарегистрируйся на сайте.");
         return;
       }
@@ -447,7 +476,7 @@
         return;
       }
 
-      const myId = String(currentChatUser.id);
+      const myId = String(currentUserId);
       const peersMap = new Map();
 
       function addPeer(id, name, message = null) {
@@ -672,17 +701,18 @@
       });
       const safePeerId = String(peerId || "").trim();
 
-      await refreshCurrentUser();
-
-      if (isStaleNavigation(navToken)) return;
-
-      await withPrivateOptionalStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }));
-
-      if (isStaleNavigation(navToken)) return;
-
+      const currentUserId = getCurrentUserIdQuick();
       let currentChatUser = getCurrentUser();
+      Promise.resolve()
+        .then(() => ensureCurrentUserProfile({ soft: true }))
+        .catch((error) => {
+          console.warn("[KlevbyPrivate] ensureCurrentUserProfile skipped", {
+            scope: "openPrivateDialog",
+            error: String(error?.message || error)
+          });
+        });
 
-      if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
+      if (!isValidSupabaseUuid(currentUserId)) {
         showEmptyState("Для личных сообщений нужно войти.");
         return;
       }
@@ -727,18 +757,35 @@
 
       clearMessages();
 
-      const client = getMainSupabaseClient();
+      const config = window.KLEVB_CONFIG || {};
+      const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
+      const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+      const accessToken = getPrivateAccessTokenQuick();
+      const endpoint =
+        `${supabaseUrl}/rest/v1/private_messages?select=*` +
+        `&or=(and(sender_id.eq.${encodeURIComponent(currentUserId)},receiver_id.eq.${encodeURIComponent(safePeerId)}),and(sender_id.eq.${encodeURIComponent(safePeerId)},receiver_id.eq.${encodeURIComponent(currentUserId)}))` +
+        `&order=created_at.asc`;
 
-      if (!client?.from) {
-        showEmptyState("Supabase client для лички не найден.");
-        return;
-      }
-
-      const { data, error } = await withPrivateStepTimeout("private_messages dialog select", () => client
-        .from("private_messages")
-        .select("*")
-        .or(`and(sender_id.eq.${currentChatUser.id},receiver_id.eq.${safePeerId}),and(sender_id.eq.${safePeerId},receiver_id.eq.${currentChatUser.id})`)
-        .order("created_at", { ascending: true }));
+      const { data, error } = await withPrivateStepTimeout("private_messages dialog REST", async () => {
+        const startedAt = Date.now();
+        console.info("[KlevbyPrivate] private_messages dialog REST start", { endpoint });
+        const response = await fetch(endpoint, {
+          method: "GET",
+          headers: {
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${accessToken || supabaseAnonKey}`
+          }
+        });
+        const durationMs = Date.now() - startedAt;
+        let body = null;
+        try { body = await response.json(); } catch (_) { body = null; }
+        if (!response.ok) {
+          console.warn("[KlevbyPrivate] private_messages dialog REST fail", { status: response.status, durationMs, body });
+          return { data: null, error: { status: response.status, body } };
+        }
+        console.info("[KlevbyPrivate] private_messages dialog REST end", { status: response.status, durationMs, rows: Array.isArray(body) ? body.length : 0 });
+        return { data: Array.isArray(body) ? body : [], error: null };
+      });
 
       if (isStaleNavigation(navToken)) return;
 
@@ -803,13 +850,10 @@
     if (!rawVal) return;
 
     try {
-      await refreshCurrentUser();
-      await ensureCurrentUserProfile({ soft: true });
-
-      const currentChatUser = getCurrentUser();
+      const currentUserId = getCurrentUserIdQuick();
       const selectedPeer = getSelectedPeer();
 
-      if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
+      if (!isValidSupabaseUuid(currentUserId)) {
         alert("Для личных сообщений нужно войти.");
         return;
       }
@@ -825,32 +869,68 @@
       const messageContent = buildMessageContent(rawVal);
 
       const payload = {
-        sender_id: currentChatUser.id,
+        sender_id: currentUserId,
         receiver_id: selectedPeer.id,
         sender_name: senderName,
         content: messageContent
       };
 
-      const client = getMainSupabaseClient();
+      const config = window.KLEVB_CONFIG || {};
+      const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
+      const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+      const accessToken = getPrivateAccessTokenQuick();
+      const endpoint = `${supabaseUrl}/rest/v1/private_messages`;
+      const startedAt = Date.now();
+      console.info("[KlevbyPrivate] send REST start", { endpoint, peerId: selectedPeer.id });
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken || supabaseAnonKey}`,
+          Prefer: "return=representation"
+        },
+        body: JSON.stringify(payload)
+      });
+      const durationMs = Date.now() - startedAt;
+      let responseBody = null;
+      try { responseBody = await response.json(); } catch (_) { responseBody = null; }
+      console.info("[KlevbyPrivate] send REST end", { status: response.status, durationMs });
 
-      if (!client?.from) {
-        alert("Supabase client для лички не найден.");
-        return;
-      }
-
-      const { error } = await client.from("private_messages").insert([payload]);
-
-      if (error) {
-        console.error("Ошибка отправки личного сообщения:", error);
+      if (!response.ok) {
+        console.error("Ошибка отправки личного сообщения:", { status: response.status, durationMs, responseBody });
         alert("Не получилось отправить личное сообщение. Проверь private_messages и RLS.");
         return;
       }
 
-      await sendPushToUser(selectedPeer.id, senderName, rawVal);
+      const insertedMessage = Array.isArray(responseBody) ? (responseBody[0] || null) : responseBody;
+      const uiMessage = insertedMessage || {
+        id: `local-private-${Date.now()}`,
+        sender_id: payload.sender_id,
+        receiver_id: payload.receiver_id,
+        sender_name: payload.sender_name,
+        content: payload.content,
+        created_at: new Date().toISOString()
+      };
+
+      console.info("[KlevbyPrivate] append sent private message start", { hasInsertedMessage: Boolean(insertedMessage) });
+      try {
+        renderPrivateMessage(uiMessage);
+        scrollChatToBottom();
+        console.info("[KlevbyPrivate] append sent private message end");
+      } catch (appendError) {
+        console.error("[KlevbyPrivate] append sent private message fail", { error: String(appendError?.message || appendError) });
+      }
 
       if (input) input.value = "";
       clearReply();
       markPeerAsRead(selectedPeer.id);
+      Promise.resolve(sendPushToUser(selectedPeer.id, senderName, rawVal)).catch((error) => {
+        console.warn("[KlevbyPrivate] push skipped", {
+          peerId: selectedPeer.id,
+          error: String(error?.message || error)
+        });
+      });
     } finally {
       if (sendBtn) sendBtn.disabled = false;
     }
