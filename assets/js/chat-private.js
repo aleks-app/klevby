@@ -354,6 +354,78 @@
     }
   }
 
+
+  async function loadPrivateDialogMessagesViaRest(peerId, signal) {
+    const config = window.KLEVB_CONFIG || {};
+    const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "")
+      .trim()
+      .replace(/\/$/, "");
+    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+    const accessToken = getPrivateAccessTokenQuick();
+    const myId = String(getCurrentUser()?.id || "").trim();
+    const safePeerId = String(peerId || "").trim();
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Supabase REST config не найден для лички.");
+    }
+
+    if (!accessToken) {
+      return { data: null, error: { code: "AUTH_REQUIRED", message: "access_token missing" }, status: 401 };
+    }
+
+    if (!isValidSupabaseUuid(myId) || !isValidSupabaseUuid(safePeerId)) {
+      throw new Error("Невалидные user id для загрузки диалога лички.");
+    }
+
+    const endpoint = `${supabaseUrl}/rest/v1/private_messages?select=id,sender_id,receiver_id,sender_name,content,created_at&or=(and(sender_id.eq.${encodeURIComponent(myId)},receiver_id.eq.${encodeURIComponent(safePeerId)}),and(sender_id.eq.${encodeURIComponent(safePeerId)},receiver_id.eq.${encodeURIComponent(myId)}))&order=created_at.asc&limit=150`;
+
+    console.info("[KlevbyPrivate] private_messages dialog REST start", {
+      peerId: safePeerId,
+      status: "start"
+    });
+    const startedAt = Date.now();
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`
+        },
+        signal: signal || undefined
+      });
+
+      const durationMs = Date.now() - startedAt;
+      if (!response.ok) {
+        let errorText = "";
+        try { errorText = await response.text(); } catch (_) {}
+        console.warn("[KlevbyPrivate] private_messages dialog REST fail", {
+          durationMs,
+          status: response.status,
+          rows: 0,
+          errorText
+        });
+        throw new Error(`Supabase REST private_messages dialog failed: ${response.status} ${response.statusText} ${errorText}`.trim());
+      }
+
+      const data = await response.json();
+      console.info("[KlevbyPrivate] private_messages dialog REST end", {
+        durationMs,
+        status: response.status,
+        rows: Array.isArray(data) ? data.length : 0
+      });
+      return { data, error: null, status: response.status };
+    } catch (error) {
+      console.warn("[KlevbyPrivate] private_messages dialog REST fail", {
+        durationMs: Date.now() - startedAt,
+        status: error?.name === "AbortError" ? "aborted" : "error",
+        rows: 0,
+        error: String(error?.message || error)
+      });
+      throw error;
+    }
+  }
+
   function getReadStorageKey(peerId) {
     const myId = getCurrentUser()?.id || "guest";
     return `klevby_private_read_${myId}_${peerId}`;
@@ -727,24 +799,20 @@
 
       clearMessages();
 
-      const client = getMainSupabaseClient();
-
-      if (!client?.from) {
-        showEmptyState("Supabase client для лички не найден.");
-        return;
-      }
-
-      const { data, error } = await withPrivateStepTimeout("private_messages dialog select", () => client
-        .from("private_messages")
-        .select("*")
-        .or(`and(sender_id.eq.${currentChatUser.id},receiver_id.eq.${safePeerId}),and(sender_id.eq.${safePeerId},receiver_id.eq.${currentChatUser.id})`)
-        .order("created_at", { ascending: true }));
+      const { data, error } = await runPrivateStepTimeout("private_messages dialog REST", 6500, (signal) =>
+        loadPrivateDialogMessagesViaRest(safePeerId, signal)
+      );
 
       if (isStaleNavigation(navToken)) return;
 
+      if (error?.code === "AUTH_REQUIRED") {
+        showEmptyState("Войди в аккаунт, чтобы открыть личные сообщения.");
+        return;
+      }
+
       if (error) {
         console.error("Ошибка загрузки лички:", error);
-        showEmptyState("Не удалось загрузить личку. Проверь private_messages и RLS.");
+        showEmptyState(PRIVATE_FALLBACK_MESSAGE);
         return;
       }
 
