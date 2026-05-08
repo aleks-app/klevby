@@ -316,27 +316,34 @@
         }
       });
 
-      try {
-        await runWithAbortableTimeout("profiles select", 3000, async () => {
-          return loadProfilesByIds(data.map((message) => message.user_id));
-        });
-      } catch (profilesError) {
-        console.warn("[KlevbyChatPublic] profiles select skipped", {
-          code: profilesError?.code || null,
-          message: String(profilesError?.message || profilesError)
-        });
-      }
-
-      if (isStaleNavigation(navToken)) return;
-
       if (!data.length) {
         showEmptyState("Пока сообщений нет. Напиши первым 🎣");
         return;
       }
 
+      console.info("[KlevbyChatPublic] public render first start");
       await runWithAbortableTimeout("render", 3000, async () => {
         renderMessageList(data, renderPublicMessage);
       });
+      console.info("[KlevbyChatPublic] public render first end");
+
+      Promise.resolve()
+        .then(async () => {
+          console.info("[KlevbyChatPublic] public profile enrichment start");
+          await runWithAbortableTimeout("profiles select", 3000, async () => {
+            return loadProfilesByIds(data.map((message) => message.user_id));
+          });
+          if (!isStaleNavigation(navToken)) {
+            renderMessageList(data, renderPublicMessage);
+          }
+          console.info("[KlevbyChatPublic] public profile enrichment end");
+        })
+        .catch((profilesError) => {
+          console.warn("[KlevbyChatPublic] public profile enrichment fail", {
+            code: profilesError?.code || null,
+            message: String(profilesError?.message || profilesError)
+          });
+        });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
         console.error("Ошибка загрузки общего чата:", error);
