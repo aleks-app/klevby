@@ -257,11 +257,27 @@
     }
   }
 
+  const privateOptionalSkipLogState = {
+    shown: false,
+    steps: new Set()
+  };
+
+  function logPrivateOptionalSkip(step) {
+    if (!privateOptionalSkipLogState.steps.has(step)) {
+      privateOptionalSkipLogState.steps.add(step);
+      console.debug("[KlevbyPrivate] optional enrichment detail", { step });
+    }
+
+    if (privateOptionalSkipLogState.shown) return;
+    privateOptionalSkipLogState.shown = true;
+    console.info("[KlevbyPrivate] optional enrichment skipped");
+  }
+
   async function withPrivateOptionalStepTimeout(step, runner, timeoutMs = PRIVATE_OPTIONAL_STEP_TIMEOUT_MS) {
     try {
       return await withPrivateStepTimeout(step, runner, timeoutMs);
-    } catch (error) {
-      console.warn("[KlevbyPrivate] optional step skipped", { step, error: String(error?.message || error) });
+    } catch (_) {
+      logPrivateOptionalSkip(step);
       return null;
     }
   }
@@ -628,35 +644,8 @@
             (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
           ));
 
-          const { data: publicUsers } = await withPrivateOptionalStepTimeout("messages users select", () => client
-            .from("messages")
-            .select("user_id,user_name")
-            .not("user_id", "is", null)) || {};
-
-          (publicUsers || []).forEach((item) => {
-            rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
-          });
-
-          await withPrivateOptionalStepTimeout("profiles select for messages users", () => loadProfilesByIds((publicUsers || []).map((item) => item.user_id)));
-
-          (publicUsers || []).forEach((item) => {
-            addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
-          });
-
-          const { data: postUsers } = await withPrivateOptionalStepTimeout("posts users select", () => client
-            .from("posts")
-            .select("owner_id,name")
-            .not("owner_id", "is", null)) || {};
-
-          (postUsers || []).forEach((item) => {
-            rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
-          });
-
-          await withPrivateOptionalStepTimeout("profiles select for posts users", () => loadProfilesByIds((postUsers || []).map((item) => item.owner_id)));
-
-          (postUsers || []).forEach((item) => {
-            addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
-          });
+          // Optional broad enrichment via public chat/posts users is intentionally skipped
+          // to avoid noisy background timeouts in private list flow.
 
           if (isStaleNavigation(navToken)) return;
           if (getCtx().getActiveMode && getCtx().getActiveMode() !== "private") return;
@@ -665,10 +654,8 @@
           renderPeersList();
           console.info("[KlevbyPrivate] private list enrichment end");
         })
-        .catch((error) => {
-          console.warn("[KlevbyPrivate] private list enrichment fail", {
-            message: String(error?.message || error)
-          });
+        .catch(() => {
+          logPrivateOptionalSkip("private list enrichment");
         });
 
       console.info("[KlevbyPrivate] loadPrivatePeople end", {
@@ -745,12 +732,8 @@
 
           syncSelectedPeerForCalls();
         })
-        .catch((error) => {
-          console.warn("[KlevbyPrivate] profile enrichment skipped", {
-            scope: "selected peer",
-            peerId: safePeerId,
-            error: String(error?.message || error)
-          });
+        .catch(() => {
+          logPrivateOptionalSkip("profiles select for selected peer");
         });
 
       const nextPeer = {
@@ -865,12 +848,8 @@
 
           syncSelectedPeerForCalls();
         })
-        .catch((error) => {
-          console.warn("[KlevbyPrivate] profile enrichment skipped", {
-            scope: "dialog messages",
-            peerId: safePeerId,
-            error: String(error?.message || error)
-          });
+        .catch(() => {
+          logPrivateOptionalSkip("profiles select for dialog messages");
         });
 
       console.info("[KlevbyPrivate] openPrivateDialog end", {
