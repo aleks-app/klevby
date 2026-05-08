@@ -165,7 +165,24 @@
 
     if (!cleanId) return [];
 
+    const safeId =
+      typeof CSS !== "undefined" && typeof CSS.escape === "function"
+        ? CSS.escape(cleanId)
+        : cleanId.replace(/"/g, '\\"');
+
+    const dataButtons = Array.from(
+      document.querySelectorAll(`.profile-feed-like-btn[data-feed-post-id="${safeId}"]`)
+    );
+
+    if (dataButtons.length) {
+      return dataButtons;
+    }
+
     return Array.from(document.querySelectorAll(".profile-feed-like-btn")).filter((button) => {
+      if (button.dataset.feedPostId) {
+        return String(button.dataset.feedPostId).trim() === cleanId;
+      }
+
       const onclickValue = String(button.getAttribute("onclick") || "");
       return onclickValue.includes(cleanId);
     });
@@ -175,6 +192,12 @@
     const button = getLikeButtons(postId)[0];
 
     if (!button) return null;
+
+    const dataCount = Number(button.dataset.likeCount);
+
+    if (Number.isFinite(dataCount)) {
+      return Math.max(0, dataCount);
+    }
 
     const match = String(button.textContent || "").match(/-?\d+/);
     if (!match) return null;
@@ -189,8 +212,14 @@
     getLikeButtons(postId).forEach((button) => {
       button.textContent = `👍 ${safeCount}`;
       button.dataset.pendingLike = pending ? "1" : "0";
+      button.dataset.likeCount = String(safeCount);
+
+      if (!button.dataset.feedPostId) {
+        button.dataset.feedPostId = String(postId || "").trim();
+      }
 
       if (typeof liked === "boolean") {
+        button.dataset.liked = liked ? "true" : "false";
         button.setAttribute("aria-pressed", liked ? "true" : "false");
         button.classList.toggle("liked", liked);
         button.classList.toggle("is-liked", liked);
@@ -227,6 +256,7 @@
 
   function getLikeSnapshot(postId) {
     const item = getCachedFeedItem(postId);
+    const button = getLikeButtons(postId)[0];
     const buttonCount = getButtonLikesCount(postId);
 
     const likesCount =
@@ -234,7 +264,11 @@
         ? buttonCount
         : getItemLikesCount(item);
 
-    const liked = getKnownLikeState(postId, item);
+    let liked = getKnownLikeState(postId, item);
+
+    if (typeof liked !== "boolean" && button?.dataset?.liked) {
+      liked = String(button.dataset.liked) === "true";
+    }
 
     return {
       item,
@@ -251,6 +285,10 @@
     patchLocalFeedItem(postId, {
       likedByViewer: Boolean(liked),
       viewerLiked: Boolean(liked),
+      isLiked: Boolean(liked),
+      liked: Boolean(liked),
+      hasLiked: Boolean(liked),
+      liked_by_viewer: Boolean(liked),
       likesCount: safeCount
     });
 
@@ -322,10 +360,31 @@
     patchLocalFeedItem(postId, {
       likedByViewer: snapshot.liked === true,
       viewerLiked: snapshot.liked === true,
+      isLiked: snapshot.liked === true,
+      liked: snapshot.liked === true,
+      hasLiked: snapshot.liked === true,
+      liked_by_viewer: snapshot.liked === true,
       likesCount: snapshot.likesCount
     });
 
     setLikeButtonsState(postId, snapshot.likesCount, snapshot.liked, false);
+  }
+
+  function isDuplicateLikeError(error) {
+    const code = String(error?.code || error?.details?.code || "").trim();
+    const message = String(error?.message || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    const hint = String(error?.hint || "").toLowerCase();
+    const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
+
+    return (
+      code === "23505" ||
+      message.includes("duplicate key") ||
+      message.includes("feed_likes_unique_user_post") ||
+      details.includes("feed_likes_unique_user_post") ||
+      hint.includes("feed_likes_unique_user_post") ||
+      constraint.includes("feed_likes_unique_user_post")
+    );
   }
 
   function scheduleLikeRefresh() {
@@ -382,9 +441,17 @@
 
       scheduleLikeRefresh();
     } catch (error) {
-      rollbackLikeState(cleanId, snapshot);
-      console.warn("Klevby feed actions: лайк не сработал", error);
-      alert(error?.message || "Не получилось поставить лайк.");
+      if (isDuplicateLikeError(error)) {
+        const duplicatedCount = Math.max(0, Number(snapshot.likesCount || 0) || 0);
+
+        applyLocalLikeState(cleanId, true, duplicatedCount);
+        setLikeButtonsState(cleanId, duplicatedCount, true, false);
+        scheduleLikeRefresh();
+      } else {
+        rollbackLikeState(cleanId, snapshot);
+        console.warn("Klevby feed actions: лайк не сработал", error);
+        alert(error?.message || "Не получилось поставить лайк.");
+      }
     } finally {
       pendingLikeLocks.delete(cleanId);
       const currentSnapshot = getLikeSnapshot(cleanId);
@@ -628,6 +695,8 @@
     refreshOpenCommentsIfNeeded,
     renderFeed,
     toggleLikeFromCard,
+    toggleFeedLikeFromCard: toggleLikeFromCard,
+    toggleFeedLike: toggleLikeFromCard,
     toggleLikeFromViewer,
     openProfilePhotoFeedItem,
     openFeedCommentModal
