@@ -56,6 +56,23 @@
     return Boolean(document.getElementById("profileFeedSection"));
   }
 
+  function isDuplicateLikeError(error) {
+    const code = String(error?.code || error?.details?.code || "").trim();
+    const message = String(error?.message || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    const hint = String(error?.hint || "").toLowerCase();
+    const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
+
+    return (
+      code === "23505" ||
+      message.includes("duplicate key") ||
+      message.includes("feed_likes_unique_user_post") ||
+      details.includes("feed_likes_unique_user_post") ||
+      hint.includes("feed_likes_unique_user_post") ||
+      constraint.includes("feed_likes_unique_user_post")
+    );
+  }
+
   function openKlevbyProfileSafe() {
     const utils = getUtils();
 
@@ -420,6 +437,10 @@
   function toggleFeedLike(postId) {
     const actions = getActions();
 
+    if (typeof actions.toggleLikeFromCard === "function") {
+      return actions.toggleLikeFromCard(postId);
+    }
+
     if (typeof actions.toggleFeedLikeFromCard === "function") {
       return actions.toggleFeedLikeFromCard(postId);
     }
@@ -434,6 +455,12 @@
           force: true
         }))
         .catch((error) => {
+          if (isDuplicateLikeError(error)) {
+            return forceRenderFeed("like_duplicate", {
+              force: true
+            });
+          }
+
           console.warn("Klevby feed: лайк не сработал", error);
           alert(error?.message || "Не получилось поставить лайк.");
         });
@@ -527,7 +554,7 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260507-feed-main-hard-polling-1"
+        version: "20260508-feed-like-main-route-1"
       }
     }));
 
