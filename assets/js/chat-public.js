@@ -311,9 +311,16 @@
         }
       });
 
-      await runWithAbortableTimeout("profiles select", 5000, async () => {
-        return loadProfilesByIds(data.map((message) => message.user_id));
-      });
+      try {
+        await runWithAbortableTimeout("profiles select", 3000, async () => {
+          return loadProfilesByIds(data.map((message) => message.user_id));
+        });
+      } catch (profilesError) {
+        console.warn("[KlevbyChatPublic] profiles select skipped", {
+          code: profilesError?.code || null,
+          message: String(profilesError?.message || profilesError)
+        });
+      }
 
       if (isStaleNavigation(navToken)) return;
 
