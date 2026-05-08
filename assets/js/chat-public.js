@@ -209,6 +209,42 @@
     return false;
   }
 
+
+  async function loadPublicMessagesViaRest(signal) {
+    const config = window.KLEVB_CONFIG || {};
+    const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "")
+      .trim()
+      .replace(/\/$/, "");
+    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Supabase REST config не найден для общего чата.");
+    }
+
+    const endpoint =
+      `${supabaseUrl}/rest/v1/messages?select=id,created_at,user_id,user_name,content&order=created_at.desc&limit=100`;
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`
+      },
+      signal: signal || undefined
+    });
+
+    if (!response.ok) {
+      let errorText = "";
+      try {
+        errorText = await response.text();
+      } catch (_) {}
+      throw new Error(`Supabase REST messages failed: ${response.status} ${response.statusText} ${errorText}`.trim());
+    }
+
+    const data = await response.json();
+    return { data, error: null };
+  }
+
   async function loadPublicMessages(navToken) {
     navToken = beginNavigationIfNeeded(navToken);
 
@@ -255,26 +291,9 @@
       syncSelectedPeerForCalls();
       clearMessages();
 
-      const client = getMainSupabaseClient();
-
-      if (!client?.from) {
-        showEmptyState("Supabase client для общего чата не найден.");
-        return;
-      }
-
-      const result = await runWithAbortableTimeout("messages select", 6500, (signal) => {
-        const query = client
-          .from("messages")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100);
-
-        if (signal && typeof query.abortSignal === "function") {
-          query.abortSignal(signal);
-        }
-
-        return query;
-      });
+      const result = await runWithAbortableTimeout("messages REST", 6500, (signal) =>
+        loadPublicMessagesViaRest(signal)
+      );
 
       if (isStaleNavigation(navToken)) return;
 
@@ -309,7 +328,7 @@
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
         console.error("Ошибка загрузки общего чата:", error);
-        if (error?.code === "CHAT_PUBLIC_TIMEOUT" && error?.step === "messages select") {
+        if (error?.code === "CHAT_PUBLIC_TIMEOUT" && error?.step === "messages REST") {
           showEmptyState("Чат временно недоступен (таймаут загрузки). Закрой и открой чат ещё раз.");
         } else {
           showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
