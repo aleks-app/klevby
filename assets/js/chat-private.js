@@ -266,6 +266,94 @@
     }
   }
 
+
+
+  async function runPrivateStepTimeout(step, timeoutMs, runner) {
+    const controller = new AbortController();
+    try {
+      return await withPrivateStepTimeout(step, () => runner(controller.signal), timeoutMs);
+    } finally {
+      controller.abort();
+    }
+  }
+
+  function getPrivateAccessTokenQuick() {
+    try {
+      const client = getMainSupabaseClient();
+      const session = client?.auth?.session?.();
+      const accessToken = session?.access_token;
+      if (accessToken) return String(accessToken);
+    } catch (_) {}
+
+    try {
+      const config = window.KLEVB_CONFIG || {};
+      const storageKey = String(
+        config.SUPABASE_STORAGE_KEY ||
+        window.SUPABASE_STORAGE_KEY ||
+        "sb-oecdshvozssadztcokog-auth-token"
+      ).trim();
+      if (!storageKey) return "";
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return "";
+      const parsed = JSON.parse(raw);
+      const accessToken = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
+      return accessToken ? String(accessToken) : "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  async function loadPrivateMessagesViaRest(signal) {
+    const config = window.KLEVB_CONFIG || {};
+    const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "")
+      .trim()
+      .replace(/\/$/, "");
+    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+    const accessToken = getPrivateAccessTokenQuick();
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Supabase REST config не найден для лички.");
+    }
+
+    if (!accessToken) {
+      return { data: null, error: { code: "AUTH_REQUIRED", message: "access_token missing" }, status: 401 };
+    }
+
+    const myId = String(getCurrentUser()?.id || "").trim();
+    const endpoint = `${supabaseUrl}/rest/v1/private_messages?select=sender_id,receiver_id,sender_name,content,created_at&or=(sender_id.eq.${encodeURIComponent(myId)},receiver_id.eq.${encodeURIComponent(myId)})&order=created_at.desc&limit=150`;
+
+    console.info("[KlevbyPrivate] private_messages REST start", { endpoint, hasAccessToken: Boolean(accessToken) });
+    const startedAt = Date.now();
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`
+        },
+        signal: signal || undefined
+      });
+
+      const durationMs = Date.now() - startedAt;
+      if (!response.ok) {
+        let errorText = "";
+        try { errorText = await response.text(); } catch (_) {}
+        console.warn("[KlevbyPrivate] private_messages REST fail", { durationMs, status: response.status, errorText });
+        throw new Error(`Supabase REST private_messages failed: ${response.status} ${response.statusText} ${errorText}`.trim());
+      }
+
+      const data = await response.json();
+      console.info("[KlevbyPrivate] private_messages REST end", { durationMs, status: response.status, rows: Array.isArray(data) ? data.length : 0 });
+      return { data, error: null, status: response.status };
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        console.warn("[KlevbyPrivate] private_messages REST fail", { durationMs: Date.now() - startedAt, status: "aborted", error: String(error?.message || error) });
+      }
+      throw error;
+    }
+  }
+
   function getReadStorageKey(peerId) {
     const myId = getCurrentUser()?.id || "guest";
     return `klevby_private_read_${myId}_${peerId}`;
@@ -321,6 +409,7 @@
       let currentChatUser = getCurrentUser();
 
       setActiveMode("private");
+      console.info("[KlevbyPrivate] activeMode after private click", { activeMode: getCtx().getActiveMode ? getCtx().getActiveMode() : null });
       setSelectedPeer(null);
       clearReply();
 
@@ -402,16 +491,21 @@
       }
 
       try {
-        const { data: privateUsers, error: privateUsersError } = await withPrivateStepTimeout("private_messages select", () => client
-          .from("private_messages")
-          .select("sender_id,receiver_id,sender_name,content,created_at")
-          .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
-          .order("created_at", { ascending: false }));
+        const { data: privateUsers, error: privateUsersError } = await runPrivateStepTimeout("private_messages REST", 6500, (signal) =>
+          loadPrivateMessagesViaRest(signal)
+        );
 
         if (isStaleNavigation(navToken)) return;
 
+        if (privateUsersError?.code === "AUTH_REQUIRED") {
+          showEmptyState("Войди в аккаунт, чтобы открыть личные сообщения.");
+          return;
+        }
+
         if (privateUsersError) {
           console.warn("Не удалось загрузить пользователей из лички:", privateUsersError);
+          showEmptyState(PRIVATE_FALLBACK_MESSAGE);
+          return;
         }
 
         (privateUsers || []).forEach((item) => {
