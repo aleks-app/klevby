@@ -417,6 +417,17 @@
     return Promise.resolve();
   }
 
+  function isDuplicateLikeError(error) {
+    const code = String(error?.code || "").trim();
+    const message = String(error?.message || "").toLowerCase();
+
+    return (
+      code === "23505" ||
+      message.includes("duplicate key") ||
+      message.includes("feed_likes_unique_user_post")
+    );
+  }
+
   function toggleFeedLike(postId) {
     const actions = getActions();
 
@@ -434,6 +445,12 @@
           force: true
         }))
         .catch((error) => {
+          if (isDuplicateLikeError(error)) {
+            return forceRenderFeed("like_duplicate", {
+              force: true
+            });
+          }
+
           console.warn("Klevby feed: лайк не сработал", error);
           alert(error?.message || "Не получилось поставить лайк.");
         });

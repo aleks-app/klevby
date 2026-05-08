@@ -554,6 +554,24 @@
       }]);
 
     if (addResult.error) {
+      const errorCode = String(addResult.error?.code || "").trim();
+      const errorMessage = String(addResult.error?.message || "").toLowerCase();
+      const isDuplicateLike =
+        errorCode === "23505" ||
+        errorMessage.includes("duplicate key") ||
+        errorMessage.includes("feed_likes_unique_user_post");
+
+      if (isDuplicateLike) {
+        klevbyFeedSupabaseDispatch("like_added", {
+          postId: cleanPostId
+        });
+
+        return {
+          liked: true,
+          duplicate: true
+        };
+      }
+
       console.error("Klevby feed: ошибка добавления лайка", addResult.error);
       throw new Error("Не получилось поставить лайк: " + addResult.error.message);
     }
