@@ -266,7 +266,8 @@
         const query = client
           .from("messages")
           .select("*")
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false })
+          .limit(100);
 
         if (signal && typeof query.abortSignal === "function") {
           query.abortSignal(signal);
@@ -283,7 +284,7 @@
         return;
       }
 
-      const data = Array.isArray(result.data) ? result.data : [];
+      const data = Array.isArray(result.data) ? result.data.slice().reverse() : [];
 
       data.forEach((message) => {
         if (message.user_id && message.user_name) {
