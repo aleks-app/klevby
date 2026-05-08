@@ -140,7 +140,7 @@
 
     const client = getClient();
 
-    if (!client?.from) {
+    if (!client?.rpc) {
       throw new Error("Supabase client не найден.");
     }
 
@@ -152,21 +152,23 @@
     }
 
     const payload = {
-      user_id: user.id,
       endpoint: json.endpoint,
       p256dh: keys.p256dh,
       auth: keys.auth,
       subscription: json,
-      user_agent: navigator.userAgent || "",
-      updated_at: new Date().toISOString()
+      user_agent: navigator.userAgent || ""
     };
 
-    const { error } = await client
-      .from("push_subscriptions")
-      .upsert([payload], { onConflict: "endpoint" });
+    const { error } = await client.rpc("claim_push_subscription", {
+      p_endpoint: payload.endpoint,
+      p_p256dh: payload.p256dh,
+      p_auth: payload.auth,
+      p_subscription: payload.subscription,
+      p_user_agent: payload.user_agent
+    });
 
     if (error) {
-      console.error("Klevby push: ошибка сохранения push-подписки:", error);
+      console.error("Klevby push: ошибка RPC claim_push_subscription:", error);
       throw new Error("Не удалось сохранить подписку в Supabase.");
     }
 
