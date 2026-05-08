@@ -365,6 +365,18 @@
   function renderPrivateMessage(message) {
     const messagesContainer = getMessagesContainer();
     if (!messagesContainer) return;
+    const messageId = String(message?.id || "").trim();
+
+    if (messageId) {
+      const duplicateRow = messagesContainer.querySelector(
+        `[data-message-type="private"][data-message-id="${cssEscape(messageId)}"]`
+      );
+
+      if (duplicateRow) {
+        console.log("[KlevbyRender] duplicate private message skipped", messageId);
+        return;
+      }
+    }
 
     const selectedPeer = getSelectedPeer();
 
@@ -383,6 +395,11 @@
       author,
       authorKey: String(authorKey)
     });
+
+    if (messageId) {
+      row.dataset.messageType = "private";
+      row.dataset.messageId = messageId;
+    }
 
     messagesContainer.appendChild(row);
     scrollChatToBottom();
