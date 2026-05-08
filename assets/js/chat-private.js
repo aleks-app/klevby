@@ -217,6 +217,55 @@
     return getCtx().getCurrentChatName ? getCtx().getCurrentChatName() : "Рыбак";
   }
 
+  const PRIVATE_STEP_TIMEOUT_MS = 7000;
+  const PRIVATE_OPTIONAL_STEP_TIMEOUT_MS = 3000;
+  const PRIVATE_FALLBACK_MESSAGE = "Личка временно недоступна. Закрой и открой чат ещё раз.";
+
+  function createPrivateTimeoutError(step, timeoutMs) {
+    const error = new Error(`Klevby private: step "${step}" timed out after ${timeoutMs}ms.`);
+    error.name = "KlevbyPrivateTimeoutError";
+    error.code = "PRIVATE_STEP_TIMEOUT";
+    error.step = step;
+    error.timeoutMs = timeoutMs;
+    return error;
+  }
+
+  async function withPrivateStepTimeout(step, runner, timeoutMs = PRIVATE_STEP_TIMEOUT_MS) {
+    const startedAt = Date.now();
+    console.info("[KlevbyPrivate] step start", { step, timeoutMs });
+    let timer = null;
+    try {
+      const result = await Promise.race([
+        Promise.resolve().then(runner),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(createPrivateTimeoutError(step, timeoutMs)), timeoutMs);
+        })
+      ]);
+      console.info("[KlevbyPrivate] step end", { step, durationMs: Date.now() - startedAt });
+      return result;
+    } catch (error) {
+      const level = error?.code === "PRIVATE_STEP_TIMEOUT" ? "warn" : "error";
+      console[level]("[KlevbyPrivate] step fail", {
+        step,
+        durationMs: Date.now() - startedAt,
+        error: String(error?.message || error),
+        code: error?.code || null
+      });
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  async function withPrivateOptionalStepTimeout(step, runner, timeoutMs = PRIVATE_OPTIONAL_STEP_TIMEOUT_MS) {
+    try {
+      return await withPrivateStepTimeout(step, runner, timeoutMs);
+    } catch (error) {
+      console.warn("[KlevbyPrivate] optional step skipped", { step, error: String(error?.message || error) });
+      return null;
+    }
+  }
+
   function getReadStorageKey(peerId) {
     const myId = getCurrentUser()?.id || "guest";
     return `klevby_private_read_${myId}_${peerId}`;
@@ -256,11 +305,16 @@
     const chatSubtitle = getElement("chatSubtitle");
 
     try {
+      console.info("[KlevbyPrivate] loadPrivatePeople start", {
+        navToken,
+        activeModeBefore: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
+        selectedPeerBefore: getSelectedPeer()
+      });
       await refreshCurrentUser();
 
       if (isStaleNavigation(navToken)) return;
 
-      await ensureCurrentUserProfile({ soft: true });
+      await withPrivateOptionalStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }));
 
       if (isStaleNavigation(navToken)) return;
 
@@ -348,11 +402,11 @@
       }
 
       try {
-        const { data: privateUsers, error: privateUsersError } = await client
+        const { data: privateUsers, error: privateUsersError } = await withPrivateStepTimeout("private_messages select", () => client
           .from("private_messages")
           .select("sender_id,receiver_id,sender_name,content,created_at")
           .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false }));
 
         if (isStaleNavigation(navToken)) return;
 
@@ -366,9 +420,9 @@
           }
         });
 
-        await loadProfilesByIds(
+        await withPrivateOptionalStepTimeout("profiles select for private_messages peers", () => loadProfilesByIds(
           (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
-        );
+        ));
 
         if (isStaleNavigation(navToken)) return;
 
@@ -388,10 +442,10 @@
       }
 
       try {
-        const { data: publicUsers } = await client
+        const { data: publicUsers } = await withPrivateOptionalStepTimeout("messages users select", () => client
           .from("messages")
           .select("user_id,user_name")
-          .not("user_id", "is", null);
+          .not("user_id", "is", null)) || {};
 
         if (isStaleNavigation(navToken)) return;
 
@@ -399,7 +453,7 @@
           rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
         });
 
-        await loadProfilesByIds((publicUsers || []).map((item) => item.user_id));
+        await withPrivateOptionalStepTimeout("profiles select for messages users", () => loadProfilesByIds((publicUsers || []).map((item) => item.user_id)));
 
         if (isStaleNavigation(navToken)) return;
 
@@ -412,10 +466,10 @@
       }
 
       try {
-        const { data: postUsers } = await client
+        const { data: postUsers } = await withPrivateOptionalStepTimeout("posts users select", () => client
           .from("posts")
           .select("owner_id,name")
-          .not("owner_id", "is", null);
+          .not("owner_id", "is", null)) || {};
 
         if (isStaleNavigation(navToken)) return;
 
@@ -423,7 +477,7 @@
           rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
         });
 
-        await loadProfilesByIds((postUsers || []).map((item) => item.owner_id));
+        await withPrivateOptionalStepTimeout("profiles select for posts users", () => loadProfilesByIds((postUsers || []).map((item) => item.owner_id)));
 
         if (isStaleNavigation(navToken)) return;
 
@@ -487,10 +541,16 @@
       if (messagesContainer) {
         messagesContainer.appendChild(list);
       }
+      console.info("[KlevbyPrivate] loadPrivatePeople end", {
+        navToken,
+        activeModeAfter: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
+        selectedPeerAfter: getSelectedPeer(),
+        peersCount: peers.length
+      });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
         console.error("Ошибка загрузки личных сообщений:", error);
-        showEmptyState("Не удалось загрузить личные сообщения. Проверь Console.");
+        showEmptyState(PRIVATE_FALLBACK_MESSAGE);
       }
     } finally {
       finishChatNavigation(navToken);
@@ -509,13 +569,20 @@
     const chatSubtitle = getElement("chatSubtitle");
 
     try {
+      console.info("[KlevbyPrivate] openPrivateDialog start", {
+        peerId,
+        peerName,
+        navToken,
+        activeModeBefore: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
+        selectedPeerBefore: getSelectedPeer()
+      });
       const safePeerId = String(peerId || "").trim();
 
       await refreshCurrentUser();
 
       if (isStaleNavigation(navToken)) return;
 
-      await ensureCurrentUserProfile({ soft: true });
+      await withPrivateOptionalStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }));
 
       if (isStaleNavigation(navToken)) return;
 
@@ -532,7 +599,7 @@
         return;
       }
 
-      await loadProfilesByIds([safePeerId]);
+      await withPrivateOptionalStepTimeout("profiles select for selected peer", () => loadProfilesByIds([safePeerId]));
 
       if (isStaleNavigation(navToken)) return;
 
@@ -573,11 +640,11 @@
         return;
       }
 
-      const { data, error } = await client
+      const { data, error } = await withPrivateStepTimeout("private_messages dialog select", () => client
         .from("private_messages")
         .select("*")
         .or(`and(sender_id.eq.${currentChatUser.id},receiver_id.eq.${safePeerId}),and(sender_id.eq.${safePeerId},receiver_id.eq.${currentChatUser.id})`)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }));
 
       if (isStaleNavigation(navToken)) return;
 
@@ -593,9 +660,9 @@
         }
       });
 
-      await loadProfilesByIds(
+      await withPrivateOptionalStepTimeout("profiles select for dialog messages", () => loadProfilesByIds(
         (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
-      );
+      ));
 
       if (isStaleNavigation(navToken)) return;
 
@@ -617,10 +684,17 @@
       }
 
       renderMessageList(data, renderPrivateMessage);
+      console.info("[KlevbyPrivate] openPrivateDialog end", {
+        peerId: safePeerId,
+        navToken,
+        activeModeAfter: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
+        selectedPeerAfter: getSelectedPeer(),
+        messagesCount: data.length
+      });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
         console.error("Ошибка открытия личного диалога:", error);
-        showEmptyState("Не удалось открыть личный диалог. Проверь Console.");
+        showEmptyState(PRIVATE_FALLBACK_MESSAGE);
       }
     } finally {
       finishChatNavigation(navToken);
