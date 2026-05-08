@@ -66,12 +66,15 @@
     return error;
   }
 
-  async function runWithAbortableTimeout(stepName, timeoutMs, runner) {
+  async function runWithAbortableTimeout(stepName, timeoutMs, runner, options = {}) {
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const startedAt = Date.now();
+    const silent = options?.silent === true;
     let timer = null;
 
-    console.info("[KlevbyChatPublic] step start", { step: stepName, timeoutMs });
+    if (!silent) {
+      console.info("[KlevbyChatPublic] step start", { step: stepName, timeoutMs });
+    }
 
     try {
       const result = await Promise.race([
@@ -88,23 +91,44 @@
         })
       ]);
 
-      console.info("[KlevbyChatPublic] step end", {
-        step: stepName,
-        durationMs: Date.now() - startedAt
-      });
+      if (!silent) {
+        console.info("[KlevbyChatPublic] step end", {
+          step: stepName,
+          durationMs: Date.now() - startedAt
+        });
+      }
 
       return result;
     } catch (error) {
-      console.warn("[KlevbyChatPublic] step fail", {
-        step: stepName,
-        durationMs: Date.now() - startedAt,
-        code: error?.code || null,
-        message: String(error?.message || error)
-      });
+      if (!silent) {
+        console.warn("[KlevbyChatPublic] step fail", {
+          step: stepName,
+          durationMs: Date.now() - startedAt,
+          code: error?.code || null,
+          message: String(error?.message || error)
+        });
+      }
       throw error;
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
+
+  const publicOptionalSkipLogState = {
+    shown: false,
+    steps: new Set()
+  };
+
+  function logPublicOptionalSkip(step) {
+    if (!publicOptionalSkipLogState.steps.has(step)) {
+      publicOptionalSkipLogState.steps.add(step);
+      console.debug("[KlevbyChatPublic] optional enrichment detail", { step });
+    }
+
+    if (publicOptionalSkipLogState.shown) return;
+
+    publicOptionalSkipLogState.shown = true;
+    console.info("[KlevbyChatPublic] optional enrichment skipped");
   }
 
   async function refreshCurrentUser(options = {}) {
@@ -331,14 +355,11 @@
           console.info("[KlevbyChatPublic] public profile enrichment start");
           await runWithAbortableTimeout("profiles select", 3000, async () => {
             return loadProfilesByIds(data.map((message) => message.user_id));
-          });
+          }, { silent: true });
           console.info("[KlevbyChatPublic] public profile enrichment end");
         })
-        .catch((profilesError) => {
-          console.warn("[KlevbyChatPublic] public profile enrichment fail", {
-            code: profilesError?.code || null,
-            message: String(profilesError?.message || profilesError)
-          });
+        .catch(() => {
+          logPublicOptionalSkip("profiles select");
         });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
