@@ -803,14 +803,18 @@
     if (!rawVal) return;
 
     try {
-      await refreshCurrentUser();
-      await ensureCurrentUserProfile({ soft: true });
+      console.info("[KlevbyPrivate] send prepare");
+      ensureCurrentUserProfile({ soft: true }).catch((error) => {
+        console.warn("[KlevbyPrivate] ensure profile skipped", String(error?.message || error));
+      });
 
       const currentChatUser = getCurrentUser();
       const selectedPeer = getSelectedPeer();
+      const senderId = String(currentChatUser?.id || "").trim();
+      const accessToken = getPrivateAccessTokenQuick();
 
-      if (!currentChatUser || !isValidSupabaseUuid(currentChatUser.id)) {
-        alert("Для личных сообщений нужно войти.");
+      if (!accessToken || !senderId || !currentChatUser || !isValidSupabaseUuid(senderId)) {
+        alert("Войди в аккаунт, чтобы отправить личное сообщение.");
         return;
       }
 
@@ -825,26 +829,48 @@
       const messageContent = buildMessageContent(rawVal);
 
       const payload = {
-        sender_id: currentChatUser.id,
+        sender_id: senderId,
         receiver_id: selectedPeer.id,
         sender_name: senderName,
         content: messageContent
       };
 
-      const client = getMainSupabaseClient();
-
-      if (!client?.from) {
-        alert("Supabase client для лички не найден.");
+      const config = window.KLEVB_CONFIG || {};
+      const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
+      const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+      if (!supabaseUrl || !supabaseAnonKey) {
+        alert("Supabase REST config не найден для лички.");
         return;
       }
 
-      const { error } = await client.from("private_messages").insert([payload]);
+      const endpoint = `${supabaseUrl}/rest/v1/private_messages`;
+      console.info("[KlevbyPrivate] send REST start");
+      const startedAt = Date.now();
+      let response;
+      try {
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation"
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        console.warn("[KlevbyPrivate] send REST fail", { durationMs: Date.now() - startedAt, error: String(error?.message || error) });
+        throw error;
+      }
 
-      if (error) {
-        console.error("Ошибка отправки личного сообщения:", error);
+      if (!response.ok) {
+        let errorText = "";
+        try { errorText = await response.text(); } catch (_) {}
+        console.warn("[KlevbyPrivate] send REST fail", { durationMs: Date.now() - startedAt, status: response.status, errorText });
         alert("Не получилось отправить личное сообщение. Проверь private_messages и RLS.");
         return;
       }
+      console.info("[KlevbyPrivate] send REST end", { durationMs: Date.now() - startedAt, status: response.status });
 
       await sendPushToUser(selectedPeer.id, senderName, rawVal);
 
