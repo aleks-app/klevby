@@ -266,8 +266,6 @@
     }
   }
 
-
-
   async function runPrivateStepTimeout(step, timeoutMs, runner) {
     const controller = new AbortController();
     try {
@@ -702,7 +700,6 @@
       const safePeerId = String(peerId || "").trim();
 
       const currentUserId = getCurrentUserIdQuick();
-      let currentChatUser = getCurrentUser();
       Promise.resolve()
         .then(() => ensureCurrentUserProfile({ soft: true }))
         .catch((error) => {
@@ -723,9 +720,29 @@
         return;
       }
 
-      await withPrivateOptionalStepTimeout("profiles select for selected peer", () => loadProfilesByIds([safePeerId]));
+      Promise.resolve()
+        .then(() => withPrivateOptionalStepTimeout("profiles select for selected peer", () => loadProfilesByIds([safePeerId])))
+        .then(() => {
+          if (isStaleNavigation(navToken)) return;
 
-      if (isStaleNavigation(navToken)) return;
+          const selectedPeer = getSelectedPeer();
+          if (!selectedPeer || selectedPeer.id !== safePeerId) return;
+
+          selectedPeer.name = getProfileName(safePeerId, selectedPeer.name || peerName || "Рыбак");
+          setSelectedPeer(selectedPeer);
+
+          if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
+          if (chatTitle) chatTitle.textContent = selectedPeer.name;
+
+          syncSelectedPeerForCalls();
+        })
+        .catch((error) => {
+          console.warn("[KlevbyPrivate] profile enrichment skipped", {
+            scope: "selected peer",
+            peerId: safePeerId,
+            error: String(error?.message || error)
+          });
+        });
 
       const nextPeer = {
         id: safePeerId,
@@ -756,6 +773,11 @@
       markPeerAsRead(safePeerId);
 
       clearMessages();
+      showEmptyState("Загружаем сообщения...");
+      console.info("[KlevbyPrivate] openPrivateDialog instant loading state", {
+        peerId: safePeerId,
+        navToken
+      });
 
       const config = window.KLEVB_CONFIG || {};
       const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
@@ -801,30 +823,47 @@
         }
       });
 
-      await withPrivateOptionalStepTimeout("profiles select for dialog messages", () => loadProfilesByIds(
-        (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
-      ));
-
-      if (isStaleNavigation(navToken)) return;
-
-      const selectedPeer = getSelectedPeer() || nextPeer;
-      selectedPeer.name = getProfileName(safePeerId, selectedPeer.name);
-      setSelectedPeer(selectedPeer);
-
-      if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
-      if (chatTitle) chatTitle.textContent = selectedPeer.name;
-
-      syncSelectedPeerForCalls();
-
       setUnreadPrivateCount(getUnreadPrivateCount() - 1);
       updateUnreadBadge();
 
       if (!data || !data.length) {
         showEmptyState("Личных сообщений пока нет. Напиши первым.");
+        console.info("[KlevbyPrivate] openPrivateDialog end", {
+          peerId: safePeerId,
+          navToken,
+          activeModeAfter: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
+          selectedPeerAfter: getSelectedPeer(),
+          messagesCount: 0
+        });
         return;
       }
 
       renderMessageList(data, renderPrivateMessage);
+      scrollChatToBottom();
+
+      const participantIds = (data || []).flatMap((message) => [message.sender_id, message.receiver_id]);
+      Promise.resolve()
+        .then(() => withPrivateOptionalStepTimeout("profiles select for dialog messages", () => loadProfilesByIds(participantIds)))
+        .then(() => {
+          if (isStaleNavigation(navToken)) return;
+
+          const selectedPeer = getSelectedPeer() || nextPeer;
+          selectedPeer.name = getProfileName(safePeerId, selectedPeer.name);
+          setSelectedPeer(selectedPeer);
+
+          if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
+          if (chatTitle) chatTitle.textContent = selectedPeer.name;
+
+          syncSelectedPeerForCalls();
+        })
+        .catch((error) => {
+          console.warn("[KlevbyPrivate] profile enrichment skipped", {
+            scope: "dialog messages",
+            peerId: safePeerId,
+            error: String(error?.message || error)
+          });
+        });
+
       console.info("[KlevbyPrivate] openPrivateDialog end", {
         peerId: safePeerId,
         navToken,
