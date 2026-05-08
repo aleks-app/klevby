@@ -517,12 +517,16 @@
         }
       }
 
+      let privateUsers = [];
       try {
-        const { data: privateUsers, error: privateUsersError } = await runPrivateStepTimeout("private_messages REST", 6500, (signal) =>
+        const privateUsersResult = await runPrivateStepTimeout("private_messages REST", 6500, (signal) =>
           loadPrivateMessagesViaRest(signal)
         );
 
         if (isStaleNavigation(navToken)) return;
+
+        const privateUsersError = privateUsersResult?.error;
+        privateUsers = privateUsersResult?.data || [];
 
         if (privateUsersError?.code === "AUTH_REQUIRED") {
           showEmptyState("Войди в аккаунт, чтобы открыть личные сообщения.");
@@ -534,110 +538,59 @@
           showEmptyState(PRIVATE_FALLBACK_MESSAGE);
           return;
         }
-
-        (privateUsers || []).forEach((item) => {
-          if (item.sender_id && item.sender_name) {
-            rememberFallbackProfile(item.sender_id, item.sender_name);
-          }
-        });
-
-        await withPrivateOptionalStepTimeout("profiles select for private_messages peers", () => loadProfilesByIds(
-          (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
-        ));
-
-        if (isStaleNavigation(navToken)) return;
-
-        (privateUsers || []).forEach((item) => {
-          const senderId = String(item.sender_id || "");
-          const receiverId = String(item.receiver_id || "");
-          const peerId = senderId === myId ? receiverId : senderId;
-          const peerName = senderId === myId
-            ? getProfileName(receiverId, "Рыбак")
-            : getProfileName(senderId, item.sender_name || "Рыбак");
-
-          addPeer(peerId, peerName, item);
-        });
       } catch (error) {
         if (isStaleNavigation(navToken)) return;
         console.warn("Не удалось загрузить пользователей из private_messages:", error);
-      }
-
-      try {
-        const { data: publicUsers } = await withPrivateOptionalStepTimeout("messages users select", () => client
-          .from("messages")
-          .select("user_id,user_name")
-          .not("user_id", "is", null)) || {};
-
-        if (isStaleNavigation(navToken)) return;
-
-        (publicUsers || []).forEach((item) => {
-          rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
-        });
-
-        await withPrivateOptionalStepTimeout("profiles select for messages users", () => loadProfilesByIds((publicUsers || []).map((item) => item.user_id)));
-
-        if (isStaleNavigation(navToken)) return;
-
-        (publicUsers || []).forEach((item) => {
-          addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
-        });
-      } catch (error) {
-        if (isStaleNavigation(navToken)) return;
-        console.warn("Не удалось загрузить пользователей из общего чата:", error);
-      }
-
-      try {
-        const { data: postUsers } = await withPrivateOptionalStepTimeout("posts users select", () => client
-          .from("posts")
-          .select("owner_id,name")
-          .not("owner_id", "is", null)) || {};
-
-        if (isStaleNavigation(navToken)) return;
-
-        (postUsers || []).forEach((item) => {
-          rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
-        });
-
-        await withPrivateOptionalStepTimeout("profiles select for posts users", () => loadProfilesByIds((postUsers || []).map((item) => item.owner_id)));
-
-        if (isStaleNavigation(navToken)) return;
-
-        (postUsers || []).forEach((item) => {
-          addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
-        });
-      } catch (error) {
-        if (isStaleNavigation(navToken)) return;
-        console.warn("Не удалось загрузить пользователей из объявлений:", error);
-      }
-
-      if (isStaleNavigation(navToken)) return;
-
-      const peers = Array.from(peersMap.values()).map((peer) => ({
-        ...peer,
-        name: getProfileName(peer.id, peer.name)
-      })).sort((a, b) => {
-        if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
-        if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
-        return b.lastTimeValue - a.lastTimeValue;
-      });
-
-      setUnreadPrivateCount(peers.reduce((sum, peer) => sum + peer.unreadCount, 0));
-      updateUnreadBadge();
-
-      if (!peers.length) {
-        showEmptyState("Пока нет собеседников. Пользователь должен быть автором объявления или написать в общий чат.");
+        showEmptyState(PRIVATE_FALLBACK_MESSAGE);
         return;
       }
 
-      const list = document.createElement("div");
-      list.className = "klevby-private-dialog-list";
+      (privateUsers || []).forEach((item) => {
+        if (item.sender_id && item.sender_name) {
+          rememberFallbackProfile(item.sender_id, item.sender_name);
+        }
+      });
 
-      list.innerHTML = peers.map((peer) => {
-        const preview = peer.lastMessage
-          ? parseReplyContent(peer.lastMessage).mainText
-          : "Нажми, чтобы открыть переписку";
+      (privateUsers || []).forEach((item) => {
+        const senderId = String(item.sender_id || "");
+        const receiverId = String(item.receiver_id || "");
+        const peerId = senderId === myId ? receiverId : senderId;
+        const peerName = senderId === myId
+          ? getProfileName(receiverId, "Рыбак")
+          : getProfileName(senderId, item.sender_name || "Рыбак");
 
-        return `
+        addPeer(peerId, peerName, item);
+      });
+
+      let renderedPeersCount = 0;
+      const renderPeersList = () => {
+        const peers = Array.from(peersMap.values()).map((peer) => ({
+          ...peer,
+          name: getProfileName(peer.id, peer.name)
+        })).sort((a, b) => {
+          if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
+          if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
+          return b.lastTimeValue - a.lastTimeValue;
+        });
+
+        renderedPeersCount = peers.length;
+        setUnreadPrivateCount(peers.reduce((sum, peer) => sum + peer.unreadCount, 0));
+        updateUnreadBadge();
+
+        if (!peers.length) {
+          showEmptyState("Пока нет собеседников. Пользователь должен быть автором объявления или написать в общий чат.");
+          return;
+        }
+
+        const list = document.createElement("div");
+        list.className = "klevby-private-dialog-list";
+
+        list.innerHTML = peers.map((peer) => {
+          const preview = peer.lastMessage
+            ? parseReplyContent(peer.lastMessage).mainText
+            : "Нажми, чтобы открыть переписку";
+
+          return `
           <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
             <span class="klevby-private-dialog-avatar">${escapeHtml(getInitials(peer.name))}</span>
 
@@ -656,17 +609,73 @@
             <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
           </button>
         `;
-      }).join("");
+        }).join("");
 
-      clearMessages();
-      if (messagesContainer) {
-        messagesContainer.appendChild(list);
-      }
+        clearMessages();
+        if (messagesContainer) {
+          messagesContainer.appendChild(list);
+        }
+      };
+
+      console.info("[KlevbyPrivate] private list first render start");
+      renderPeersList();
+      console.info("[KlevbyPrivate] private list first render end");
+
+      Promise.resolve()
+        .then(async () => {
+          console.info("[KlevbyPrivate] private list enrichment start");
+          await withPrivateOptionalStepTimeout("profiles select for private_messages peers", () => loadProfilesByIds(
+            (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
+          ));
+
+          const { data: publicUsers } = await withPrivateOptionalStepTimeout("messages users select", () => client
+            .from("messages")
+            .select("user_id,user_name")
+            .not("user_id", "is", null)) || {};
+
+          (publicUsers || []).forEach((item) => {
+            rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
+          });
+
+          await withPrivateOptionalStepTimeout("profiles select for messages users", () => loadProfilesByIds((publicUsers || []).map((item) => item.user_id)));
+
+          (publicUsers || []).forEach((item) => {
+            addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
+          });
+
+          const { data: postUsers } = await withPrivateOptionalStepTimeout("posts users select", () => client
+            .from("posts")
+            .select("owner_id,name")
+            .not("owner_id", "is", null)) || {};
+
+          (postUsers || []).forEach((item) => {
+            rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
+          });
+
+          await withPrivateOptionalStepTimeout("profiles select for posts users", () => loadProfilesByIds((postUsers || []).map((item) => item.owner_id)));
+
+          (postUsers || []).forEach((item) => {
+            addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
+          });
+
+          if (isStaleNavigation(navToken)) return;
+          if (getCtx().getActiveMode && getCtx().getActiveMode() !== "private") return;
+          if (getSelectedPeer()) return;
+
+          renderPeersList();
+          console.info("[KlevbyPrivate] private list enrichment end");
+        })
+        .catch((error) => {
+          console.warn("[KlevbyPrivate] private list enrichment fail", {
+            message: String(error?.message || error)
+          });
+        });
+
       console.info("[KlevbyPrivate] loadPrivatePeople end", {
         navToken,
         activeModeAfter: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
         selectedPeerAfter: getSelectedPeer(),
-        peersCount: peers.length
+        peersCount: renderedPeersCount
       });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
