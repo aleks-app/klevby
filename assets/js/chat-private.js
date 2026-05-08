@@ -102,6 +102,20 @@
     }
   }
 
+  function getCachedPrivateMessages(peerId) {
+    if (getCtx().getCachedPrivateMessages) {
+      return getCtx().getCachedPrivateMessages(peerId);
+    }
+
+    return null;
+  }
+
+  function setCachedPrivateMessages(peerId, messages) {
+    if (getCtx().setCachedPrivateMessages) {
+      getCtx().setCachedPrivateMessages(peerId, messages);
+    }
+  }
+
   function clearReply() {
     if (getCtx().clearReply) {
       getCtx().clearReply();
@@ -757,6 +771,19 @@
 
       clearMessages();
 
+      const cachedMessages = getCachedPrivateMessages(safePeerId);
+      console.info("[KlevbyPrivate] openPrivateDialog instant view", {
+        peerId: safePeerId,
+        hasCache: Array.isArray(cachedMessages) && cachedMessages.length > 0
+      });
+
+      if (Array.isArray(cachedMessages) && cachedMessages.length > 0) {
+        renderMessageList(cachedMessages, renderPrivateMessage);
+        scrollChatToBottom();
+      } else {
+        showEmptyState("Загружаем сообщения...");
+      }
+
       const config = window.KLEVB_CONFIG || {};
       const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
       const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
@@ -795,36 +822,66 @@
         return;
       }
 
+      console.info("[KlevbyPrivate] openPrivateDialog REST render replace start", {
+        peerId: safePeerId,
+        rows: Array.isArray(data) ? data.length : 0
+      });
+
       (data || []).forEach((message) => {
         if (message.sender_id && message.sender_name) {
           rememberFallbackProfile(message.sender_id, message.sender_name);
         }
       });
 
-      await withPrivateOptionalStepTimeout("profiles select for dialog messages", () => loadProfilesByIds(
-        (data || []).flatMap((message) => [message.sender_id, message.receiver_id])
-      ));
-
-      if (isStaleNavigation(navToken)) return;
-
-      const selectedPeer = getSelectedPeer() || nextPeer;
-      selectedPeer.name = getProfileName(safePeerId, selectedPeer.name);
-      setSelectedPeer(selectedPeer);
-
-      if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
-      if (chatTitle) chatTitle.textContent = selectedPeer.name;
-
-      syncSelectedPeerForCalls();
-
       setUnreadPrivateCount(getUnreadPrivateCount() - 1);
       updateUnreadBadge();
 
       if (!data || !data.length) {
+        setCachedPrivateMessages(safePeerId, []);
         showEmptyState("Личных сообщений пока нет. Напиши первым.");
-        return;
+        console.info("[KlevbyPrivate] openPrivateDialog REST render replace end", { peerId: safePeerId, rows: 0, empty: true });
+      } else {
+        setCachedPrivateMessages(safePeerId, data);
+        renderMessageList(data, renderPrivateMessage);
+        scrollChatToBottom();
+        console.info("[KlevbyPrivate] openPrivateDialog REST render replace end", { peerId: safePeerId, rows: data.length, empty: false });
       }
 
-      renderMessageList(data, renderPrivateMessage);
+      const participantIds = (data || []).flatMap((message) => [message.sender_id, message.receiver_id]);
+      Promise.resolve()
+        .then(() => {
+          console.info("[KlevbyPrivate] profile enrichment start", {
+            scope: "dialog messages",
+            peerId: safePeerId,
+            idsCount: participantIds.length
+          });
+          return withPrivateOptionalStepTimeout("profiles select for dialog messages", () => loadProfilesByIds(participantIds));
+        })
+        .then(() => {
+          if (isStaleNavigation(navToken)) return;
+
+          const selectedPeer = getSelectedPeer() || nextPeer;
+          selectedPeer.name = getProfileName(safePeerId, selectedPeer.name);
+          setSelectedPeer(selectedPeer);
+
+          if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
+          if (chatTitle) chatTitle.textContent = selectedPeer.name;
+
+          syncSelectedPeerForCalls();
+          console.info("[KlevbyPrivate] profile enrichment end", {
+            scope: "dialog messages",
+            peerId: safePeerId,
+            idsCount: participantIds.length
+          });
+        })
+        .catch((error) => {
+          console.warn("[KlevbyPrivate] profile enrichment fail", {
+            scope: "dialog messages",
+            peerId: safePeerId,
+            idsCount: participantIds.length,
+            error: String(error?.message || error)
+          });
+        });
       console.info("[KlevbyPrivate] openPrivateDialog end", {
         peerId: safePeerId,
         navToken,
