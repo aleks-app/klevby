@@ -165,7 +165,24 @@
 
     if (!cleanId) return [];
 
+    const safeId =
+      typeof CSS !== "undefined" && typeof CSS.escape === "function"
+        ? CSS.escape(cleanId)
+        : cleanId.replace(/"/g, '\\"');
+
+    const mappedButtons = Array.from(
+      document.querySelectorAll(`.profile-feed-like-btn[data-feed-post-id="${safeId}"]`)
+    );
+
+    if (mappedButtons.length) {
+      return mappedButtons;
+    }
+
     return Array.from(document.querySelectorAll(".profile-feed-like-btn")).filter((button) => {
+      if (button.dataset.feedPostId) {
+        return String(button.dataset.feedPostId).trim() === cleanId;
+      }
+
       const onclickValue = String(button.getAttribute("onclick") || "");
       return onclickValue.includes(cleanId);
     });
@@ -189,8 +206,10 @@
     getLikeButtons(postId).forEach((button) => {
       button.textContent = `👍 ${safeCount}`;
       button.dataset.pendingLike = pending ? "1" : "0";
+      button.dataset.likeCount = String(safeCount);
 
       if (typeof liked === "boolean") {
+        button.dataset.liked = liked ? "true" : "false";
         button.setAttribute("aria-pressed", liked ? "true" : "false");
         button.classList.toggle("liked", liked);
         button.classList.toggle("is-liked", liked);
@@ -328,6 +347,26 @@
     setLikeButtonsState(postId, snapshot.likesCount, snapshot.liked, false);
   }
 
+
+  function isDuplicateLikeError(error) {
+    const message = String(error?.message || "").toLowerCase();
+    const code = String(error?.code || error?.details?.code || "").toLowerCase();
+    const constraint = String(
+      error?.constraint || error?.details?.constraint || error?.hint || ""
+    ).toLowerCase();
+
+    if (constraint.includes("feed_likes_unique_user_post")) {
+      return true;
+    }
+
+    return (
+      code === "23505" && (
+        message.includes("feed_likes_unique_user_post") ||
+        message.includes("duplicate key")
+      )
+    ) || message.includes('duplicate key value violates unique constraint "feed_likes_unique_user_post"');
+  }
+
   function scheduleLikeRefresh() {
     clearTimeout(likeRefreshTimer);
 
@@ -382,9 +421,16 @@
 
       scheduleLikeRefresh();
     } catch (error) {
-      rollbackLikeState(cleanId, snapshot);
-      console.warn("Klevby feed actions: лайк не сработал", error);
-      alert(error?.message || "Не получилось поставить лайк.");
+      if (isDuplicateLikeError(error)) {
+        const duplicatedCount = Math.max(snapshot.likesCount, snapshot.optimisticCount);
+
+        applyLocalLikeState(cleanId, true, duplicatedCount);
+        setLikeButtonsState(cleanId, duplicatedCount, true, false);
+      } else {
+        rollbackLikeState(cleanId, snapshot);
+        console.warn("Klevby feed actions: лайк не сработал", error);
+        alert(error?.message || "Не получилось поставить лайк.");
+      }
     } finally {
       pendingLikeLocks.delete(cleanId);
       const currentSnapshot = getLikeSnapshot(cleanId);

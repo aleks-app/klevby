@@ -621,19 +621,40 @@
     const authorName = item?.authorName || "Рыбак";
     const authorCity = item?.authorCity || "";
     const title = item?.title || item?.caption || "Фото с рыбалки";
-    const likesCount = Number(item?.likesCount || 0);
+    const likesCount = Math.max(0, Number(item?.likesCount || 0) || 0);
     const commentsCount = Number(item?.commentsCount || 0);
     const date = formatDate(item?.createdAt);
     const avatar = getAvatar(item);
     const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
     const isSupabase = item?.source === "supabase";
 
+    const likeStateCandidates = [
+      item?.likedByViewer,
+      item?.viewerLiked,
+      item?.isLiked,
+      item?.liked,
+      item?.hasLiked,
+      item?.liked_by_viewer
+    ];
+
+    let initialLiked = null;
+    likeStateCandidates.some((value) => {
+      if (typeof value === "boolean") {
+        initialLiked = value;
+        return true;
+      }
+
+      return false;
+    });
+
+    const likedForAttrs = initialLiked === true;
+
     const avatarHtml = avatar
       ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
 
     const likeButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-like-btn" type="button" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
+      ? `<button class="small-btn gray profile-feed-like-btn${likedForAttrs ? " liked is-liked" : ""}" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}" data-liked="${likedForAttrs ? "true" : "false"}" aria-pressed="${likedForAttrs ? "true" : "false"}" onclick="event.stopPropagation(); window.toggleFeedLike && window.toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
       : "";
 
     const commentButton = isSupabase
