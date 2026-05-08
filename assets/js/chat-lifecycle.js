@@ -84,6 +84,112 @@
         ? options.saveExistingPushSubscriptionIfPossible
         : async () => {};
 
+
+    const recoverSupabaseClient =
+      typeof options.recoverSupabaseClient === "function"
+        ? options.recoverSupabaseClient
+        : async () => false;
+
+    const CHAT_STEP_TIMEOUT_MS = 7000;
+
+    function getSupabaseClientExists() {
+      try {
+        if (typeof window.klevbyGetSupabase === "function") {
+          return Boolean(window.klevbyGetSupabase());
+        }
+      } catch (error) {
+        return false;
+      }
+
+      return Boolean(window.klevbySupabase || window.supabaseClient);
+    }
+
+    function createStepTimeoutError(stepName, timeoutMs, reason) {
+      const error = new Error(`Klevby chat: step "${stepName}" timed out after ${timeoutMs}ms (${reason}).`);
+      error.name = "KlevbyChatStepTimeoutError";
+      error.code = "CHAT_STEP_TIMEOUT";
+      error.step = stepName;
+      error.reason = reason;
+      error.timeoutMs = timeoutMs;
+      return error;
+    }
+
+    async function withChatStepTimeout(stepName, runner, opts = {}) {
+      const timeoutMs = Number(opts.timeoutMs || CHAT_STEP_TIMEOUT_MS);
+      const reason = String(opts.reason || "open");
+      const startedAt = Date.now();
+
+      console.info("[KlevbyChatLifecycle] chat open step start", {
+        step: stepName,
+        reason,
+        timeoutMs,
+        supabaseClientExists: getSupabaseClientExists()
+      });
+
+      let timer = null;
+
+      try {
+        const result = await Promise.race([
+          Promise.resolve().then(runner),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              reject(createStepTimeoutError(stepName, timeoutMs, reason));
+            }, timeoutMs);
+          })
+        ]);
+
+        console.info("[KlevbyChatLifecycle] chat open step end", {
+          step: stepName,
+          reason,
+          durationMs: Date.now() - startedAt,
+          supabaseClientExists: getSupabaseClientExists()
+        });
+
+        return result;
+      } catch (error) {
+        const durationMs = Date.now() - startedAt;
+
+        if (error && error.code === "CHAT_STEP_TIMEOUT") {
+          console.warn("[KlevbyChatLifecycle] chat open step timeout", {
+            step: stepName,
+            reason,
+            durationMs,
+            timeoutMs,
+            supabaseClientExists: getSupabaseClientExists()
+          });
+        } else {
+          console.warn("[KlevbyChatLifecycle] chat open step fail", {
+            step: stepName,
+            reason,
+            durationMs,
+            supabaseClientExists: getSupabaseClientExists(),
+            error: String(error?.message || error)
+          });
+        }
+
+        throw error;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+
+    async function tryRecoverSupabaseAfterTimeout(reason, error) {
+      if (!error || error.code !== "CHAT_STEP_TIMEOUT") return false;
+
+      try {
+        console.warn("[KlevbyChatLifecycle] trying Supabase recovery after timeout", {
+          reason,
+          step: error.step,
+          supabaseClientExists: getSupabaseClientExists()
+        });
+
+        return Boolean(await recoverSupabaseClient({ reason, step: error.step, error }));
+      } catch (recoverError) {
+        console.warn("[KlevbyChatLifecycle] Supabase recovery failed", recoverError);
+        return false;
+      }
+    }
+
     const syncSelectedPeerForCalls =
       typeof options.syncSelectedPeerForCalls === "function"
         ? options.syncSelectedPeerForCalls
@@ -163,10 +269,10 @@
       try {
         updateViewportVars();
 
-        await refreshCurrentUser();
-        await ensureCurrentUserProfile({ soft: true });
-        await reconnectRealtimeConnections();
-        await saveExistingPushSubscriptionIfPossible();
+        await withChatStepTimeout("refreshCurrentUser", () => refreshCurrentUser(), { reason });
+        await withChatStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), { reason });
+        await withChatStepTimeout("reconnectRealtimeConnections", () => reconnectRealtimeConnections(), { reason });
+        await withChatStepTimeout("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
 
         const isChatOpen = modal && modal.classList.contains("open");
 
@@ -181,11 +287,11 @@
         const savedPeer = selectedPeer ? { ...selectedPeer } : null;
 
         if (savedMode === "private" && savedPeer && isValidSupabaseUuid(savedPeer.id)) {
-          await openPrivateDialog(savedPeer.id, savedPeer.name);
+          await withChatStepTimeout("openPrivateDialog", () => openPrivateDialog(savedPeer.id, savedPeer.name), { reason });
         } else if (savedMode === "private") {
-          await loadPrivatePeople();
+          await withChatStepTimeout("loadPrivatePeople", () => loadPrivatePeople(), { reason });
         } else {
-          await loadPublicMessages();
+          await withChatStepTimeout("loadPublicMessages", () => loadPublicMessages(), { reason });
         }
 
         syncSelectedPeerForCalls();
@@ -195,8 +301,11 @@
           scrollChatToBottom();
         }, 150);
       } catch (error) {
+        await tryRecoverSupabaseAfterTimeout(reason, error);
         console.warn("Не удалось восстановить чат после возврата в приложение:", reason, error);
         setChatTabsLoading(false);
+        unlockChatPage();
+        showEmptyState("Чат временно недоступен после возврата. Попробуй открыть снова.");
       } finally {
         klevbyResumeInProgress = false;
       }
@@ -211,6 +320,7 @@
     }
 
     async function openChat() {
+      const reason = "open";
       try {
         if (!modal) {
           console.warn("Klevby chat: modal не найден для открытия чата.");
@@ -224,12 +334,12 @@
         modal.classList.remove("hidden");
         modal.classList.add("open");
 
-        await refreshCurrentUser();
-        await ensureCurrentUserProfile({ soft: true });
-        await reconnectRealtimeConnections();
-        await loadPublicMessages();
-        await refreshPushButtonState();
-        await saveExistingPushSubscriptionIfPossible();
+        await withChatStepTimeout("refreshCurrentUser", () => refreshCurrentUser(), { reason });
+        await withChatStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), { reason });
+        await withChatStepTimeout("reconnectRealtimeConnections", () => reconnectRealtimeConnections(), { reason });
+        await withChatStepTimeout("loadPublicMessages", () => loadPublicMessages(), { reason });
+        await withChatStepTimeout("refreshPushButtonState", () => refreshPushButtonState(), { reason });
+        await withChatStepTimeout("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
 
         syncSelectedPeerForCalls();
 
@@ -238,6 +348,7 @@
           scrollChatToBottom();
         }, 150);
       } catch (error) {
+        await tryRecoverSupabaseAfterTimeout(reason, error);
         console.error("Klevby chat: ошибка открытия чата:", error);
         if (modal) {
           modal.classList.remove("open");

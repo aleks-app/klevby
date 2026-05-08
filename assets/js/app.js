@@ -171,6 +171,42 @@ function reloadPondsIfReady(options = {}) {
   }, delay);
 }
 
+
+let supabaseRecoveryInProgress = false;
+
+async function recoverSupabaseClient(options = {}) {
+  if (supabaseRecoveryInProgress) return Boolean(supabaseClient);
+
+  supabaseRecoveryInProgress = true;
+
+  try {
+    console.warn("Klevby: recovering Supabase client", {
+      reason: options.reason || "unknown",
+      step: options.step || "unknown"
+    });
+
+    if (supabaseClient?.realtime?.removeAllChannels) {
+      try {
+        await supabaseClient.realtime.removeAllChannels();
+      } catch (error) {
+        console.warn("Klevby: realtime cleanup before recovery failed", error);
+      }
+    }
+
+    supabaseClient = null;
+    const ok = initSupabase();
+    syncGlobalAuthState({ notify: true, forceNotify: true });
+    return Boolean(ok && supabaseClient);
+  } catch (error) {
+    console.warn("Klevby: Supabase recovery failed", error);
+    return false;
+  } finally {
+    supabaseRecoveryInProgress = false;
+  }
+}
+
+window.klevbyRecoverSupabaseClient = recoverSupabaseClient;
+
 function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     showStatus("Supabase не настроен. Проверь assets/js/config.js.", true);
