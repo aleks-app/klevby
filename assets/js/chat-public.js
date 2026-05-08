@@ -185,6 +185,78 @@
     return getCtx().buildMessageContent ? getCtx().buildMessageContent(value) : value;
   }
 
+
+
+  function getSupabaseRestConfig() {
+    const config = window.KLEVB_CONFIG || {};
+    const url = String(config.SUPABASE_URL || '').trim().replace(/\/$/, '');
+    const anonKey = String(config.SUPABASE_ANON_KEY || '').trim();
+
+    if (!url || !anonKey) return null;
+
+    return { url, anonKey };
+  }
+
+  async function loadPublicMessagesViaRest(signal) {
+    const restConfig = getSupabaseRestConfig();
+
+    if (!restConfig) {
+      return {
+        data: null,
+        error: new Error('SUPABASE_URL/SUPABASE_ANON_KEY не настроены для REST fallback.')
+      };
+    }
+
+    const endpoint = `${restConfig.url}/rest/v1/messages?select=id,created_at,user_id,user_name,content&order=created_at.desc&limit=100`;
+    const startedAt = Date.now();
+
+    console.info('[KlevbyChatPublic] messages REST fallback start', { endpoint });
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          apikey: restConfig.anonKey,
+          Authorization: `Bearer ${restConfig.anonKey}`,
+          Accept: 'application/json'
+        },
+        signal: signal || undefined
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_) {
+        payload = null;
+      }
+
+      console.info('[KlevbyChatPublic] messages REST fallback end', {
+        status: response.status,
+        ok: response.ok,
+        durationMs: Date.now() - startedAt
+      });
+
+      if (!response.ok) {
+        const error = new Error(`REST messages request failed with status ${response.status}`);
+        error.status = response.status;
+        error.payload = payload;
+        return { data: null, error };
+      }
+
+      return {
+        data: Array.isArray(payload) ? payload : [],
+        error: null
+      };
+    } catch (error) {
+      console.warn('[KlevbyChatPublic] messages REST fallback fail', {
+        durationMs: Date.now() - startedAt,
+        status: error?.status || null,
+        message: String(error?.message || error)
+      });
+      return { data: null, error };
+    }
+  }
+
   function getLocalMessageKey(message) {
     return `${message.user_name || ""}__${message.content || ""}`;
   }
@@ -262,19 +334,31 @@
         return;
       }
 
-      const result = await runWithAbortableTimeout("messages select", 6500, (signal) => {
-        const query = client
-          .from("messages")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100);
+      let result = null;
 
-        if (signal && typeof query.abortSignal === "function") {
-          query.abortSignal(signal);
-        }
+      try {
+        console.info('[KlevbyChatPublic] messages SDK start');
+        result = await runWithAbortableTimeout("messages select", 6500, (signal) => {
+          const query = client
+            .from("messages")
+            .select("id,created_at,user_id,user_name,content")
+            .order("created_at", { ascending: false })
+            .limit(100);
 
-        return query;
-      });
+          if (signal && typeof query.abortSignal === "function") {
+            query.abortSignal(signal);
+          }
+
+          return query;
+        });
+      } catch (sdkError) {
+        console.warn('[KlevbyChatPublic] messages SDK fail', {
+          code: sdkError?.code || null,
+          message: String(sdkError?.message || sdkError)
+        });
+
+        result = await runWithAbortableTimeout('messages REST fallback', 6500, (signal) => loadPublicMessagesViaRest(signal));
+      }
 
       if (isStaleNavigation(navToken)) return;
 
