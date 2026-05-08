@@ -489,6 +489,15 @@
         transform: scale(0.98);
       }
 
+
+      .profile-feed-like-btn[data-liked="true"],
+      .profile-feed-like-btn[aria-pressed="true"],
+      .profile-feed-like-btn.is-liked {
+        color: #ffbe57 !important;
+        border-color: rgba(255, 190, 87, 0.48) !important;
+        background: rgba(255, 190, 87, 0.12) !important;
+      }
+
       .home-empty-card {
         grid-column: 1 / -1;
         width: 100%;
@@ -633,11 +642,11 @@
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
 
     const likeButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-like-btn" type="button" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
+      ? `<button class="small-btn gray profile-feed-like-btn" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}" aria-pressed="false" data-liked="false" onclick="event.preventDefault(); event.stopPropagation(); toggleFeedLike('${safeId}', this)" onpointerdown="event.stopPropagation();" ontouchstart="event.stopPropagation();">👍 ${likesCount}</button>`
       : "";
 
     const commentButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
+      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.preventDefault(); event.stopPropagation(); openFeedCommentModal('${safeId}')" onpointerdown="event.stopPropagation();" ontouchstart="event.stopPropagation();">💬 ${commentsCount}</button>`
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     return `
@@ -671,7 +680,7 @@
           </div>
 
           <div class="actions profile-feed-actions">
-            <button class="small-btn green profile-feed-open-btn" type="button" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')">Открыть</button>
+            <button class="small-btn green profile-feed-open-btn" type="button" onclick="event.preventDefault(); event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')" onpointerdown="event.stopPropagation();" ontouchstart="event.stopPropagation();">Открыть</button>
             ${likeButton}
             ${commentButton}
           </div>
