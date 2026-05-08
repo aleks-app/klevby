@@ -57,6 +57,56 @@
     return getCtx().getMainSupabaseClient ? getCtx().getMainSupabaseClient() : null;
   }
 
+  function createTimeoutError(stepName, timeoutMs) {
+    const error = new Error(`Klevby chat public: step "${stepName}" timed out after ${timeoutMs}ms.`);
+    error.name = "KlevbyChatPublicTimeoutError";
+    error.code = "CHAT_PUBLIC_TIMEOUT";
+    error.step = stepName;
+    error.timeoutMs = timeoutMs;
+    return error;
+  }
+
+  async function runWithAbortableTimeout(stepName, timeoutMs, runner) {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const startedAt = Date.now();
+    let timer = null;
+
+    console.info("[KlevbyChatPublic] step start", { step: stepName, timeoutMs });
+
+    try {
+      const result = await Promise.race([
+        Promise.resolve().then(() => runner(controller?.signal || null)),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            if (controller) {
+              try {
+                controller.abort();
+              } catch (_) {}
+            }
+            reject(createTimeoutError(stepName, timeoutMs));
+          }, timeoutMs);
+        })
+      ]);
+
+      console.info("[KlevbyChatPublic] step end", {
+        step: stepName,
+        durationMs: Date.now() - startedAt
+      });
+
+      return result;
+    } catch (error) {
+      console.warn("[KlevbyChatPublic] step fail", {
+        step: stepName,
+        durationMs: Date.now() - startedAt,
+        code: error?.code || null,
+        message: String(error?.message || error)
+      });
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   async function refreshCurrentUser(options = {}) {
     if (getCtx().refreshCurrentUser) {
       return await getCtx().refreshCurrentUser(options);
@@ -174,6 +224,7 @@
     const chatSubtitle = getElement("chatSubtitle");
 
     try {
+      console.info("[KlevbyChatPublic] loadPublicMessages start");
       setActiveMode("public");
       setSelectedPeer(null);
       clearReply();
@@ -211,10 +262,18 @@
         return;
       }
 
-      const result = await client
-        .from("messages")
-        .select("*")
-        .order("created_at", { ascending: true });
+      const result = await runWithAbortableTimeout("messages select", 6500, (signal) => {
+        const query = client
+          .from("messages")
+          .select("*")
+          .order("created_at", { ascending: true });
+
+        if (signal && typeof query.abortSignal === "function") {
+          query.abortSignal(signal);
+        }
+
+        return query;
+      });
 
       if (isStaleNavigation(navToken)) return;
 
@@ -232,7 +291,9 @@
         }
       });
 
-      await loadProfilesByIds(data.map((message) => message.user_id));
+      await runWithAbortableTimeout("profiles select", 5000, async () => {
+        return loadProfilesByIds(data.map((message) => message.user_id));
+      });
 
       if (isStaleNavigation(navToken)) return;
 
@@ -241,13 +302,20 @@
         return;
       }
 
-      renderMessageList(data, renderPublicMessage);
+      await runWithAbortableTimeout("render", 3000, async () => {
+        renderMessageList(data, renderPublicMessage);
+      });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
         console.error("Ошибка загрузки общего чата:", error);
-        showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
+        if (error?.code === "CHAT_PUBLIC_TIMEOUT" && error?.step === "messages select") {
+          showEmptyState("Чат временно недоступен (таймаут загрузки). Закрой и открой чат ещё раз.");
+        } else {
+          showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
+        }
       }
     } finally {
+      console.info("[KlevbyChatPublic] loadPublicMessages end");
       finishChatNavigation(navToken);
     }
   }

@@ -185,6 +185,12 @@ async function recoverSupabaseClient(options = {}) {
       step: options.step || "unknown"
     });
 
+    if (!supabaseClient) {
+      const ok = initSupabase();
+      syncGlobalAuthState({ notify: true, forceNotify: true });
+      return Boolean(ok && supabaseClient);
+    }
+
     if (supabaseClient?.realtime?.removeAllChannels) {
       try {
         await supabaseClient.realtime.removeAllChannels();
@@ -193,10 +199,16 @@ async function recoverSupabaseClient(options = {}) {
       }
     }
 
-    supabaseClient = null;
-    const ok = initSupabase();
+    if (supabaseClient?.auth?.getSession) {
+      try {
+        await supabaseClient.auth.getSession();
+      } catch (error) {
+        console.warn("Klevby: auth session refresh during recovery failed", error);
+      }
+    }
+
     syncGlobalAuthState({ notify: true, forceNotify: true });
-    return Boolean(ok && supabaseClient);
+    return Boolean(supabaseClient);
   } catch (error) {
     console.warn("Klevby: Supabase recovery failed", error);
     return false;
