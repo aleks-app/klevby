@@ -633,7 +633,7 @@
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
 
     const likeButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-like-btn" type="button" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
+      ? `<button class="small-btn gray profile-feed-like-btn" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}" aria-pressed="false" data-liked="false" onclick="event.stopPropagation(); toggleFeedLike('${safeId}', this)">👍 ${likesCount}</button>`
       : "";
 
     const commentButton = isSupabase

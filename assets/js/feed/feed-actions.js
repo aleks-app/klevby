@@ -165,10 +165,15 @@
 
     if (!cleanId) return [];
 
-    return Array.from(document.querySelectorAll(".profile-feed-like-btn")).filter((button) => {
-      const onclickValue = String(button.getAttribute("onclick") || "");
-      return onclickValue.includes(cleanId);
-    });
+    return Array.from(document.querySelectorAll(`[data-feed-post-id="${cleanId}"]`));
+  }
+
+  function resolveLikeButton(postId, buttonEl = null) {
+    if (buttonEl && buttonEl.nodeType === 1) {
+      return buttonEl;
+    }
+
+    return getLikeButtons(postId)[0] || null;
   }
 
   function getButtonLikesCount(postId) {
@@ -189,9 +194,11 @@
     getLikeButtons(postId).forEach((button) => {
       button.textContent = `👍 ${safeCount}`;
       button.dataset.pendingLike = pending ? "1" : "0";
+      button.dataset.likeCount = String(safeCount);
 
       if (typeof liked === "boolean") {
         button.setAttribute("aria-pressed", liked ? "true" : "false");
+        button.dataset.liked = liked ? "true" : "false";
         button.classList.toggle("liked", liked);
         button.classList.toggle("is-liked", liked);
       }
@@ -225,21 +232,36 @@
     return patchedItem;
   }
 
-  function getLikeSnapshot(postId) {
+  function getLikeSnapshot(postId, buttonEl = null) {
     const item = getCachedFeedItem(postId);
-    const buttonCount = getButtonLikesCount(postId);
+    const resolvedButton = resolveLikeButton(postId, buttonEl);
+    const buttonCount = resolvedButton
+      ? Number(resolvedButton.dataset.likeCount || getButtonLikesCount(postId))
+      : getButtonLikesCount(postId);
 
     const likesCount =
-      buttonCount !== null
-        ? buttonCount
+      buttonCount !== null && Number.isFinite(buttonCount)
+        ? Math.max(0, buttonCount)
         : getItemLikesCount(item);
 
-    const liked = getKnownLikeState(postId, item);
+    const likedFromButton =
+      resolvedButton && typeof resolvedButton.dataset.liked === "string"
+        ? resolvedButton.dataset.liked === "true"
+        : null;
+
+    const liked = likedFromButton !== null
+      ? likedFromButton
+      : getKnownLikeState(postId, item);
 
     return {
       item,
       likesCount,
-      liked
+      liked,
+      buttonEl: resolvedButton,
+      buttonText: resolvedButton ? String(resolvedButton.textContent || "") : "",
+      buttonLikeCountAttr: resolvedButton ? String(resolvedButton.dataset.likeCount || "") : "",
+      buttonLikedAttr: resolvedButton ? String(resolvedButton.dataset.liked || "") : "",
+      buttonAriaPressed: resolvedButton ? String(resolvedButton.getAttribute("aria-pressed") || "") : ""
     };
   }
 
@@ -257,8 +279,8 @@
     setLikeButtonsState(postId, safeCount, Boolean(liked), pendingLikeLocks.has(String(postId)));
   }
 
-  function applyOptimisticLike(postId) {
-    const snapshot = getLikeSnapshot(postId);
+  function applyOptimisticLike(postId, buttonEl = null) {
+    const snapshot = getLikeSnapshot(postId, buttonEl);
     const previousLiked = typeof snapshot.liked === "boolean" ? snapshot.liked : false;
     const optimisticLiked = !previousLiked;
     const optimisticCount = Math.max(
@@ -325,6 +347,14 @@
       likesCount: snapshot.likesCount
     });
 
+    if (snapshot.buttonEl) {
+      snapshot.buttonEl.textContent = snapshot.buttonText;
+      snapshot.buttonEl.dataset.likeCount = snapshot.buttonLikeCountAttr || String(snapshot.likesCount);
+      snapshot.buttonEl.dataset.liked = snapshot.buttonLikedAttr || (snapshot.liked ? "true" : "false");
+      snapshot.buttonEl.setAttribute("aria-pressed", snapshot.buttonAriaPressed || (snapshot.liked ? "true" : "false"));
+      snapshot.buttonEl.dataset.pendingLike = "0";
+    }
+
     setLikeButtonsState(postId, snapshot.likesCount, snapshot.liked, false);
   }
 
@@ -358,7 +388,7 @@
     throw new Error("Лайки ещё не подключены.");
   }
 
-  async function toggleLikeFromCard(postId) {
+  async function toggleLikeFromCard(postId, buttonEl = null) {
     const cleanId = String(postId || "").trim();
 
     if (!cleanId) return;
@@ -368,7 +398,7 @@
     }
 
     pendingLikeLocks.add(cleanId);
-    const snapshot = applyOptimisticLike(cleanId);
+    const snapshot = applyOptimisticLike(cleanId, buttonEl);
     setLikeButtonsState(cleanId, snapshot.optimisticCount, snapshot.optimisticLiked, true);
 
     try {
@@ -384,10 +414,10 @@
     } catch (error) {
       rollbackLikeState(cleanId, snapshot);
       console.warn("Klevby feed actions: лайк не сработал", error);
-      alert(error?.message || "Не получилось поставить лайк.");
+      alert(error?.message || "Не удалось обновить лайк. Попробуйте ещё раз.");
     } finally {
       pendingLikeLocks.delete(cleanId);
-      const currentSnapshot = getLikeSnapshot(cleanId);
+      const currentSnapshot = getLikeSnapshot(cleanId, buttonEl);
       setLikeButtonsState(
         cleanId,
         currentSnapshot.likesCount,
