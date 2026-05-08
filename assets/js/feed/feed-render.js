@@ -132,6 +132,160 @@
     return Number(window.__klevbyFeedRenderToken || 0);
   }
 
+  const FEED_CACHE_VERSION = 1;
+  const FEED_CACHE_LIMIT = 20;
+  const FEED_CACHE_TTL_MS = 10 * 60 * 1000;
+  const FEED_CACHE_PREFIX = "klevby_feed_cache_v1";
+
+  function getFeedCacheOwnerKey() {
+    const possibleUser =
+      window.klevbyCurrentUser ||
+      window.currentUser ||
+      window.klevbyUser ||
+      null;
+
+    const userId = String(possibleUser?.id || "").trim();
+
+    if (userId) {
+      return userId;
+    }
+
+    return "anon";
+  }
+
+  function getFeedCacheKey() {
+    return `${FEED_CACHE_PREFIX}_${getFeedCacheOwnerKey()}`;
+  }
+
+  function normalizeFeedCacheItem(item) {
+    if (!item || typeof item !== "object") return null;
+
+    const id = String(item.id || "").trim();
+    const image = String(item.image || item.imageUrl || "").trim();
+
+    if (!id || !image) return null;
+
+    return {
+      id,
+      source: item.source || "",
+      image,
+      imageUrl: item.imageUrl || item.image || "",
+      authorName: item.authorName || "Рыбак",
+      authorCity: item.authorCity || "",
+      authorAvatarUrl: item.authorAvatarUrl || item.avatarUrl || item.avatar || "",
+      avatarUrl: item.avatarUrl || item.authorAvatarUrl || item.avatar || "",
+      avatar: item.avatar || item.avatarUrl || item.authorAvatarUrl || "",
+      title: item.title || item.caption || "Фото с рыбалки",
+      caption: item.caption || item.title || "Фото с рыбалки",
+      likesCount: Number(item.likesCount || 0) || 0,
+      commentsCount: Number(item.commentsCount || 0) || 0,
+      viewsCount: Number(item.viewsCount || 0) || 0,
+      createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+      updatedAt: item.updatedAt || item.updated_at || "",
+      userId: item.userId || item.user_id || item.ownerId || item.owner_id || null,
+      ownerId: item.ownerId || item.owner_id || item.userId || item.user_id || null
+    };
+  }
+
+  function normalizeFeedCacheItems(items) {
+    if (!Array.isArray(items)) return [];
+
+    return items
+      .map(normalizeFeedCacheItem)
+      .filter(Boolean)
+      .slice(0, FEED_CACHE_LIMIT);
+  }
+
+  function readFeedCache() {
+    const cacheKey = getFeedCacheKey();
+
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      const version = Number(parsed?.version || 0);
+      const savedAt = Number(parsed?.savedAt || 0);
+
+      if (version !== FEED_CACHE_VERSION || !savedAt) {
+        localStorage.removeItem(cacheKey);
+        return [];
+      }
+
+      if (Date.now() - savedAt > FEED_CACHE_TTL_MS) {
+        localStorage.removeItem(cacheKey);
+        return [];
+      }
+
+      return normalizeFeedCacheItems(parsed?.items || []);
+    } catch (error) {
+      try {
+        localStorage.removeItem(cacheKey);
+      } catch (_) {}
+
+      console.debug("Klevby feed render: cache read skipped", {
+        error: String(error?.message || error)
+      });
+
+      return [];
+    }
+  }
+
+  function writeFeedCache(items) {
+    const cacheKey = getFeedCacheKey();
+
+    try {
+      const normalized = normalizeFeedCacheItems(items);
+
+      if (!normalized.length) {
+        localStorage.removeItem(cacheKey);
+        return;
+      }
+
+      localStorage.setItem(cacheKey, JSON.stringify({
+        version: FEED_CACHE_VERSION,
+        savedAt: Date.now(),
+        count: normalized.length,
+        items: normalized
+      }));
+    } catch (error) {
+      console.debug("Klevby feed render: cache write skipped", {
+        error: String(error?.message || error)
+      });
+    }
+  }
+
+  function renderFeedItems(list, items, source = "fresh") {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    setLastItems(safeItems);
+    setItemsCacheFromArray(safeItems);
+
+    if (!safeItems.length) {
+      list.innerHTML = emptyHtml();
+      return false;
+    }
+
+    const cards = safeItems
+      .map((item) => {
+        try {
+          return profilePhotoCardHtml(item);
+        } catch (error) {
+          console.error("Klevby feed render: ошибка карточки", item, error);
+          return "";
+        }
+      })
+      .filter(Boolean)
+      .join("");
+
+    list.innerHTML = cards || emptyHtml();
+    console.info("Klevby feed render: rendered", {
+      source,
+      count: safeItems.length
+    });
+    return Boolean(cards);
+  }
+
   function ensureFeedStyles() {
     const oldStyle = document.getElementById("klevbyFeedStyles");
 
@@ -556,9 +710,17 @@
     ensureFeedStyles();
 
     const renderToken = nextRenderToken();
+    let renderedCache = false;
+    let freshLoadFailed = false;
 
     if (!getLastItems().length) {
-      list.innerHTML = loadingHtml();
+      const cachedItems = readFeedCache();
+
+      if (cachedItems.length) {
+        renderedCache = renderFeedItems(list, cachedItems, "cache");
+      } else {
+        list.innerHTML = loadingHtml();
+      }
     }
 
     let result = {
@@ -573,6 +735,7 @@
         });
       }
     } catch (error) {
+      freshLoadFailed = true;
       console.warn("Klevby feed render: лента не загрузилась", error);
     }
 
@@ -582,27 +745,20 @@
 
     const items = Array.isArray(result.items) ? result.items : [];
 
-    setLastItems(items);
-    setItemsCacheFromArray(items);
+    if (freshLoadFailed && renderedCache) {
+      return;
+    }
 
     if (!items.length) {
+      setLastItems([]);
+      setItemsCacheFromArray([]);
+      writeFeedCache([]);
       list.innerHTML = emptyHtml();
       return;
     }
 
-    const cards = items
-      .map((item) => {
-        try {
-          return profilePhotoCardHtml(item);
-        } catch (error) {
-          console.error("Klevby feed render: ошибка карточки", item, error);
-          return "";
-        }
-      })
-      .filter(Boolean)
-      .join("");
-
-    list.innerHTML = cards || emptyHtml();
+    renderFeedItems(list, items, "fresh");
+    writeFeedCache(items);
   }
 
   function refreshFeedIfHomeVisible() {
