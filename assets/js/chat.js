@@ -364,7 +364,9 @@
         updateViewportVars,
         scrollChatToBottom,
         scheduleChatResume,
-        setChatTabsLoading
+        setChatTabsLoading,
+        getActiveMode: () => activeMode,
+        getSelectedPeer: () => selectedPeer
       });
     }
 

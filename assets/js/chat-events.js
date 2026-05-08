@@ -147,6 +147,16 @@
         ? options.setChatTabsLoading
         : () => {};
 
+    const getActiveMode =
+      typeof options.getActiveMode === "function"
+        ? options.getActiveMode
+        : () => null;
+
+    const getSelectedPeer =
+      typeof options.getSelectedPeer === "function"
+        ? options.getSelectedPeer
+        : () => null;
+
     addListener(window, "klevby-app-resumed", (event) => {
       const reason = String(event?.detail?.reason || "app_resumed");
       scheduleChatResume(reason);
@@ -218,7 +228,15 @@
         }
 
         if (getClosest(event, "#privateChatTab")) {
+          console.info("[KlevbyPrivate] private tab click start", {
+            activeModeBefore: getActiveMode(),
+            selectedPeerBefore: getSelectedPeer()
+          });
           await loadPrivatePeople();
+          console.info("[KlevbyPrivate] private tab click end", {
+            activeModeAfter: getActiveMode(),
+            selectedPeerAfter: getSelectedPeer()
+          });
           return;
         }
 
