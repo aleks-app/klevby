@@ -287,7 +287,10 @@
         updateViewportVars();
 
         await withChatStepTimeout("refreshCurrentUser", () => refreshCurrentUser(), { reason });
-        await withChatStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), { reason });
+        await runOptionalChatStep("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), {
+          reason,
+          timeoutMs: 3000
+        });
         await withChatStepTimeout("reconnectRealtimeConnections", () => reconnectRealtimeConnections(), { reason });
         await runOptionalChatStep("saveExistingPushSubscriptionIfPossible", () => saveExistingPushSubscriptionIfPossible(), { reason });
 
@@ -352,7 +355,10 @@
         modal.classList.add("open");
 
         await withChatStepTimeout("refreshCurrentUser", () => refreshCurrentUser(), { reason });
-        await withChatStepTimeout("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), { reason });
+        await runOptionalChatStep("ensureCurrentUserProfile", () => ensureCurrentUserProfile({ soft: true }), {
+          reason,
+          timeoutMs: 3000
+        });
         await withChatStepTimeout("reconnectRealtimeConnections", () => reconnectRealtimeConnections(), { reason });
         await withChatStepTimeout("loadPublicMessages", () => loadPublicMessages(), { reason });
         await runOptionalChatStep("refreshPushButtonState", () => refreshPushButtonState(), { reason });
