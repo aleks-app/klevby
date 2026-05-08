@@ -1,4 +1,6 @@
 (function () {
+  let klevbyFeedViewerLikePending = false;
+
   function getState() {
     return window.KlevbyFeedState || {};
   }
@@ -190,6 +192,130 @@
     }
   }
 
+  function getBooleanLikeStateFromItem(item) {
+    if (!item || typeof item !== "object") return false;
+
+    const candidates = [
+      item.likedByViewer,
+      item.viewerLiked,
+      item.isLiked,
+      item.liked,
+      item.hasLiked,
+      item.liked_by_viewer
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === "boolean") return value;
+    }
+
+    return false;
+  }
+
+  function getViewerButtonLikeCount(button, item) {
+    const dataCount = Number(button?.dataset?.likeCount);
+
+    if (Number.isFinite(dataCount)) {
+      return Math.max(0, dataCount);
+    }
+
+    const itemCount = Number(item?.likesCount || item?.likes_count || 0);
+
+    if (Number.isFinite(itemCount)) {
+      return Math.max(0, itemCount);
+    }
+
+    const match = String(button?.textContent || "").match(/-?\d+/);
+
+    if (!match) return 0;
+
+    const parsed = Number(match[0]);
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
+  function getViewerButtonLiked(button, item) {
+    const dataLiked = String(button?.dataset?.liked || "");
+
+    if (dataLiked === "true") return true;
+    if (dataLiked === "false") return false;
+
+    return getBooleanLikeStateFromItem(item);
+  }
+
+  function setViewerLikeButtonState(button, count, liked, pending = false) {
+    if (!button) return;
+
+    const safeCount = Math.max(0, Number(count || 0) || 0);
+    const safeLiked = Boolean(liked);
+
+    button.textContent = `👍 ${safeCount}`;
+    button.dataset.likeCount = String(safeCount);
+    button.dataset.liked = safeLiked ? "true" : "false";
+    button.dataset.pendingLike = pending ? "1" : "0";
+    button.setAttribute("aria-pressed", safeLiked ? "true" : "false");
+    button.classList.toggle("liked", safeLiked);
+    button.classList.toggle("is-liked", safeLiked);
+    button.classList.toggle("is-pending", pending);
+    button.disabled = Boolean(pending);
+  }
+
+  function pulseButton(button, duration = 160) {
+    if (!button) return;
+
+    button.classList.add("is-pressed");
+
+    window.setTimeout(() => {
+      button.classList.remove("is-pressed");
+    }, duration);
+  }
+
+  function bindPressFeedback(root) {
+    if (!root || root.dataset.pressFeedbackBound === "1") return;
+
+    root.dataset.pressFeedbackBound = "1";
+
+    root.addEventListener("pointerdown", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button || button.disabled) return;
+
+      button.classList.add("is-pressed");
+    });
+
+    root.addEventListener("pointerup", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      window.setTimeout(() => {
+        button.classList.remove("is-pressed");
+      }, 90);
+    });
+
+    root.addEventListener("pointercancel", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      button.classList.remove("is-pressed");
+    });
+
+    root.addEventListener("pointerleave", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      button.classList.remove("is-pressed");
+    });
+
+    root.addEventListener("click", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button || button.disabled) return;
+
+      pulseButton(button, 130);
+    });
+  }
+
   function ensureModalStyles() {
     const oldStyle = document.getElementById("klevbyFeedModalStyles");
 
@@ -199,7 +325,7 @@
 
     const style = document.createElement("style");
     style.id = "klevbyFeedModalStyles";
-    style.dataset.version = "20260507-split-modals-1";
+    style.dataset.version = "20260508-viewer-button-feedback-1";
 
     style.textContent = `
       .klevby-feed-viewer.hidden,
@@ -322,13 +448,79 @@
         font-weight: 900;
         cursor: pointer;
         white-space: nowrap;
-        transition: 0.18s ease;
+        transform: translateY(0) scale(1);
+        transition:
+          transform 0.08s ease,
+          filter 0.12s ease,
+          box-shadow 0.12s ease,
+          background 0.12s ease,
+          opacity 0.12s ease;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .klevby-feed-viewer-close,
+      .klevby-feed-comment-close,
+      .klevby-feed-comment-delete,
+      .klevby-feed-comment-actions .small-btn {
+        transform: translateY(0) scale(1);
+        transition:
+          transform 0.08s ease,
+          filter 0.12s ease,
+          box-shadow 0.12s ease,
+          background 0.12s ease,
+          opacity 0.12s ease;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .klevby-feed-viewer-actions button:hover,
+      .klevby-feed-viewer-close:hover,
+      .klevby-feed-comment-close:hover,
+      .klevby-feed-comment-delete:hover,
+      .klevby-feed-comment-actions .small-btn:hover {
+        filter: brightness(1.08);
+      }
+
+      .klevby-feed-viewer-actions button:active,
+      .klevby-feed-viewer-actions button.is-pressed,
+      .klevby-feed-viewer-close:active,
+      .klevby-feed-viewer-close.is-pressed,
+      .klevby-feed-comment-close:active,
+      .klevby-feed-comment-close.is-pressed,
+      .klevby-feed-comment-delete:active,
+      .klevby-feed-comment-delete.is-pressed,
+      .klevby-feed-comment-actions .small-btn:active,
+      .klevby-feed-comment-actions .small-btn.is-pressed {
+        transform: translateY(2px) scale(0.97);
+        filter: brightness(1.16);
+        box-shadow:
+          inset 0 2px 8px rgba(0,0,0,0.35),
+          0 0 0 1px rgba(255,255,255,0.08);
+      }
+
+      .klevby-feed-viewer-actions button.is-pending,
+      .klevby-feed-viewer-actions button:disabled {
+        opacity: 0.72;
+        cursor: wait;
       }
 
       #klevbyFeedViewerLikeBtn,
       #klevbyFeedViewerCommentBtn {
         border: 1px solid rgba(244,178,74,0.20);
         background: rgba(244,178,74,0.18);
+        color: #fff8ea !important;
+      }
+
+      #klevbyFeedViewerLikeBtn.is-liked,
+      #klevbyFeedViewerLikeBtn.liked {
+        border-color: rgba(255,190,76,0.48);
+        background:
+          linear-gradient(180deg, rgba(255,190,76,0.34), rgba(244,178,74,0.18));
         color: #fff8ea !important;
       }
 
@@ -562,7 +754,10 @@
 
     let viewer = document.getElementById("klevbyFeedPhotoViewer");
 
-    if (viewer) return viewer;
+    if (viewer) {
+      bindPressFeedback(viewer);
+      return viewer;
+    }
 
     viewer = document.createElement("div");
     viewer.id = "klevbyFeedPhotoViewer";
@@ -582,7 +777,7 @@
           </div>
 
           <div class="klevby-feed-viewer-actions">
-            <button id="klevbyFeedViewerLikeBtn" type="button">👍 0</button>
+            <button id="klevbyFeedViewerLikeBtn" type="button" aria-pressed="false">👍 0</button>
             <button id="klevbyFeedViewerCommentBtn" type="button">💬 Комментарии</button>
             <button id="klevbyFeedViewerDeleteBtn" type="button">Удалить</button>
           </div>
@@ -591,6 +786,7 @@
     `;
 
     document.body.appendChild(viewer);
+    bindPressFeedback(viewer);
 
     return viewer;
   }
@@ -598,6 +794,8 @@
   function closeFeedPhotoViewer() {
     const viewer = document.getElementById("klevbyFeedPhotoViewer");
     const image = document.getElementById("klevbyFeedPhotoViewerImage");
+
+    klevbyFeedViewerLikePending = false;
 
     if (viewer) {
       viewer.classList.add("hidden");
@@ -645,27 +843,62 @@
   }
 
   async function toggleLikeFromViewer(postId) {
-    const actions = window.KlevbyFeedActions || {};
+    const cleanId = String(postId || "").trim();
 
-    if (typeof actions.toggleLikeFromCard === "function") {
-      await actions.toggleLikeFromCard(postId);
-    } else if (typeof window.toggleFeedLike === "function") {
-      await window.toggleFeedLike(postId);
-    } else if (typeof window.klevbyToggleFeedLike === "function") {
-      await window.klevbyToggleFeedLike(postId);
-      renderFeedSoon(120);
-    } else {
-      alert("Лайки ещё не подключены.");
-      return;
-    }
+    if (!cleanId || klevbyFeedViewerLikePending) return;
 
-    setTimeout(() => {
-      const updatedItem = getCachedItem(postId);
+    const likeButton = document.getElementById("klevbyFeedViewerLikeBtn");
+    const currentItem = getCachedItem(cleanId);
+    const previousCount = getViewerButtonLikeCount(likeButton, currentItem);
+    const previousLiked = getViewerButtonLiked(likeButton, currentItem);
+    const nextLiked = !previousLiked;
+    const nextCount = Math.max(0, previousCount + (nextLiked ? 1 : -1));
 
-      if (updatedItem) {
-        openFeedPhotoViewer(updatedItem);
+    klevbyFeedViewerLikePending = true;
+
+    pulseButton(likeButton, 160);
+    setViewerLikeButtonState(likeButton, nextCount, nextLiked, true);
+
+    try {
+      const actions = window.KlevbyFeedActions || {};
+
+      if (typeof actions.toggleLikeFromCard === "function") {
+        await actions.toggleLikeFromCard(cleanId);
+      } else if (typeof window.toggleFeedLike === "function") {
+        await window.toggleFeedLike(cleanId);
+      } else if (typeof window.klevbyToggleFeedLike === "function") {
+        await window.klevbyToggleFeedLike(cleanId);
+        renderFeedSoon(120);
+      } else {
+        throw new Error("Лайки ещё не подключены.");
       }
-    }, 360);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+    } catch (error) {
+      setViewerLikeButtonState(likeButton, previousCount, previousLiked, false);
+      console.warn("Klevby feed modal: лайк viewer не сработал", error);
+      alert(error?.message || "Не получилось поставить лайк.");
+    } finally {
+      klevbyFeedViewerLikePending = false;
+
+      const updatedItem = getCachedItem(cleanId);
+      const finalItem = updatedItem || currentItem;
+      const finalCount = getViewerButtonLikeCount(likeButton, finalItem);
+      const finalLiked = getViewerButtonLiked(likeButton, finalItem);
+
+      setViewerLikeButtonState(likeButton, finalCount, finalLiked, false);
+
+      setTimeout(() => {
+        const viewer = document.getElementById("klevbyFeedPhotoViewer");
+        const newestItem = getCachedItem(cleanId);
+
+        if (viewer && !viewer.classList.contains("hidden") && newestItem) {
+          openFeedPhotoViewer(newestItem);
+        }
+      }, 260);
+    }
   }
 
   function openFeedPhotoViewer(item) {
@@ -683,8 +916,11 @@
     const titleText = item.title || item.caption || "Фото с рыбалки";
     const dateText = formatDate(item.createdAt);
     const cityText = item.authorCity ? `📍 ${item.authorCity}` : "";
-    const likesText = item.source === "supabase" ? `👍 ${Number(item.likesCount || 0)}` : "";
-    const commentsText = item.source === "supabase" ? `💬 ${Number(item.commentsCount || 0)}` : "";
+    const likesCount = Math.max(0, Number(item.likesCount || item.likes_count || 0) || 0);
+    const commentsCount = Math.max(0, Number(item.commentsCount || item.comments_count || 0) || 0);
+    const viewerLiked = getBooleanLikeStateFromItem(item);
+    const likesText = item.source === "supabase" ? `👍 ${likesCount}` : "";
+    const commentsText = item.source === "supabase" ? `💬 ${commentsCount}` : "";
 
     if (image) image.src = imageUrl;
     if (title) title.textContent = titleText;
@@ -702,14 +938,17 @@
       const canDelete = canManageFeedItem(item);
 
       deleteButton.classList.toggle("hidden", !canDelete);
-      deleteButton.onclick = () => deleteFeedItem(item);
+      deleteButton.onclick = () => {
+        pulseButton(deleteButton);
+        deleteFeedItem(item);
+      };
     }
 
     if (likeButton) {
       const isSupabase = item.source === "supabase";
 
       likeButton.classList.toggle("hidden", !isSupabase);
-      likeButton.textContent = `👍 ${Number(item.likesCount || 0)}`;
+      setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
       likeButton.onclick = () => toggleLikeFromViewer(item.id);
     }
 
@@ -717,8 +956,11 @@
       const isSupabase = item.source === "supabase";
 
       commentButton.classList.toggle("hidden", !isSupabase);
-      commentButton.textContent = item.commentsCount ? `💬 ${Number(item.commentsCount || 0)}` : "💬 Комментарии";
-      commentButton.onclick = () => openFeedCommentModal(item.id);
+      commentButton.textContent = commentsCount ? `💬 ${commentsCount}` : "💬 Комментарии";
+      commentButton.onclick = () => {
+        pulseButton(commentButton);
+        openFeedCommentModal(item.id);
+      };
     }
 
     viewer.classList.remove("hidden");
@@ -769,7 +1011,10 @@
 
     let modal = document.getElementById("klevbyFeedCommentModal");
 
-    if (modal) return modal;
+    if (modal) {
+      bindPressFeedback(modal);
+      return modal;
+    }
 
     modal = document.createElement("div");
     modal.id = "klevbyFeedCommentModal";
@@ -806,6 +1051,7 @@
     `;
 
     document.body.appendChild(modal);
+    bindPressFeedback(modal);
 
     return modal;
   }
