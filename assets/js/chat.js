@@ -298,7 +298,15 @@
 
         isValidSupabaseUuid,
         scrollChatToBottom,
-        showEmptyState
+        showEmptyState,
+
+        recoverSupabaseClient: async (options = {}) => {
+          if (typeof window.klevbyRecoverSupabaseClient === "function") {
+            return await window.klevbyRecoverSupabaseClient(options);
+          }
+
+          return false;
+        }
       });
     }
 
