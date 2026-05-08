@@ -417,15 +417,15 @@
     return Promise.resolve();
   }
 
-  function toggleFeedLike(postId) {
+  function toggleFeedLike(postId, buttonEl) {
     const actions = getActions();
 
     if (typeof actions.toggleFeedLikeFromCard === "function") {
-      return actions.toggleFeedLikeFromCard(postId);
+      return actions.toggleFeedLikeFromCard(postId, buttonEl);
     }
 
     if (typeof actions.toggleFeedLike === "function") {
-      return actions.toggleFeedLike(postId);
+      return actions.toggleFeedLike(postId, buttonEl);
     }
 
     if (typeof window.klevbyToggleFeedLike === "function") {

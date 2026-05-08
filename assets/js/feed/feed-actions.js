@@ -257,19 +257,67 @@
     setLikeButtonsState(postId, safeCount, Boolean(liked), pendingLikeLocks.has(String(postId)));
   }
 
-  function applyOptimisticLike(postId) {
+  function parseCountFromButton(buttonEl) {
+    if (!buttonEl) return null;
+
+    const dataCount = Number(buttonEl?.dataset?.likeCount);
+    if (Number.isFinite(dataCount)) return Math.max(0, dataCount);
+
+    const match = String(buttonEl.textContent || "").match(/-?\d+/);
+    if (!match) return null;
+
+    const count = Number(match[0]);
+    return Number.isFinite(count) ? Math.max(0, count) : null;
+  }
+
+  function parseLikedFromButton(buttonEl) {
+    if (!buttonEl) return null;
+
+    const value = String(buttonEl?.dataset?.liked || "").trim().toLowerCase();
+
+    if (value === "true") return true;
+    if (value === "false") return false;
+
+    const pressed = buttonEl.getAttribute("aria-pressed");
+    if (pressed === "true") return true;
+    if (pressed === "false") return false;
+
+    return null;
+  }
+
+  function updateLikeButtonDirect(buttonEl, nextLiked, nextCount, pending = false) {
+    if (!buttonEl) return;
+
+    buttonEl.textContent = `👍 ${Math.max(0, Number(nextCount || 0) || 0)}`;
+    buttonEl.dataset.likeCount = String(Math.max(0, Number(nextCount || 0) || 0));
+    buttonEl.dataset.liked = String(Boolean(nextLiked));
+    buttonEl.dataset.pendingLike = pending ? "1" : "0";
+    buttonEl.setAttribute("aria-pressed", String(Boolean(nextLiked)));
+    buttonEl.classList.toggle("is-liked", Boolean(nextLiked));
+    buttonEl.classList.toggle("liked", Boolean(nextLiked));
+  }
+
+  function applyOptimisticLike(postId, buttonEl = null) {
     const snapshot = getLikeSnapshot(postId);
-    const previousLiked = typeof snapshot.liked === "boolean" ? snapshot.liked : false;
+    const buttonCount = parseCountFromButton(buttonEl);
+    const buttonLiked = parseLikedFromButton(buttonEl);
+    const baseCount = buttonCount !== null ? buttonCount : snapshot.likesCount;
+    const previousLiked = typeof buttonLiked === "boolean"
+      ? buttonLiked
+      : (typeof snapshot.liked === "boolean" ? snapshot.liked : false);
     const optimisticLiked = !previousLiked;
     const optimisticCount = Math.max(
       0,
-      snapshot.likesCount + (optimisticLiked ? 1 : -1)
+      baseCount + (optimisticLiked ? 1 : -1)
     );
 
+    updateLikeButtonDirect(buttonEl, optimisticLiked, optimisticCount, true);
     applyLocalLikeState(postId, optimisticLiked, optimisticCount);
 
     return {
       ...snapshot,
+      likesCount: baseCount,
+      liked: previousLiked,
       optimisticLiked,
       optimisticCount
     };
@@ -358,23 +406,29 @@
     throw new Error("Лайки ещё не подключены.");
   }
 
-  async function toggleLikeFromCard(postId) {
+  async function toggleLikeFromCard(postId, buttonEl = null) {
     const cleanId = String(postId || "").trim();
 
     if (!cleanId) return;
+
+    console.info("[KlevbyFeedLike] click", {
+      postId: cleanId,
+      hasButtonEl: Boolean(buttonEl)
+    });
 
     if (pendingLikeLocks.has(cleanId)) {
       return;
     }
 
     pendingLikeLocks.add(cleanId);
-    const snapshot = applyOptimisticLike(cleanId);
+    const snapshot = applyOptimisticLike(cleanId, buttonEl);
     setLikeButtonsState(cleanId, snapshot.optimisticCount, snapshot.optimisticLiked, true);
 
     try {
       const result = await callToggleLikeApi(cleanId);
 
       reconcileLikeAfterSuccess(cleanId, snapshot, result);
+      updateLikeButtonDirect(buttonEl, getKnownLikeState(cleanId, snapshot.item), getLikeSnapshot(cleanId).likesCount, false);
 
       if (navigator.vibrate) {
         navigator.vibrate(12);
@@ -383,26 +437,34 @@
       scheduleLikeRefresh();
     } catch (error) {
       rollbackLikeState(cleanId, snapshot);
+      updateLikeButtonDirect(buttonEl, snapshot.liked, snapshot.likesCount, false);
       console.warn("Klevby feed actions: лайк не сработал", error);
       alert(error?.message || "Не получилось поставить лайк.");
     } finally {
       pendingLikeLocks.delete(cleanId);
       const currentSnapshot = getLikeSnapshot(cleanId);
+      const finalLiked = getKnownLikeState(cleanId, currentSnapshot.item);
       setLikeButtonsState(
         cleanId,
         currentSnapshot.likesCount,
-        getKnownLikeState(cleanId, currentSnapshot.item),
+        finalLiked,
         false
       );
+      updateLikeButtonDirect(buttonEl, finalLiked, currentSnapshot.likesCount, false);
     }
   }
 
-  async function toggleLikeFromViewer(postId) {
+  async function toggleLikeFromViewer(postId, buttonEl = null) {
     const cleanId = String(postId || "").trim();
 
     if (!cleanId) return;
 
-    await toggleLikeFromCard(cleanId);
+    console.info("[KlevbyFeedLike] click", {
+      postId: cleanId,
+      hasButtonEl: Boolean(buttonEl)
+    });
+
+    await toggleLikeFromCard(cleanId, buttonEl);
 
     setTimeout(() => {
       const state = getState();
