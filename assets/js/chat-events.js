@@ -51,6 +51,10 @@
     const messagesContainer = elements.messagesContainer || null;
     const input = elements.input || null;
     const sendBtn = elements.sendBtn || null;
+    const pushBtn =
+      elements.pushBtn ||
+      document.getElementById("klevby-push-btn") ||
+      null;
 
     const getChatLoading =
       typeof options.getChatLoading === "function"
@@ -305,6 +309,22 @@
         setChatTabsLoading(false);
       }
     });
+
+    if (pushBtn && !pushBtn.__klevbyPushFallbackBound) {
+      const pushFallbackHandler = async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        console.info("[KlevbyEvents] push button click");
+        await enablePushNotifications();
+      };
+
+      pushBtn.__klevbyPushFallbackBound = true;
+
+      addListener(pushBtn, "click", pushFallbackHandler);
+      cleanupFns.push(() => {
+        pushBtn.__klevbyPushFallbackBound = false;
+      });
+    }
 
     addListener(messagesContainer, "pointerdown", (event) => {
       const row = getClosest(event, ".chat-message-row");
