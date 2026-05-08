@@ -1069,11 +1069,24 @@
     }
 
     async function send() {
+      const startedAt = Date.now();
+      console.info("[KlevbyChat] send start", {
+        activeMode,
+        selectedPeerId: selectedPeer?.id || null,
+        inputLength: String(input?.value || "").trim().length,
+        sendBtnDisabled: Boolean(sendBtn?.disabled),
+        chatLoading: getChatLoading()
+      });
       if (activeMode === "private") {
         await sendPrivateMessage();
       } else {
         await sendPublicMessage();
       }
+      console.info("[KlevbyChat] send end", {
+        activeMode,
+        selectedPeerId: selectedPeer?.id || null,
+        durationMs: Date.now() - startedAt
+      });
     }
 
     async function deleteMessage(type, id) {

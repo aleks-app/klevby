@@ -334,6 +334,29 @@
     });
 
     addListener(sendBtn, "click", () => {
+      const activeMode = getActiveMode();
+      const selectedPeer = getSelectedPeer();
+      const inputLength = String(input?.value || "").trim().length;
+      const chatLoading = Boolean(getChatLoading());
+      const isDisabled = Boolean(sendBtn?.disabled);
+
+      console.info("[KlevbyChatEvents] send button click start", {
+        activeMode,
+        selectedPeerId: selectedPeer?.id || null,
+        inputLength,
+        sendBtnDisabled: isDisabled,
+        chatLoading
+      });
+
+      if (isDisabled || chatLoading) {
+        console.info("[KlevbyChatEvents] send button click ignored reason", {
+          reason: isDisabled ? "sendBtn.disabled" : "chatLoading",
+          activeMode,
+          selectedPeerId: selectedPeer?.id || null,
+          inputLength
+        });
+      }
+
       send();
     });
 

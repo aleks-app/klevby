@@ -56,6 +56,16 @@
   function getMainSupabaseClient() {
     return getCtx().getMainSupabaseClient ? getCtx().getMainSupabaseClient() : null;
   }
+  
+  function getPublicAccessTokenQuick() {
+    try {
+      const session = getMainSupabaseClient()?.auth?.session?.();
+      const token = session?.access_token;
+      return token ? String(token) : "";
+    } catch (_) {
+      return "";
+    }
+  }
 
   function createTimeoutError(stepName, timeoutMs) {
     const error = new Error(`Klevby chat public: step "${stepName}" timed out after ${timeoutMs}ms.`);
@@ -354,9 +364,16 @@
 
     if (!rawVal) return;
 
+    const startedAt = Date.now();
     try {
       await refreshCurrentUser();
-      await ensureCurrentUserProfile({ soft: true });
+      try {
+        await ensureCurrentUserProfile({ soft: true });
+      } catch (error) {
+        console.warn("[KlevbyChatPublic] ensureCurrentUserProfile skipped", {
+          error: String(error?.message || error)
+        });
+      }
 
       if (sendBtn) {
         sendBtn.disabled = true;
@@ -378,20 +395,47 @@
 
       sentLocalMessages.add(`${userName}__${content}`);
 
-      const client = getMainSupabaseClient();
+      const config = window.KLEVB_CONFIG || {};
+      const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
+      const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+      const accessToken = getPublicAccessTokenQuick();
+      const authToken = accessToken || supabaseAnonKey;
 
-      if (!client?.from) {
-        alert("Supabase client для общего чата не найден.");
+      if (!supabaseUrl || !supabaseAnonKey || !authToken) {
+        console.warn("[KlevbyChatPublic] send REST fail", { status: "config_missing" });
+        alert("Не получилось отправить сообщение. Проверь подключение к чату.");
         return;
       }
-
-      const { error } = await client.from("messages").insert([payload]);
-
-      if (error) {
-        console.error("Ошибка отправки общего сообщения:", error);
+      
+      const endpoint = `${supabaseUrl}/rest/v1/messages`;
+      console.info("[KlevbyChatPublic] send REST start", {
+        activeMode: "public",
+        status: "start"
+      });
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation"
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        console.error("[KlevbyChatPublic] send REST fail", {
+          status: response.status,
+          durationMs: Date.now() - startedAt,
+          errorText
+        });
         alert("Не получилось отправить сообщение. Проверь таблицу messages и RLS.");
         return;
       }
+      console.info("[KlevbyChatPublic] send REST end", {
+        status: response.status,
+        durationMs: Date.now() - startedAt
+      });
 
       if (input) {
         input.value = "";
