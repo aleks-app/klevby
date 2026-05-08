@@ -644,13 +644,13 @@
     }
   }
 
-  async function toggleLikeFromViewer(postId) {
+  async function toggleLikeFromViewer(postId, buttonEl) {
     const actions = window.KlevbyFeedActions || {};
 
     if (typeof actions.toggleLikeFromCard === "function") {
-      await actions.toggleLikeFromCard(postId);
+      await actions.toggleLikeFromCard(postId, buttonEl);
     } else if (typeof window.toggleFeedLike === "function") {
-      await window.toggleFeedLike(postId);
+      await window.toggleFeedLike(postId, buttonEl);
     } else if (typeof window.klevbyToggleFeedLike === "function") {
       await window.klevbyToggleFeedLike(postId);
       renderFeedSoon(120);
@@ -710,7 +710,17 @@
 
       likeButton.classList.toggle("hidden", !isSupabase);
       likeButton.textContent = `👍 ${Number(item.likesCount || 0)}`;
-      likeButton.onclick = () => toggleLikeFromViewer(item.id);
+      likeButton.dataset.feedPostId = String(item.id || "");
+      likeButton.dataset.postId = String(item.id || "");
+      likeButton.dataset.likeCount = String(Number(item.likesCount || 0));
+      likeButton.dataset.liked = String(Boolean(item.likedByViewer || item.viewerLiked || item.isLiked || item.liked));
+      likeButton.setAttribute("aria-pressed", likeButton.dataset.liked);
+      likeButton.classList.toggle("is-liked", likeButton.dataset.liked === "true");
+      likeButton.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        return toggleLikeFromViewer(item.id, likeButton);
+      };
     }
 
     if (commentButton) {
