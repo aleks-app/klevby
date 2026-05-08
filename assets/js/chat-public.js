@@ -238,6 +238,129 @@
     return false;
   }
 
+  const PUBLIC_CACHE_VERSION = 1;
+  const PUBLIC_CACHE_LIMIT = 80;
+  const PUBLIC_CACHE_TTL_MS = 30 * 60 * 1000;
+  const PUBLIC_CACHE_KEY_PREFIX = "klevby_chat_public_cache_v1";
+
+  function getPublicCacheOwnerKey() {
+    const currentUser = getCurrentUser();
+    const userId = String(currentUser?.id || "").trim();
+
+    if (isValidSupabaseUuid(userId)) {
+      return userId;
+    }
+
+    return "guest";
+  }
+
+  function getPublicCacheKey() {
+    return `${PUBLIC_CACHE_KEY_PREFIX}_${getPublicCacheOwnerKey()}`;
+  }
+
+  function normalizePublicMessageForCache(message) {
+    if (!message || typeof message !== "object") return null;
+
+    const content = String(message.content || "");
+    const userName = String(message.user_name || "");
+    const createdAt = String(message.created_at || "");
+
+    if (!content || !createdAt) return null;
+
+    return {
+      id: message.id || null,
+      created_at: createdAt,
+      user_id: message.user_id || null,
+      user_name: userName,
+      content
+    };
+  }
+
+  function normalizePublicMessagesForCache(messages) {
+    if (!Array.isArray(messages)) return [];
+
+    return messages
+      .map(normalizePublicMessageForCache)
+      .filter(Boolean)
+      .slice(-PUBLIC_CACHE_LIMIT);
+  }
+
+  function readPublicMessagesCache() {
+    try {
+      const raw = localStorage.getItem(getPublicCacheKey());
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      const savedAt = Number(parsed?.savedAt || 0);
+      const version = Number(parsed?.version || 0);
+
+      if (version !== PUBLIC_CACHE_VERSION || !savedAt) {
+        localStorage.removeItem(getPublicCacheKey());
+        return [];
+      }
+
+      if (Date.now() - savedAt > PUBLIC_CACHE_TTL_MS) {
+        localStorage.removeItem(getPublicCacheKey());
+        return [];
+      }
+
+      const messages = normalizePublicMessagesForCache(parsed?.messages || []);
+      if (!messages.length) return [];
+
+      return messages;
+    } catch (error) {
+      try {
+        localStorage.removeItem(getPublicCacheKey());
+      } catch (_) {}
+      console.debug("[KlevbyChatPublic] public cache read skipped", {
+        error: String(error?.message || error)
+      });
+      return [];
+    }
+  }
+
+  function savePublicMessagesCache(messages) {
+    try {
+      const normalized = normalizePublicMessagesForCache(messages);
+      if (!normalized.length) return;
+
+      localStorage.setItem(getPublicCacheKey(), JSON.stringify({
+        version: PUBLIC_CACHE_VERSION,
+        savedAt: Date.now(),
+        count: normalized.length,
+        messages: normalized
+      }));
+    } catch (error) {
+      console.debug("[KlevbyChatPublic] public cache save skipped", {
+        error: String(error?.message || error)
+      });
+    }
+  }
+
+  function rememberPublicFallbackProfiles(messages) {
+    (messages || []).forEach((message) => {
+      if (message.user_id && message.user_name) {
+        rememberFallbackProfile(message.user_id, message.user_name);
+      }
+    });
+  }
+
+  function renderPublicMessages(data, { source = "rest" } = {}) {
+    if (!Array.isArray(data) || !data.length) return false;
+
+    rememberPublicFallbackProfiles(data);
+    clearMessages();
+    renderMessageList(data, renderPublicMessage);
+    scrollChatToBottom();
+
+    console.info("[KlevbyChatPublic] public render", {
+      source,
+      rows: data.length
+    });
+
+    return true;
+  }
+
 
   async function loadPublicMessagesViaRest(signal) {
     const config = window.KLEVB_CONFIG || {};
@@ -320,6 +443,17 @@
       syncSelectedPeerForCalls();
       clearMessages();
 
+      const cachedMessages = readPublicMessagesCache();
+      const hasCachedMessages = Boolean(cachedMessages.length);
+
+      if (hasCachedMessages && !isStaleNavigation(navToken)) {
+        console.info("[KlevbyChatPublic] public cache render start", {
+          rows: cachedMessages.length
+        });
+        renderPublicMessages(cachedMessages, { source: "cache" });
+        console.info("[KlevbyChatPublic] public cache render end");
+      }
+
       const result = await runWithAbortableTimeout("messages REST", 6500, (signal) =>
         loadPublicMessagesViaRest(signal)
       );
@@ -328,25 +462,23 @@
 
       if (result.error) {
         console.error("Ошибка загрузки общего чата:", result.error);
-        showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
+        if (!hasCachedMessages) {
+          showEmptyState("Не удалось загрузить общий чат. Проверь интернет и обнови приложение.");
+        }
         return;
       }
 
       const data = Array.isArray(result.data) ? result.data.slice().reverse() : [];
 
-      data.forEach((message) => {
-        if (message.user_id && message.user_name) {
-          rememberFallbackProfile(message.user_id, message.user_name);
-        }
-      });
-
       if (!data.length) {
+        clearMessages();
         showEmptyState("Пока сообщений нет. Напиши первым 🎣");
       } else {
         console.info("[KlevbyChatPublic] public render first start");
         await runWithAbortableTimeout("render", 3000, async () => {
-          renderMessageList(data, renderPublicMessage);
+          renderPublicMessages(data, { source: "rest" });
         });
+        savePublicMessagesCache(data);
         console.info("[KlevbyChatPublic] public render first end");
       }
 
