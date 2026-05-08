@@ -450,6 +450,67 @@
       const myId = String(currentChatUser.id);
       const peersMap = new Map();
 
+      function buildAndRenderPeersList(logLabel = "loadPrivatePeople end") {
+        if (isStaleNavigation(navToken)) return;
+
+        const peers = Array.from(peersMap.values()).map((peer) => ({
+          ...peer,
+          name: getProfileName(peer.id, peer.name)
+        })).sort((a, b) => {
+          if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
+          if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
+          return b.lastTimeValue - a.lastTimeValue;
+        });
+
+        setUnreadPrivateCount(peers.reduce((sum, peer) => sum + peer.unreadCount, 0));
+        updateUnreadBadge();
+
+        if (!peers.length) {
+          showEmptyState("Пока нет собеседников. Пользователь должен быть автором объявления или написать в общий чат.");
+          return;
+        }
+
+        const list = document.createElement("div");
+        list.className = "klevby-private-dialog-list";
+
+        list.innerHTML = peers.map((peer) => {
+          const preview = peer.lastMessage
+            ? parseReplyContent(peer.lastMessage).mainText
+            : "Нажми, чтобы открыть переписку";
+
+          return `
+            <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
+              <span class="klevby-private-dialog-avatar">${escapeHtml(getInitials(peer.name))}</span>
+
+              <span class="klevby-private-dialog-main">
+                <span class="klevby-private-dialog-top">
+                  <span class="klevby-private-dialog-name">${escapeHtml(peer.name)}</span>
+                  <span class="klevby-private-dialog-time">${escapeHtml(peer.lastTime || "")}</span>
+                </span>
+
+                <span class="klevby-private-dialog-bottom">
+                  <span class="klevby-private-dialog-preview">${escapeHtml(preview)}</span>
+                  ${peer.unreadCount > 0 ? `<span class="klevby-private-unread-dot">${escapeHtml(peer.unreadCount)}</span>` : ""}
+                </span>
+              </span>
+
+              <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
+            </button>
+          `;
+        }).join("");
+
+        clearMessages();
+        if (messagesContainer) {
+          messagesContainer.appendChild(list);
+        }
+        console.info("[KlevbyPrivate] " + logLabel, {
+          navToken,
+          activeModeAfter: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
+          selectedPeerAfter: getSelectedPeer(),
+          peersCount: peers.length
+        });
+      }
+
       function addPeer(id, name, message = null) {
         const peerId = String(id || "").trim();
 
@@ -535,111 +596,57 @@
         console.warn("Не удалось загрузить пользователей из private_messages:", error);
       }
 
-      try {
-        const { data: publicUsers } = await withPrivateOptionalStepTimeout("messages users select", () => client
-          .from("messages")
-          .select("user_id,user_name")
-          .not("user_id", "is", null)) || {};
-
-        if (isStaleNavigation(navToken)) return;
-
-        (publicUsers || []).forEach((item) => {
-          rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
-        });
-
-        await withPrivateOptionalStepTimeout("profiles select for messages users", () => loadProfilesByIds((publicUsers || []).map((item) => item.user_id)));
-
-        if (isStaleNavigation(navToken)) return;
-
-        (publicUsers || []).forEach((item) => {
-          addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
-        });
-      } catch (error) {
-        if (isStaleNavigation(navToken)) return;
-        console.warn("Не удалось загрузить пользователей из общего чата:", error);
-      }
-
-      try {
-        const { data: postUsers } = await withPrivateOptionalStepTimeout("posts users select", () => client
-          .from("posts")
-          .select("owner_id,name")
-          .not("owner_id", "is", null)) || {};
-
-        if (isStaleNavigation(navToken)) return;
-
-        (postUsers || []).forEach((item) => {
-          rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
-        });
-
-        await withPrivateOptionalStepTimeout("profiles select for posts users", () => loadProfilesByIds((postUsers || []).map((item) => item.owner_id)));
-
-        if (isStaleNavigation(navToken)) return;
-
-        (postUsers || []).forEach((item) => {
-          addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
-        });
-      } catch (error) {
-        if (isStaleNavigation(navToken)) return;
-        console.warn("Не удалось загрузить пользователей из объявлений:", error);
-      }
-
       if (isStaleNavigation(navToken)) return;
+      buildAndRenderPeersList("loadPrivatePeople end (initial)");
 
-      const peers = Array.from(peersMap.values()).map((peer) => ({
-        ...peer,
-        name: getProfileName(peer.id, peer.name)
-      })).sort((a, b) => {
-        if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
-        if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
-        return b.lastTimeValue - a.lastTimeValue;
-      });
+      Promise.resolve().then(async () => {
+        try {
+          const { data: publicUsers } = await withPrivateOptionalStepTimeout("messages users select", () => client
+            .from("messages")
+            .select("user_id,user_name")
+            .not("user_id", "is", null)) || {};
 
-      setUnreadPrivateCount(peers.reduce((sum, peer) => sum + peer.unreadCount, 0));
-      updateUnreadBadge();
+          if (isStaleNavigation(navToken)) return;
 
-      if (!peers.length) {
-        showEmptyState("Пока нет собеседников. Пользователь должен быть автором объявления или написать в общий чат.");
-        return;
-      }
+          (publicUsers || []).forEach((item) => {
+            rememberFallbackProfile(item.user_id, item.user_name || "Рыбак");
+          });
 
-      const list = document.createElement("div");
-      list.className = "klevby-private-dialog-list";
+          await withPrivateOptionalStepTimeout("profiles select for messages users", () => loadProfilesByIds((publicUsers || []).map((item) => item.user_id)));
+          if (isStaleNavigation(navToken)) return;
 
-      list.innerHTML = peers.map((peer) => {
-        const preview = peer.lastMessage
-          ? parseReplyContent(peer.lastMessage).mainText
-          : "Нажми, чтобы открыть переписку";
+          (publicUsers || []).forEach((item) => {
+            addPeer(item.user_id, getProfileName(item.user_id, item.user_name || "Рыбак"), null);
+          });
 
-        return `
-          <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
-            <span class="klevby-private-dialog-avatar">${escapeHtml(getInitials(peer.name))}</span>
+          const { data: postUsers } = await withPrivateOptionalStepTimeout("posts users select", () => client
+            .from("posts")
+            .select("owner_id,name")
+            .not("owner_id", "is", null)) || {};
 
-            <span class="klevby-private-dialog-main">
-              <span class="klevby-private-dialog-top">
-                <span class="klevby-private-dialog-name">${escapeHtml(peer.name)}</span>
-                <span class="klevby-private-dialog-time">${escapeHtml(peer.lastTime || "")}</span>
-              </span>
+          if (isStaleNavigation(navToken)) return;
 
-              <span class="klevby-private-dialog-bottom">
-                <span class="klevby-private-dialog-preview">${escapeHtml(preview)}</span>
-                ${peer.unreadCount > 0 ? `<span class="klevby-private-unread-dot">${escapeHtml(peer.unreadCount)}</span>` : ""}
-              </span>
-            </span>
+          (postUsers || []).forEach((item) => {
+            rememberFallbackProfile(item.owner_id, item.name || "Рыбак");
+          });
 
-            <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
-          </button>
-        `;
-      }).join("");
+          await withPrivateOptionalStepTimeout("profiles select for posts users", () => loadProfilesByIds((postUsers || []).map((item) => item.owner_id)));
+          if (isStaleNavigation(navToken)) return;
 
-      clearMessages();
-      if (messagesContainer) {
-        messagesContainer.appendChild(list);
-      }
-      console.info("[KlevbyPrivate] loadPrivatePeople end", {
-        navToken,
-        activeModeAfter: getCtx().getActiveMode ? getCtx().getActiveMode() : null,
-        selectedPeerAfter: getSelectedPeer(),
-        peersCount: peers.length
+          (postUsers || []).forEach((item) => {
+            addPeer(item.owner_id, getProfileName(item.owner_id, item.name || "Рыбак"), null);
+          });
+
+          if (isStaleNavigation(navToken)) {
+            console.info("[KlevbyPrivate] loadPrivatePeople background skipped stale", { navToken });
+            return;
+          }
+
+          buildAndRenderPeersList("loadPrivatePeople end (background enrichment)");
+        } catch (error) {
+          if (isStaleNavigation(navToken)) return;
+          console.warn("[KlevbyPrivate] background enrichment failed", error);
+        }
       });
     } catch (error) {
       if (!isStaleNavigation(navToken)) {
