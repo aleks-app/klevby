@@ -331,6 +331,9 @@
         const error = new Error(message);
         error.status = response.status;
         error.data = data;
+        error.code = data?.code || "";
+        error.details = data?.details || "";
+        error.hint = data?.hint || "";
         throw error;
       }
 
@@ -640,8 +643,28 @@
     );
   }
 
-  function klevbyFeedSupabaseCountCommentsRows(rows) {
+  function klevbyFeedSupabaseNormalizeIds(postIds) {
+    return Array.from(
+      new Set(
+        (Array.isArray(postIds) ? postIds : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      )
+    );
+  }
+
+  function klevbyFeedSupabaseMakeZeroCountMap(postIds) {
     const counts = new Map();
+
+    klevbyFeedSupabaseNormalizeIds(postIds).forEach((id) => {
+      counts.set(id, 0);
+    });
+
+    return counts;
+  }
+
+  function klevbyFeedSupabaseCountCommentsRows(rows, postIds = []) {
+    const counts = klevbyFeedSupabaseMakeZeroCountMap(postIds);
 
     (Array.isArray(rows) ? rows : []).forEach((row) => {
       const postId = String(row?.post_id || row?.postId || "").trim();
@@ -655,13 +678,7 @@
   }
 
   async function klevbyFeedSupabaseLoadRealCommentCountsRest(postIds) {
-    const ids = Array.from(
-      new Set(
-        (Array.isArray(postIds) ? postIds : [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      )
-    );
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
 
     if (!ids.length) {
       return new Map();
@@ -678,17 +695,11 @@
       timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
     });
 
-    return klevbyFeedSupabaseCountCommentsRows(data);
+    return klevbyFeedSupabaseCountCommentsRows(data, ids);
   }
 
   async function klevbyFeedSupabaseLoadRealCommentCountsSdk(db, postIds) {
-    const ids = Array.from(
-      new Set(
-        (Array.isArray(postIds) ? postIds : [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      )
-    );
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
 
     if (!db || !ids.length) {
       return new Map();
@@ -707,17 +718,11 @@
       throw error;
     }
 
-    return klevbyFeedSupabaseCountCommentsRows(data);
+    return klevbyFeedSupabaseCountCommentsRows(data, ids);
   }
 
   async function klevbyFeedSupabaseLoadRealCommentCounts(db, postIds) {
-    const ids = Array.from(
-      new Set(
-        (Array.isArray(postIds) ? postIds : [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      )
-    );
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
 
     if (!ids.length) {
       return new Map();
@@ -754,7 +759,7 @@
     return safeItems.map((item) => {
       const id = String(item?.id || "").trim();
 
-      if (!id || !counts.has(id)) {
+      if (!id) {
         return item;
       }
 
@@ -768,15 +773,138 @@
     });
   }
 
-  async function klevbyFeedSupabaseLoadViewerLikedPostIdsRest(postIds, userId) {
-    const ids = Array.from(
-      new Set(
-        (Array.isArray(postIds) ? postIds : [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      )
+  function klevbyFeedSupabaseCountUniqueLikeUsersRows(rows, postIds = []) {
+    const usersByPost = new Map();
+    const counts = klevbyFeedSupabaseMakeZeroCountMap(postIds);
+
+    klevbyFeedSupabaseNormalizeIds(postIds).forEach((postId) => {
+      usersByPost.set(postId, new Set());
+    });
+
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const postId = String(row?.post_id || row?.postId || "").trim();
+      const userId = String(row?.user_id || row?.userId || "").trim();
+
+      if (!postId || !userId) return;
+
+      if (!usersByPost.has(postId)) {
+        usersByPost.set(postId, new Set());
+      }
+
+      usersByPost.get(postId).add(userId);
+    });
+
+    usersByPost.forEach((users, postId) => {
+      counts.set(postId, users.size);
+    });
+
+    return counts;
+  }
+
+  async function klevbyFeedSupabaseLoadRealLikeCountsRest(postIds) {
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
+
+    if (!ids.length) {
+      return new Map();
+    }
+
+    const params = new URLSearchParams();
+    params.set("select", "post_id,user_id");
+    params.set("post_id", `in.(${ids.join(",")})`);
+    params.set("limit", "10000");
+
+    const data = await klevbyFeedSupabaseRestRequest(KLEVB_FEED_LIKES_TABLE, {
+      method: "GET",
+      query: params.toString(),
+      requireAuth: false,
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    return klevbyFeedSupabaseCountUniqueLikeUsersRows(data, ids);
+  }
+
+  async function klevbyFeedSupabaseLoadRealLikeCountsSdk(db, postIds) {
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
+
+    if (!db || !ids.length) {
+      return new Map();
+    }
+
+    const { data, error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .select("post_id,user_id")
+        .in("post_id", ids)
+        .limit(10000),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Счётчики лайков не ответили."
     );
 
+    if (error) {
+      throw error;
+    }
+
+    return klevbyFeedSupabaseCountUniqueLikeUsersRows(data, ids);
+  }
+
+  async function klevbyFeedSupabaseLoadRealLikeCounts(db, postIds) {
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
+
+    if (!ids.length) {
+      return new Map();
+    }
+
+    try {
+      return await klevbyFeedSupabaseLoadRealLikeCountsRest(ids);
+    } catch (restError) {
+      console.debug("Klevby feed: REST счётчики лайков пропущены, пробую SDK", restError);
+
+      if (!db) {
+        return new Map();
+      }
+
+      try {
+        return await klevbyFeedSupabaseLoadRealLikeCountsSdk(db, ids);
+      } catch (sdkError) {
+        console.debug("Klevby feed: реальные счётчики лайков пропущены", sdkError);
+        return new Map();
+      }
+    }
+  }
+
+  async function klevbyFeedSupabaseApplyRealLikeCounts(db, items) {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    if (!safeItems.length) {
+      return [];
+    }
+
+    const postIds = klevbyFeedSupabaseGetPostIds(safeItems);
+    const counts = await klevbyFeedSupabaseLoadRealLikeCounts(db, postIds);
+
+    if (!counts || !counts.size) {
+      return safeItems;
+    }
+
+    return safeItems.map((item) => {
+      const id = String(item?.id || "").trim();
+
+      if (!id) {
+        return item;
+      }
+
+      const realCount = Math.max(0, Number(counts.get(id) || 0) || 0);
+
+      return {
+        ...item,
+        likesCount: realCount,
+        likes_count: realCount
+      };
+    });
+  }
+
+  async function klevbyFeedSupabaseLoadViewerLikedPostIdsRest(postIds, userId) {
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
     const cleanUserId = String(userId || "").trim();
 
     if (!ids.length || !cleanUserId) {
@@ -803,14 +931,7 @@
   }
 
   async function klevbyFeedSupabaseLoadViewerLikedPostIdsSdk(db, postIds, userId) {
-    const ids = Array.from(
-      new Set(
-        (Array.isArray(postIds) ? postIds : [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      )
-    );
-
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
     const cleanUserId = String(userId || "").trim();
 
     if (!db || !ids.length || !cleanUserId) {
@@ -839,14 +960,7 @@
   }
 
   async function klevbyFeedSupabaseLoadViewerLikedPostIds(db, postIds, userId) {
-    const ids = Array.from(
-      new Set(
-        (Array.isArray(postIds) ? postIds : [])
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      )
-    );
-
+    const ids = klevbyFeedSupabaseNormalizeIds(postIds);
     const cleanUserId = String(userId || "").trim();
 
     if (!ids.length || !cleanUserId) {
@@ -898,15 +1012,48 @@
     });
   }
 
+  async function klevbyFeedSupabaseGetExactLikeState(db, postId, userId) {
+    const cleanPostId = String(postId || "").trim();
+    const cleanUserId = String(userId || "").trim();
+
+    if (!cleanPostId) {
+      return {
+        liked: false,
+        likesCount: 0
+      };
+    }
+
+    const likeCounts = await klevbyFeedSupabaseLoadRealLikeCounts(db, [cleanPostId]);
+    const likesCount = Math.max(0, Number(likeCounts.get(cleanPostId) || 0) || 0);
+
+    let liked = false;
+
+    if (cleanUserId) {
+      const likedPostIds = await klevbyFeedSupabaseLoadViewerLikedPostIds(
+        db,
+        [cleanPostId],
+        cleanUserId
+      );
+
+      liked = likedPostIds.has(cleanPostId);
+    }
+
+    return {
+      liked,
+      likesCount
+    };
+  }
+
   function klevbyFeedSupabaseIsDuplicateError(error) {
-    const code = String(error?.code || "").trim();
-    const message = String(error?.message || "").toLowerCase();
-    const details = String(error?.details || "").toLowerCase();
-    const hint = String(error?.hint || "").toLowerCase();
-    const constraint = String(error?.constraint || "").toLowerCase();
+    const code = String(error?.code || error?.data?.code || error?.details?.code || "").trim();
+    const message = String(error?.message || error?.data?.message || "").toLowerCase();
+    const details = String(error?.details || error?.data?.details || "").toLowerCase();
+    const hint = String(error?.hint || error?.data?.hint || "").toLowerCase();
+    const constraint = String(error?.constraint || error?.data?.constraint || "").toLowerCase();
 
     return (
       code === "23505" ||
+      code === "409" ||
       message.includes("duplicate") ||
       message.includes("unique") ||
       details.includes("duplicate") ||
@@ -920,42 +1067,52 @@
   async function klevbyFeedSupabaseGetPostCounters(db, postId) {
     const cleanPostId = String(postId || "").trim();
 
-    if (!db || !cleanPostId) {
+    if (!cleanPostId) {
       return null;
     }
 
-    try {
-      const { data, error } = await klevbyFeedSupabaseRejectTimeout(
-        db
-          .from(KLEVB_FEED_TABLE)
-          .select("likes_count,comments_count,views_count,engagement_score,updated_at")
-          .eq("id", cleanPostId)
-          .maybeSingle(),
-        KLEVB_FEED_SDK_TIMEOUT_MS,
-        "Счётчики поста не ответили."
-      );
+    let data = null;
 
-      if (error) {
-        console.debug("Klevby feed: counters skipped", error);
-        return null;
+    if (db) {
+      try {
+        const result = await klevbyFeedSupabaseRejectTimeout(
+          db
+            .from(KLEVB_FEED_TABLE)
+            .select("likes_count,comments_count,views_count,engagement_score,updated_at")
+            .eq("id", cleanPostId)
+            .maybeSingle(),
+          KLEVB_FEED_SDK_TIMEOUT_MS,
+          "Счётчики поста не ответили."
+        );
+
+        if (result.error) {
+          console.debug("Klevby feed: counters skipped", result.error);
+        } else {
+          data = result.data || null;
+        }
+      } catch (error) {
+        console.debug("Klevby feed: counters row read skipped", error);
       }
-
-      const commentCounts = await klevbyFeedSupabaseLoadRealCommentCounts(db, [cleanPostId]);
-      const realCommentsCount = commentCounts.has(cleanPostId)
-        ? Number(commentCounts.get(cleanPostId) || 0)
-        : Number(data?.comments_count || 0);
-
-      return {
-        likesCount: Number(data?.likes_count || 0),
-        commentsCount: Math.max(0, Number(realCommentsCount || 0) || 0),
-        viewsCount: Number(data?.views_count || 0),
-        engagementScore: Number(data?.engagement_score || 0),
-        updatedAt: data?.updated_at || ""
-      };
-    } catch (error) {
-      console.debug("Klevby feed: counters read skipped", error);
-      return null;
     }
+
+    const likeCounts = await klevbyFeedSupabaseLoadRealLikeCounts(db, [cleanPostId]);
+    const commentCounts = await klevbyFeedSupabaseLoadRealCommentCounts(db, [cleanPostId]);
+
+    const realLikesCount = likeCounts.has(cleanPostId)
+      ? Number(likeCounts.get(cleanPostId) || 0)
+      : Number(data?.likes_count || 0);
+
+    const realCommentsCount = commentCounts.has(cleanPostId)
+      ? Number(commentCounts.get(cleanPostId) || 0)
+      : Number(data?.comments_count || 0);
+
+    return {
+      likesCount: Math.max(0, Number(realLikesCount || 0) || 0),
+      commentsCount: Math.max(0, Number(realCommentsCount || 0) || 0),
+      viewsCount: Number(data?.views_count || 0),
+      engagementScore: Number(data?.engagement_score || 0),
+      updatedAt: data?.updated_at || ""
+    };
   }
 
   function klevbyFeedSupabaseDispatch(action, detail = {}) {
@@ -1192,7 +1349,9 @@
         ? result.data.map(klevbyFeedSupabaseNormalizePost).filter(Boolean)
         : [];
 
-      const likedItems = await klevbyFeedSupabaseApplyViewerLikes(db, normalizedItems, {
+      const realLikeItems = await klevbyFeedSupabaseApplyRealLikeCounts(db, normalizedItems);
+
+      const likedItems = await klevbyFeedSupabaseApplyViewerLikes(db, realLikeItems, {
         restore: true
       });
 
@@ -1400,6 +1559,114 @@
     return true;
   }
 
+  async function klevbyFeedSupabaseAddLikeRest(postId, userId) {
+    await klevbyFeedSupabaseRestRequest(KLEVB_FEED_LIKES_TABLE, {
+      method: "POST",
+      body: [{
+        post_id: postId,
+        user_id: userId
+      }],
+      requireAuth: true,
+      prefer: "return=minimal",
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    return true;
+  }
+
+  async function klevbyFeedSupabaseRemoveLikeRest(postId, userId) {
+    const params = new URLSearchParams();
+    params.set("post_id", `eq.${postId}`);
+    params.set("user_id", `eq.${userId}`);
+
+    await klevbyFeedSupabaseRestRequest(KLEVB_FEED_LIKES_TABLE, {
+      method: "DELETE",
+      query: params.toString(),
+      requireAuth: true,
+      prefer: "return=minimal",
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    return true;
+  }
+
+  async function klevbyFeedSupabaseAddLikeSdk(db, postId, userId) {
+    if (!db) {
+      throw new Error("Supabase ещё не готов.");
+    }
+
+    const result = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .insert([{
+          post_id: postId,
+          user_id: userId
+        }]),
+      KLEVB_FEED_REST_TIMEOUT_MS,
+      "Добавление лайка не ответило."
+    );
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    return true;
+  }
+
+  async function klevbyFeedSupabaseRemoveLikeSdk(db, postId, userId) {
+    if (!db) {
+      throw new Error("Supabase ещё не готов.");
+    }
+
+    const result = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId),
+      KLEVB_FEED_REST_TIMEOUT_MS,
+      "Удаление лайка не ответило."
+    );
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    return true;
+  }
+
+  async function klevbyFeedSupabaseAddLike(db, postId, userId) {
+    try {
+      return await klevbyFeedSupabaseAddLikeRest(postId, userId);
+    } catch (restError) {
+      if (klevbyFeedSupabaseIsDuplicateError(restError)) {
+        return true;
+      }
+
+      console.debug("Klevby feed: REST добавление лайка пропущено, пробую SDK", restError);
+
+      try {
+        return await klevbyFeedSupabaseAddLikeSdk(db, postId, userId);
+      } catch (sdkError) {
+        if (klevbyFeedSupabaseIsDuplicateError(sdkError)) {
+          return true;
+        }
+
+        throw sdkError;
+      }
+    }
+  }
+
+  async function klevbyFeedSupabaseRemoveLike(db, postId, userId) {
+    try {
+      return await klevbyFeedSupabaseRemoveLikeRest(postId, userId);
+    } catch (restError) {
+      console.debug("Klevby feed: REST удаление лайка пропущено, пробую SDK", restError);
+
+      return klevbyFeedSupabaseRemoveLikeSdk(db, postId, userId);
+    }
+  }
+
   async function klevbyToggleFeedLike(postId) {
     const db = klevbyFeedSupabaseGetClient();
 
@@ -1419,81 +1686,47 @@
       throw new Error("Не указан id поста.");
     }
 
-    const existing = await klevbyFeedSupabaseRejectTimeout(
-      db
-        .from(KLEVB_FEED_LIKES_TABLE)
-        .select("id")
-        .eq("post_id", cleanPostId)
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      KLEVB_FEED_SDK_TIMEOUT_MS,
-      "Проверка лайка не ответила."
-    );
+    const beforeState = await klevbyFeedSupabaseGetExactLikeState(db, cleanPostId, user.id);
+    const nextLiked = !beforeState.liked;
 
-    if (existing.error) {
-      console.error("Klevby feed: ошибка проверки лайка", existing.error);
-      throw new Error("Не получилось проверить лайк: " + existing.error.message);
+    if (nextLiked) {
+      await klevbyFeedSupabaseAddLike(db, cleanPostId, user.id);
+    } else {
+      await klevbyFeedSupabaseRemoveLike(db, cleanPostId, user.id);
     }
 
-    let liked = false;
-    let action = "like_removed";
+    let afterState = null;
 
-    if (existing.data && existing.data.id) {
-      const removeResult = await klevbyFeedSupabaseRejectTimeout(
-        db
-          .from(KLEVB_FEED_LIKES_TABLE)
-          .delete()
-          .eq("id", existing.data.id),
-        KLEVB_FEED_REST_TIMEOUT_MS,
-        "Удаление лайка не ответило."
-      );
+    try {
+      afterState = await klevbyFeedSupabaseGetExactLikeState(db, cleanPostId, user.id);
+    } catch (afterError) {
+      console.debug("Klevby feed: точное состояние лайка после записи не прочиталось", afterError);
+    }
 
-      if (removeResult.error) {
-        console.error("Klevby feed: ошибка удаления лайка", removeResult.error);
-        throw new Error("Не получилось убрать лайк: " + removeResult.error.message);
-      }
-
-      liked = false;
-      action = "like_removed";
-    } else {
-      const addResult = await klevbyFeedSupabaseRejectTimeout(
-        db
-          .from(KLEVB_FEED_LIKES_TABLE)
-          .insert([{
-            post_id: cleanPostId,
-            user_id: user.id
-          }]),
-        KLEVB_FEED_REST_TIMEOUT_MS,
-        "Добавление лайка не ответило."
-      );
-
-      if (addResult.error) {
-        if (klevbyFeedSupabaseIsDuplicateError(addResult.error)) {
-          liked = true;
-          action = "like_already_added";
-        } else {
-          console.error("Klevby feed: ошибка добавления лайка", addResult.error);
-          throw new Error("Не получилось поставить лайк: " + addResult.error.message);
-        }
-      } else {
-        liked = true;
-        action = "like_added";
-      }
+    if (!afterState) {
+      afterState = {
+        liked: nextLiked,
+        likesCount: Math.max(0, Number(beforeState.likesCount || 0) + (nextLiked ? 1 : -1))
+      };
     }
 
     const counters = await klevbyFeedSupabaseGetPostCounters(db, cleanPostId);
 
-    klevbyFeedSupabaseDispatch(action, {
+    klevbyFeedSupabaseDispatch(afterState.liked ? "like_added" : "like_removed", {
       postId: cleanPostId,
-      liked,
-      likesCount: counters?.likesCount,
+      liked: afterState.liked,
+      likedByViewer: afterState.liked,
+      viewerLiked: afterState.liked,
+      likesCount: afterState.likesCount,
       commentsCount: counters?.commentsCount
     });
 
     return {
-      liked,
+      liked: afterState.liked,
+      likedByViewer: afterState.liked,
+      viewerLiked: afterState.liked,
       postId: cleanPostId,
-      likesCount: counters?.likesCount,
+      likesCount: afterState.likesCount,
       commentsCount: counters?.commentsCount,
       viewsCount: counters?.viewsCount,
       engagementScore: counters?.engagementScore,
