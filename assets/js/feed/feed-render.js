@@ -155,7 +155,7 @@
     "klevby_feed_cache_v1",
     "klevby_feed_cache_v2"
   ];
-  const FEED_STYLES_VERSION = "20260509-feed-render-cache-v3-1";
+  const FEED_STYLES_VERSION = "20260509-feed-render-counters-v3-2";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -779,6 +779,90 @@
     }, delay);
   }
 
+  function forcePatchFeedCounters(list, items, source = "fresh") {
+    if (!list) return false;
+
+    const safeItems = getRenderableFeedItems(items);
+    let patched = false;
+
+    safeItems.forEach((item) => {
+      const id = getItemId(item);
+
+      if (!id) return;
+
+      const likesCount = getItemLikesCount(item);
+      const commentsCount = getItemCommentsCount(item);
+      const likedState = getItemLikedState(item);
+      const escapedId = cssEscape(id);
+
+      const likeButtons = Array.from(
+        list.querySelectorAll(`.profile-feed-like-btn[data-feed-post-id="${escapedId}"]`)
+      );
+
+      const commentButtons = Array.from(
+        list.querySelectorAll(`.profile-feed-comment-btn[data-feed-post-id="${escapedId}"]`)
+      );
+
+      likeButtons.forEach((likeButton) => {
+        if (!likeButton) return;
+
+        const nextText = `👍 ${likesCount}`;
+
+        if (likeButton.textContent !== nextText) {
+          likeButton.textContent = nextText;
+          patched = true;
+        }
+
+        if (String(likeButton.dataset.likeCount || "") !== String(likesCount)) {
+          likeButton.dataset.likeCount = String(likesCount);
+          patched = true;
+        }
+
+        likeButton.dataset.feedPostId = id;
+
+        if (typeof likedState === "boolean") {
+          const nextLiked = likedState ? "true" : "false";
+
+          if (String(likeButton.dataset.liked || "") !== nextLiked) {
+            likeButton.dataset.liked = nextLiked;
+            patched = true;
+          }
+
+          likeButton.setAttribute("aria-pressed", nextLiked);
+          likeButton.classList.toggle("liked", likedState);
+          likeButton.classList.toggle("is-liked", likedState);
+        }
+      });
+
+      commentButtons.forEach((commentButton) => {
+        if (!commentButton) return;
+
+        const nextText = `💬 ${commentsCount}`;
+
+        if (commentButton.textContent !== nextText) {
+          commentButton.textContent = nextText;
+          patched = true;
+        }
+
+        if (String(commentButton.dataset.commentCount || "") !== String(commentsCount)) {
+          commentButton.dataset.commentCount = String(commentsCount);
+          patched = true;
+        }
+
+        commentButton.dataset.feedPostId = id;
+      });
+    });
+
+    if (patched) {
+      console.info("Klevby feed render: counters patched from fresh data", {
+        source,
+        count: safeItems.length
+      });
+    }
+
+    return patched;
+  }
+
   function patchExistingFeedCards(list, items, fullSignature, structureSignature, source) {
     if (!list || !listHasRealContent(list)) return false;
 
@@ -786,12 +870,14 @@
     const cards = Array.from(list.querySelectorAll(".profile-feed-card[data-feed-card-id]"));
 
     if (!safeItems.length || cards.length !== safeItems.length) {
+      forcePatchFeedCounters(list, safeItems, source);
       return false;
     }
 
     const currentStructure = String(list.dataset.klevbyFeedStructureSignature || "");
 
     if (!currentStructure || currentStructure !== structureSignature) {
+      forcePatchFeedCounters(list, safeItems, source);
       return false;
     }
 
@@ -807,6 +893,7 @@
     });
 
     if (!canPatch) {
+      forcePatchFeedCounters(list, safeItems, source);
       return false;
     }
 
@@ -864,11 +951,13 @@
     const currentSignature = String(list.dataset.klevbyFeedSignature || "");
 
     if (listHasRealContent(list) && currentSignature === fullSignature) {
+      forcePatchFeedCounters(list, safeItems, source);
       scheduleMobileFeedWidthLock("same_signature", 40);
       return true;
     }
 
     if (patchExistingFeedCards(list, safeItems, fullSignature, structureSignature, source)) {
+      forcePatchFeedCounters(list, safeItems, source);
       return true;
     }
 
@@ -893,6 +982,7 @@
 
     if (cards) {
       list.dataset.klevbyFeedStructureSignature = structureSignature;
+      forcePatchFeedCounters(list, safeItems, source);
     }
 
     scheduleMobileFeedWidthLock("render_items", 80);
@@ -1625,9 +1715,12 @@
 
     resetRenderRetry();
     renderFeedItems(list, items, "fresh");
+    forcePatchFeedCounters(list, items, "fresh_after_render");
+
     if (isSupabaseAuthoritativeSource) {
       writeFeedCache(items);
     }
+
     runMobileFeedWidthLockBurst("render_done");
   }
 
