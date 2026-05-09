@@ -1839,55 +1839,6 @@
     }
   }
 
-  async function klevbyRegisterFeedViewRest(payload) {
-    const cleanPostId = String(payload?.post_id || "").trim();
-
-    if (!cleanPostId) {
-      return false;
-    }
-
-    const params = new URLSearchParams();
-    params.set("on_conflict", "post_id,viewer_key");
-
-    await klevbyFeedSupabaseRestRequest(KLEVB_FEED_VIEWS_TABLE, {
-      method: "POST",
-      query: params.toString(),
-      body: [payload],
-      requireAuth: false,
-      prefer: "resolution=ignore-duplicates,return=minimal",
-      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
-    });
-
-    return true;
-  }
-
-  async function klevbyRegisterFeedViewSdk(db, payload) {
-    if (!db || !payload?.post_id) {
-      return false;
-    }
-
-    const { error } = await klevbyFeedSupabaseRejectTimeout(
-      db
-        .from(KLEVB_FEED_VIEWS_TABLE)
-        .upsert([payload], {
-          onConflict: "post_id,viewer_key",
-          ignoreDuplicates: true
-        }),
-      KLEVB_FEED_SDK_TIMEOUT_MS,
-      "Просмотр не записался: Supabase не ответил."
-    );
-
-    if (error) {
-      if (klevbyFeedSupabaseIsDuplicateError(error)) {
-        return false;
-      }
-
-      throw error;
-    }
-
-    return true;
-  }
-
   async function klevbyRegisterFeedView(postId) {
     const cleanPostId = String(postId || "").trim();
 
@@ -1895,50 +1846,7 @@
       return false;
     }
 
-    const db = klevbyFeedSupabaseGetClient();
-    const user = klevbyFeedSupabaseGetCurrentUser();
-    const viewerKey = user && user.id
-      ? `user_${user.id}`
-      : klevbyFeedSupabaseGetViewerKey();
-
-    const payload = {
-      post_id: cleanPostId,
-      user_id: user?.id || null,
-      viewer_key: viewerKey
-    };
-
-    try {
-      const registered = await klevbyRegisterFeedViewRest(payload);
-
-      if (registered) {
-        klevbyFeedSupabaseDispatch("view_added", {
-          postId: cleanPostId
-        });
-      }
-
-      return registered;
-    } catch (restError) {
-      console.debug("Klevby feed: REST запись просмотра пропущена, пробую SDK", restError);
-
-      if (!db) {
-        return false;
-      }
-
-      try {
-        const registered = await klevbyRegisterFeedViewSdk(db, payload);
-
-        if (registered) {
-          klevbyFeedSupabaseDispatch("view_added", {
-            postId: cleanPostId
-          });
-        }
-
-        return registered;
-      } catch (sdkError) {
-        console.debug("Klevby feed: просмотр не записался, продолжаю без ошибки", sdkError);
-        return false;
-      }
-    }
+    return false;
   }
 
   function klevbySubscribeToFeedChanges(callback) {
