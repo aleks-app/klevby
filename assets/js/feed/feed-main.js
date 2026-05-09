@@ -13,30 +13,28 @@
   let klevbyFeedMainLastRefreshStartedAt = 0;
   let klevbyFeedMainLastRefreshFinishedAt = 0;
   let klevbyFeedMainLastSuccessfulRenderAt = 0;
+  let klevbyFeedMainLastResumeAt = 0;
   let klevbyFeedMainQuietUntil = 0;
   let klevbyFeedMainQuietReason = "";
 
   const KLEVB_FEED_MAIN_POLL_MS = 0;
-  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 2200;
-  const KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS = 5200;
-  const KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS = 3600;
-  const KLEVB_FEED_MAIN_DOM_WATCH_MS = 450;
-  const KLEVB_FEED_MAIN_DOM_WATCH_LIMIT = 28;
+  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 2600;
+  const KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS = 7000;
+  const KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS = 4500;
+  const KLEVB_FEED_MAIN_DOM_WATCH_MS = 700;
+  const KLEVB_FEED_MAIN_DOM_WATCH_LIMIT = 10;
   const KLEVB_FEED_MAIN_LIKE_QUIET_MS = 2600;
-  const KLEVB_FEED_MAIN_INTERACTION_DEFER_MS = 1600;
-  const KLEVB_FEED_MAIN_PENDING_AFTER_MS = 900;
+  const KLEVB_FEED_MAIN_INTERACTION_DEFER_MS = 1800;
+  const KLEVB_FEED_MAIN_PENDING_AFTER_MS = 1100;
 
   const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
     0,
-    900,
-    2600,
-    6200
+    1400
   ];
 
   const KLEVB_FEED_MAIN_RESUME_DELAYS = [
     0,
-    900,
-    2600
+    1600
   ];
 
   function getState() {
@@ -181,23 +179,6 @@
     return hasRecentSuccessfulRender(KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS);
   }
 
-  function isUserInteractingWithFeed() {
-    try {
-      return Boolean(document.querySelector(`
-        #profileFeedSection .profile-feed-actions .small-btn:hover,
-        #profileFeedSection .profile-feed-actions .small-btn:active,
-        #profileFeedSection .profile-feed-actions .small-btn:focus,
-        #profileFeedSection .profile-feed-author:hover,
-        #profileFeedSection .profile-feed-author:active,
-        #profileFeedSection .profile-feed-author:focus,
-        #profileFeedSection .profile-feed-card:hover,
-        #profileFeedSection .profile-feed-card:active
-      `));
-    } catch (error) {
-      return false;
-    }
-  }
-
   function shouldDeferRender(reason = "", force = false) {
     if (force && isCriticalRefreshReason(reason)) {
       return false;
@@ -208,10 +189,6 @@
     }
 
     if (isFeedQuiet() && !isCriticalRefreshReason(reason)) {
-      return true;
-    }
-
-    if (isUserInteractingWithFeed() && !isCriticalRefreshReason(reason)) {
       return true;
     }
 
@@ -234,8 +211,8 @@
       if (!isPageVisible()) return;
       if (!hasFeedDom()) return;
 
-      if (isFeedQuiet() || isUserInteractingWithFeed()) {
-        scheduleDeferredRender(reason + "_still_busy", KLEVB_FEED_MAIN_INTERACTION_DEFER_MS);
+      if (isFeedQuiet()) {
+        scheduleDeferredRender(reason + "_still_quiet", KLEVB_FEED_MAIN_INTERACTION_DEFER_MS);
         return;
       }
 
@@ -331,6 +308,13 @@
     if (!lastStartedAt) return true;
 
     return now - lastStartedAt >= KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS;
+  }
+
+  function shouldStartDomWatcher() {
+    if (klevbyFeedMainDomWatchTimer) return false;
+    if (hasRecentSuccessfulRender(KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS)) return false;
+
+    return !hasFeedDom() || !isRenderReady();
   }
 
   function isDuplicateLikeError(error) {
@@ -439,8 +423,8 @@
     if (!isRenderReady()) {
       startFeedDomWatcher();
 
-      if (force) {
-        scheduleMainFeedRefresh(cleanReason + "_render_wait", 520, {
+      if (force && !hasRecentSuccessfulRender(KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS)) {
+        scheduleMainFeedRefresh(cleanReason + "_render_wait", 700, {
           force: true
         });
       }
@@ -538,24 +522,23 @@
   }
 
   function runMainResumeBurst(reason = "resume") {
+    const now = Date.now();
+
+    if (now - Number(klevbyFeedMainLastResumeAt || 0) < KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS) {
+      return;
+    }
+
+    klevbyFeedMainLastResumeAt = now;
+
     clearMainResumeTimers();
     clearDeferredRenderTimer();
-    startFeedDomWatcher();
 
     const events = getEvents();
-
-    if (typeof events.handleAppResume === "function") {
-      try {
-        events.handleAppResume(reason);
-      } catch (error) {
-        console.warn("Klevby feed main: resume events skipped", error);
-      }
-    }
 
     if (typeof events.tryStartRealtimeSubscription === "function") {
       try {
         events.tryStartRealtimeSubscription({
-          force: true,
+          force: false,
           reason
         });
       } catch (error) {
@@ -566,7 +549,7 @@
     klevbyFeedMainResumeTimers = KLEVB_FEED_MAIN_RESUME_DELAYS.map((delay) => {
       return setTimeout(() => {
         forceRenderFeed(reason + "_main_burst_" + delay, {
-          force: true
+          force: delay === 0
         });
       }, delay);
     });
@@ -601,11 +584,7 @@
   }
 
   function startFeedDomWatcher() {
-    if (klevbyFeedMainDomWatchTimer) return;
-
-    if (hasRecentSuccessfulRender(KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS)) {
-      return;
-    }
+    if (!shouldStartDomWatcher()) return;
 
     let attempts = 0;
 
@@ -670,16 +649,19 @@
         return;
       }
 
-      scheduleMainFeedRefresh(action, 650, {
+      scheduleMainFeedRefresh(action, 900, {
         force: false
       });
     });
 
     window.addEventListener("klevby-feed-module-ready", () => {
       installRenderGuard();
-      startFeedDomWatcher();
 
-      scheduleMainFeedRefresh("module_ready_fast", 140, {
+      if (shouldStartDomWatcher()) {
+        startFeedDomWatcher();
+      }
+
+      scheduleMainFeedRefresh("module_ready_fast", 180, {
         force: true
       });
     });
@@ -696,7 +678,7 @@
         key.includes("klevby_profile") ||
         key.includes("sb-")
       ) {
-        scheduleMainFeedRefresh("storage_changed", 520, {
+        scheduleMainFeedRefresh("storage_changed", 700, {
           force: false
         });
       }
@@ -719,7 +701,7 @@
         text.includes("лента") ||
         text.includes("главная")
       ) {
-        scheduleMainFeedRefresh("navigation_home_click", 260, {
+        scheduleMainFeedRefresh("navigation_home_click", 320, {
           force: true
         });
       }
@@ -966,7 +948,10 @@
 
     bindMainResumeHooks();
     startMainFeedPolling();
-    startFeedDomWatcher();
+
+    if (shouldStartDomWatcher()) {
+      startFeedDomWatcher();
+    }
   }
 
   function startRealtimeLater() {
@@ -976,23 +961,16 @@
       setTimeout(() => {
         safeCall(events.tryStartRealtimeSubscription, [{
           force: false,
-          reason: "initial_realtime_1200"
+          reason: "initial_realtime_1500"
         }]);
-      }, 1200);
+      }, 1500);
 
       setTimeout(() => {
         safeCall(events.tryStartRealtimeSubscription, [{
           force: false,
-          reason: "initial_realtime_3000"
+          reason: "initial_realtime_6000"
         }]);
-      }, 3000);
-
-      setTimeout(() => {
-        safeCall(events.tryStartRealtimeSubscription, [{
-          force: false,
-          reason: "initial_realtime_6500"
-        }]);
-      }, 6500);
+      }, 6000);
     }
   }
 
@@ -1002,7 +980,7 @@
     klevbyFeedMainInitialTimers = KLEVB_FEED_MAIN_INITIAL_DELAYS.map((delay) => {
       return setTimeout(() => {
         forceRenderFeed("initial_main_" + delay, {
-          force: true
+          force: delay === 0
         });
       }, delay);
     });
@@ -1011,10 +989,13 @@
   function initKlevbyFeed() {
     if (window.__klevbyFeedModularStarted) {
       installRenderGuard();
-      startFeedDomWatcher();
 
-      scheduleMainFeedRefresh("already_started_recheck", 260, {
-        force: true
+      if (shouldStartDomWatcher()) {
+        startFeedDomWatcher();
+      }
+
+      scheduleMainFeedRefresh("already_started_recheck", 420, {
+        force: false
       });
 
       return;
@@ -1029,11 +1010,11 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260509-feed-main-calm-start-1"
+        version: "20260509-feed-main-light-desktop-1"
       }
     }));
 
-    console.log("Klevby feed main calm starter loaded");
+    console.log("Klevby feed main light desktop starter loaded");
   }
 
   if (document.readyState === "loading") {
