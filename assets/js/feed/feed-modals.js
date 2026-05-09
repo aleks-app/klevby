@@ -1,5 +1,22 @@
 (function () {
   let klevbyFeedViewerLikePending = false;
+  let klevbyFeedCommentSubmitPending = false;
+
+  const KLEVB_FEED_COMMENT_DEBUG = true;
+
+  function debugComment(label, payload = {}) {
+    if (!KLEVB_FEED_COMMENT_DEBUG) return;
+
+    try {
+      console.debug(`[feed] ${label}`, payload);
+    } catch (_) {}
+  }
+
+  function warnComment(label, payload = {}) {
+    try {
+      console.warn(`[feed] ${label}`, payload);
+    } catch (_) {}
+  }
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -316,6 +333,79 @@
     });
   }
 
+  function setCommentSubmitPending(pending) {
+    const submitButton = document.getElementById("klevbyFeedCommentSubmitBtn");
+
+    if (!submitButton) return;
+
+    submitButton.disabled = Boolean(pending);
+    submitButton.setAttribute("aria-busy", pending ? "true" : "false");
+    submitButton.classList.toggle("is-pending", Boolean(pending));
+    submitButton.textContent = pending ? "Отправляем..." : "Отправить";
+  }
+
+  function bindCommentSubmit(modal) {
+    if (!modal) return;
+
+    const submitButton =
+      modal.querySelector("#klevbyFeedCommentSubmitBtn") ||
+      modal.querySelector("[data-feed-comment-submit='1']") ||
+      modal.querySelector(".klevby-feed-comment-actions .small-btn.green");
+
+    const textarea = modal.querySelector("#klevbyFeedCommentText");
+
+    if (submitButton) {
+      submitButton.onclick = null;
+      submitButton.dataset.feedCommentSubmit = "1";
+      submitButton.id = submitButton.id || "klevbyFeedCommentSubmitBtn";
+    }
+
+    if (textarea && textarea.dataset.feedCommentEnterBound !== "1") {
+      textarea.dataset.feedCommentEnterBound = "1";
+
+      textarea.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+
+          debugComment("submitFeedComment:keyboardShortcut", {
+            key: event.key,
+            ctrlKey: event.ctrlKey,
+            metaKey: event.metaKey
+          });
+
+          submitFeedComment();
+        }
+      });
+    }
+
+    if (modal.dataset.feedCommentSubmitBound === "1") return;
+
+    modal.dataset.feedCommentSubmitBound = "1";
+
+    modal.addEventListener("click", (event) => {
+      const button = event.target?.closest?.(
+        "#klevbyFeedCommentSubmitBtn, [data-feed-comment-submit='1']"
+      );
+
+      if (!button) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      debugComment("submitFeedComment:buttonClick", {
+        disabled: Boolean(button.disabled),
+        pending: klevbyFeedCommentSubmitPending,
+        hasModal: Boolean(document.getElementById("klevbyFeedCommentModal")),
+        hasTextarea: Boolean(document.getElementById("klevbyFeedCommentText")),
+        postId: String(document.getElementById("klevbyFeedCommentModal")?.dataset?.postId || "")
+      });
+
+      if (button.disabled) return;
+
+      submitFeedComment();
+    });
+  }
+
   function ensureModalStyles() {
     const oldStyle = document.getElementById("klevbyFeedModalStyles");
 
@@ -325,7 +415,7 @@
 
     const style = document.createElement("style");
     style.id = "klevbyFeedModalStyles";
-    style.dataset.version = "20260508-viewer-button-feedback-1";
+    style.dataset.version = "20260509-comment-submit-diagnostics-1";
 
     style.textContent = `
       .klevby-feed-viewer.hidden,
@@ -504,7 +594,9 @@
       }
 
       .klevby-feed-viewer-actions button.is-pending,
-      .klevby-feed-viewer-actions button:disabled {
+      .klevby-feed-viewer-actions button:disabled,
+      .klevby-feed-comment-actions .small-btn.is-pending,
+      .klevby-feed-comment-actions .small-btn:disabled {
         opacity: 0.72;
         cursor: wait;
       }
@@ -1013,6 +1105,7 @@
 
     if (modal) {
       bindPressFeedback(modal);
+      bindCommentSubmit(modal);
       return modal;
     }
 
@@ -1042,7 +1135,12 @@
         ></textarea>
 
         <div class="klevby-feed-comment-actions">
-          <button class="small-btn green" type="button" onclick="submitFeedComment()">Отправить</button>
+          <button
+            id="klevbyFeedCommentSubmitBtn"
+            class="small-btn green"
+            type="button"
+            data-feed-comment-submit="1"
+          >Отправить</button>
           <button class="small-btn gray" type="button" onclick="closeFeedCommentModal()">Закрыть</button>
         </div>
 
@@ -1052,6 +1150,7 @@
 
     document.body.appendChild(modal);
     bindPressFeedback(modal);
+    bindCommentSubmit(modal);
 
     return modal;
   }
@@ -1156,6 +1255,12 @@
     const cleanId = String(postId || "");
     const item = getCachedItem(cleanId);
 
+    debugComment("openFeedCommentModal:start", {
+      postId: cleanId,
+      hasItem: Boolean(item),
+      source: item?.source || ""
+    });
+
     if (!item) {
       alert("Фото не найдено в ленте. Обнови страницу и попробуй ещё раз.");
       return;
@@ -1172,6 +1277,7 @@
     const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
 
     modal.dataset.postId = cleanId;
+    bindCommentSubmit(modal);
 
     if (textarea) textarea.value = "";
 
@@ -1197,6 +1303,9 @@
   function closeFeedCommentModal() {
     const modal = document.getElementById("klevbyFeedCommentModal");
 
+    klevbyFeedCommentSubmitPending = false;
+    setCommentSubmitPending(false);
+
     if (modal) {
       modal.classList.add("hidden");
       modal.dataset.postId = "";
@@ -1207,6 +1316,14 @@
 
   async function runAddComment(postId, text) {
     const api = getApi();
+
+    debugComment("submitFeedComment:runAddCommentApi", {
+      postId,
+      textLen: String(text || "").length,
+      hasApiAddComment: typeof api.addComment === "function",
+      hasWindowAddComment: typeof window.klevbyAddFeedComment === "function",
+      hasSupabaseAddComment: typeof window.klevbyFeedSupabase?.addComment === "function"
+    });
 
     if (typeof api.addComment === "function") {
       return api.addComment(postId, text);
@@ -1230,13 +1347,43 @@
     const modal = document.getElementById("klevbyFeedCommentModal");
     const textarea = document.getElementById("klevbyFeedCommentText");
     const message = document.getElementById("klevbyFeedCommentMessage");
+    const submitButton = document.getElementById("klevbyFeedCommentSubmitBtn");
 
-    if (!modal || !textarea) return;
+    debugComment("submitFeedComment:start", {
+      hasModal: Boolean(modal),
+      hasTextarea: Boolean(textarea),
+      hasMessage: Boolean(message),
+      hasSubmitButton: Boolean(submitButton),
+      modalHidden: modal ? modal.classList.contains("hidden") : null,
+      pending: klevbyFeedCommentSubmitPending,
+      postId: String(modal?.dataset?.postId || ""),
+      textLen: String(textarea?.value || "").trim().length
+    });
+
+    if (klevbyFeedCommentSubmitPending) {
+      debugComment("submitFeedComment:skipPending", {
+        postId: String(modal?.dataset?.postId || "")
+      });
+      return;
+    }
+
+    if (!modal || !textarea) {
+      warnComment("submitFeedComment:missingDom", {
+        hasModal: Boolean(modal),
+        hasTextarea: Boolean(textarea)
+      });
+      return;
+    }
 
     const postId = String(modal.dataset.postId || "");
     const text = String(textarea.value || "").trim();
 
     if (!postId) {
+      warnComment("submitFeedComment:noPostId", {
+        hasModal: Boolean(modal),
+        dataset: { ...modal.dataset }
+      });
+
       if (message) {
         message.textContent = "Фото не найдено. Закрой окно и попробуй ещё раз.";
         message.classList.add("error-line");
@@ -1245,6 +1392,10 @@
     }
 
     if (!text) {
+      debugComment("submitFeedComment:emptyText", {
+        postId
+      });
+
       if (message) {
         message.textContent = "Напиши комментарий перед отправкой.";
         message.classList.add("error-line");
@@ -1255,6 +1406,11 @@
     }
 
     if (text.length > 700) {
+      warnComment("submitFeedComment:textTooLong", {
+        postId,
+        textLen: text.length
+      });
+
       if (message) {
         message.textContent = "Комментарий слишком длинный. Сделай короче.";
         message.classList.add("error-line");
@@ -1264,13 +1420,26 @@
       return;
     }
 
+    klevbyFeedCommentSubmitPending = true;
+    setCommentSubmitPending(true);
+
     if (message) {
       message.textContent = "Отправляем комментарий...";
       message.classList.remove("error-line");
     }
 
     try {
+      debugComment("submitFeedComment:beforeRunAddComment", {
+        postId,
+        textLen: text.length
+      });
+
       await runAddComment(postId, text);
+
+      debugComment("submitFeedComment:success", {
+        postId,
+        textLen: text.length
+      });
 
       textarea.value = "";
 
@@ -1284,14 +1453,32 @@
       }
 
       await loadCommentsIntoModal(postId);
+
+      if (message) {
+        message.textContent = "✅ Комментарий отправлен.";
+        message.classList.remove("error-line");
+      }
+
       renderFeedSoon(80);
     } catch (error) {
-      console.warn("Klevby feed modal: комментарий не отправился", error);
+      warnComment("submitFeedComment:error", {
+        postId,
+        message: String(error?.message || error),
+        error
+      });
 
       if (message) {
         message.textContent = error?.message || "Не получилось отправить комментарий.";
         message.classList.add("error-line");
       }
+    } finally {
+      klevbyFeedCommentSubmitPending = false;
+      setCommentSubmitPending(false);
+
+      debugComment("submitFeedComment:finally", {
+        postId,
+        pending: klevbyFeedCommentSubmitPending
+      });
     }
   }
 
