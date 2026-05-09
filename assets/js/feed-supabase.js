@@ -13,6 +13,7 @@
   const KLEVB_FEED_AUTH_TIMEOUT_MS = 1400;
   const KLEVB_FEED_REST_TIMEOUT_MS = 9000;
   const KLEVB_FEED_SDK_TIMEOUT_MS = 6500;
+  const KLEVB_FEED_TOKEN_EXPIRY_GRACE_SECONDS = 60;
 
   const KLEVB_FEED_COMMENT_SELECT = [
     "id",
@@ -128,6 +129,23 @@
     return null;
   }
 
+  function klevbyFeedSupabaseIsSessionFresh(session, graceSeconds = KLEVB_FEED_TOKEN_EXPIRY_GRACE_SECONDS) {
+    if (!session || !session.accessToken) {
+      return false;
+    }
+
+    const expiresAt = Number(session.expiresAt || 0);
+
+    if (!expiresAt) {
+      return true;
+    }
+
+    const expiresAtMs = expiresAt > 100000000000 ? expiresAt : expiresAt * 1000;
+    const graceMs = Math.max(0, Number(graceSeconds || 0)) * 1000;
+
+    return expiresAtMs - Date.now() > graceMs;
+  }
+
   function klevbyFeedSupabaseGetStoredSession() {
     const config = klevbyFeedSupabaseGetConfig();
     const directKeys = [
@@ -168,14 +186,27 @@
 
   async function klevbyFeedSupabaseGetAuthContext(options = {}) {
     const requireAuth = Boolean(options.requireAuth);
+
+    if (!requireAuth) {
+      return {
+        accessToken: "",
+        user: null,
+        source: "anon_public"
+      };
+    }
+
     const storedSession = klevbyFeedSupabaseGetStoredSession();
 
-    if (storedSession && storedSession.accessToken) {
+    if (klevbyFeedSupabaseIsSessionFresh(storedSession)) {
       return {
         accessToken: storedSession.accessToken,
         user: storedSession.user || null,
         source: "storage"
       };
+    }
+
+    if (storedSession && storedSession.accessToken) {
+      console.debug("Klevby feed: stored auth session expired/skipped");
     }
 
     const db = klevbyFeedSupabaseGetClient();
@@ -190,7 +221,15 @@
 
         const session = sessionResult?.data?.session || null;
 
-        if (session && session.access_token) {
+        if (
+          session &&
+          session.access_token &&
+          klevbyFeedSupabaseIsSessionFresh({
+            accessToken: session.access_token,
+            expiresAt: session.expires_at,
+            user: session.user || null
+          })
+        ) {
           return {
             accessToken: String(session.access_token),
             user: session.user || null,
@@ -202,18 +241,10 @@
       }
     }
 
-    if (requireAuth) {
-      return {
-        accessToken: "",
-        user: null,
-        source: "missing"
-      };
-    }
-
     return {
       accessToken: "",
       user: null,
-      source: "anon"
+      source: "missing"
     };
   }
 
