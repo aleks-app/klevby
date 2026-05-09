@@ -22,6 +22,8 @@
   const LIKE_WRITE_TIMEOUT_MS = 5000;
   const LIKE_RESUME_REFRESH_DELAY_MS = 180;
 
+  const FEED_AUTO_REFRESH_MS = 45000;
+
   function getState() {
     return window.KlevbyFeedState || {};
   }
@@ -1515,7 +1517,7 @@
 
       refreshFeedIfHomeVisible();
       refreshOpenCommentsIfNeeded(120);
-    }, 6000);
+    }, FEED_AUTO_REFRESH_MS);
   }
 
   function stopFeedAutoRefresh() {
