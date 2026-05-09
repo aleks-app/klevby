@@ -6,6 +6,11 @@
 
   const pendingLikeLocks = new Set();
   const viewerLikeState = new Map();
+  const likeRenderProtectedUntil = new Map();
+
+  const LIKE_RENDER_PROTECTION_MS = 5200;
+  const LIKE_BACKGROUND_REFRESH_MS = 6200;
+  const LIKE_PROTECTION_RECHECK_MS = 900;
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -191,6 +196,137 @@
     });
   }
 
+  function isButtonHoveredOrFocused(button) {
+    if (!button) return false;
+
+    try {
+      return (
+        button === document.activeElement ||
+        button.matches(":hover") ||
+        button.matches(":focus") ||
+        button.matches(":focus-visible")
+      );
+    } catch (_) {
+      return button === document.activeElement;
+    }
+  }
+
+  function isLikeButtonActive(postId) {
+    return getLikeButtons(postId).some(isButtonHoveredOrFocused);
+  }
+
+  function cleanupLikeRenderProtection(postId) {
+    const cleanId = String(postId || "").trim();
+    if (!cleanId) return;
+
+    const until = Number(likeRenderProtectedUntil.get(cleanId) || 0);
+
+    if (until > Date.now()) {
+      setTimeout(() => {
+        cleanupLikeRenderProtection(cleanId);
+      }, Math.max(120, until - Date.now() + 80));
+      return;
+    }
+
+    if (isLikeButtonActive(cleanId)) {
+      setTimeout(() => {
+        cleanupLikeRenderProtection(cleanId);
+      }, LIKE_PROTECTION_RECHECK_MS);
+      return;
+    }
+
+    likeRenderProtectedUntil.delete(cleanId);
+  }
+
+  function protectLikeRender(postId, duration = LIKE_RENDER_PROTECTION_MS) {
+    const cleanId = String(postId || "").trim();
+    if (!cleanId) return;
+
+    const until = Date.now() + Math.max(600, Number(duration || LIKE_RENDER_PROTECTION_MS));
+
+    likeRenderProtectedUntil.set(cleanId, until);
+
+    setTimeout(() => {
+      cleanupLikeRenderProtection(cleanId);
+    }, Math.max(700, Number(duration || LIKE_RENDER_PROTECTION_MS) + 100));
+  }
+
+  function isLikeRenderProtected(postId) {
+    const cleanId = String(postId || "").trim();
+    if (!cleanId) return false;
+
+    if (pendingLikeLocks.has(cleanId)) {
+      return true;
+    }
+
+    if (!likeRenderProtectedUntil.has(cleanId)) {
+      return false;
+    }
+
+    const until = Number(likeRenderProtectedUntil.get(cleanId) || 0);
+
+    if (until > Date.now()) {
+      return true;
+    }
+
+    if (isLikeButtonActive(cleanId)) {
+      return true;
+    }
+
+    likeRenderProtectedUntil.delete(cleanId);
+    return false;
+  }
+
+  function hasActiveLikeRenderProtection() {
+    for (const postId of Array.from(likeRenderProtectedUntil.keys())) {
+      if (isLikeRenderProtected(postId)) {
+        return true;
+      }
+    }
+
+    return pendingLikeLocks.size > 0;
+  }
+
+  function extractPostIdFromDetail(detail = {}) {
+    const payload = detail?.payload || detail?.record || detail || {};
+
+    return String(
+      detail?.postId ||
+      detail?.post_id ||
+      payload?.postId ||
+      payload?.post_id ||
+      payload?.new?.post_id ||
+      payload?.old?.post_id ||
+      payload?.new?.id ||
+      payload?.old?.id ||
+      ""
+    ).trim();
+  }
+
+  function isLikeUpdateDetail(detail = {}) {
+    const action = String(detail?.action || "").toLowerCase();
+    const table = String(detail?.table || detail?.payload?.table || "").toLowerCase();
+
+    return (
+      action.includes("like") ||
+      table.includes("feed_likes")
+    );
+  }
+
+  function shouldDelayRenderForLikeUpdate(detail = {}) {
+    if (!isLikeUpdateDetail(detail)) {
+      return false;
+    }
+
+    const postId = extractPostIdFromDetail(detail);
+
+    if (!postId) {
+      return hasActiveLikeRenderProtection();
+    }
+
+    return isLikeRenderProtected(postId);
+  }
+
   function getButtonLikesCount(postId) {
     const button = getLikeButtons(postId)[0];
 
@@ -220,10 +356,9 @@
       button.dataset.likeCount = String(safeCount);
       button.dataset.feedPostId = cleanId;
 
-      button.disabled = Boolean(pending);
+      button.disabled = false;
       button.setAttribute("aria-busy", pending ? "true" : "false");
-
-      button.classList.toggle("is-pending-like", Boolean(pending));
+      button.classList.remove("is-pending-like");
 
       if (typeof liked === "boolean") {
         button.dataset.liked = liked ? "true" : "false";
@@ -584,13 +719,18 @@
     );
   }
 
-  function scheduleLikeRefresh() {
+  function scheduleLikeRefresh(delay = LIKE_BACKGROUND_REFRESH_MS) {
     clearTimeout(likeRefreshTimer);
 
     likeRefreshTimer = setTimeout(() => {
+      if (hasActiveLikeRenderProtection()) {
+        scheduleLikeRefresh(LIKE_PROTECTION_RECHECK_MS);
+        return;
+      }
+
       refreshFeedIfHomeVisible();
       refreshOpenCommentsIfNeeded(120);
-    }, 650);
+    }, Math.max(400, Number(delay || LIKE_BACKGROUND_REFRESH_MS)));
   }
 
   async function callToggleLikeApi(cleanId) {
@@ -658,6 +798,7 @@
       return;
     }
 
+    protectLikeRender(cleanId);
     pendingLikeLocks.add(cleanId);
 
     let snapshot = getLikeSnapshot(cleanId);
@@ -693,6 +834,7 @@
       }
     } finally {
       pendingLikeLocks.delete(cleanId);
+      protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
 
       const currentSnapshot = getLikeSnapshot(cleanId);
       const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
@@ -767,9 +909,20 @@
   }
 
   function handleFeedUpdatedEvent(event) {
-    const changedPostId = String(event?.detail?.postId || "");
+    const detail = event?.detail || {};
+    const changedPostId = String(detail?.postId || detail?.post_id || extractPostIdFromDetail(detail) || "");
+
+    if (shouldDelayRenderForLikeUpdate(detail)) {
+      scheduleLikeRefresh();
+      return;
+    }
 
     setTimeout(() => {
+      if (hasActiveLikeRenderProtection()) {
+        scheduleLikeRefresh();
+        return;
+      }
+
       renderFeed();
     }, 180);
 
@@ -791,8 +944,21 @@
 
     const api = getApi();
 
-    const refresh = () => {
-      setTimeout(refreshFeedIfHomeVisible, 120);
+    const refresh = (detail = {}) => {
+      if (shouldDelayRenderForLikeUpdate(detail)) {
+        scheduleLikeRefresh();
+        return;
+      }
+
+      setTimeout(() => {
+        if (hasActiveLikeRenderProtection()) {
+          scheduleLikeRefresh();
+          return;
+        }
+
+        refreshFeedIfHomeVisible();
+      }, 120);
+
       refreshOpenCommentsIfNeeded(180);
     };
 
@@ -833,6 +999,10 @@
     autoRefreshTimer = setInterval(() => {
       if (document.visibilityState !== "visible") return;
 
+      if (hasActiveLikeRenderProtection()) {
+        return;
+      }
+
       refreshFeedIfHomeVisible();
       refreshOpenCommentsIfNeeded(120);
     }, 6000);
@@ -867,29 +1037,66 @@
     });
 
     window.addEventListener("klevby-app-resumed", () => {
-      setTimeout(refreshFeedIfHomeVisible, 120);
+      setTimeout(() => {
+        if (hasActiveLikeRenderProtection()) {
+          scheduleLikeRefresh();
+          return;
+        }
+
+        refreshFeedIfHomeVisible();
+      }, 120);
+
       refreshOpenCommentsIfNeeded(220);
     });
 
     if (!window.__klevbyCentralResumeRouter) {
       window.addEventListener("pageshow", () => {
-        setTimeout(refreshFeedIfHomeVisible, 120);
+        setTimeout(() => {
+          if (hasActiveLikeRenderProtection()) {
+            scheduleLikeRefresh();
+            return;
+          }
+
+          refreshFeedIfHomeVisible();
+        }, 120);
       });
 
       window.addEventListener("focus", () => {
-        setTimeout(refreshFeedIfHomeVisible, 160);
+        setTimeout(() => {
+          if (hasActiveLikeRenderProtection()) {
+            scheduleLikeRefresh();
+            return;
+          }
+
+          refreshFeedIfHomeVisible();
+        }, 160);
       });
 
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-          setTimeout(refreshFeedIfHomeVisible, 160);
+          setTimeout(() => {
+            if (hasActiveLikeRenderProtection()) {
+              scheduleLikeRefresh();
+              return;
+            }
+
+            refreshFeedIfHomeVisible();
+          }, 160);
+
           refreshOpenCommentsIfNeeded(220);
         }
       });
     }
 
     window.addEventListener("klevby-auth-changed", () => {
-      setTimeout(refreshFeedIfHomeVisible, 180);
+      setTimeout(() => {
+        if (hasActiveLikeRenderProtection()) {
+          scheduleLikeRefresh();
+          return;
+        }
+
+        refreshFeedIfHomeVisible();
+      }, 180);
     });
 
     window.addEventListener("klevby-feed-updated", handleFeedUpdatedEvent);
@@ -901,7 +1108,14 @@
 
       if (!target) return;
 
-      setTimeout(refreshFeedIfHomeVisible, 180);
+      setTimeout(() => {
+        if (hasActiveLikeRenderProtection()) {
+          scheduleLikeRefresh();
+          return;
+        }
+
+        refreshFeedIfHomeVisible();
+      }, 180);
     });
 
     document.addEventListener("keydown", (event) => {
