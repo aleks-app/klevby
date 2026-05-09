@@ -458,11 +458,14 @@
     const item = getCachedFeedItem(cleanId);
     const button = getLikeButtons(cleanId)[0];
     const buttonCount = getButtonLikesCount(cleanId);
+    const itemLikesCount = getItemLikesCount(item);
 
     const likesCount =
-      buttonCount !== null
-        ? buttonCount
-        : getItemLikesCount(item);
+      Number.isFinite(Number(itemLikesCount))
+        ? itemLikesCount
+        : buttonCount !== null
+          ? buttonCount
+          : 0;
 
     let liked = getKnownLikeState(cleanId, item);
 
@@ -1215,6 +1218,12 @@
     }
 
     processLikeSync(cleanId);
+
+    return {
+      postId: cleanId,
+      liked: optimistic.optimisticLiked,
+      likesCount: optimistic.optimisticCount
+    };
   }
 
   async function toggleLikeFromViewer(postId) {
