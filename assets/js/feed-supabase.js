@@ -10,6 +10,8 @@
   const KLEVB_FEED_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
   const KLEVB_FEED_VIEWER_KEY = "klevby_feed_viewer_key";
 
+  const KLEVB_FEED_AUTH_TIMEOUT_MS = 1400;
+
   let klevbyFeedRealtimeChannel = null;
   let klevbyFeedRealtimeCallback = null;
 
@@ -30,10 +32,75 @@
     if (window.klevbyUser) return window.klevbyUser;
 
     if (typeof window.klevbyGetCurrentUser === "function") {
-      return window.klevbyGetCurrentUser();
+      try {
+        const user = window.klevbyGetCurrentUser();
+
+        if (user && typeof user.then !== "function") {
+          return user;
+        }
+      } catch (error) {
+        console.debug("Klevby feed: current user getter skipped", error);
+      }
     }
 
     return null;
+  }
+
+  function klevbyFeedSupabaseWithTimeout(promise, timeoutMs, fallbackValue = null) {
+    return Promise.race([
+      promise,
+      new Promise((resolve) => {
+        setTimeout(() => resolve(fallbackValue), Math.max(0, Number(timeoutMs || 0)));
+      })
+    ]);
+  }
+
+  async function klevbyFeedSupabaseGetViewerUserId(db, options = {}) {
+    const restore = Boolean(options.restore);
+
+    let user = klevbyFeedSupabaseGetCurrentUser();
+
+    if (user && user.id) {
+      return String(user.id);
+    }
+
+    if (restore && typeof window.restoreAuthState === "function") {
+      try {
+        await klevbyFeedSupabaseWithTimeout(
+          window.restoreAuthState("feed_supabase_viewer", false),
+          KLEVB_FEED_AUTH_TIMEOUT_MS,
+          null
+        );
+      } catch (error) {
+        console.debug("Klevby feed: restore auth for viewer skipped", error);
+      }
+
+      user = klevbyFeedSupabaseGetCurrentUser();
+
+      if (user && user.id) {
+        return String(user.id);
+      }
+    }
+
+    if (db && db.auth && typeof db.auth.getUser === "function") {
+      try {
+        const result = await klevbyFeedSupabaseWithTimeout(
+          db.auth.getUser(),
+          KLEVB_FEED_AUTH_TIMEOUT_MS,
+          null
+        );
+
+        const authUser = result?.data?.user || null;
+
+        if (authUser && authUser.id) {
+          return String(authUser.id);
+        }
+      } catch (error) {
+        console.debug("Klevby feed: auth.getUser skipped", error);
+      }
+    }
+
+    return "";
   }
 
   async function klevbyFeedSupabaseEnsureUser() {
@@ -55,6 +122,21 @@
 
     if (user && user.id) {
       return user;
+    }
+
+    const db = klevbyFeedSupabaseGetClient();
+
+    if (db && db.auth && typeof db.auth.getUser === "function") {
+      try {
+        const result = await db.auth.getUser();
+        const authUser = result?.data?.user || null;
+
+        if (authUser && authUser.id) {
+          return authUser;
+        }
+      } catch (error) {
+        console.debug("Klevby feed: auth user fallback skipped", error);
+      }
     }
 
     return null;
@@ -170,8 +252,29 @@
     });
   }
 
+  function klevbyFeedSupabaseReadBoolean(value) {
+    if (typeof value === "boolean") return value;
+    if (value === "true") return true;
+    if (value === "false") return false;
+    if (value === 1) return true;
+    if (value === 0) return false;
+
+    return false;
+  }
+
   function klevbyFeedSupabaseNormalizePost(row) {
     if (!row) return null;
+
+    const likedByViewer = klevbyFeedSupabaseReadBoolean(
+      row.liked_by_viewer ??
+      row.likedByViewer ??
+      row.viewerLiked ??
+      row.viewer_liked ??
+      row.isLiked ??
+      row.liked ??
+      row.hasLiked ??
+      false
+    );
 
     return {
       type: row.type || "profile_photo",
@@ -196,8 +299,145 @@
       engagementScore: Number(row.engagement_score || 0),
       createdAt: row.created_at || "",
       updatedAt: row.updated_at || "",
-      source: "supabase"
+      source: "supabase",
+
+      likedByViewer,
+      viewerLiked: likedByViewer,
+      isLiked: likedByViewer,
+      liked: likedByViewer,
+      hasLiked: likedByViewer,
+      liked_by_viewer: likedByViewer
     };
+  }
+
+  function klevbyFeedSupabaseApplyViewerLikeState(item, liked) {
+    const safeLiked = Boolean(liked);
+
+    return {
+      ...item,
+      likedByViewer: safeLiked,
+      viewerLiked: safeLiked,
+      isLiked: safeLiked,
+      liked: safeLiked,
+      hasLiked: safeLiked,
+      liked_by_viewer: safeLiked
+    };
+  }
+
+  async function klevbyFeedSupabaseLoadViewerLikedPostIds(db, postIds, userId) {
+    const ids = Array.from(
+      new Set(
+        (Array.isArray(postIds) ? postIds : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    const cleanUserId = String(userId || "").trim();
+
+    if (!db || !ids.length || !cleanUserId) {
+      return new Set();
+    }
+
+    try {
+      const { data, error } = await db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .select("post_id")
+        .eq("user_id", cleanUserId)
+        .in("post_id", ids);
+
+      if (error) {
+        console.warn("Klevby feed: не удалось проверить мои лайки", error);
+        return new Set();
+      }
+
+      return new Set(
+        (Array.isArray(data) ? data : [])
+          .map((row) => String(row?.post_id || "").trim())
+          .filter(Boolean)
+      );
+    } catch (error) {
+      console.warn("Klevby feed: ошибка проверки моих лайков", error);
+      return new Set();
+    }
+  }
+
+  async function klevbyFeedSupabaseApplyViewerLikes(db, items, options = {}) {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    if (!safeItems.length) {
+      return [];
+    }
+
+    const userId = await klevbyFeedSupabaseGetViewerUserId(db, {
+      restore: Boolean(options.restore)
+    });
+
+    if (!userId) {
+      return safeItems.map((item) => klevbyFeedSupabaseApplyViewerLikeState(item, false));
+    }
+
+    const likedPostIds = await klevbyFeedSupabaseLoadViewerLikedPostIds(
+      db,
+      safeItems.map((item) => item?.id),
+      userId
+    );
+
+    return safeItems.map((item) => {
+      const id = String(item?.id || "").trim();
+      return klevbyFeedSupabaseApplyViewerLikeState(item, likedPostIds.has(id));
+    });
+  }
+
+  function klevbyFeedSupabaseIsDuplicateError(error) {
+    const code = String(error?.code || "").trim();
+    const message = String(error?.message || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    const hint = String(error?.hint || "").toLowerCase();
+    const constraint = String(error?.constraint || "").toLowerCase();
+
+    return (
+      code === "23505" ||
+      message.includes("duplicate") ||
+      message.includes("unique") ||
+      details.includes("duplicate") ||
+      details.includes("unique") ||
+      hint.includes("duplicate") ||
+      hint.includes("unique") ||
+      constraint.includes("unique")
+    );
+  }
+
+  async function klevbyFeedSupabaseGetPostCounters(db, postId) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!db || !cleanPostId) {
+      return null;
+    }
+
+    try {
+      const { data, error } = await db
+        .from(KLEVB_FEED_TABLE)
+        .select("likes_count,comments_count,views_count,engagement_score,updated_at")
+        .eq("id", cleanPostId)
+        .maybeSingle();
+
+      if (error) {
+        console.debug("Klevby feed: counters skipped", error);
+        return null;
+      }
+
+      return {
+        likesCount: Number(data?.likes_count || 0),
+        commentsCount: Number(data?.comments_count || 0),
+        viewsCount: Number(data?.views_count || 0),
+        engagementScore: Number(data?.engagement_score || 0),
+        updatedAt: data?.updated_at || ""
+      };
+    } catch (error) {
+      console.debug("Klevby feed: counters read skipped", error);
+      return null;
+    }
   }
 
   function klevbyFeedSupabaseDispatch(action, detail = {}) {
@@ -309,9 +549,13 @@
         };
       }
 
-      const items = Array.isArray(result.data)
+      const normalizedItems = Array.isArray(result.data)
         ? result.data.map(klevbyFeedSupabaseNormalizePost).filter(Boolean)
         : [];
+
+      const items = await klevbyFeedSupabaseApplyViewerLikes(db, normalizedItems, {
+        restore: true
+      });
 
       return {
         ok: true,
@@ -445,7 +689,10 @@
       throw new Error("Пост ленты не создался: " + insertResult.error.message);
     }
 
-    const item = klevbyFeedSupabaseNormalizePost(insertResult.data);
+    const item = klevbyFeedSupabaseApplyViewerLikeState(
+      klevbyFeedSupabaseNormalizePost(insertResult.data),
+      false
+    );
 
     klevbyFeedSupabaseDispatch("created", {
       item,
@@ -526,6 +773,9 @@
       throw new Error("Не получилось проверить лайк: " + existing.error.message);
     }
 
+    let liked = false;
+    let action = "like_removed";
+
     if (existing.data && existing.data.id) {
       const removeResult = await db
         .from(KLEVB_FEED_LIKES_TABLE)
@@ -537,33 +787,46 @@
         throw new Error("Не получилось убрать лайк: " + removeResult.error.message);
       }
 
-      klevbyFeedSupabaseDispatch("like_removed", {
-        postId: cleanPostId
-      });
+      liked = false;
+      action = "like_removed";
+    } else {
+      const addResult = await db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .insert([{
+          post_id: cleanPostId,
+          user_id: user.id
+        }]);
 
-      return {
-        liked: false
-      };
+      if (addResult.error) {
+        if (klevbyFeedSupabaseIsDuplicateError(addResult.error)) {
+          liked = true;
+          action = "like_already_added";
+        } else {
+          console.error("Klevby feed: ошибка добавления лайка", addResult.error);
+          throw new Error("Не получилось поставить лайк: " + addResult.error.message);
+        }
+      } else {
+        liked = true;
+        action = "like_added";
+      }
     }
 
-    const addResult = await db
-      .from(KLEVB_FEED_LIKES_TABLE)
-      .insert([{
-        post_id: cleanPostId,
-        user_id: user.id
-      }]);
+    const counters = await klevbyFeedSupabaseGetPostCounters(db, cleanPostId);
 
-    if (addResult.error) {
-      console.error("Klevby feed: ошибка добавления лайка", addResult.error);
-      throw new Error("Не получилось поставить лайк: " + addResult.error.message);
-    }
-
-    klevbyFeedSupabaseDispatch("like_added", {
-      postId: cleanPostId
+    klevbyFeedSupabaseDispatch(action, {
+      postId: cleanPostId,
+      liked,
+      likesCount: counters?.likesCount
     });
 
     return {
-      liked: true
+      liked,
+      postId: cleanPostId,
+      likesCount: counters?.likesCount,
+      commentsCount: counters?.commentsCount,
+      viewsCount: counters?.viewsCount,
+      engagementScore: counters?.engagementScore,
+      updatedAt: counters?.updatedAt || ""
     };
   }
 
@@ -735,14 +998,19 @@
       ? `user_${user.id}`
       : klevbyFeedSupabaseGetViewerKey();
 
+    const payload = {
+      post_id: cleanPostId,
+      user_id: user?.id || null,
+      viewer_key: viewerKey
+    };
+
     try {
       const { error } = await db
         .from(KLEVB_FEED_VIEWS_TABLE)
-        .insert([{
-          post_id: cleanPostId,
-          user_id: user?.id || null,
-          viewer_key: viewerKey
-        }]);
+        .upsert([payload], {
+          onConflict: "post_id,viewer_key",
+          ignoreDuplicates: true
+        });
 
       if (error) {
         const message = String(error.message || "").toLowerCase();
