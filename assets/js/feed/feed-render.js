@@ -1596,6 +1596,9 @@
     }
 
     const items = getRenderableFeedItems(result?.items || []);
+    const resultSource = String(result?.source || "").toLowerCase();
+    const isSupabaseAuthoritativeSource =
+      resultSource === "supabase" || resultSource === "supabase_empty";
 
     if (!items.length) {
       if (renderedFallback) {
@@ -1611,7 +1614,9 @@
 
       setLastItems([]);
       setItemsCacheFromArray([]);
-      writeFeedCache([]);
+      if (isSupabaseAuthoritativeSource) {
+        writeFeedCache([]);
+      }
       setStaticListHtml(list, emptyHtml(), "empty", "empty");
       scheduleRenderRetry("fresh_empty_without_fallback", 5000);
       scheduleMobileFeedWidthLock("fresh_empty_without_fallback", 120);
@@ -1620,7 +1625,9 @@
 
     resetRenderRetry();
     renderFeedItems(list, items, "fresh");
-    writeFeedCache(items);
+    if (isSupabaseAuthoritativeSource) {
+      writeFeedCache(items);
+    }
     runMobileFeedWidthLockBurst("render_done");
   }
 

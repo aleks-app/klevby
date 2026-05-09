@@ -405,6 +405,7 @@
       likeRefreshTimer = null;
     }
 
+    viewerLikeState.clear();
     pendingLikeLocks.clear();
     likeRenderProtectedUntil.clear();
 
