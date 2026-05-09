@@ -1234,7 +1234,7 @@
           break;
         }
 
-        const result = await callSetLikeStateApi(cleanId);
+        const result = await callSetLikeStateApi(cleanId, desiredLiked);
         const normalized = normalizeLikeStateResult(result) || {
           liked: desiredLiked,
           likesCount: null
