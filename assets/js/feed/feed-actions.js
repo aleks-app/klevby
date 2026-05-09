@@ -3,6 +3,8 @@
   let realtimeStarted = false;
   let refreshBound = false;
   let likeRefreshTimer = null;
+  let likeResumeResetTimer = null;
+  let lastLikeRuntimeResetAt = 0;
 
   const pendingLikeLocks = new Set();
   const viewerLikeState = new Map();
@@ -15,6 +17,10 @@
   const LIKE_RENDER_PROTECTION_MS = 5200;
   const LIKE_BACKGROUND_REFRESH_MS = 6200;
   const LIKE_PROTECTION_RECHECK_MS = 900;
+  const LIKE_PREFLIGHT_TIMEOUT_MS = 850;
+  const LIKE_READ_TIMEOUT_MS = 1800;
+  const LIKE_WRITE_TIMEOUT_MS = 5000;
+  const LIKE_RESUME_REFRESH_DELAY_MS = 180;
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -34,6 +40,51 @@
 
   function getUtils() {
     return window.KlevbyFeedUtils || {};
+  }
+
+  function withSoftTimeout(promise, timeoutMs, fallbackValue = null, label = "operation") {
+    const safeTimeout = Math.max(250, Number(timeoutMs || 0) || 0);
+    let finished = false;
+    let timer = null;
+
+    return new Promise((resolve, reject) => {
+      timer = window.setTimeout(() => {
+        if (finished) return;
+
+        finished = true;
+
+        console.debug("Klevby feed actions: soft timeout", {
+          label,
+          timeoutMs: safeTimeout
+        });
+
+        resolve(fallbackValue);
+      }, safeTimeout);
+
+      Promise.resolve(promise)
+        .then((value) => {
+          if (finished) return;
+
+          finished = true;
+
+          if (timer) {
+            window.clearTimeout(timer);
+          }
+
+          resolve(value);
+        })
+        .catch((error) => {
+          if (finished) return;
+
+          finished = true;
+
+          if (timer) {
+            window.clearTimeout(timer);
+          }
+
+          reject(error);
+        });
+    });
   }
 
   function getSupabaseClient() {
@@ -338,6 +389,60 @@
     }
 
     return pendingLikeLocks.size > 0;
+  }
+
+  function resetLikeRuntimeState(reason = "resume") {
+    const now = Date.now();
+
+    if (now - lastLikeRuntimeResetAt < 180) {
+      return;
+    }
+
+    lastLikeRuntimeResetAt = now;
+
+    if (likeRefreshTimer) {
+      clearTimeout(likeRefreshTimer);
+      likeRefreshTimer = null;
+    }
+
+    pendingLikeLocks.clear();
+    likeRenderProtectedUntil.clear();
+
+    likeSyncState.forEach((sync) => {
+      sync.inFlight = false;
+      sync.desiredLiked = null;
+      sync.desiredCount = null;
+      sync.rollbackSnapshot = null;
+    });
+
+    document
+      .querySelectorAll(".profile-feed-like-btn, #klevbyFeedViewerLikeBtn")
+      .forEach((button) => {
+        button.disabled = false;
+        button.dataset.pendingLike = "0";
+        button.setAttribute("aria-busy", "false");
+        button.classList.remove("is-pending-like", "is-pending");
+      });
+
+    console.info("Klevby feed actions: like runtime reset", {
+      reason
+    });
+  }
+
+  function recoverFeedAfterResume(reason = "resume", delay = LIKE_RESUME_REFRESH_DELAY_MS) {
+    if (likeResumeResetTimer) {
+      clearTimeout(likeResumeResetTimer);
+      likeResumeResetTimer = null;
+    }
+
+    resetLikeRuntimeState(reason);
+
+    likeResumeResetTimer = setTimeout(() => {
+      likeResumeResetTimer = null;
+
+      refreshFeedIfHomeVisible();
+      refreshOpenCommentsIfNeeded(220);
+    }, Math.max(80, Number(delay || LIKE_RESUME_REFRESH_DELAY_MS)));
   }
 
   function extractPostIdFromDetail(detail = {}) {
@@ -684,7 +789,12 @@
       if (typeof candidate !== "function") continue;
 
       try {
-        const result = await candidate(cleanId);
+        const result = await withSoftTimeout(
+          candidate(cleanId),
+          LIKE_READ_TIMEOUT_MS,
+          null,
+          "like_state_candidate"
+        );
         const normalized = normalizeLikeStateResult(result);
 
         if (normalized) {
@@ -698,7 +808,12 @@
     }
 
     try {
-      const directState = await readDirectLikeState(cleanId);
+      const directState = await withSoftTimeout(
+        readDirectLikeState(cleanId),
+        LIKE_READ_TIMEOUT_MS,
+        null,
+        "direct_like_state"
+      );
 
       if (directState && typeof directState.liked === "boolean") {
         return directState;
@@ -732,7 +847,12 @@
       if (typeof candidate !== "function") continue;
 
       try {
-        const result = await candidate(cleanId, desiredLiked);
+        const result = await withSoftTimeout(
+          candidate(cleanId, desiredLiked),
+          LIKE_WRITE_TIMEOUT_MS,
+          null,
+          "set_like_candidate"
+        );
         const normalized = normalizeLikeStateResult(result);
 
         if (normalized) {
@@ -746,7 +866,12 @@
     }
 
     try {
-      const directResult = await writeDirectLikeState(cleanId, desiredLiked);
+      const directResult = await withSoftTimeout(
+        writeDirectLikeState(cleanId, desiredLiked),
+        LIKE_WRITE_TIMEOUT_MS,
+        null,
+        "direct_set_like"
+      );
 
       if (directResult && typeof directResult.liked === "boolean") {
         return directResult;
@@ -803,7 +928,12 @@
       if (typeof candidate !== "function") continue;
 
       try {
-        return await candidate(cleanId);
+        return await withSoftTimeout(
+          candidate(cleanId),
+          LIKE_WRITE_TIMEOUT_MS,
+          null,
+          "unlike_candidate"
+        );
       } catch (error) {
         console.debug("Klevby feed actions: explicit unlike skipped", {
           error: String(error?.message || error)
@@ -811,7 +941,12 @@
       }
     }
 
-    return writeDirectLikeState(cleanId, false);
+    return withSoftTimeout(
+      writeDirectLikeState(cleanId, false),
+      LIKE_WRITE_TIMEOUT_MS,
+      null,
+      "direct_unlike"
+    );
   }
 
   async function improveUnknownLikeSnapshot(postId, snapshot, force = false) {
@@ -820,7 +955,12 @@
     }
 
     const cleanId = String(postId || "").trim();
-    const serverState = await callReadLikeStateApi(cleanId);
+    const serverState = await withSoftTimeout(
+      callReadLikeStateApi(cleanId),
+      LIKE_PREFLIGHT_TIMEOUT_MS,
+      null,
+      "like_preflight"
+    );
 
     if (!serverState || typeof serverState.liked !== "boolean") {
       return snapshot;
@@ -965,18 +1105,33 @@
     const api = getApi();
 
     if (typeof api.toggleLike === "function") {
-      return await api.toggleLike(cleanId);
+      return await withSoftTimeout(
+        api.toggleLike(cleanId),
+        LIKE_WRITE_TIMEOUT_MS,
+        null,
+        "toggle_like_api"
+      );
     }
 
     if (typeof window.klevbyToggleFeedLike === "function") {
-      return await window.klevbyToggleFeedLike(cleanId);
+      return await withSoftTimeout(
+        window.klevbyToggleFeedLike(cleanId),
+        LIKE_WRITE_TIMEOUT_MS,
+        null,
+        "toggle_like_global"
+      );
     }
 
     if (
       window.klevbyFeedSupabase &&
       typeof window.klevbyFeedSupabase.toggleLike === "function"
     ) {
-      return await window.klevbyFeedSupabase.toggleLike(cleanId);
+      return await withSoftTimeout(
+        window.klevbyFeedSupabase.toggleLike(cleanId),
+        LIKE_WRITE_TIMEOUT_MS,
+        null,
+        "toggle_like_supabase_bridge"
+      );
     }
 
     throw new Error("Лайки ещё не подключены.");
@@ -1078,7 +1233,7 @@
           break;
         }
 
-        const result = await callSetLikeStateApi(cleanId, desiredLiked);
+        const result = await callSetLikeStateApi(cleanId);
         const normalized = normalizeLikeStateResult(result) || {
           liked: desiredLiked,
           likesCount: null
@@ -1391,53 +1546,21 @@
     });
 
     window.addEventListener("klevby-app-resumed", () => {
-      setTimeout(() => {
-        if (hasActiveLikeRenderProtection()) {
-          scheduleLikeRefresh();
-          return;
-        }
-
-        refreshFeedIfHomeVisible();
-      }, 120);
-
-      refreshOpenCommentsIfNeeded(220);
+      recoverFeedAfterResume("klevby-app-resumed");
     });
 
     if (!window.__klevbyCentralResumeRouter) {
       window.addEventListener("pageshow", () => {
-        setTimeout(() => {
-          if (hasActiveLikeRenderProtection()) {
-            scheduleLikeRefresh();
-            return;
-          }
-
-          refreshFeedIfHomeVisible();
-        }, 120);
+        recoverFeedAfterResume("pageshow");
       });
 
       window.addEventListener("focus", () => {
-        setTimeout(() => {
-          if (hasActiveLikeRenderProtection()) {
-            scheduleLikeRefresh();
-            return;
-          }
-
-          refreshFeedIfHomeVisible();
-        }, 160);
+        recoverFeedAfterResume("focus", 220);
       });
 
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-          setTimeout(() => {
-            if (hasActiveLikeRenderProtection()) {
-              scheduleLikeRefresh();
-              return;
-            }
-
-            refreshFeedIfHomeVisible();
-          }, 160);
-
-          refreshOpenCommentsIfNeeded(220);
+          recoverFeedAfterResume("visibilitychange", 220);
         }
       });
     }
@@ -1509,7 +1632,9 @@
     toggleFeedLike: toggleLikeFromCard,
     toggleLikeFromViewer,
     openProfilePhotoFeedItem,
-    openFeedCommentModal
+    openFeedCommentModal,
+    resetLikeRuntimeState,
+    recoverFeedAfterResume
   };
 
   window.KlevbyFeedActions = actions;
