@@ -1,4 +1,10 @@
 (function () {
+  let klevbyFeedRenderRetryTimer = null;
+  let klevbyFeedRenderRetryCount = 0;
+
+  const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
+  const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
+
   function getState() {
     return window.KlevbyFeedState || {};
   }
@@ -68,14 +74,15 @@
   }
 
   function setLastItems(items) {
+    const safeItems = Array.isArray(items) ? items : [];
     const state = getState();
 
     if (typeof state.setLastItems === "function") {
-      state.setLastItems(items);
+      state.setLastItems(safeItems);
       return;
     }
 
-    window.__klevbyFeedLastItems = Array.isArray(items) ? items : [];
+    window.__klevbyFeedLastItems = safeItems;
   }
 
   function setItemsCacheFromArray(items) {
@@ -103,7 +110,8 @@
     const state = getState();
 
     if (typeof state.getLastItems === "function") {
-      return state.getLastItems();
+      const items = state.getLastItems();
+      return Array.isArray(items) ? items : [];
     }
 
     return Array.isArray(window.__klevbyFeedLastItems)
@@ -132,10 +140,11 @@
     return Number(window.__klevbyFeedRenderToken || 0);
   }
 
-  const FEED_CACHE_VERSION = 1;
-  const FEED_CACHE_LIMIT = 20;
-  const FEED_CACHE_TTL_MS = 10 * 60 * 1000;
-  const FEED_CACHE_PREFIX = "klevby_feed_cache_v1";
+  const FEED_CACHE_VERSION = 2;
+  const FEED_CACHE_LIMIT = 40;
+  const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
+  const FEED_STYLES_VERSION = "20260509-feed-render-stable-cache-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -153,8 +162,27 @@
     return "anon";
   }
 
-  function getFeedCacheKey() {
-    return `${FEED_CACHE_PREFIX}_${getFeedCacheOwnerKey()}`;
+  function uniqueArray(values) {
+    return Array.from(new Set(values.filter(Boolean)));
+  }
+
+  function getFeedCacheReadKeys() {
+    const ownerKey = getFeedCacheOwnerKey();
+
+    return uniqueArray([
+      `${FEED_CACHE_PREFIX}_${ownerKey}`,
+      `${FEED_CACHE_PREFIX}_global`,
+      `${FEED_CACHE_PREFIX}_anon`
+    ]);
+  }
+
+  function getFeedCacheWriteKeys() {
+    const ownerKey = getFeedCacheOwnerKey();
+
+    return uniqueArray([
+      `${FEED_CACHE_PREFIX}_${ownerKey}`,
+      `${FEED_CACHE_PREFIX}_global`
+    ]);
   }
 
   function normalizeFeedCacheItem(item) {
@@ -170,16 +198,19 @@
       source: item.source || "",
       image,
       imageUrl: item.imageUrl || item.image || "",
-      authorName: item.authorName || "Рыбак",
-      authorCity: item.authorCity || "",
-      authorAvatarUrl: item.authorAvatarUrl || item.avatarUrl || item.avatar || "",
-      avatarUrl: item.avatarUrl || item.authorAvatarUrl || item.avatar || "",
-      avatar: item.avatar || item.avatarUrl || item.authorAvatarUrl || "",
+      imagePath: item.imagePath || item.image_path || "",
+      authorName: item.authorName || item.author_name || "Рыбак",
+      authorCity: item.authorCity || item.author_city || "",
+      authorAvatarUrl: item.authorAvatarUrl || item.author_avatar_url || item.avatarUrl || item.avatar || "",
+      avatarUrl: item.avatarUrl || item.authorAvatarUrl || item.author_avatar_url || item.avatar || "",
+      avatar: item.avatar || item.avatarUrl || item.authorAvatarUrl || item.author_avatar_url || "",
       title: item.title || item.caption || "Фото с рыбалки",
       caption: item.caption || item.title || "Фото с рыбалки",
-      likesCount: Number(item.likesCount || 0) || 0,
-      commentsCount: Number(item.commentsCount || 0) || 0,
-      viewsCount: Number(item.viewsCount || 0) || 0,
+      likesCount: Number(item.likesCount || item.likes_count || 0) || 0,
+      commentsCount: Number(item.commentsCount || item.comments_count || 0) || 0,
+      viewsCount: Number(item.viewsCount || item.views_count || 0) || 0,
+      likedByViewer: Boolean(item.likedByViewer || item.viewerLiked || item.liked_by_viewer),
+      viewerLiked: Boolean(item.viewerLiked || item.likedByViewer || item.liked_by_viewer),
       createdAt: item.createdAt || item.created_at || new Date().toISOString(),
       updatedAt: item.updatedAt || item.updated_at || "",
       userId: item.userId || item.user_id || item.ownerId || item.owner_id || null,
@@ -196,58 +227,83 @@
       .slice(0, FEED_CACHE_LIMIT);
   }
 
-  function readFeedCache() {
-    const cacheKey = getFeedCacheKey();
+  function getRenderableFeedItems(items) {
+    if (!Array.isArray(items)) return [];
 
+    return items.filter((item) => {
+      const id = String(item?.id || "").trim();
+      const image = String(item?.image || item?.imageUrl || "").trim();
+
+      return Boolean(id && image);
+    });
+  }
+
+  function removeCacheKey(cacheKey) {
     try {
-      const raw = localStorage.getItem(cacheKey);
-      if (!raw) return [];
+      localStorage.removeItem(cacheKey);
+    } catch (_) {}
+  }
 
-      const parsed = JSON.parse(raw);
-      const version = Number(parsed?.version || 0);
-      const savedAt = Number(parsed?.savedAt || 0);
+  function readFeedCache() {
+    const cacheKeys = getFeedCacheReadKeys();
 
-      if (version !== FEED_CACHE_VERSION || !savedAt) {
-        localStorage.removeItem(cacheKey);
-        return [];
-      }
-
-      if (Date.now() - savedAt > FEED_CACHE_TTL_MS) {
-        localStorage.removeItem(cacheKey);
-        return [];
-      }
-
-      return normalizeFeedCacheItems(parsed?.items || []);
-    } catch (error) {
+    for (const cacheKey of cacheKeys) {
       try {
-        localStorage.removeItem(cacheKey);
-      } catch (_) {}
+        const raw = localStorage.getItem(cacheKey);
+        if (!raw) continue;
 
-      console.debug("Klevby feed render: cache read skipped", {
-        error: String(error?.message || error)
-      });
+        const parsed = JSON.parse(raw);
+        const version = Number(parsed?.version || 0);
+        const savedAt = Number(parsed?.savedAt || 0);
 
-      return [];
+        if (version !== FEED_CACHE_VERSION || !savedAt) {
+          removeCacheKey(cacheKey);
+          continue;
+        }
+
+        if (Date.now() - savedAt > FEED_CACHE_TTL_MS) {
+          removeCacheKey(cacheKey);
+          continue;
+        }
+
+        const normalized = normalizeFeedCacheItems(parsed?.items || []);
+
+        if (normalized.length) {
+          return normalized;
+        }
+      } catch (error) {
+        removeCacheKey(cacheKey);
+
+        console.debug("Klevby feed render: cache read skipped", {
+          key: cacheKey,
+          error: String(error?.message || error)
+        });
+      }
     }
+
+    return [];
   }
 
   function writeFeedCache(items) {
-    const cacheKey = getFeedCacheKey();
+    const normalized = normalizeFeedCacheItems(items);
+    const cacheKeys = getFeedCacheWriteKeys();
 
     try {
-      const normalized = normalizeFeedCacheItems(items);
-
       if (!normalized.length) {
-        localStorage.removeItem(cacheKey);
+        cacheKeys.forEach(removeCacheKey);
         return;
       }
 
-      localStorage.setItem(cacheKey, JSON.stringify({
+      const payload = JSON.stringify({
         version: FEED_CACHE_VERSION,
         savedAt: Date.now(),
         count: normalized.length,
         items: normalized
-      }));
+      });
+
+      cacheKeys.forEach((cacheKey) => {
+        localStorage.setItem(cacheKey, payload);
+      });
     } catch (error) {
       console.debug("Klevby feed render: cache write skipped", {
         error: String(error?.message || error)
@@ -255,8 +311,51 @@
     }
   }
 
+  function resetRenderRetry() {
+    klevbyFeedRenderRetryCount = 0;
+
+    if (klevbyFeedRenderRetryTimer) {
+      clearTimeout(klevbyFeedRenderRetryTimer);
+      klevbyFeedRenderRetryTimer = null;
+    }
+  }
+
+  function scheduleRenderRetry(reason = "retry", customDelay = null) {
+    if (klevbyFeedRenderRetryCount >= FEED_RENDER_MAX_RETRIES) {
+      return;
+    }
+
+    if (klevbyFeedRenderRetryTimer) {
+      clearTimeout(klevbyFeedRenderRetryTimer);
+      klevbyFeedRenderRetryTimer = null;
+    }
+
+    const delayIndex = Math.min(klevbyFeedRenderRetryCount, FEED_RENDER_RETRY_DELAYS.length - 1);
+    const delay = customDelay === null
+      ? FEED_RENDER_RETRY_DELAYS[delayIndex]
+      : Math.max(0, Number(customDelay || 0));
+
+    klevbyFeedRenderRetryCount += 1;
+
+    klevbyFeedRenderRetryTimer = setTimeout(() => {
+      klevbyFeedRenderRetryTimer = null;
+
+      const list = document.getElementById("profileFeedSection");
+
+      if (!list) return;
+      if (document.visibilityState === "hidden") return;
+
+      console.info("Klevby feed render: retry", {
+        reason,
+        attempt: klevbyFeedRenderRetryCount
+      });
+
+      renderProfileFeed();
+    }, delay);
+  }
+
   function renderFeedItems(list, items, source = "fresh") {
-    const safeItems = Array.isArray(items) ? items : [];
+    const safeItems = getRenderableFeedItems(items);
 
     setLastItems(safeItems);
     setItemsCacheFromArray(safeItems);
@@ -279,15 +378,21 @@
       .join("");
 
     list.innerHTML = cards || emptyHtml();
+
     console.info("Klevby feed render: rendered", {
       source,
       count: safeItems.length
     });
+
     return Boolean(cards);
   }
 
   function ensureFeedStyles() {
     const oldStyle = document.getElementById("klevbyFeedStyles");
+
+    if (oldStyle && oldStyle.dataset.version === FEED_STYLES_VERSION) {
+      return;
+    }
 
     if (oldStyle) {
       oldStyle.remove();
@@ -295,7 +400,7 @@
 
     const style = document.createElement("style");
     style.id = "klevbyFeedStyles";
-    style.dataset.version = "20260507-split-render-1";
+    style.dataset.version = FEED_STYLES_VERSION;
 
     style.textContent = `
       .social-feed-grid {
@@ -710,53 +815,80 @@
     ensureFeedStyles();
 
     const renderToken = nextRenderToken();
-    let renderedCache = false;
-    let freshLoadFailed = false;
+    let renderedFallback = false;
+    let fallbackSource = "";
 
-    if (!getLastItems().length) {
+    const memoryItems = getRenderableFeedItems(getLastItems());
+
+    if (memoryItems.length) {
+      renderedFallback = renderFeedItems(list, memoryItems, "memory");
+      fallbackSource = "memory";
+    } else {
       const cachedItems = readFeedCache();
 
       if (cachedItems.length) {
-        renderedCache = renderFeedItems(list, cachedItems, "cache");
+        renderedFallback = renderFeedItems(list, cachedItems, "cache");
+        fallbackSource = "cache";
       } else {
         list.innerHTML = loadingHtml();
       }
     }
 
+    if (typeof api.getFeedItemsForRender !== "function") {
+      console.info("Klevby feed render: api not ready, keep fallback", {
+        fallback: fallbackSource || "loading"
+      });
+
+      scheduleRenderRetry("api_not_ready");
+      return;
+    }
+
     let result = {
-      source: "local_empty",
+      source: "fresh_empty",
       items: []
     };
 
     try {
-      if (typeof api.getFeedItemsForRender === "function") {
-        result = await api.getFeedItemsForRender({
-          limit: 40
-        });
-      }
+      result = await api.getFeedItemsForRender({
+        limit: 40
+      });
     } catch (error) {
-      freshLoadFailed = true;
       console.warn("Klevby feed render: лента не загрузилась", error);
+
+      if (!renderedFallback) {
+        list.innerHTML = loadingHtml();
+        scheduleRenderRetry("fresh_load_failed");
+      }
+
+      return;
     }
 
     if (renderToken !== getRenderToken()) {
       return;
     }
 
-    const items = Array.isArray(result.items) ? result.items : [];
-
-    if (freshLoadFailed && renderedCache) {
-      return;
-    }
+    const items = getRenderableFeedItems(result?.items || []);
 
     if (!items.length) {
+      if (renderedFallback) {
+        console.info("Klevby feed render: fresh empty, keep fallback", {
+          fallback: fallbackSource,
+          source: result?.source || "unknown"
+        });
+
+        scheduleRenderRetry("fresh_empty_with_fallback", 5000);
+        return;
+      }
+
       setLastItems([]);
       setItemsCacheFromArray([]);
       writeFeedCache([]);
       list.innerHTML = emptyHtml();
+      scheduleRenderRetry("fresh_empty_without_fallback", 5000);
       return;
     }
 
+    resetRenderRetry();
     renderFeedItems(list, items, "fresh");
     writeFeedCache(items);
   }
