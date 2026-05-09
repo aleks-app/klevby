@@ -4,9 +4,41 @@
   let klevbyFeedMainRefreshPending = false;
   let klevbyFeedMainResumeBound = false;
   let klevbyFeedMainResumeTimers = [];
+  let klevbyFeedMainDomWatchTimer = null;
+  let klevbyFeedMainLastRefreshStartedAt = 0;
+  let klevbyFeedMainLastRefreshFinishedAt = 0;
+  let klevbyFeedMainLastSuccessfulRenderAt = 0;
 
-  const KLEVB_FEED_MAIN_POLL_MS = 3000;
-  const KLEVB_FEED_MAIN_RESUME_DELAYS = [0, 400, 1200, 2600, 5200, 9000, 15000];
+  const KLEVB_FEED_MAIN_POLL_MS = 30000;
+  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 1400;
+  const KLEVB_FEED_MAIN_DOM_WATCH_MS = 450;
+  const KLEVB_FEED_MAIN_DOM_WATCH_LIMIT = 70;
+
+  const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
+    0,
+    120,
+    350,
+    800,
+    1400,
+    2400,
+    3800,
+    5600,
+    8200,
+    12000,
+    17000,
+    23000
+  ];
+
+  const KLEVB_FEED_MAIN_RESUME_DELAYS = [
+    0,
+    250,
+    700,
+    1400,
+    2600,
+    4600,
+    7600,
+    12000
+  ];
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -56,6 +88,22 @@
     return Boolean(document.getElementById("profileFeedSection"));
   }
 
+  function isRenderReady() {
+    const render = getRender();
+    return typeof render.renderProfileFeed === "function";
+  }
+
+  function isFreshRefreshAllowed(force) {
+    if (force) return true;
+
+    const now = Date.now();
+    const lastStartedAt = Number(klevbyFeedMainLastRefreshStartedAt || 0);
+
+    if (!lastStartedAt) return true;
+
+    return now - lastStartedAt >= KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS;
+  }
+
   function isDuplicateLikeError(error) {
     const code = String(error?.code || error?.details?.code || "").trim();
     const message = String(error?.message || "").toLowerCase();
@@ -99,12 +147,13 @@
 
     const list = document.getElementById("profileFeedSection");
 
-    if (list) {
+    if (list && !list.dataset.klevbyFeedWaitingShown) {
+      list.dataset.klevbyFeedWaitingShown = "1";
       list.innerHTML = `
         <div class="home-empty-card">
           <div class="home-empty-icon">📸</div>
           <h3>Лента загружается</h3>
-          <p>Модули ленты ещё подключаются. Обнови страницу через пару секунд.</p>
+          <p>Модули ленты ещё подключаются. Подожди пару секунд.</p>
         </div>
       `;
     }
@@ -139,6 +188,23 @@
     }
 
     if (!hasFeedDom()) {
+      startFeedDomWatcher();
+      return false;
+    }
+
+    if (!isRenderReady()) {
+      startFeedDomWatcher();
+
+      if (force) {
+        scheduleMainFeedRefresh(reason + "_render_wait", 420, {
+          force: true
+        });
+      }
+
+      return false;
+    }
+
+    if (!isFreshRefreshAllowed(force)) {
       return false;
     }
 
@@ -148,9 +214,13 @@
     }
 
     klevbyFeedMainRefreshInProgress = true;
+    klevbyFeedMainLastRefreshStartedAt = Date.now();
 
     try {
       await Promise.resolve(renderProfileFeed());
+
+      klevbyFeedMainLastRefreshFinishedAt = Date.now();
+      klevbyFeedMainLastSuccessfulRenderAt = Date.now();
 
       window.dispatchEvent(new CustomEvent("klevby-feed-main-refreshed", {
         detail: {
@@ -173,17 +243,19 @@
           forceRenderFeed("pending_after_" + reason, {
             force
           });
-        }, 500);
+        }, 520);
       }
     }
   }
 
   function scheduleMainFeedRefresh(reason = "scheduled", delay = 300, options = {}) {
+    const safeDelay = Math.max(0, Number(delay || 0));
+
     setTimeout(() => {
       forceRenderFeed(reason, {
         force: Boolean(options.force)
       });
-    }, Math.max(0, Number(delay || 0)));
+    }, safeDelay);
   }
 
   function clearMainResumeTimers() {
@@ -196,6 +268,7 @@
 
   function runMainResumeBurst(reason = "resume") {
     clearMainResumeTimers();
+    startFeedDomWatcher();
 
     const events = getEvents();
 
@@ -232,12 +305,49 @@
 
     klevbyFeedMainRefreshTimer = setInterval(() => {
       if (!isPageVisible()) return;
-      if (!hasFeedDom()) return;
+      if (!hasFeedDom()) {
+        startFeedDomWatcher();
+        return;
+      }
 
       forceRenderFeed("main_visible_poll", {
-        force: true
+        force: false
       });
     }, KLEVB_FEED_MAIN_POLL_MS);
+  }
+
+  function stopFeedDomWatcher() {
+    if (klevbyFeedMainDomWatchTimer) {
+      clearInterval(klevbyFeedMainDomWatchTimer);
+      klevbyFeedMainDomWatchTimer = null;
+    }
+  }
+
+  function startFeedDomWatcher() {
+    if (klevbyFeedMainDomWatchTimer) return;
+
+    let attempts = 0;
+
+    klevbyFeedMainDomWatchTimer = setInterval(() => {
+      attempts += 1;
+
+      if (attempts > KLEVB_FEED_MAIN_DOM_WATCH_LIMIT) {
+        stopFeedDomWatcher();
+        return;
+      }
+
+      if (!isPageVisible()) return;
+
+      if (hasFeedDom() && isRenderReady()) {
+        forceRenderFeed("dom_watch_ready_" + attempts, {
+          force: true
+        });
+
+        if (klevbyFeedMainLastSuccessfulRenderAt) {
+          stopFeedDomWatcher();
+        }
+      }
+    }, KLEVB_FEED_MAIN_DOM_WATCH_MS);
   }
 
   function bindMainResumeHooks() {
@@ -273,16 +383,63 @@
     window.addEventListener("klevby-feed-updated", (event) => {
       const action = String(event?.detail?.action || "feed_updated");
 
-      scheduleMainFeedRefresh(action, 180, {
+      scheduleMainFeedRefresh(action, 160, {
         force: true
       });
     });
 
     window.addEventListener("klevby-feed-module-ready", () => {
-      scheduleMainFeedRefresh("module_ready", 350, {
+      startFeedDomWatcher();
+
+      scheduleMainFeedRefresh("module_ready_fast", 80, {
+        force: true
+      });
+
+      scheduleMainFeedRefresh("module_ready_confirm", 650, {
         force: true
       });
     });
+
+    window.addEventListener("klevby-auth-changed", () => {
+      runMainResumeBurst("auth_changed");
+    });
+
+    window.addEventListener("storage", (event) => {
+      const key = String(event?.key || "");
+
+      if (
+        key.includes("klevby_feed") ||
+        key.includes("klevby_profile") ||
+        key.includes("sb-")
+      ) {
+        scheduleMainFeedRefresh("storage_changed", 260, {
+          force: true
+        });
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      const element = target && target.closest
+        ? target.closest("[data-section], [data-target], .bottom-nav button, .mobile-tabbar button, .tabbar button, .nav-btn")
+        : null;
+
+      if (!element) return;
+
+      const text = String(element.textContent || "").toLowerCase();
+      const section = String(element.dataset?.section || element.dataset?.target || "").toLowerCase();
+
+      if (
+        section.includes("home") ||
+        section.includes("feed") ||
+        text.includes("лента") ||
+        text.includes("главная")
+      ) {
+        scheduleMainFeedRefresh("navigation_home_click", 180, {
+          force: true
+        });
+      }
+    }, true);
   }
 
   function getProfileFeedItemsSafe() {
@@ -523,27 +680,54 @@
 
     bindMainResumeHooks();
     startMainFeedPolling();
+    startFeedDomWatcher();
   }
 
   function startRealtimeLater() {
     const events = getEvents();
 
     if (typeof events.tryStartRealtimeSubscription === "function") {
-      setTimeout(events.tryStartRealtimeSubscription, 1200);
-      setTimeout(events.tryStartRealtimeSubscription, 2600);
-      setTimeout(events.tryStartRealtimeSubscription, 5000);
+      setTimeout(() => {
+        safeCall(events.tryStartRealtimeSubscription, [{
+          force: false,
+          reason: "initial_realtime_1200"
+        }]);
+      }, 1200);
+
+      setTimeout(() => {
+        safeCall(events.tryStartRealtimeSubscription, [{
+          force: false,
+          reason: "initial_realtime_3000"
+        }]);
+      }, 3000);
+
+      setTimeout(() => {
+        safeCall(events.tryStartRealtimeSubscription, [{
+          force: false,
+          reason: "initial_realtime_6500"
+        }]);
+      }, 6500);
     }
   }
 
   function renderLater() {
-    setTimeout(renderProfileFeed, 350);
-    setTimeout(() => forceRenderFeed("initial_main_900", { force: true }), 900);
-    setTimeout(() => forceRenderFeed("initial_main_1600", { force: true }), 1600);
-    setTimeout(() => forceRenderFeed("initial_main_3200", { force: true }), 3200);
+    KLEVB_FEED_MAIN_INITIAL_DELAYS.forEach((delay) => {
+      setTimeout(() => {
+        forceRenderFeed("initial_main_" + delay, {
+          force: true
+        });
+      }, delay);
+    });
   }
 
   function initKlevbyFeed() {
-    if (window.__klevbyFeedModularStarted) return;
+    if (window.__klevbyFeedModularStarted) {
+      startFeedDomWatcher();
+      scheduleMainFeedRefresh("already_started_recheck", 160, {
+        force: true
+      });
+      return;
+    }
 
     window.__klevbyFeedModularStarted = true;
 
@@ -554,11 +738,11 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260508-feed-like-main-route-1"
+        version: "20260509-feed-main-stable-start-1"
       }
     }));
 
-    console.log("Klevby feed main hard polling loaded");
+    console.log("Klevby feed main stable starter loaded");
   }
 
   if (document.readyState === "loading") {
@@ -576,6 +760,8 @@
     scheduleMainFeedRefresh,
     runMainResumeBurst,
     startMainFeedPolling,
+    startFeedDomWatcher,
+    stopFeedDomWatcher,
     openKlevbyProfileSafe,
     openProfilePhotoFeedItem,
     openFeedCommentModal,
