@@ -9,6 +9,16 @@
     return window.KlevbyFeedModalStyles || {};
   }
 
+  function getState() {
+    const core = getCore();
+
+    if (typeof core.getState === "function") {
+      return core.getState();
+    }
+
+    return window.KlevbyFeedState || {};
+  }
+
   function getUtils() {
     const core = getCore();
 
@@ -29,22 +39,14 @@
     return window.KlevbyFeedApi || {};
   }
 
-  function getState() {
+  function getRender() {
     const core = getCore();
 
-    if (typeof core.getState === "function") {
-      return core.getState();
+    if (typeof core.getRender === "function") {
+      return core.getRender();
     }
 
-    return window.KlevbyFeedState || {};
-  }
-
-  function debugLog(label, payload) {
-    if (!window.KLEVB_DEBUG_FEED) return;
-
-    try {
-      console.debug(label, payload || {});
-    } catch (_) {}
+    return window.KlevbyFeedRender || {};
   }
 
   function escapeHtml(value) {
@@ -157,24 +159,6 @@
     return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
   }
 
-  function canManageComment(comment) {
-    const core = getCore();
-
-    if (typeof core.canManageComment === "function") {
-      return Boolean(core.canManageComment(comment));
-    }
-
-    if (!comment) return false;
-
-    const user = getCurrentUser();
-    const userId = user?.id || "";
-
-    return Boolean(
-      isAdmin() ||
-      (userId && comment.user_id && String(userId) === String(comment.user_id))
-    );
-  }
-
   function getCachedItem(postId) {
     const cleanId = String(postId || "").trim();
     const core = getCore();
@@ -193,6 +177,40 @@
 
     const cache = window.__klevbyFeedItemsCache || {};
     return cache[cleanId] || null;
+  }
+
+  function canManageComment(comment) {
+    const core = getCore();
+
+    if (typeof core.canManageComment === "function") {
+      return Boolean(core.canManageComment(comment));
+    }
+
+    if (!comment) return false;
+
+    const user = getCurrentUser();
+    const userId = user?.id || "";
+
+    return Boolean(
+      isAdmin() ||
+      (userId && comment.user_id && String(userId) === String(comment.user_id))
+    );
+  }
+
+  function ensureModalStyles() {
+    const styles = getStyles();
+
+    if (typeof styles.ensureModalStyles === "function") {
+      return styles.ensureModalStyles();
+    }
+
+    const core = getCore();
+
+    if (typeof core.ensureModalStyles === "function") {
+      return core.ensureModalStyles();
+    }
+
+    return null;
   }
 
   function setModalBodyLock() {
@@ -223,6 +241,23 @@
     if (!viewerOpen && !commentsOpen) {
       document.body.classList.remove("post-modal-open");
     }
+  }
+
+  function pulseButton(button, duration = 130) {
+    const core = getCore();
+
+    if (typeof core.pulseButton === "function") {
+      core.pulseButton(button, duration);
+      return;
+    }
+
+    if (!button) return;
+
+    button.classList.add("is-pressed");
+
+    window.setTimeout(() => {
+      button.classList.remove("is-pressed");
+    }, Math.max(60, Number(duration || 130)));
   }
 
   function bindPressFeedback(root) {
@@ -272,23 +307,7 @@
     });
   }
 
-  function ensureModalStyles() {
-    const styles = getStyles();
-
-    if (typeof styles.ensureModalStyles === "function") {
-      return styles.ensureModalStyles();
-    }
-
-    const core = getCore();
-
-    if (typeof core.ensureModalStyles === "function") {
-      return core.ensureModalStyles();
-    }
-
-    return null;
-  }
-
-  function renderFeedSoon(delay = 120) {
+  function renderFeedSoon(delay = 80) {
     const core = getCore();
 
     if (typeof core.renderFeedSoon === "function") {
@@ -296,8 +315,10 @@
       return;
     }
 
+    const safeDelay = Math.max(0, Number(delay || 0));
+
     setTimeout(() => {
-      const renderer = window.KlevbyFeedRender || {};
+      const renderer = getRender();
 
       if (typeof renderer.renderProfileFeed === "function") {
         renderer.renderProfileFeed();
@@ -307,7 +328,7 @@
       if (typeof window.renderProfileFeed === "function") {
         window.renderProfileFeed();
       }
-    }, Math.max(0, Number(delay || 0)));
+    }, safeDelay);
   }
 
   function dispatchFeedUpdated(detail = {}) {
@@ -323,116 +344,105 @@
     }));
   }
 
-  function setMessage(text = "", isError = false) {
-    const message = document.getElementById("klevbyFeedCommentMessage");
+  function ensureCommentModal() {
+    ensureModalStyles();
 
-    if (!message) return;
+    let modal = document.getElementById("klevbyFeedCommentModal");
 
-    message.textContent = text;
-    message.classList.toggle("error-line", Boolean(isError));
+    if (modal) {
+      bindPressFeedback(modal);
+      bindCommentModalEvents(modal);
+      return modal;
+    }
+
+    modal = document.createElement("div");
+    modal.id = "klevbyFeedCommentModal";
+    modal.className = "klevby-feed-comment-modal hidden";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+
+    modal.innerHTML = `
+      <div class="klevby-feed-comment-backdrop" data-feed-comments-close="1"></div>
+
+      <div class="klevby-feed-comment-sheet">
+        <button
+          class="klevby-feed-comment-close"
+          type="button"
+          data-feed-comments-close="1"
+          aria-label="Закрыть комментарии"
+        >×</button>
+
+        <h3>Комментарии</h3>
+        <p id="klevbyFeedCommentSubtitle">Смотри отзывы рыбаков и добавляй свой.</p>
+
+        <div id="klevbyFeedCommentsList" class="klevby-feed-comments-list">
+          <div class="klevby-feed-comments-empty">Загружаем комментарии...</div>
+        </div>
+
+        <textarea
+          id="klevbyFeedCommentText"
+          class="klevby-feed-comment-textarea"
+          maxlength="700"
+          placeholder="Напиши свой комментарий..."
+        ></textarea>
+
+        <div class="klevby-feed-comment-actions">
+          <button class="small-btn green" type="button" data-feed-comments-submit="1">Отправить</button>
+          <button class="small-btn gray" type="button" data-feed-comments-close="1">Закрыть</button>
+        </div>
+
+        <div id="klevbyFeedCommentMessage" class="klevby-feed-comment-message"></div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    bindPressFeedback(modal);
+    bindCommentModalEvents(modal);
+
+    return modal;
   }
 
-  function getCommentModalParts() {
-    const modal = document.getElementById("klevbyFeedCommentModal");
-    const textarea = document.getElementById("klevbyFeedCommentText");
-    const message = document.getElementById("klevbyFeedCommentMessage");
-    const list = document.getElementById("klevbyFeedCommentsList");
-    const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
-    const submitButton = document.getElementById("klevbyFeedCommentSubmitBtn");
+  function bindCommentModalEvents(modal) {
+    if (!modal || modal.dataset.commentModalEventsBound === "1") return;
 
-    return {
-      modal,
-      textarea,
-      message,
-      list,
-      subtitle,
-      submitButton
-    };
-  }
+    modal.dataset.commentModalEventsBound = "1";
 
-  function setSubmitPending(pending) {
-    const { submitButton, textarea } = getCommentModalParts();
+    modal.addEventListener("click", (event) => {
+      const closeTarget = event.target?.closest?.("[data-feed-comments-close]");
+      const submitTarget = event.target?.closest?.("[data-feed-comments-submit]");
+      const deleteTarget = event.target?.closest?.("[data-feed-comment-delete-id]");
 
-    if (submitButton) {
-      submitButton.disabled = Boolean(pending);
-      submitButton.setAttribute("aria-busy", pending ? "true" : "false");
-      submitButton.textContent = pending ? "Отправляем..." : "Отправить";
-    }
+      if (closeTarget) {
+        event.preventDefault();
+        closeFeedCommentModal();
+        return;
+      }
 
-    if (textarea) {
-      textarea.disabled = Boolean(pending);
-    }
-  }
+      if (submitTarget) {
+        event.preventDefault();
+        pulseButton(submitTarget);
+        submitFeedComment();
+        return;
+      }
 
-  async function runLoadComments(postId) {
-    const cleanId = String(postId || "").trim();
-    const api = getApi();
+      if (deleteTarget) {
+        event.preventDefault();
+        pulseButton(deleteTarget);
+        deleteFeedComment(deleteTarget.dataset.feedCommentDeleteId || "");
+      }
+    });
 
-    if (typeof api.loadComments === "function") {
-      return api.loadComments(cleanId);
-    }
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeFeedCommentModal();
+      }
 
-    if (typeof window.klevbyLoadFeedComments === "function") {
-      return window.klevbyLoadFeedComments(cleanId);
-    }
-
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.loadComments === "function"
-    ) {
-      return window.klevbyFeedSupabase.loadComments(cleanId);
-    }
-
-    return {
-      ok: false,
-      comments: [],
-      error: new Error("Загрузка комментариев ещё не подключена.")
-    };
-  }
-
-  async function runAddComment(postId, text) {
-    const cleanId = String(postId || "").trim();
-    const cleanText = String(text || "").trim();
-    const api = getApi();
-
-    if (typeof api.addComment === "function") {
-      return api.addComment(cleanId, cleanText);
-    }
-
-    if (typeof window.klevbyAddFeedComment === "function") {
-      return window.klevbyAddFeedComment(cleanId, cleanText);
-    }
-
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.addComment === "function"
-    ) {
-      return window.klevbyFeedSupabase.addComment(cleanId, cleanText);
-    }
-
-    throw new Error("Комментарии ещё не подключены в feed-supabase.js.");
-  }
-
-  async function runDeleteComment(commentId) {
-    const cleanId = String(commentId || "").trim();
-    const api = getApi();
-
-    if (typeof api.deleteComment === "function") {
-      return api.deleteComment(cleanId);
-    }
-
-    if (typeof window.klevbyDeleteFeedComment === "function") {
-      return window.klevbyDeleteFeedComment(cleanId);
-    }
-
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.deleteComment === "function"
-    ) {
-      return window.klevbyFeedSupabase.deleteComment(cleanId);
-    }
-
-    throw new Error("Удаление комментариев ещё не подключено.");
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        submitFeedComment();
+      }
+    });
   }
 
   function commentHtml(comment) {
@@ -456,7 +466,7 @@
 
           ${
             canDelete
-              ? `<button class="klevby-feed-comment-delete" type="button" data-feed-comment-delete="${commentId}">Удалить</button>`
+              ? `<button class="klevby-feed-comment-delete" type="button" data-feed-comment-delete-id="${commentId}">Удалить</button>`
               : ""
           }
         </div>
@@ -466,133 +476,51 @@
     `;
   }
 
-  function bindCommentModalEvents(modal) {
-    if (!modal || modal.dataset.commentEventsBound === "1") return;
+  async function runLoadComments(postId) {
+    const api = getApi();
 
-    modal.dataset.commentEventsBound = "1";
-
-    modal.addEventListener("click", (event) => {
-      const closeTarget = event.target?.closest?.("[data-feed-comment-close]");
-      const submitTarget = event.target?.closest?.("[data-feed-comment-submit]");
-      const deleteTarget = event.target?.closest?.("[data-feed-comment-delete]");
-
-      if (closeTarget) {
-        event.preventDefault();
-        closeFeedCommentModal();
-        return;
-      }
-
-      if (submitTarget) {
-        event.preventDefault();
-        submitFeedComment();
-        return;
-      }
-
-      if (deleteTarget) {
-        event.preventDefault();
-        deleteFeedComment(deleteTarget.dataset.feedCommentDelete || "");
-      }
-    });
-
-    modal.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeFeedCommentModal();
-      }
-
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        submitFeedComment();
-      }
-    });
-  }
-
-  function ensureCommentModal() {
-    ensureModalStyles();
-
-    let modal = document.getElementById("klevbyFeedCommentModal");
-
-    if (modal) {
-      bindPressFeedback(modal);
-      bindCommentModalEvents(modal);
-      return modal;
+    if (typeof api.loadComments === "function") {
+      return api.loadComments(postId);
     }
 
-    modal = document.createElement("div");
-    modal.id = "klevbyFeedCommentModal";
-    modal.className = "klevby-feed-comment-modal hidden";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
+    if (typeof window.klevbyLoadFeedComments === "function") {
+      return window.klevbyLoadFeedComments(postId);
+    }
 
-    modal.innerHTML = `
-      <div class="klevby-feed-comment-backdrop" data-feed-comment-close="1"></div>
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.loadComments === "function"
+    ) {
+      return window.klevbyFeedSupabase.loadComments(postId);
+    }
 
-      <div class="klevby-feed-comment-sheet">
-        <button
-          class="klevby-feed-comment-close"
-          type="button"
-          data-feed-comment-close="1"
-          aria-label="Закрыть комментарии"
-        >×</button>
-
-        <h3>Комментарии</h3>
-        <p id="klevbyFeedCommentSubtitle">Смотри отзывы рыбаков и добавляй свой.</p>
-
-        <div id="klevbyFeedCommentsList" class="klevby-feed-comments-list">
-          <div class="klevby-feed-comments-empty">Загружаем комментарии...</div>
-        </div>
-
-        <textarea
-          id="klevbyFeedCommentText"
-          class="klevby-feed-comment-textarea"
-          maxlength="700"
-          placeholder="Напиши свой комментарий..."
-        ></textarea>
-
-        <div class="klevby-feed-comment-actions">
-          <button
-            id="klevbyFeedCommentSubmitBtn"
-            class="small-btn green"
-            type="button"
-            data-feed-comment-submit="1"
-          >Отправить</button>
-
-          <button
-            class="small-btn gray"
-            type="button"
-            data-feed-comment-close="1"
-          >Закрыть</button>
-        </div>
-
-        <div id="klevbyFeedCommentMessage" class="klevby-feed-comment-message"></div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    bindPressFeedback(modal);
-    bindCommentModalEvents(modal);
-
-    return modal;
+    return {
+      ok: false,
+      comments: [],
+      error: new Error("Загрузка комментариев ещё не подключена.")
+    };
   }
 
   async function loadCommentsIntoModal(postId) {
+    const list = document.getElementById("klevbyFeedCommentsList");
+    const message = document.getElementById("klevbyFeedCommentMessage");
     const cleanId = String(postId || "").trim();
-    const { list } = getCommentModalParts();
 
     if (!list) return;
-
-    list.innerHTML = `<div class="klevby-feed-comments-empty">Загружаем комментарии...</div>`;
 
     if (!cleanId) {
       list.innerHTML = `<div class="klevby-feed-comments-empty">Фото не найдено.</div>`;
       return;
     }
 
+    list.innerHTML = `<div class="klevby-feed-comments-empty">Загружаем комментарии...</div>`;
+
     try {
       const result = await runLoadComments(cleanId);
 
       if (!result || !result.ok) {
         const errorMessage = result?.error?.message || "Не удалось загрузить комментарии.";
+
         list.innerHTML = `<div class="klevby-feed-comments-empty">${escapeHtml(errorMessage)}</div>`;
         return;
       }
@@ -609,46 +537,55 @@
         list.scrollTop = list.scrollHeight;
       });
 
-      setMessage("", false);
+      if (message) {
+        message.textContent = "";
+        message.classList.remove("error-line");
+      }
     } catch (error) {
       console.warn("Klevby feed comments modal: комментарии не загрузились", error);
+
       list.innerHTML = `<div class="klevby-feed-comments-empty">${escapeHtml(error?.message || "Не удалось загрузить комментарии.")}</div>`;
     }
   }
 
   function openFeedCommentModal(postId) {
     const cleanId = String(postId || "").trim();
+    const item = getCachedItem(cleanId);
 
     if (!cleanId) {
       alert("Фото не найдено. Обнови страницу и попробуй ещё раз.");
       return;
     }
 
-    const item = getCachedItem(cleanId);
+    if (!item) {
+      alert("Фото не найдено в ленте. Обнови страницу и попробуй ещё раз.");
+      return;
+    }
 
-    if (item && item.source && item.source !== "supabase") {
+    if (item.source !== "supabase") {
       alert("Это фото ещё локальное. Комментарии работают для фото из общей ленты.");
       return;
     }
 
     const modal = ensureCommentModal();
-    const { textarea, subtitle } = getCommentModalParts();
+    const textarea = document.getElementById("klevbyFeedCommentText");
+    const message = document.getElementById("klevbyFeedCommentMessage");
+    const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
 
     modal.dataset.postId = cleanId;
 
     if (textarea) {
       textarea.value = "";
-      textarea.disabled = false;
+    }
+
+    if (message) {
+      message.textContent = "";
+      message.classList.remove("error-line");
     }
 
     if (subtitle) {
-      subtitle.textContent = item
-        ? `${item.authorName || "Рыбак"} добавил фото. Ниже комментарии и поле для твоего отзыва.`
-        : "Комментарии к фото из общей ленты Klevby.";
+      subtitle.textContent = `${item.authorName || "Рыбак"} добавил фото. Ниже комментарии и поле для твоего отзыва.`;
     }
-
-    setMessage("", false);
-    setSubmitPending(false);
 
     modal.classList.remove("hidden");
     setModalBodyLock();
@@ -656,10 +593,10 @@
     loadCommentsIntoModal(cleanId);
 
     setTimeout(() => {
-      try {
-        textarea?.focus({ preventScroll: true });
-      } catch (_) {
-        textarea?.focus();
+      if (textarea) {
+        textarea.focus({
+          preventScroll: true
+        });
       }
     }, 220);
   }
@@ -672,21 +609,49 @@
       modal.dataset.postId = "";
     }
 
-    setSubmitPending(false);
     releaseModalBodyLockIfPossible();
   }
 
-  async function submitFeedComment() {
-    const { modal, textarea } = getCommentModalParts();
+  async function runAddComment(postId, text) {
+    const api = getApi();
 
-    debugLog("[feed comments] submit:start", {
-      hasModal: Boolean(modal),
-      hasTextarea: Boolean(textarea),
-      postId: modal?.dataset?.postId || ""
-    });
+    if (typeof api.addComment === "function") {
+      return api.addComment(postId, text);
+    }
+
+    if (typeof window.klevbyAddFeedComment === "function") {
+      return window.klevbyAddFeedComment(postId, text);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.addComment === "function"
+    ) {
+      return window.klevbyFeedSupabase.addComment(postId, text);
+    }
+
+    throw new Error("Комментарии ещё не подключены в feed-supabase.js.");
+  }
+
+  function setSubmitBusy(isBusy) {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const submitButton = modal?.querySelector?.("[data-feed-comments-submit]");
+
+    if (!submitButton) return;
+
+    submitButton.disabled = Boolean(isBusy);
+    submitButton.setAttribute("aria-busy", isBusy ? "true" : "false");
+    submitButton.classList.toggle("is-pending", Boolean(isBusy));
+    submitButton.textContent = isBusy ? "Отправляем..." : "Отправить";
+  }
+
+  async function submitFeedComment() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const textarea = document.getElementById("klevbyFeedCommentText");
+    const message = document.getElementById("klevbyFeedCommentMessage");
 
     if (!modal || !textarea) {
-      console.warn("Klevby feed comments modal: submit skipped, modal parts not found");
+      console.warn("Klevby feed comments modal: submit skipped, DOM not ready");
       return;
     }
 
@@ -694,55 +659,79 @@
     const text = String(textarea.value || "").trim();
 
     if (!postId) {
-      setMessage("Фото не найдено. Закрой окно и попробуй ещё раз.", true);
+      if (message) {
+        message.textContent = "Фото не найдено. Закрой окно и попробуй ещё раз.";
+        message.classList.add("error-line");
+      }
+
       return;
     }
 
     if (!text) {
-      setMessage("Напиши комментарий перед отправкой.", true);
+      if (message) {
+        message.textContent = "Напиши комментарий перед отправкой.";
+        message.classList.add("error-line");
+      }
+
       textarea.focus();
       return;
     }
 
     if (text.length > 700) {
-      setMessage("Комментарий слишком длинный. Сделай короче.", true);
+      if (message) {
+        message.textContent = "Комментарий слишком длинный. Сделай короче.";
+        message.classList.add("error-line");
+      }
+
       textarea.focus();
       return;
     }
 
-    setSubmitPending(true);
-    setMessage("Отправляем комментарий...", false);
+    if (message) {
+      message.textContent = "Отправляем комментарий...";
+      message.classList.remove("error-line");
+    }
+
+    setSubmitBusy(true);
 
     try {
       await runAddComment(postId, text);
 
       textarea.value = "";
-      setMessage("✅ Комментарий отправлен.", false);
+
+      if (message) {
+        message.textContent = "✅ Комментарий отправлен.";
+        message.classList.remove("error-line");
+      }
 
       if (navigator.vibrate) {
         navigator.vibrate(16);
       }
-
-      await loadCommentsIntoModal(postId);
 
       dispatchFeedUpdated({
         action: "comment_added_local",
         postId
       });
 
+      await loadCommentsIntoModal(postId);
       renderFeedSoon(80);
     } catch (error) {
       console.warn("Klevby feed comments modal: комментарий не отправился", error);
-      setMessage(error?.message || "Не получилось отправить комментарий.", true);
+
+      if (message) {
+        message.textContent = error?.message || "Не получилось отправить комментарий.";
+        message.classList.add("error-line");
+      }
     } finally {
-      setSubmitPending(false);
+      setSubmitBusy(false);
     }
   }
 
   async function deleteFeedComment(commentId) {
-    const cleanCommentId = String(commentId || "").trim();
-    const { modal } = getCommentModalParts();
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const message = document.getElementById("klevbyFeedCommentMessage");
     const postId = String(modal?.dataset?.postId || "").trim();
+    const cleanCommentId = String(commentId || "").trim();
 
     if (!cleanCommentId) return;
 
@@ -750,29 +739,57 @@
       return;
     }
 
-    setMessage("Удаляем комментарий...", false);
+    const api = getApi();
 
     try {
-      await runDeleteComment(cleanCommentId);
-
-      setMessage("Комментарий удалён.", false);
-
-      if (postId) {
-        await loadCommentsIntoModal(postId);
+      if (typeof api.deleteComment === "function") {
+        await api.deleteComment(cleanCommentId);
+      } else if (typeof window.klevbyDeleteFeedComment === "function") {
+        await window.klevbyDeleteFeedComment(cleanCommentId);
+      } else if (
+        window.klevbyFeedSupabase &&
+        typeof window.klevbyFeedSupabase.deleteComment === "function"
+      ) {
+        await window.klevbyFeedSupabase.deleteComment(cleanCommentId);
+      } else {
+        throw new Error("Удаление комментариев ещё не подключено.");
       }
 
-      dispatchFeedUpdated({
-        action: "comment_deleted_local",
-        postId,
-        commentId: cleanCommentId
-      });
+      if (message) {
+        message.textContent = "Комментарий удалён.";
+        message.classList.remove("error-line");
+      }
+
+      if (postId) {
+        dispatchFeedUpdated({
+          action: "comment_deleted_local",
+          postId,
+          commentId: cleanCommentId
+        });
+
+        await loadCommentsIntoModal(postId);
+      }
 
       renderFeedSoon(80);
     } catch (error) {
       console.warn("Klevby feed comments modal: комментарий не удалился", error);
-      setMessage(error?.message || "Не получилось удалить комментарий.", true);
+
+      if (message) {
+        message.textContent = error?.message || "Не получилось удалить комментарий.";
+        message.classList.add("error-line");
+      }
     }
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    ensureModalStyles();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeFeedCommentModal();
+      }
+    });
+  });
 
   const commentsModal = {
     ensureCommentModal,
@@ -782,8 +799,7 @@
     submitFeedComment,
     deleteFeedComment,
     runLoadComments,
-    runAddComment,
-    runDeleteComment
+    runAddComment
   };
 
   window.KlevbyFeedCommentsModal = commentsModal;
