@@ -1,455 +1,795 @@
 (function () {
   "use strict";
 
-  const MODAL_STYLES_ID = "klevbyFeedModalStyles";
-  const MODAL_STYLES_VERSION = "20260509-feed-modal-styles-split-1";
+  function getCore() {
+    return window.KlevbyFeedModalCore || {};
+  }
+
+  function getStyles() {
+    return window.KlevbyFeedModalStyles || {};
+  }
+
+  function getUtils() {
+    const core = getCore();
+
+    if (typeof core.getUtils === "function") {
+      return core.getUtils();
+    }
+
+    return window.KlevbyFeedUtils || {};
+  }
+
+  function getApi() {
+    const core = getCore();
+
+    if (typeof core.getApi === "function") {
+      return core.getApi();
+    }
+
+    return window.KlevbyFeedApi || {};
+  }
+
+  function getState() {
+    const core = getCore();
+
+    if (typeof core.getState === "function") {
+      return core.getState();
+    }
+
+    return window.KlevbyFeedState || {};
+  }
+
+  function debugLog(label, payload) {
+    if (!window.KLEVB_DEBUG_FEED) return;
+
+    try {
+      console.debug(label, payload || {});
+    } catch (_) {}
+  }
+
+  function escapeHtml(value) {
+    const core = getCore();
+
+    if (typeof core.escapeHtml === "function") {
+      return core.escapeHtml(value);
+    }
+
+    const utils = getUtils();
+
+    if (typeof utils.escapeHtml === "function") {
+      return utils.escapeHtml(value);
+    }
+
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(value) {
+    const core = getCore();
+
+    if (typeof core.escapeAttr === "function") {
+      return core.escapeAttr(value);
+    }
+
+    const utils = getUtils();
+
+    if (typeof utils.escapeAttr === "function") {
+      return utils.escapeAttr(value);
+    }
+
+    return escapeHtml(value).replaceAll("`", "&#096;");
+  }
+
+  function formatDate(value) {
+    const core = getCore();
+
+    if (typeof core.formatDate === "function") {
+      return core.formatDate(value);
+    }
+
+    const utils = getUtils();
+
+    if (typeof utils.formatDate === "function") {
+      return utils.formatDate(value);
+    }
+
+    if (!value) return "";
+
+    try {
+      return new Date(value).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function getCurrentUser() {
+    const core = getCore();
+
+    if (typeof core.getCurrentUser === "function") {
+      return core.getCurrentUser();
+    }
+
+    const utils = getUtils();
+
+    if (typeof utils.getCurrentUser === "function") {
+      return utils.getCurrentUser();
+    }
+
+    return (
+      window.currentUser ||
+      window.klevbyCurrentUser ||
+      window.klevbyUser ||
+      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
+      null
+    );
+  }
+
+  function isAdmin() {
+    const core = getCore();
+
+    if (typeof core.isAdmin === "function") {
+      return Boolean(core.isAdmin());
+    }
+
+    const utils = getUtils();
+
+    if (typeof utils.isAdmin === "function") {
+      return Boolean(utils.isAdmin());
+    }
+
+    if (typeof window.isAdmin === "function") {
+      try {
+        return Boolean(window.isAdmin());
+      } catch (_) {
+        return false;
+      }
+    }
+
+    return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
+  }
+
+  function canManageComment(comment) {
+    const core = getCore();
+
+    if (typeof core.canManageComment === "function") {
+      return Boolean(core.canManageComment(comment));
+    }
+
+    if (!comment) return false;
+
+    const user = getCurrentUser();
+    const userId = user?.id || "";
+
+    return Boolean(
+      isAdmin() ||
+      (userId && comment.user_id && String(userId) === String(comment.user_id))
+    );
+  }
+
+  function getCachedItem(postId) {
+    const cleanId = String(postId || "").trim();
+    const core = getCore();
+
+    if (!cleanId) return null;
+
+    if (typeof core.getCachedItem === "function") {
+      return core.getCachedItem(cleanId);
+    }
+
+    const state = getState();
+
+    if (typeof state.getCachedItem === "function") {
+      return state.getCachedItem(cleanId);
+    }
+
+    const cache = window.__klevbyFeedItemsCache || {};
+    return cache[cleanId] || null;
+  }
+
+  function setModalBodyLock() {
+    const core = getCore();
+
+    if (typeof core.setModalBodyLock === "function") {
+      core.setModalBodyLock();
+      return;
+    }
+
+    document.body.classList.add("post-modal-open");
+  }
+
+  function releaseModalBodyLockIfPossible() {
+    const core = getCore();
+
+    if (typeof core.releaseModalBodyLockIfPossible === "function") {
+      core.releaseModalBodyLockIfPossible();
+      return;
+    }
+
+    const viewer = document.getElementById("klevbyFeedPhotoViewer");
+    const comments = document.getElementById("klevbyFeedCommentModal");
+
+    const viewerOpen = viewer && !viewer.classList.contains("hidden");
+    const commentsOpen = comments && !comments.classList.contains("hidden");
+
+    if (!viewerOpen && !commentsOpen) {
+      document.body.classList.remove("post-modal-open");
+    }
+  }
+
+  function bindPressFeedback(root) {
+    const core = getCore();
+
+    if (typeof core.bindPressFeedback === "function") {
+      core.bindPressFeedback(root);
+      return;
+    }
+
+    if (!root || root.dataset.pressFeedbackBound === "1") return;
+
+    root.dataset.pressFeedbackBound = "1";
+
+    root.addEventListener("pointerdown", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button || button.disabled) return;
+
+      button.classList.add("is-pressed");
+    });
+
+    root.addEventListener("pointerup", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      window.setTimeout(() => {
+        button.classList.remove("is-pressed");
+      }, 90);
+    });
+
+    root.addEventListener("pointercancel", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      button.classList.remove("is-pressed");
+    });
+
+    root.addEventListener("pointerleave", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      button.classList.remove("is-pressed");
+    });
+  }
 
   function ensureModalStyles() {
-    const oldStyle = document.getElementById(MODAL_STYLES_ID);
+    const styles = getStyles();
 
-    if (oldStyle && oldStyle.dataset.version === MODAL_STYLES_VERSION) {
-      return oldStyle;
+    if (typeof styles.ensureModalStyles === "function") {
+      return styles.ensureModalStyles();
     }
 
-    if (oldStyle) {
-      oldStyle.remove();
+    const core = getCore();
+
+    if (typeof core.ensureModalStyles === "function") {
+      return core.ensureModalStyles();
     }
 
-    const style = document.createElement("style");
-    style.id = MODAL_STYLES_ID;
-    style.dataset.version = MODAL_STYLES_VERSION;
+    return null;
+  }
 
-    style.textContent = `
-      .klevby-feed-viewer.hidden,
-      .klevby-feed-comment-modal.hidden {
-        display: none !important;
+  function renderFeedSoon(delay = 120) {
+    const core = getCore();
+
+    if (typeof core.renderFeedSoon === "function") {
+      core.renderFeedSoon(delay);
+      return;
+    }
+
+    setTimeout(() => {
+      const renderer = window.KlevbyFeedRender || {};
+
+      if (typeof renderer.renderProfileFeed === "function") {
+        renderer.renderProfileFeed();
+        return;
       }
 
-      .klevby-feed-viewer,
-      .klevby-feed-comment-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding:
-          max(18px, env(safe-area-inset-top))
-          14px
-          max(18px, env(safe-area-inset-bottom));
+      if (typeof window.renderProfileFeed === "function") {
+        window.renderProfileFeed();
+      }
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  function dispatchFeedUpdated(detail = {}) {
+    const utils = getUtils();
+
+    if (typeof utils.dispatchFeedUpdated === "function") {
+      utils.dispatchFeedUpdated(detail);
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+      detail
+    }));
+  }
+
+  function setMessage(text = "", isError = false) {
+    const message = document.getElementById("klevbyFeedCommentMessage");
+
+    if (!message) return;
+
+    message.textContent = text;
+    message.classList.toggle("error-line", Boolean(isError));
+  }
+
+  function getCommentModalParts() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const textarea = document.getElementById("klevbyFeedCommentText");
+    const message = document.getElementById("klevbyFeedCommentMessage");
+    const list = document.getElementById("klevbyFeedCommentsList");
+    const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
+    const submitButton = document.getElementById("klevbyFeedCommentSubmitBtn");
+
+    return {
+      modal,
+      textarea,
+      message,
+      list,
+      subtitle,
+      submitButton
+    };
+  }
+
+  function setSubmitPending(pending) {
+    const { submitButton, textarea } = getCommentModalParts();
+
+    if (submitButton) {
+      submitButton.disabled = Boolean(pending);
+      submitButton.setAttribute("aria-busy", pending ? "true" : "false");
+      submitButton.textContent = pending ? "Отправляем..." : "Отправить";
+    }
+
+    if (textarea) {
+      textarea.disabled = Boolean(pending);
+    }
+  }
+
+  async function runLoadComments(postId) {
+    const cleanId = String(postId || "").trim();
+    const api = getApi();
+
+    if (typeof api.loadComments === "function") {
+      return api.loadComments(cleanId);
+    }
+
+    if (typeof window.klevbyLoadFeedComments === "function") {
+      return window.klevbyLoadFeedComments(cleanId);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.loadComments === "function"
+    ) {
+      return window.klevbyFeedSupabase.loadComments(cleanId);
+    }
+
+    return {
+      ok: false,
+      comments: [],
+      error: new Error("Загрузка комментариев ещё не подключена.")
+    };
+  }
+
+  async function runAddComment(postId, text) {
+    const cleanId = String(postId || "").trim();
+    const cleanText = String(text || "").trim();
+    const api = getApi();
+
+    if (typeof api.addComment === "function") {
+      return api.addComment(cleanId, cleanText);
+    }
+
+    if (typeof window.klevbyAddFeedComment === "function") {
+      return window.klevbyAddFeedComment(cleanId, cleanText);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.addComment === "function"
+    ) {
+      return window.klevbyFeedSupabase.addComment(cleanId, cleanText);
+    }
+
+    throw new Error("Комментарии ещё не подключены в feed-supabase.js.");
+  }
+
+  async function runDeleteComment(commentId) {
+    const cleanId = String(commentId || "").trim();
+    const api = getApi();
+
+    if (typeof api.deleteComment === "function") {
+      return api.deleteComment(cleanId);
+    }
+
+    if (typeof window.klevbyDeleteFeedComment === "function") {
+      return window.klevbyDeleteFeedComment(cleanId);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.deleteComment === "function"
+    ) {
+      return window.klevbyFeedSupabase.deleteComment(cleanId);
+    }
+
+    throw new Error("Удаление комментариев ещё не подключено.");
+  }
+
+  function commentHtml(comment) {
+    const authorName = comment?.author_name || "Рыбак";
+    const city = comment?.author_city || "";
+    const text = comment?.text || "";
+    const date = formatDate(comment?.created_at);
+    const canDelete = canManageComment(comment);
+    const commentId = escapeAttr(comment?.id || "");
+
+    return `
+      <div class="klevby-feed-comment-item">
+        <div class="klevby-feed-comment-top">
+          <div>
+            <span class="klevby-feed-comment-author">
+              ${escapeHtml(authorName)}
+              ${city ? ` · ${escapeHtml(city)}` : ""}
+            </span>
+            ${date ? `<span class="klevby-feed-comment-date">${escapeHtml(date)}</span>` : ""}
+          </div>
+
+          ${
+            canDelete
+              ? `<button class="klevby-feed-comment-delete" type="button" data-feed-comment-delete="${commentId}">Удалить</button>`
+              : ""
+          }
+        </div>
+
+        <p class="klevby-feed-comment-text">${escapeHtml(text)}</p>
+      </div>
+    `;
+  }
+
+  function bindCommentModalEvents(modal) {
+    if (!modal || modal.dataset.commentEventsBound === "1") return;
+
+    modal.dataset.commentEventsBound = "1";
+
+    modal.addEventListener("click", (event) => {
+      const closeTarget = event.target?.closest?.("[data-feed-comment-close]");
+      const submitTarget = event.target?.closest?.("[data-feed-comment-submit]");
+      const deleteTarget = event.target?.closest?.("[data-feed-comment-delete]");
+
+      if (closeTarget) {
+        event.preventDefault();
+        closeFeedCommentModal();
+        return;
       }
 
-      .klevby-feed-comment-modal {
-        z-index: 100000;
+      if (submitTarget) {
+        event.preventDefault();
+        submitFeedComment();
+        return;
       }
 
-      .klevby-feed-viewer-backdrop,
-      .klevby-feed-comment-backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.78);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
+      if (deleteTarget) {
+        event.preventDefault();
+        deleteFeedComment(deleteTarget.dataset.feedCommentDelete || "");
+      }
+    });
+
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeFeedCommentModal();
       }
 
-      .klevby-feed-viewer-sheet,
-      .klevby-feed-comment-sheet {
-        position: relative;
-        z-index: 2;
-        width: min(100%, 760px);
-        max-height: 88dvh;
-        border: 1px solid rgba(244,178,74,0.18);
-        border-radius: 28px;
-        overflow: hidden;
-        background:
-          radial-gradient(circle at 50% 0%, rgba(244,178,74,0.12), transparent 42%),
-          rgba(10, 14, 12, 0.96);
-        box-shadow:
-          0 28px 90px rgba(0,0,0,0.72),
-          inset 0 1px 0 rgba(255,255,255,0.08);
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        submitFeedComment();
       }
+    });
+  }
 
-      .klevby-feed-viewer-close,
-      .klevby-feed-comment-close {
-        appearance: none;
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        z-index: 3;
-        width: 42px;
-        height: 42px;
-        border: 1px solid rgba(244,178,74,0.18);
-        border-radius: 16px;
-        background: rgba(0,0,0,0.45);
-        color: #fff8ea;
-        font-size: 28px;
-        line-height: 1;
-        font-weight: 900;
-        cursor: pointer;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-      }
+  function ensureCommentModal() {
+    ensureModalStyles();
 
-      .klevby-feed-viewer-image {
-        width: 100%;
-        max-height: 66dvh;
-        display: block;
-        object-fit: contain;
-        background: #050807;
-      }
+    let modal = document.getElementById("klevbyFeedCommentModal");
 
-      .klevby-feed-viewer-info {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 14px;
-        color: #fff8ea;
-      }
+    if (modal) {
+      bindPressFeedback(modal);
+      bindCommentModalEvents(modal);
+      return modal;
+    }
 
-      .klevby-feed-viewer-info strong {
-        display: block;
-        font-size: 15px;
-        font-weight: 900;
-        line-height: 1.25;
-      }
+    modal = document.createElement("div");
+    modal.id = "klevbyFeedCommentModal";
+    modal.className = "klevby-feed-comment-modal hidden";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
 
-      .klevby-feed-viewer-info span {
-        display: block;
-        margin-top: 4px;
-        color: rgba(255,248,234,0.55);
-        font-size: 12px;
-        font-weight: 700;
-      }
+    modal.innerHTML = `
+      <div class="klevby-feed-comment-backdrop" data-feed-comment-close="1"></div>
 
-      .klevby-feed-viewer-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
+      <div class="klevby-feed-comment-sheet">
+        <button
+          class="klevby-feed-comment-close"
+          type="button"
+          data-feed-comment-close="1"
+          aria-label="Закрыть комментарии"
+        >×</button>
 
-      .klevby-feed-viewer-actions button {
-        appearance: none;
-        min-height: 40px;
-        padding: 0 14px;
-        border-radius: 15px;
-        color: #ffffff;
-        font-size: 13px;
-        font-weight: 900;
-        cursor: pointer;
-        white-space: nowrap;
-        transform: translateY(0) scale(1);
-        transition:
-          transform 0.08s ease,
-          filter 0.12s ease,
-          box-shadow 0.12s ease,
-          background 0.12s ease,
-          opacity 0.12s ease;
-        touch-action: manipulation;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-tap-highlight-color: transparent;
-      }
+        <h3>Комментарии</h3>
+        <p id="klevbyFeedCommentSubtitle">Смотри отзывы рыбаков и добавляй свой.</p>
 
-      .klevby-feed-viewer-close,
-      .klevby-feed-comment-close,
-      .klevby-feed-comment-delete,
-      .klevby-feed-comment-actions .small-btn {
-        transform: translateY(0) scale(1);
-        transition:
-          transform 0.08s ease,
-          filter 0.12s ease,
-          box-shadow 0.12s ease,
-          background 0.12s ease,
-          opacity 0.12s ease;
-        touch-action: manipulation;
-        user-select: none;
-        -webkit-user-select: none;
-        -webkit-tap-highlight-color: transparent;
-      }
+        <div id="klevbyFeedCommentsList" class="klevby-feed-comments-list">
+          <div class="klevby-feed-comments-empty">Загружаем комментарии...</div>
+        </div>
 
-      .klevby-feed-viewer-actions button:hover,
-      .klevby-feed-viewer-close:hover,
-      .klevby-feed-comment-close:hover,
-      .klevby-feed-comment-delete:hover,
-      .klevby-feed-comment-actions .small-btn:hover {
-        filter: brightness(1.08);
-      }
+        <textarea
+          id="klevbyFeedCommentText"
+          class="klevby-feed-comment-textarea"
+          maxlength="700"
+          placeholder="Напиши свой комментарий..."
+        ></textarea>
 
-      .klevby-feed-viewer-actions button:active,
-      .klevby-feed-viewer-actions button.is-pressed,
-      .klevby-feed-viewer-close:active,
-      .klevby-feed-viewer-close.is-pressed,
-      .klevby-feed-comment-close:active,
-      .klevby-feed-comment-close.is-pressed,
-      .klevby-feed-comment-delete:active,
-      .klevby-feed-comment-delete.is-pressed,
-      .klevby-feed-comment-actions .small-btn:active,
-      .klevby-feed-comment-actions .small-btn.is-pressed {
-        transform: translateY(2px) scale(0.97);
-        filter: brightness(1.16);
-        box-shadow:
-          inset 0 2px 8px rgba(0,0,0,0.35),
-          0 0 0 1px rgba(255,255,255,0.08);
-      }
+        <div class="klevby-feed-comment-actions">
+          <button
+            id="klevbyFeedCommentSubmitBtn"
+            class="small-btn green"
+            type="button"
+            data-feed-comment-submit="1"
+          >Отправить</button>
 
-      .klevby-feed-viewer-actions button.is-pending,
-      .klevby-feed-viewer-actions button:disabled {
-        opacity: 0.72;
-        cursor: wait;
-      }
+          <button
+            class="small-btn gray"
+            type="button"
+            data-feed-comment-close="1"
+          >Закрыть</button>
+        </div>
 
-      #klevbyFeedViewerLikeBtn,
-      #klevbyFeedViewerCommentBtn {
-        border: 1px solid rgba(244,178,74,0.20);
-        background: rgba(244,178,74,0.18);
-        color: #fff8ea !important;
-      }
-
-      #klevbyFeedViewerLikeBtn.is-liked,
-      #klevbyFeedViewerLikeBtn.liked {
-        border-color: rgba(255,190,76,0.48);
-        background:
-          linear-gradient(180deg, rgba(255,190,76,0.34), rgba(244,178,74,0.18));
-        color: #fff8ea !important;
-      }
-
-      #klevbyFeedViewerDeleteBtn {
-        border: 1px solid rgba(228,88,88,0.24);
-        background: rgba(228,88,88,0.92);
-      }
-
-      #klevbyFeedViewerDeleteBtn.hidden,
-      #klevbyFeedViewerLikeBtn.hidden,
-      #klevbyFeedViewerCommentBtn.hidden {
-        display: none !important;
-      }
-
-      .klevby-feed-comment-sheet {
-        width: min(100%, 620px);
-        max-height: min(82dvh, 720px);
-        padding: 22px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      .klevby-feed-comment-sheet h3 {
-        margin: 0 52px 8px 0;
-        color: #fff8ea;
-        font-size: 22px;
-        line-height: 1.18;
-        font-weight: 900;
-      }
-
-      .klevby-feed-comment-sheet p {
-        margin: 0 0 14px;
-        color: rgba(255,248,234,0.62);
-        font-size: 13px;
-        line-height: 1.5;
-        font-weight: 650;
-      }
-
-      .klevby-feed-comments-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 260px;
-        overflow-y: auto;
-        margin: 0 0 14px;
-        padding: 4px 2px 2px;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .klevby-feed-comment-item {
-        padding: 12px;
-        border-radius: 18px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(244,178,74,0.11);
-      }
-
-      .klevby-feed-comment-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 7px;
-      }
-
-      .klevby-feed-comment-author {
-        display: block;
-        color: #fff8ea;
-        font-size: 13px;
-        line-height: 1.2;
-        font-weight: 900;
-      }
-
-      .klevby-feed-comment-date {
-        display: block;
-        margin-top: 2px;
-        color: rgba(255,248,234,0.45);
-        font-size: 11px;
-        line-height: 1.2;
-        font-weight: 700;
-      }
-
-      .klevby-feed-comment-delete {
-        appearance: none;
-        border: 1px solid rgba(228,88,88,0.22);
-        background: rgba(228,88,88,0.12);
-        color: #ffd2d2;
-        border-radius: 999px;
-        min-height: 28px;
-        padding: 0 10px;
-        font-size: 11px;
-        line-height: 1;
-        font-weight: 900;
-        cursor: pointer;
-        flex: 0 0 auto;
-      }
-
-      .klevby-feed-comment-text {
-        margin: 0;
-        color: rgba(255,248,234,0.82);
-        font-size: 13px;
-        line-height: 1.5;
-        font-weight: 650;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      .klevby-feed-comments-empty {
-        padding: 14px;
-        border-radius: 18px;
-        background: rgba(255,255,255,0.045);
-        border: 1px dashed rgba(244,178,74,0.16);
-        color: rgba(255,248,234,0.62);
-        font-size: 13px;
-        line-height: 1.5;
-        font-weight: 700;
-      }
-
-      .klevby-feed-comment-textarea {
-        width: 100%;
-        min-height: 104px;
-        resize: vertical;
-        padding: 14px;
-        border-radius: 20px;
-        border: 1px solid rgba(244,178,74,0.16);
-        outline: none;
-        background: rgba(255,255,255,0.07);
-        color: #fff8ea;
-        font: inherit;
-        font-size: 15px;
-        line-height: 1.5;
-        font-weight: 650;
-      }
-
-      .klevby-feed-comment-textarea::placeholder {
-        color: rgba(255,248,234,0.42);
-      }
-
-      .klevby-feed-comment-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 14px;
-      }
-
-      .klevby-feed-comment-actions .small-btn {
-        flex: 1;
-      }
-
-      .klevby-feed-comment-message {
-        min-height: 22px;
-        margin-top: 12px;
-        color: rgba(255,248,234,0.62);
-        font-size: 13px;
-        line-height: 1.45;
-        font-weight: 700;
-      }
-
-      .klevby-feed-comment-message.error-line {
-        color: #ffd2d2;
-        background: transparent;
-        border: 0;
-        padding: 0;
-        box-shadow: none;
-      }
-
-      @media (max-width: 760px) {
-        .klevby-feed-comment-modal {
-          align-items: center !important;
-          justify-content: center !important;
-          padding:
-            max(18px, env(safe-area-inset-top))
-            12px
-            max(18px, env(safe-area-inset-bottom)) !important;
-        }
-
-        .klevby-feed-comment-sheet {
-          border-radius: 24px;
-          padding: 20px;
-          max-height: 78dvh;
-        }
-
-        .klevby-feed-comments-list {
-          max-height: 230px;
-        }
-
-        .klevby-feed-comment-textarea {
-          min-height: 96px;
-        }
-
-        .klevby-feed-viewer {
-          align-items: center;
-          padding: 12px;
-        }
-
-        .klevby-feed-viewer-sheet {
-          border-radius: 24px;
-          max-height: 86dvh;
-        }
-
-        .klevby-feed-viewer-image {
-          max-height: 58dvh;
-        }
-
-        .klevby-feed-viewer-info {
-          align-items: flex-start;
-          flex-direction: column;
-        }
-
-        .klevby-feed-viewer-actions {
-          width: 100%;
-          justify-content: stretch;
-        }
-
-        .klevby-feed-viewer-actions button {
-          flex: 1;
-        }
-      }
-
-      @media (max-width: 380px) {
-        .klevby-feed-comments-list {
-          max-height: 200px;
-        }
-      }
+        <div id="klevbyFeedCommentMessage" class="klevby-feed-comment-message"></div>
+      </div>
     `;
 
-    document.body.appendChild(style);
+    document.body.appendChild(modal);
 
-    return style;
+    bindPressFeedback(modal);
+    bindCommentModalEvents(modal);
+
+    return modal;
   }
 
-  window.KlevbyFeedModalStyles = {
-    ensureModalStyles
+  async function loadCommentsIntoModal(postId) {
+    const cleanId = String(postId || "").trim();
+    const { list } = getCommentModalParts();
+
+    if (!list) return;
+
+    list.innerHTML = `<div class="klevby-feed-comments-empty">Загружаем комментарии...</div>`;
+
+    if (!cleanId) {
+      list.innerHTML = `<div class="klevby-feed-comments-empty">Фото не найдено.</div>`;
+      return;
+    }
+
+    try {
+      const result = await runLoadComments(cleanId);
+
+      if (!result || !result.ok) {
+        const errorMessage = result?.error?.message || "Не удалось загрузить комментарии.";
+        list.innerHTML = `<div class="klevby-feed-comments-empty">${escapeHtml(errorMessage)}</div>`;
+        return;
+      }
+
+      const comments = Array.isArray(result.comments) ? result.comments : [];
+
+      if (!comments.length) {
+        list.innerHTML = `<div class="klevby-feed-comments-empty">Комментариев пока нет. Напиши первый.</div>`;
+      } else {
+        list.innerHTML = comments.map(commentHtml).join("");
+      }
+
+      requestAnimationFrame(() => {
+        list.scrollTop = list.scrollHeight;
+      });
+
+      setMessage("", false);
+    } catch (error) {
+      console.warn("Klevby feed comments modal: комментарии не загрузились", error);
+      list.innerHTML = `<div class="klevby-feed-comments-empty">${escapeHtml(error?.message || "Не удалось загрузить комментарии.")}</div>`;
+    }
+  }
+
+  function openFeedCommentModal(postId) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) {
+      alert("Фото не найдено. Обнови страницу и попробуй ещё раз.");
+      return;
+    }
+
+    const item = getCachedItem(cleanId);
+
+    if (item && item.source && item.source !== "supabase") {
+      alert("Это фото ещё локальное. Комментарии работают для фото из общей ленты.");
+      return;
+    }
+
+    const modal = ensureCommentModal();
+    const { textarea, subtitle } = getCommentModalParts();
+
+    modal.dataset.postId = cleanId;
+
+    if (textarea) {
+      textarea.value = "";
+      textarea.disabled = false;
+    }
+
+    if (subtitle) {
+      subtitle.textContent = item
+        ? `${item.authorName || "Рыбак"} добавил фото. Ниже комментарии и поле для твоего отзыва.`
+        : "Комментарии к фото из общей ленты Klevby.";
+    }
+
+    setMessage("", false);
+    setSubmitPending(false);
+
+    modal.classList.remove("hidden");
+    setModalBodyLock();
+
+    loadCommentsIntoModal(cleanId);
+
+    setTimeout(() => {
+      try {
+        textarea?.focus({ preventScroll: true });
+      } catch (_) {
+        textarea?.focus();
+      }
+    }, 220);
+  }
+
+  function closeFeedCommentModal() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.dataset.postId = "";
+    }
+
+    setSubmitPending(false);
+    releaseModalBodyLockIfPossible();
+  }
+
+  async function submitFeedComment() {
+    const { modal, textarea } = getCommentModalParts();
+
+    debugLog("[feed comments] submit:start", {
+      hasModal: Boolean(modal),
+      hasTextarea: Boolean(textarea),
+      postId: modal?.dataset?.postId || ""
+    });
+
+    if (!modal || !textarea) {
+      console.warn("Klevby feed comments modal: submit skipped, modal parts not found");
+      return;
+    }
+
+    const postId = String(modal.dataset.postId || "").trim();
+    const text = String(textarea.value || "").trim();
+
+    if (!postId) {
+      setMessage("Фото не найдено. Закрой окно и попробуй ещё раз.", true);
+      return;
+    }
+
+    if (!text) {
+      setMessage("Напиши комментарий перед отправкой.", true);
+      textarea.focus();
+      return;
+    }
+
+    if (text.length > 700) {
+      setMessage("Комментарий слишком длинный. Сделай короче.", true);
+      textarea.focus();
+      return;
+    }
+
+    setSubmitPending(true);
+    setMessage("Отправляем комментарий...", false);
+
+    try {
+      await runAddComment(postId, text);
+
+      textarea.value = "";
+      setMessage("✅ Комментарий отправлен.", false);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(16);
+      }
+
+      await loadCommentsIntoModal(postId);
+
+      dispatchFeedUpdated({
+        action: "comment_added_local",
+        postId
+      });
+
+      renderFeedSoon(80);
+    } catch (error) {
+      console.warn("Klevby feed comments modal: комментарий не отправился", error);
+      setMessage(error?.message || "Не получилось отправить комментарий.", true);
+    } finally {
+      setSubmitPending(false);
+    }
+  }
+
+  async function deleteFeedComment(commentId) {
+    const cleanCommentId = String(commentId || "").trim();
+    const { modal } = getCommentModalParts();
+    const postId = String(modal?.dataset?.postId || "").trim();
+
+    if (!cleanCommentId) return;
+
+    if (!confirm("Удалить комментарий?")) {
+      return;
+    }
+
+    setMessage("Удаляем комментарий...", false);
+
+    try {
+      await runDeleteComment(cleanCommentId);
+
+      setMessage("Комментарий удалён.", false);
+
+      if (postId) {
+        await loadCommentsIntoModal(postId);
+      }
+
+      dispatchFeedUpdated({
+        action: "comment_deleted_local",
+        postId,
+        commentId: cleanCommentId
+      });
+
+      renderFeedSoon(80);
+    } catch (error) {
+      console.warn("Klevby feed comments modal: комментарий не удалился", error);
+      setMessage(error?.message || "Не получилось удалить комментарий.", true);
+    }
+  }
+
+  const commentsModal = {
+    ensureCommentModal,
+    openFeedCommentModal,
+    closeFeedCommentModal,
+    loadCommentsIntoModal,
+    submitFeedComment,
+    deleteFeedComment,
+    runLoadComments,
+    runAddComment,
+    runDeleteComment
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", ensureModalStyles);
-  } else {
-    ensureModalStyles();
-  }
+  window.KlevbyFeedCommentsModal = commentsModal;
+
+  window.openFeedCommentModal = openFeedCommentModal;
+  window.closeFeedCommentModal = closeFeedCommentModal;
+  window.submitFeedComment = submitFeedComment;
+  window.deleteFeedComment = deleteFeedComment;
 })();
