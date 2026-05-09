@@ -1,134 +1,121 @@
 (function () {
   "use strict";
 
-  const COMMENTS_LOAD_TIMEOUT_MS = 7000;
-  const COMMENTS_SEND_TIMEOUT_MS = 9000;
-
-  const COMMENTS_COUNT_STORAGE_KEY = "klevby_feed_comment_counts_v1";
-  const COMMENTS_COUNT_STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
-  const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
-
-  const commentsCacheByPostId = new Map();
-  const knownCommentCountsByPostId = new Map();
-
   let commentsLoadSerial = 0;
-  let commentCountSyncTimer = null;
-  let commentCountObserver = null;
-  let commentCountObserverRetryTimer = null;
 
-  function getCore() {
-    return window.KlevbyFeedModalCore || {};
+  function getCommentsUtils() {
+    return window.KlevbyFeedCommentsUtils || window.KlevbyFeedCommentUtils || {};
   }
 
-  function getStyles() {
-    return window.KlevbyFeedModalStyles || {};
+  function getCommentsCounts() {
+    return window.KlevbyFeedCommentsCounts || window.KlevbyFeedCommentCounts || {};
   }
 
-  function getState() {
-    const core = getCore();
-
-    if (typeof core.getState === "function") {
-      return core.getState();
-    }
-
-    return window.KlevbyFeedState || {};
+  function getCommentsCache() {
+    return window.KlevbyFeedCommentsCache || window.KlevbyFeedCommentCache || {};
   }
 
-  function getUtils() {
-    const core = getCore();
-
-    if (typeof core.getUtils === "function") {
-      return core.getUtils();
-    }
-
-    return window.KlevbyFeedUtils || {};
+  function getCommentsRender() {
+    return window.KlevbyFeedCommentsRender || window.KlevbyFeedCommentRender || {};
   }
 
   function getApi() {
-    const core = getCore();
+    const utils = getCommentsUtils();
 
-    if (typeof core.getApi === "function") {
-      return core.getApi();
+    if (typeof utils.getApi === "function") {
+      return utils.getApi();
     }
 
     return window.KlevbyFeedApi || {};
   }
 
-  function getRender() {
-    const core = getCore();
+  function getCachedItem(postId) {
+    const utils = getCommentsUtils();
 
-    if (typeof core.getRender === "function") {
-      return core.getRender();
+    if (typeof utils.getCachedItem === "function") {
+      return utils.getCachedItem(postId);
     }
 
-    return window.KlevbyFeedRender || {};
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return null;
+
+    const cache = window.__klevbyFeedItemsCache || {};
+    return cache[cleanId] || null;
   }
 
-  function escapeHtml(value) {
-    const core = getCore();
+  function ensureModalStyles() {
+    const utils = getCommentsUtils();
 
-    if (typeof core.escapeHtml === "function") {
-      return core.escapeHtml(value);
+    if (typeof utils.ensureModalStyles === "function") {
+      return utils.ensureModalStyles();
     }
 
-    const utils = getUtils();
-
-    if (typeof utils.escapeHtml === "function") {
-      return utils.escapeHtml(value);
-    }
-
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    return null;
   }
 
-  function escapeAttr(value) {
-    const core = getCore();
+  function setModalBodyLock() {
+    const utils = getCommentsUtils();
 
-    if (typeof core.escapeAttr === "function") {
-      return core.escapeAttr(value);
+    if (typeof utils.setModalBodyLock === "function") {
+      utils.setModalBodyLock();
+      return;
     }
 
-    const utils = getUtils();
-
-    if (typeof utils.escapeAttr === "function") {
-      return utils.escapeAttr(value);
-    }
-
-    return escapeHtml(value).replaceAll("`", "&#096;");
+    document.body.classList.add("post-modal-open");
   }
 
-  function formatDate(value) {
-    const core = getCore();
+  function releaseModalBodyLockIfPossible() {
+    const utils = getCommentsUtils();
 
-    if (typeof core.formatDate === "function") {
-      return core.formatDate(value);
+    if (typeof utils.releaseModalBodyLockIfPossible === "function") {
+      utils.releaseModalBodyLockIfPossible();
+      return;
     }
 
-    const utils = getUtils();
+    const viewer = document.getElementById("klevbyFeedPhotoViewer");
+    const comments = document.getElementById("klevbyFeedCommentModal");
 
-    if (typeof utils.formatDate === "function") {
-      return utils.formatDate(value);
+    const viewerOpen = viewer && !viewer.classList.contains("hidden");
+    const commentsOpen = comments && !comments.classList.contains("hidden");
+
+    if (!viewerOpen && !commentsOpen) {
+      document.body.classList.remove("post-modal-open");
+    }
+  }
+
+  function pulseButton(button, duration = 130) {
+    const utils = getCommentsUtils();
+
+    if (typeof utils.pulseButton === "function") {
+      utils.pulseButton(button, duration);
+      return;
     }
 
-    if (!value) return "";
+    if (!button) return;
 
-    try {
-      return new Date(value).toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    } catch (_) {
-      return "";
+    button.classList.add("is-pressed");
+
+    window.setTimeout(() => {
+      button.classList.remove("is-pressed");
+    }, Math.max(60, Number(duration || 130)));
+  }
+
+  function bindPressFeedback(root) {
+    const utils = getCommentsUtils();
+
+    if (typeof utils.bindPressFeedback === "function") {
+      utils.bindPressFeedback(root);
     }
   }
 
   function withTimeout(promise, timeoutMs, errorMessage) {
+    const utils = getCommentsUtils();
+
+    if (typeof utils.withTimeout === "function") {
+      return utils.withTimeout(promise, timeoutMs, errorMessage);
+    }
+
     let timer = null;
 
     return Promise.race([
@@ -145,807 +132,114 @@
     });
   }
 
-  function getCurrentUser() {
-    const core = getCore();
-
-    if (typeof core.getCurrentUser === "function") {
-      return core.getCurrentUser();
-    }
-
-    const utils = getUtils();
-
-    if (typeof utils.getCurrentUser === "function") {
-      return utils.getCurrentUser();
-    }
-
-    return (
-      window.currentUser ||
-      window.klevbyCurrentUser ||
-      window.klevbyUser ||
-      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
-      null
-    );
+  function getLoadTimeoutMs() {
+    const utils = getCommentsUtils();
+    return Number(utils.COMMENTS_LOAD_TIMEOUT_MS || 7000);
   }
 
-  function isAdmin() {
-    const core = getCore();
-
-    if (typeof core.isAdmin === "function") {
-      return Boolean(core.isAdmin());
-    }
-
-    const utils = getUtils();
-
-    if (typeof utils.isAdmin === "function") {
-      return Boolean(utils.isAdmin());
-    }
-
-    if (typeof window.isAdmin === "function") {
-      try {
-        return Boolean(window.isAdmin());
-      } catch (_) {
-        return false;
-      }
-    }
-
-    return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
-  }
-
-  function getCachedItem(postId) {
-    const cleanId = String(postId || "").trim();
-    const core = getCore();
-
-    if (!cleanId) return null;
-
-    if (typeof core.getCachedItem === "function") {
-      return core.getCachedItem(cleanId);
-    }
-
-    const state = getState();
-
-    if (typeof state.getCachedItem === "function") {
-      return state.getCachedItem(cleanId);
-    }
-
-    const cache = window.__klevbyFeedItemsCache || {};
-    return cache[cleanId] || null;
-  }
-
-  function getLastItemsArray() {
-    const state = getState();
-
-    if (typeof state.getLastItems === "function") {
-      const items = state.getLastItems();
-      return Array.isArray(items) ? items : [];
-    }
-
-    return Array.isArray(window.__klevbyFeedLastItems)
-      ? window.__klevbyFeedLastItems
-      : [];
-  }
-
-  function setLastItemsArray(items) {
-    const safeItems = Array.isArray(items) ? items : [];
-    const state = getState();
-
-    if (typeof state.setLastItems === "function") {
-      state.setLastItems(safeItems);
-    } else {
-      window.__klevbyFeedLastItems = safeItems;
-    }
-
-    if (typeof state.setItemsCacheFromArray === "function") {
-      state.setItemsCacheFromArray(safeItems);
-      return;
-    }
-
-    const cache = {};
-
-    safeItems.forEach((item) => {
-      if (item && item.id) {
-        cache[String(item.id)] = item;
-      }
-    });
-
-    window.__klevbyFeedItemsCache = cache;
-  }
-
-  function canManageComment(comment) {
-    const core = getCore();
-
-    if (typeof core.canManageComment === "function") {
-      return Boolean(core.canManageComment(comment));
-    }
-
-    if (!comment) return false;
-
-    const user = getCurrentUser();
-    const userId = user?.id || "";
-
-    return Boolean(
-      isAdmin() ||
-      (userId && comment.user_id && String(userId) === String(comment.user_id))
-    );
-  }
-
-  function ensureModalStyles() {
-    const styles = getStyles();
-
-    if (typeof styles.ensureModalStyles === "function") {
-      return styles.ensureModalStyles();
-    }
-
-    const core = getCore();
-
-    if (typeof core.ensureModalStyles === "function") {
-      return core.ensureModalStyles();
-    }
-
-    return null;
-  }
-
-  function setModalBodyLock() {
-    const core = getCore();
-
-    if (typeof core.setModalBodyLock === "function") {
-      core.setModalBodyLock();
-      return;
-    }
-
-    document.body.classList.add("post-modal-open");
-  }
-
-  function releaseModalBodyLockIfPossible() {
-    const core = getCore();
-
-    if (typeof core.releaseModalBodyLockIfPossible === "function") {
-      core.releaseModalBodyLockIfPossible();
-      return;
-    }
-
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
-    const comments = document.getElementById("klevbyFeedCommentModal");
-
-    const viewerOpen = viewer && !viewer.classList.contains("hidden");
-    const commentsOpen = comments && !comments.classList.contains("hidden");
-
-    if (!viewerOpen && !commentsOpen) {
-      document.body.classList.remove("post-modal-open");
-    }
-  }
-
-  function pulseButton(button, duration = 130) {
-    const core = getCore();
-
-    if (typeof core.pulseButton === "function") {
-      core.pulseButton(button, duration);
-      return;
-    }
-
-    if (!button) return;
-
-    button.classList.add("is-pressed");
-
-    window.setTimeout(() => {
-      button.classList.remove("is-pressed");
-    }, Math.max(60, Number(duration || 130)));
-  }
-
-  function bindPressFeedback(root) {
-    const core = getCore();
-
-    if (typeof core.bindPressFeedback === "function") {
-      core.bindPressFeedback(root);
-      return;
-    }
-
-    if (!root || root.dataset.pressFeedbackBound === "1") return;
-
-    root.dataset.pressFeedbackBound = "1";
-
-    root.addEventListener("pointerdown", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button || button.disabled) return;
-
-      button.classList.add("is-pressed");
-    });
-
-    root.addEventListener("pointerup", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button) return;
-
-      window.setTimeout(() => {
-        button.classList.remove("is-pressed");
-      }, 90);
-    });
-
-    root.addEventListener("pointercancel", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button) return;
-
-      button.classList.remove("is-pressed");
-    });
-
-    root.addEventListener("pointerleave", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button) return;
-
-      button.classList.remove("is-pressed");
-    });
-  }
-
-  function renderFeedSoon(delay = 80) {
-    const core = getCore();
-
-    if (typeof core.renderFeedSoon === "function") {
-      core.renderFeedSoon(delay);
-      return;
-    }
-
-    const safeDelay = Math.max(0, Number(delay || 0));
-
-    setTimeout(() => {
-      const renderer = getRender();
-
-      if (typeof renderer.renderProfileFeed === "function") {
-        renderer.renderProfileFeed();
-        return;
-      }
-
-      if (typeof window.renderProfileFeed === "function") {
-        window.renderProfileFeed();
-      }
-    }, safeDelay);
-  }
-
-  function dispatchFeedUpdated(detail = {}) {
-    const utils = getUtils();
-
-    if (typeof utils.dispatchFeedUpdated === "function") {
-      utils.dispatchFeedUpdated(detail);
-      return;
-    }
-
-    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-      detail
-    }));
-  }
-
-  function cssEscape(value) {
-    const cleanValue = String(value || "");
-
-    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-      return CSS.escape(cleanValue);
-    }
-
-    return cleanValue.replace(/["\\]/g, "\\$&");
-  }
-
-  function getSafeCommentsCount(value) {
-    return Math.max(0, Number(value || 0) || 0);
-  }
-
-  function readStoredCommentCounts() {
-    try {
-      const raw = localStorage.getItem(COMMENTS_COUNT_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-
-      if (!parsed || typeof parsed !== "object") {
-        return {};
-      }
-
-      return parsed;
-    } catch (_) {
-      return {};
-    }
-  }
-
-  function writeStoredCommentCounts(payload) {
-    try {
-      localStorage.setItem(COMMENTS_COUNT_STORAGE_KEY, JSON.stringify(payload || {}));
-    } catch (_) {}
-  }
-
-  function cleanupStoredCommentCounts(payload) {
-    const now = Date.now();
-    const source = payload && typeof payload === "object" ? payload : {};
-    const cleanPayload = {};
-    let changed = false;
-
-    Object.keys(source).forEach((postId) => {
-      const item = source[postId];
-      const savedAt = Number(item?.savedAt || 0);
-      const count = getSafeCommentsCount(item?.count);
-
-      if (!savedAt || now - savedAt > COMMENTS_COUNT_STORAGE_TTL_MS) {
-        changed = true;
-        return;
-      }
-
-      cleanPayload[postId] = {
-        count,
-        savedAt
-      };
-    });
-
-    if (changed) {
-      writeStoredCommentCounts(cleanPayload);
-    }
-
-    return cleanPayload;
-  }
-
-  function preloadKnownCommentCounts() {
-    const stored = cleanupStoredCommentCounts(readStoredCommentCounts());
-
-    Object.keys(stored).forEach((postId) => {
-      const cleanId = String(postId || "").trim();
-      const count = getSafeCommentsCount(stored[postId]?.count);
-
-      if (cleanId) {
-        knownCommentCountsByPostId.set(cleanId, count);
-      }
-    });
-  }
-
-  function getKnownCommentCount(postId) {
-    const cleanId = String(postId || "").trim();
-
-    if (!cleanId) return null;
-
-    if (knownCommentCountsByPostId.has(cleanId)) {
-      return getSafeCommentsCount(knownCommentCountsByPostId.get(cleanId));
-    }
-
-    const stored = cleanupStoredCommentCounts(readStoredCommentCounts());
-    const storedItem = stored[cleanId];
-
-    if (!storedItem) return null;
-
-    const count = getSafeCommentsCount(storedItem.count);
-    knownCommentCountsByPostId.set(cleanId, count);
-
-    return count;
-  }
-
-  function saveKnownCommentCount(postId, commentsCount) {
-    const cleanId = String(postId || "").trim();
-    const safeCount = getSafeCommentsCount(commentsCount);
-
-    if (!cleanId) return safeCount;
-
-    knownCommentCountsByPostId.set(cleanId, safeCount);
-
-    const stored = cleanupStoredCommentCounts(readStoredCommentCounts());
-
-    stored[cleanId] = {
-      count: safeCount,
-      savedAt: Date.now()
-    };
-
-    writeStoredCommentCounts(stored);
-    patchStoredFeedCacheCommentCount(cleanId, safeCount);
-
-    return safeCount;
-  }
-
-  function patchStoredFeedCacheCommentCount(postId, commentsCount) {
-    const cleanId = String(postId || "").trim();
-    const safeCount = getSafeCommentsCount(commentsCount);
-
-    if (!cleanId) return;
-
-    try {
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = String(localStorage.key(index) || "");
-
-        if (!key.startsWith(FEED_CACHE_PREFIX)) {
-          continue;
-        }
-
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-
-        const parsed = JSON.parse(raw);
-
-        if (!parsed || !Array.isArray(parsed.items)) {
-          continue;
-        }
-
-        let changed = false;
-
-        parsed.items = parsed.items.map((item) => {
-          if (String(item?.id || "") !== cleanId) {
-            return item;
-          }
-
-          changed = true;
-
-          return {
-            ...item,
-            commentsCount: safeCount,
-            comments_count: safeCount
-          };
-        });
-
-        if (changed) {
-          parsed.savedAt = Date.now();
-          localStorage.setItem(key, JSON.stringify(parsed));
-        }
-      }
-    } catch (_) {}
-  }
-
-  function getCommentButtons(postId) {
-    const cleanId = String(postId || "").trim();
-
-    if (!cleanId) return [];
-
-    const safeId = cssEscape(cleanId);
-    const buttons = Array.from(
-      document.querySelectorAll(`.profile-feed-comment-btn[data-feed-post-id="${safeId}"]`)
-    );
-
-    if (buttons.length) {
-      return buttons;
-    }
-
-    return Array.from(document.querySelectorAll(".profile-feed-comment-btn")).filter((button) => {
-      if (button.dataset.feedPostId) {
-        return String(button.dataset.feedPostId).trim() === cleanId;
-      }
-
-      const onclickValue = String(button.getAttribute("onclick") || "");
-      return onclickValue.includes(cleanId);
-    });
-  }
-
-  function patchLocalFeedItemCommentCount(postId, commentsCount) {
-    const cleanId = String(postId || "").trim();
-    const safeCount = getSafeCommentsCount(commentsCount);
-
-    if (!cleanId) return null;
-
-    const items = getLastItemsArray();
-    let patchedItem = null;
-    let changed = false;
-
-    const nextItems = items.map((item) => {
-      if (String(item?.id || "") !== cleanId) return item;
-
-      changed = true;
-      patchedItem = {
-        ...item,
-        commentsCount: safeCount,
-        comments_count: safeCount
-      };
-
-      return patchedItem;
-    });
-
-    if (changed) {
-      setLastItemsArray(nextItems);
-    }
-
-    const cache = window.__klevbyFeedItemsCache || {};
-    const cachedItem = cache[cleanId] || getCachedItem(cleanId);
-
-    if (cachedItem && typeof cachedItem === "object") {
-      cachedItem.commentsCount = safeCount;
-      cachedItem.comments_count = safeCount;
-      cache[cleanId] = cachedItem;
-      window.__klevbyFeedItemsCache = cache;
-      patchedItem = patchedItem || cachedItem;
-    }
-
-    return patchedItem;
-  }
-
-  function applyCommentCountToButtons(postId, commentsCount) {
-    const cleanId = String(postId || "").trim();
-    const safeCount = getSafeCommentsCount(commentsCount);
-
-    if (!cleanId) return safeCount;
-
-    getCommentButtons(cleanId).forEach((button) => {
-      button.textContent = `💬 ${safeCount}`;
-      button.dataset.feedPostId = cleanId;
-      button.dataset.commentCount = String(safeCount);
-      button.setAttribute("aria-label", `Комментарии: ${safeCount}`);
-    });
-
-    const viewerButton = document.getElementById("klevbyFeedViewerCommentBtn");
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
-
-    if (viewerButton && viewer && !viewer.classList.contains("hidden")) {
-      viewerButton.textContent = safeCount ? `💬 ${safeCount}` : "💬 Комментарии";
-      viewerButton.dataset.commentCount = String(safeCount);
-    }
-
-    return safeCount;
-  }
-
-  function syncFeedCommentCount(postId, commentsCount) {
-    const cleanId = String(postId || "").trim();
-    const safeCount = getSafeCommentsCount(commentsCount);
-
-    if (!cleanId) return safeCount;
-
-    saveKnownCommentCount(cleanId, safeCount);
-    patchLocalFeedItemCommentCount(cleanId, safeCount);
-    applyCommentCountToButtons(cleanId, safeCount);
-
-    return safeCount;
-  }
-
-  function applyKnownCommentCountsToFeedItems() {
-    const items = getLastItemsArray();
-
-    if (!items.length || !knownCommentCountsByPostId.size) {
-      return false;
-    }
-
-    let changed = false;
-
-    const nextItems = items.map((item) => {
-      const id = String(item?.id || "").trim();
-      const knownCount = getKnownCommentCount(id);
-
-      if (!id || knownCount === null) {
-        return item;
-      }
-
-      const currentCount = getSafeCommentsCount(item?.commentsCount ?? item?.comments_count);
-
-      if (currentCount === knownCount) {
-        return item;
-      }
-
-      changed = true;
-
-      return {
-        ...item,
-        commentsCount: knownCount,
-        comments_count: knownCount
-      };
-    });
-
-    if (changed) {
-      setLastItemsArray(nextItems);
-    }
-
-    return changed;
-  }
-
-  function applyKnownCommentCountsToVisibleFeed() {
-    preloadKnownCommentCounts();
-    applyKnownCommentCountsToFeedItems();
-
-    knownCommentCountsByPostId.forEach((count, postId) => {
-      patchLocalFeedItemCommentCount(postId, count);
-      applyCommentCountToButtons(postId, count);
-    });
+  function getSendTimeoutMs() {
+    const utils = getCommentsUtils();
+    return Number(utils.COMMENTS_SEND_TIMEOUT_MS || 9000);
   }
 
   function scheduleCommentCountSync(delay = 80) {
-    if (commentCountSyncTimer) {
-      window.clearTimeout(commentCountSyncTimer);
-      commentCountSyncTimer = null;
+    const counts = getCommentsCounts();
+
+    if (typeof counts.scheduleCommentCountSync === "function") {
+      counts.scheduleCommentCountSync(delay);
     }
-
-    commentCountSyncTimer = window.setTimeout(() => {
-      commentCountSyncTimer = null;
-      applyKnownCommentCountsToVisibleFeed();
-    }, Math.max(0, Number(delay || 0)));
-  }
-
-  function startCommentCountObserver() {
-    const list = document.getElementById("profileFeedSection");
-
-    if (!list) {
-      if (commentCountObserverRetryTimer) {
-        window.clearTimeout(commentCountObserverRetryTimer);
-      }
-
-      commentCountObserverRetryTimer = window.setTimeout(startCommentCountObserver, 700);
-      return;
-    }
-
-    if (commentCountObserver) {
-      try {
-        commentCountObserver.disconnect();
-      } catch (_) {}
-    }
-
-    commentCountObserver = new MutationObserver(() => {
-      scheduleCommentCountSync(60);
-    });
-
-    try {
-      commentCountObserver.observe(list, {
-        childList: true,
-        subtree: true
-      });
-    } catch (_) {}
   }
 
   function bindCommentCountSyncHooks() {
-    if (window.__klevbyFeedCommentCountSyncBound) {
-      scheduleCommentCountSync(120);
-      return;
+    const counts = getCommentsCounts();
+
+    if (typeof counts.bindCommentCountSyncHooks === "function") {
+      counts.bindCommentCountSyncHooks();
     }
-
-    window.__klevbyFeedCommentCountSyncBound = true;
-
-    preloadKnownCommentCounts();
-    startCommentCountObserver();
-
-    window.addEventListener("klevby-feed-main-refreshed", () => {
-      scheduleCommentCountSync(90);
-    });
-
-    window.addEventListener("klevby-feed-updated", () => {
-      scheduleCommentCountSync(120);
-    });
-
-    window.addEventListener("klevby-app-resumed", () => {
-      startCommentCountObserver();
-      scheduleCommentCountSync(160);
-      scheduleCommentCountSync(900);
-    });
-
-    window.addEventListener("pageshow", () => {
-      startCommentCountObserver();
-      scheduleCommentCountSync(160);
-    });
-
-    window.addEventListener("focus", () => {
-      scheduleCommentCountSync(180);
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        startCommentCountObserver();
-        scheduleCommentCountSync(180);
-        scheduleCommentCountSync(900);
-      }
-    });
-
-    window.addEventListener("storage", (event) => {
-      const key = String(event?.key || "");
-
-      if (
-        key === COMMENTS_COUNT_STORAGE_KEY ||
-        key.startsWith(FEED_CACHE_PREFIX)
-      ) {
-        preloadKnownCommentCounts();
-        scheduleCommentCountSync(120);
-      }
-    });
-
-    scheduleCommentCountSync(120);
-    scheduleCommentCountSync(900);
   }
 
-  function normalizeComments(comments) {
-    if (!Array.isArray(comments)) return [];
+  function getCachedComments(postId) {
+    const cache = getCommentsCache();
 
-    return comments
-      .filter(Boolean)
-      .map((comment) => {
-        return {
-          ...comment,
-          id: comment.id || "",
-          post_id: comment.post_id || comment.postId || "",
-          user_id: comment.user_id || comment.userId || "",
-          author_name: comment.author_name || comment.authorName || "Рыбак",
-          author_city: comment.author_city || comment.authorCity || "",
-          author_telegram: comment.author_telegram || comment.authorTelegram || "",
-          text: comment.text || "",
-          created_at: comment.created_at || comment.createdAt || "",
-          updated_at: comment.updated_at || comment.updatedAt || ""
-        };
-      });
-  }
-
-  function normalizeCommentsResult(result) {
-    if (Array.isArray(result)) {
-      return normalizeComments(result);
-    }
-
-    if (Array.isArray(result?.comments)) {
-      return normalizeComments(result.comments);
-    }
-
-    if (Array.isArray(result?.data)) {
-      return normalizeComments(result.data);
-    }
-
-    if (Array.isArray(result?.result?.comments)) {
-      return normalizeComments(result.result.comments);
+    if (typeof cache.getCachedComments === "function") {
+      return cache.getCachedComments(postId);
     }
 
     return [];
   }
 
-  function getCachedComments(postId) {
-    const cleanId = String(postId || "").trim();
-
-    if (!cleanId) return [];
-
-    const cached = commentsCacheByPostId.get(cleanId);
-
-    return Array.isArray(cached) ? cached : [];
-  }
-
   function setCachedComments(postId, comments) {
-    const cleanId = String(postId || "").trim();
+    const cache = getCommentsCache();
 
-    if (!cleanId) return [];
+    if (typeof cache.setCachedComments === "function") {
+      return cache.setCachedComments(postId, comments);
+    }
 
-    const safeComments = normalizeComments(comments);
-
-    commentsCacheByPostId.set(cleanId, safeComments);
-    syncFeedCommentCount(cleanId, safeComments.length);
-
-    return safeComments;
+    return Array.isArray(comments) ? comments : [];
   }
 
   function appendCachedComment(postId, comment) {
-    const cleanId = String(postId || "").trim();
+    const cache = getCommentsCache();
 
-    if (!cleanId || !comment) return getCachedComments(cleanId);
-
-    const cached = getCachedComments(cleanId);
-    const commentId = String(comment.id || "").trim();
-
-    if (commentId && cached.some((item) => String(item?.id || "") === commentId)) {
-      syncFeedCommentCount(cleanId, cached.length);
-      return cached;
+    if (typeof cache.appendCachedComment === "function") {
+      return cache.appendCachedComment(postId, comment);
     }
 
-    const nextComments = normalizeComments([
-      ...cached,
-      comment
-    ]);
-
-    commentsCacheByPostId.set(cleanId, nextComments);
-    syncFeedCommentCount(cleanId, nextComments.length);
-
-    return nextComments;
+    return getCachedComments(postId);
   }
 
   function removeCachedComment(postId, commentId) {
-    const cleanPostId = String(postId || "").trim();
-    const cleanCommentId = String(commentId || "").trim();
+    const cache = getCommentsCache();
 
-    if (!cleanPostId || !cleanCommentId) {
-      return getCachedComments(cleanPostId);
+    if (typeof cache.removeCachedComment === "function") {
+      return cache.removeCachedComment(postId, commentId);
     }
 
-    const nextComments = getCachedComments(cleanPostId).filter((comment) => {
-      return String(comment?.id || "") !== cleanCommentId;
-    });
+    return getCachedComments(postId);
+  }
 
-    commentsCacheByPostId.set(cleanPostId, nextComments);
-    syncFeedCommentCount(cleanPostId, nextComments.length);
+  function normalizeCommentsResult(result) {
+    const cache = getCommentsCache();
 
-    return nextComments;
+    if (typeof cache.normalizeCommentsResult === "function") {
+      return cache.normalizeCommentsResult(result);
+    }
+
+    if (Array.isArray(result)) return result;
+    if (Array.isArray(result?.comments)) return result.comments;
+    if (Array.isArray(result?.data)) return result.data;
+    if (Array.isArray(result?.result?.comments)) return result.result.comments;
+
+    return [];
   }
 
   function getCommentsListPostId(list) {
+    const render = getCommentsRender();
+
+    if (typeof render.getCommentsListPostId === "function") {
+      return render.getCommentsListPostId(list);
+    }
+
     return String(list?.dataset?.postId || "").trim();
   }
 
   function hasVisibleComments(list) {
+    const render = getCommentsRender();
+
+    if (typeof render.hasVisibleComments === "function") {
+      return Boolean(render.hasVisibleComments(list));
+    }
+
     return Boolean(list?.querySelector?.(".klevby-feed-comment-item"));
   }
 
   function isCommentModalActiveForPost(postId, token = null) {
+    const render = getCommentsRender();
+
+    if (typeof render.isCommentModalActiveForPost === "function") {
+      return Boolean(render.isCommentModalActiveForPost(postId, token));
+    }
+
     const cleanId = String(postId || "").trim();
     const modal = document.getElementById("klevbyFeedCommentModal");
 
@@ -960,6 +254,13 @@
   }
 
   function setCommentMessage(text = "", isError = false) {
+    const render = getCommentsRender();
+
+    if (typeof render.setCommentMessage === "function") {
+      render.setCommentMessage(text, isError);
+      return;
+    }
+
     const message = document.getElementById("klevbyFeedCommentMessage");
 
     if (!message) return;
@@ -969,49 +270,26 @@
   }
 
   function renderCommentsPlaceholder(list, text) {
+    const render = getCommentsRender();
+
+    if (typeof render.renderCommentsPlaceholder === "function") {
+      render.renderCommentsPlaceholder(list, text);
+      return;
+    }
+
     if (!list) return;
 
-    list.innerHTML = `<div class="klevby-feed-comments-empty">${escapeHtml(text || "Комментариев пока нет.")}</div>`;
+    list.innerHTML = `<div class="klevby-feed-comments-empty">${String(text || "Комментариев пока нет.")}</div>`;
   }
 
   function renderCommentsList(list, postId, comments, options = {}) {
-    if (!list) return false;
+    const render = getCommentsRender();
 
-    const cleanId = String(postId || "").trim();
-    const safeComments = normalizeComments(comments);
-    const shouldScroll = options.scrollToBottom !== false;
-
-    list.dataset.postId = cleanId;
-    syncFeedCommentCount(cleanId, safeComments.length);
-
-    if (!safeComments.length) {
-      renderCommentsPlaceholder(list, "Комментариев пока нет. Напиши первый.");
-      return false;
+    if (typeof render.renderCommentsList === "function") {
+      return render.renderCommentsList(list, postId, comments, options);
     }
 
-    list.innerHTML = safeComments.map(commentHtml).join("");
-
-    if (shouldScroll) {
-      requestAnimationFrame(() => {
-        list.scrollTop = list.scrollHeight;
-      });
-    }
-
-    return true;
-  }
-
-  function renderCachedCommentsIfPossible(postId, options = {}) {
-    const list = document.getElementById("klevbyFeedCommentsList");
-    const cleanId = String(postId || "").trim();
-    const cached = getCachedComments(cleanId);
-
-    if (!list || !cleanId || !cached.length) {
-      return false;
-    }
-
-    renderCommentsList(list, cleanId, cached, options);
-
-    return true;
+    return false;
   }
 
   function beginCommentsLoad(postId) {
@@ -1128,37 +406,6 @@
     });
   }
 
-  function commentHtml(comment) {
-    const authorName = comment?.author_name || "Рыбак";
-    const city = comment?.author_city || "";
-    const text = comment?.text || "";
-    const date = formatDate(comment?.created_at);
-    const canDelete = canManageComment(comment);
-    const commentId = escapeAttr(comment?.id || "");
-
-    return `
-      <div class="klevby-feed-comment-item">
-        <div class="klevby-feed-comment-top">
-          <div>
-            <span class="klevby-feed-comment-author">
-              ${escapeHtml(authorName)}
-              ${city ? ` · ${escapeHtml(city)}` : ""}
-            </span>
-            ${date ? `<span class="klevby-feed-comment-date">${escapeHtml(date)}</span>` : ""}
-          </div>
-
-          ${
-            canDelete
-              ? `<button class="klevby-feed-comment-delete" type="button" data-feed-comment-delete-id="${commentId}">Удалить</button>`
-              : ""
-          }
-        </div>
-
-        <p class="klevby-feed-comment-text">${escapeHtml(text)}</p>
-      </div>
-    `;
-  }
-
   async function runLoadComments(postId) {
     const cleanId = String(postId || "").trim();
 
@@ -1176,7 +423,7 @@
     ) {
       return withTimeout(
         window.klevbyFeedSupabase.loadComments(cleanId),
-        COMMENTS_LOAD_TIMEOUT_MS,
+        getLoadTimeoutMs(),
         "Комментарии не загрузились: Supabase не ответил."
       );
     }
@@ -1184,7 +431,7 @@
     if (typeof window.klevbyLoadFeedComments === "function") {
       return withTimeout(
         window.klevbyLoadFeedComments(cleanId),
-        COMMENTS_LOAD_TIMEOUT_MS,
+        getLoadTimeoutMs(),
         "Комментарии не загрузились: функция загрузки не ответила."
       );
     }
@@ -1194,7 +441,7 @@
     if (typeof api.loadComments === "function") {
       return withTimeout(
         api.loadComments(cleanId),
-        COMMENTS_LOAD_TIMEOUT_MS,
+        getLoadTimeoutMs(),
         "Комментарии не загрузились: API ленты не ответил."
       );
     }
@@ -1392,7 +639,7 @@
     ) {
       return withTimeout(
         window.klevbyFeedSupabase.addComment(cleanId, cleanText),
-        COMMENTS_SEND_TIMEOUT_MS,
+        getSendTimeoutMs(),
         "Комментарий не отправился: Supabase не ответил."
       );
     }
@@ -1400,7 +647,7 @@
     if (typeof window.klevbyAddFeedComment === "function") {
       return withTimeout(
         window.klevbyAddFeedComment(cleanId, cleanText),
-        COMMENTS_SEND_TIMEOUT_MS,
+        getSendTimeoutMs(),
         "Комментарий не отправился: функция отправки не ответила."
       );
     }
@@ -1410,7 +657,7 @@
     if (typeof api.addComment === "function") {
       return withTimeout(
         api.addComment(cleanId, cleanText),
-        COMMENTS_SEND_TIMEOUT_MS,
+        getSendTimeoutMs(),
         "Комментарий не отправился: API ленты не ответил."
       );
     }
@@ -1542,13 +789,13 @@
       ) {
         await withTimeout(
           window.klevbyFeedSupabase.deleteComment(cleanCommentId),
-          COMMENTS_SEND_TIMEOUT_MS,
+          getSendTimeoutMs(),
           "Комментарий не удалился: Supabase не ответил."
         );
       } else if (typeof window.klevbyDeleteFeedComment === "function") {
         await withTimeout(
           window.klevbyDeleteFeedComment(cleanCommentId),
-          COMMENTS_SEND_TIMEOUT_MS,
+          getSendTimeoutMs(),
           "Комментарий не удалился: функция удаления не ответила."
         );
       } else {
@@ -1557,7 +804,7 @@
         if (typeof api.deleteComment === "function") {
           await withTimeout(
             api.deleteComment(cleanCommentId),
-            COMMENTS_SEND_TIMEOUT_MS,
+            getSendTimeoutMs(),
             "Комментарий не удалился: API ленты не ответил."
           );
         } else {
@@ -1617,27 +864,31 @@
     setTimeout(initCommentsActions, 0);
   }
 
-  const commentsModal = {
+  const commentsActions = {
+    version: "20260509-comments-actions-slim-1",
+
     ensureCommentModal,
     openFeedCommentModal,
     closeFeedCommentModal,
     loadCommentsIntoModal,
     submitFeedComment,
     deleteFeedComment,
+
     runLoadComments,
     runAddComment,
-    syncFeedCommentCount,
-    getKnownCommentCount,
-    applyKnownCommentCountsToVisibleFeed,
+
+    setSubmitBusy,
     scheduleCommentCountSync
   };
 
-  window.KlevbyFeedCommentsModal = commentsModal;
+  window.KlevbyFeedCommentsActions = commentsActions;
+  window.KlevbyFeedCommentActions = commentsActions;
+
+  window.KlevbyFeedCommentsModal = commentsActions;
+  window.KlevbyFeedCommentModal = commentsActions;
 
   window.openFeedCommentModal = openFeedCommentModal;
   window.closeFeedCommentModal = closeFeedCommentModal;
   window.submitFeedComment = submitFeedComment;
   window.deleteFeedComment = deleteFeedComment;
-  window.klevbySyncFeedCommentCount = syncFeedCommentCount;
-  window.klevbyGetKnownFeedCommentCount = getKnownCommentCount;
 })();
