@@ -144,7 +144,7 @@
   const FEED_CACHE_LIMIT = 40;
   const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
-  const FEED_STYLES_VERSION = "20260509-feed-render-stable-card-no-jump-1";
+  const FEED_STYLES_VERSION = "20260509-feed-render-buttons-unified-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -407,11 +407,7 @@
         align-items: start;
       }
 
-      .profile-feed-card,
-      .profile-feed-card:hover,
-      .profile-feed-card:focus,
-      .profile-feed-card:active,
-      .profile-feed-card:focus-within {
+      .profile-feed-card {
         position: relative;
         overflow: hidden;
         width: min(100%, 620px);
@@ -424,21 +420,16 @@
         box-shadow:
           0 22px 62px rgba(0, 0, 0, 0.44),
           inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-        cursor: default !important;
+        cursor: default;
         transform: none !important;
-        translate: none !important;
-        scale: 1 !important;
-        animation: none !important;
-        transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease !important;
       }
 
-      .profile-feed-card::before,
-      .profile-feed-card::after {
-        pointer-events: none;
-      }
-
+      .profile-feed-card:hover,
+      .profile-feed-card:focus,
+      .profile-feed-card:focus-within,
       .profile-feed-card:active {
         transform: none !important;
+        filter: none !important;
       }
 
       .profile-feed-image {
@@ -451,23 +442,6 @@
         background-position: center !important;
         background-repeat: no-repeat !important;
         box-shadow: inset 0 -80px 100px rgba(0,0,0,0.18);
-        cursor: pointer;
-        transform: none !important;
-        transition: filter 0.16s ease !important;
-      }
-
-      .profile-feed-image:hover {
-        filter: brightness(1.035);
-      }
-
-      .profile-feed-image:active {
-        transform: none !important;
-        filter: brightness(0.98);
-      }
-
-      .profile-feed-image:focus-visible {
-        outline: 2px solid rgba(255, 189, 74, 0.88);
-        outline-offset: -4px;
       }
 
       .profile-feed-body {
@@ -512,15 +486,11 @@
         color: inherit;
         text-align: left;
         cursor: pointer;
-        transform: none !important;
       }
 
-      .profile-feed-author:hover .profile-feed-author-name {
+      .profile-feed-author:hover .profile-feed-author-name,
+      .profile-feed-author:focus-visible .profile-feed-author-name {
         color: #ffbd4a;
-      }
-
-      .profile-feed-author:active {
-        transform: none !important;
       }
 
       .profile-feed-author-text {
@@ -594,56 +564,83 @@
 
       .profile-feed-actions {
         display: grid !important;
-        grid-template-columns: 1fr 1fr 1fr !important;
-        gap: 8px !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        align-items: stretch !important;
+        gap: 10px !important;
         margin-top: 0 !important;
       }
 
       .profile-feed-actions .small-btn {
+        appearance: none !important;
         min-width: 0 !important;
         width: 100% !important;
-        min-height: 46px !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        max-height: 48px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
         padding: 0 10px !important;
-        border-radius: 17px !important;
+        border-radius: 18px !important;
+        border: 1px solid rgba(244, 178, 74, 0.22) !important;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.045)),
+          rgba(18, 28, 23, 0.86) !important;
+        color: rgba(255, 248, 234, 0.94) !important;
         font-size: 14px !important;
+        line-height: 1 !important;
         font-weight: 950 !important;
-        box-shadow: none !important;
+        letter-spacing: -0.01em !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.055),
+          0 10px 22px rgba(0, 0, 0, 0.18) !important;
         cursor: pointer !important;
+        transform: translateZ(0) !important;
+        transition:
+          background 0.16s ease,
+          border-color 0.16s ease,
+          color 0.16s ease,
+          box-shadow 0.16s ease,
+          transform 0.08s ease !important;
+      }
+
+      .profile-feed-actions .small-btn:hover,
+      .profile-feed-actions .small-btn:focus-visible {
+        border-color: rgba(255, 189, 74, 0.46) !important;
+        background:
+          linear-gradient(180deg, rgba(255, 189, 74, 0.18), rgba(255, 255, 255, 0.055)),
+          rgba(24, 34, 28, 0.94) !important;
+        color: #fff8ea !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.075),
+          0 12px 26px rgba(255, 171, 48, 0.10),
+          0 12px 28px rgba(0, 0, 0, 0.22) !important;
+        outline: none !important;
+      }
+
+      .profile-feed-actions .small-btn:active {
+        transform: scale(0.985) !important;
       }
 
       .profile-feed-open-btn {
-        background: linear-gradient(180deg, #ffbd4a, #ff9f22) !important;
-        color: #120c04 !important;
-        border-color: rgba(255, 210, 117, 0.30) !important;
-        box-shadow:
-          0 14px 30px rgba(255, 165, 35, 0.16),
-          inset 0 1px 0 rgba(255,255,255,0.24) !important;
+        border-color: rgba(255, 189, 74, 0.42) !important;
+        background:
+          linear-gradient(180deg, rgba(255, 189, 74, 0.22), rgba(255, 255, 255, 0.06)),
+          rgba(24, 34, 28, 0.94) !important;
+        color: #fff8ea !important;
       }
 
       .profile-feed-like-btn,
       .profile-feed-comment-btn,
       .profile-feed-profile-btn {
-        background: rgba(255,255,255,0.075) !important;
-        border-color: rgba(244,178,74,0.16) !important;
-        color: rgba(255,248,234,0.90) !important;
-      }
-
-      .profile-feed-open-btn:hover {
-        filter: brightness(1.06);
-      }
-
-      .profile-feed-like-btn:hover,
-      .profile-feed-comment-btn:hover,
-      .profile-feed-profile-btn:hover {
-        background: rgba(255,255,255,0.105) !important;
-        border-color: rgba(244,178,74,0.28) !important;
-      }
-
-      .profile-feed-like-btn:active,
-      .profile-feed-comment-btn:active,
-      .profile-feed-profile-btn:active,
-      .profile-feed-open-btn:active {
-        transform: scale(0.98);
+        border-color: rgba(244, 178, 74, 0.22) !important;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.045)),
+          rgba(18, 28, 23, 0.86) !important;
+        color: rgba(255,248,234,0.94) !important;
       }
 
       .home-empty-card {
@@ -687,14 +684,9 @@
       }
 
       @media (max-width: 760px) {
-        .profile-feed-card,
-        .profile-feed-card:hover,
-        .profile-feed-card:focus,
-        .profile-feed-card:active,
-        .profile-feed-card:focus-within {
+        .profile-feed-card {
           width: 100%;
           border-radius: 26px !important;
-          transform: none !important;
         }
 
         .profile-feed-image {
@@ -702,10 +694,6 @@
           height: 34dvh !important;
           max-height: 340px !important;
           border-radius: 26px 26px 0 0 !important;
-        }
-
-        .profile-feed-image:hover {
-          filter: none;
         }
 
         .profile-feed-body {
@@ -748,12 +736,14 @@
         }
 
         .profile-feed-actions {
-          grid-template-columns: 1fr 1fr 1fr !important;
-          gap: 7px !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 8px !important;
         }
 
         .profile-feed-actions .small-btn {
-          min-height: 44px !important;
+          height: 46px !important;
+          min-height: 46px !important;
+          max-height: 46px !important;
           padding: 0 8px !important;
           border-radius: 16px !important;
           font-size: 13px !important;
@@ -771,8 +761,16 @@
           font-size: 18px !important;
         }
 
+        .profile-feed-actions {
+          gap: 7px !important;
+        }
+
         .profile-feed-actions .small-btn {
-          min-height: 42px !important;
+          height: 44px !important;
+          min-height: 44px !important;
+          max-height: 44px !important;
+          padding: 0 6px !important;
+          border-radius: 15px !important;
           font-size: 12px !important;
         }
       }
@@ -807,16 +805,8 @@
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     return `
-      <article class="card profile-feed-card">
-        <div
-          class="card-img profile-feed-image"
-          role="button"
-          tabindex="0"
-          aria-label="Открыть фото"
-          onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')"
-          onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProfilePhotoFeedItem('${safeId}'); }"
-          style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"
-        ></div>
+      <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
+        <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"></div>
 
         <div class="card-body profile-feed-body">
           <button
