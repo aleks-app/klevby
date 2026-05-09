@@ -9,7 +9,47 @@
   </script>
 
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <script>
+    (function () {
+      function isMobileLikeViewport() {
+        try {
+          const width = Number(window.innerWidth || document.documentElement.clientWidth || 0);
+          const screenMin = Math.min(Number(screen.width || 0), Number(screen.height || 0));
+
+          return (
+            width <= 900 ||
+            screenMin <= 900 ||
+            window.matchMedia("(pointer: coarse)").matches ||
+            window.navigator.standalone === true
+          );
+        } catch (_) {
+          return true;
+        }
+      }
+
+      function preventPinchZoom(event) {
+        if (!isMobileLikeViewport()) return;
+
+        if (event.touches && event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }
+
+      function preventGestureZoom(event) {
+        if (!isMobileLikeViewport()) return;
+
+        event.preventDefault();
+      }
+
+      document.addEventListener("touchstart", preventPinchZoom, { passive: false });
+      document.addEventListener("touchmove", preventPinchZoom, { passive: false });
+      document.addEventListener("gesturestart", preventGestureZoom, { passive: false });
+      document.addEventListener("gesturechange", preventGestureZoom, { passive: false });
+      document.addEventListener("gestureend", preventGestureZoom, { passive: false });
+    })();
+  </script>
 
   <title>Klevby — Карта клева и поиск напарника на рыбалку в Беларуси</title>
   <meta name="description" content="Klevby — рыбалка в Беларуси: карта клева, Минск, Чигиринка, Нарочь, отчеты, барахолка снастей и поиск экипажа для совместного выезда." />
