@@ -458,11 +458,14 @@
     const item = getCachedFeedItem(cleanId);
     const button = getLikeButtons(cleanId)[0];
     const buttonCount = getButtonLikesCount(cleanId);
+    const itemLikesCount = item ? getItemLikesCount(item) : null;
 
     const likesCount =
-      buttonCount !== null
-        ? buttonCount
-        : getItemLikesCount(item);
+      itemLikesCount !== null && Number.isFinite(Number(itemLikesCount))
+        ? itemLikesCount
+        : buttonCount !== null
+          ? buttonCount
+          : 0;
 
     let liked = getKnownLikeState(cleanId, item);
 
@@ -573,54 +576,29 @@
       return null;
     }
 
-    const existing = await db
+    const rowsResult = await db
       .from(KLEVB_FEED_LIKES_TABLE)
-      .select("id")
-      .eq("post_id", cleanId)
-      .eq("user_id", user.id)
-      .maybeSingle();
+      .select("user_id")
+      .eq("post_id", cleanId);
 
-    if (existing.error) {
-      throw existing.error;
+    if (rowsResult.error) {
+      throw rowsResult.error;
     }
 
-    let likesCount = null;
+    const rows = Array.isArray(rowsResult.data) ? rowsResult.data : [];
+    const uniqueUsers = new Set();
 
-    try {
-      const countResult = await db
-        .from(KLEVB_FEED_LIKES_TABLE)
-        .select("id", {
-          count: "exact",
-          head: true
-        })
-        .eq("post_id", cleanId);
+    rows.forEach((row) => {
+      const userId = String(row?.user_id || "").trim();
 
-      if (!countResult.error && Number.isFinite(Number(countResult.count))) {
-        likesCount = Math.max(0, Number(countResult.count));
+      if (userId) {
+        uniqueUsers.add(userId);
       }
-    } catch (_) {}
-
-    if (likesCount === null) {
-      try {
-        const postResult = await db
-          .from(KLEVB_FEED_TABLE)
-          .select("likes_count")
-          .eq("id", cleanId)
-          .maybeSingle();
-
-        if (!postResult.error && postResult.data) {
-          const postCount = Number(postResult.data.likes_count);
-
-          if (Number.isFinite(postCount)) {
-            likesCount = Math.max(0, postCount);
-          }
-        }
-      } catch (_) {}
-    }
+    });
 
     return {
-      liked: Boolean(existing.data && existing.data.id),
-      likesCount
+      liked: uniqueUsers.has(String(user.id)),
+      likesCount: uniqueUsers.size
     };
   }
 
@@ -836,8 +814,8 @@
     return writeDirectLikeState(cleanId, false);
   }
 
-  async function improveUnknownLikeSnapshot(postId, snapshot) {
-    if (typeof snapshot?.liked === "boolean") {
+  async function improveUnknownLikeSnapshot(postId, snapshot, force = false) {
+    if (!force && typeof snapshot?.liked === "boolean") {
       return snapshot;
     }
 
@@ -857,6 +835,7 @@
 
     return {
       ...snapshot,
+      item: getCachedFeedItem(cleanId) || snapshot.item,
       likesCount,
       liked: serverState.liked
     };
@@ -1184,9 +1163,9 @@
     const sync = getLikeSync(cleanId);
     let snapshot = getLikeSnapshot(cleanId);
 
-    if (!sync.inFlight && typeof snapshot.liked !== "boolean") {
+    if (!sync.inFlight) {
       try {
-        snapshot = await improveUnknownLikeSnapshot(cleanId, snapshot);
+        snapshot = await improveUnknownLikeSnapshot(cleanId, snapshot, true);
       } catch (error) {
         console.debug("Klevby feed actions: like preflight failed", {
           error: String(error?.message || error)
@@ -1215,6 +1194,12 @@
     }
 
     processLikeSync(cleanId);
+
+    return {
+      postId: cleanId,
+      liked: optimistic.optimisticLiked,
+      likesCount: optimistic.optimisticCount
+    };
   }
 
   async function toggleLikeFromViewer(postId) {
