@@ -5,8 +5,12 @@
     "modal-core.js",
     "modal-styles.js",
     "photo-viewer.js",
-    "comments-modal.js",
-    "comments-actions.js"
+    "comments-utils.js",
+    "comments-counts.js",
+    "comments-cache.js",
+    "comments-render.js",
+    "comments-actions.js",
+    "comments-modal.js"
   ];
 
   let klevbyFeedModalModulesPromise = null;
@@ -126,7 +130,7 @@
 
         window.dispatchEvent(new CustomEvent("klevby-feed-modals-ready", {
           detail: {
-            version: "20260509-feed-modals-bridge-1",
+            version: "20260509-feed-comments-modules-1",
             files: MODULE_FILES.slice()
           }
         }));
@@ -388,7 +392,15 @@
   }
 
   function runAddComment(postId, text) {
-    return callAfterReady(getCommentsActionsModule, "runAddComment", [postId, text]);
+    return callAfterReady(getCommentsActionsModule, "runAddComment", [postId, text], () => {
+      const commentsModule = getCommentsModalModule();
+
+      if (commentsModule && typeof commentsModule.runAddComment === "function") {
+        return commentsModule.runAddComment(postId, text);
+      }
+
+      return undefined;
+    });
   }
 
   function toggleLikeFromViewer(postId) {
