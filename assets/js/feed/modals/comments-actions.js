@@ -203,6 +203,45 @@
     return cache[cleanId] || null;
   }
 
+  function getLastItemsArray() {
+    const state = getState();
+
+    if (typeof state.getLastItems === "function") {
+      const items = state.getLastItems();
+      return Array.isArray(items) ? items : [];
+    }
+
+    return Array.isArray(window.__klevbyFeedLastItems)
+      ? window.__klevbyFeedLastItems
+      : [];
+  }
+
+  function setLastItemsArray(items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const state = getState();
+
+    if (typeof state.setLastItems === "function") {
+      state.setLastItems(safeItems);
+    } else {
+      window.__klevbyFeedLastItems = safeItems;
+    }
+
+    if (typeof state.setItemsCacheFromArray === "function") {
+      state.setItemsCacheFromArray(safeItems);
+      return;
+    }
+
+    const cache = {};
+
+    safeItems.forEach((item) => {
+      if (item && item.id) {
+        cache[String(item.id)] = item;
+      }
+    });
+
+    window.__klevbyFeedItemsCache = cache;
+  }
+
   function canManageComment(comment) {
     const core = getCore();
 
@@ -368,6 +407,111 @@
     }));
   }
 
+  function cssEscape(value) {
+    const cleanValue = String(value || "");
+
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+      return CSS.escape(cleanValue);
+    }
+
+    return cleanValue.replace(/["\\]/g, "\\$&");
+  }
+
+  function getCommentButtons(postId) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return [];
+
+    const safeId = cssEscape(cleanId);
+    const buttons = Array.from(
+      document.querySelectorAll(`.profile-feed-comment-btn[data-feed-post-id="${safeId}"]`)
+    );
+
+    if (buttons.length) {
+      return buttons;
+    }
+
+    return Array.from(document.querySelectorAll(".profile-feed-comment-btn")).filter((button) => {
+      if (button.dataset.feedPostId) {
+        return String(button.dataset.feedPostId).trim() === cleanId;
+      }
+
+      const onclickValue = String(button.getAttribute("onclick") || "");
+      return onclickValue.includes(cleanId);
+    });
+  }
+
+  function getSafeCommentsCount(value) {
+    return Math.max(0, Number(value || 0) || 0);
+  }
+
+  function patchLocalFeedItemCommentCount(postId, commentsCount) {
+    const cleanId = String(postId || "").trim();
+    const safeCount = getSafeCommentsCount(commentsCount);
+
+    if (!cleanId) return null;
+
+    const items = getLastItemsArray();
+    let patchedItem = null;
+    let changed = false;
+
+    const nextItems = items.map((item) => {
+      if (String(item?.id || "") !== cleanId) return item;
+
+      changed = true;
+      patchedItem = {
+        ...item,
+        commentsCount: safeCount,
+        comments_count: safeCount
+      };
+
+      return patchedItem;
+    });
+
+    if (changed) {
+      setLastItemsArray(nextItems);
+    }
+
+    const cache = window.__klevbyFeedItemsCache || {};
+    const cachedItem = cache[cleanId] || getCachedItem(cleanId);
+
+    if (cachedItem && typeof cachedItem === "object") {
+      cachedItem.commentsCount = safeCount;
+      cachedItem.comments_count = safeCount;
+      cache[cleanId] = cachedItem;
+      window.__klevbyFeedItemsCache = cache;
+      patchedItem = patchedItem || cachedItem;
+    }
+
+    return patchedItem;
+  }
+
+  function syncFeedCommentCount(postId, commentsCount) {
+    const cleanId = String(postId || "").trim();
+    const safeCount = getSafeCommentsCount(commentsCount);
+
+    if (!cleanId) return safeCount;
+
+    patchLocalFeedItemCommentCount(cleanId, safeCount);
+
+    getCommentButtons(cleanId).forEach((button) => {
+      button.textContent = `💬 ${safeCount}`;
+      button.dataset.feedPostId = cleanId;
+      button.dataset.commentCount = String(safeCount);
+      button.setAttribute("aria-label", `Комментарии: ${safeCount}`);
+    });
+
+    const viewerButton = document.getElementById("klevbyFeedViewerCommentBtn");
+    const viewer = document.getElementById("klevbyFeedPhotoViewer");
+
+    if (viewerButton && viewer && !viewer.classList.contains("hidden")) {
+      viewerButton.textContent = safeCount ? `💬 ${safeCount}` : "💬 Комментарии";
+      viewerButton.dataset.commentCount = String(safeCount);
+    }
+
+    return safeCount;
+  }
+
   function normalizeComments(comments) {
     if (!Array.isArray(comments)) return [];
 
@@ -427,6 +571,7 @@
     const safeComments = normalizeComments(comments);
 
     commentsCacheByPostId.set(cleanId, safeComments);
+    syncFeedCommentCount(cleanId, safeComments.length);
 
     return safeComments;
   }
@@ -440,6 +585,7 @@
     const commentId = String(comment.id || "").trim();
 
     if (commentId && cached.some((item) => String(item?.id || "") === commentId)) {
+      syncFeedCommentCount(cleanId, cached.length);
       return cached;
     }
 
@@ -449,6 +595,7 @@
     ]);
 
     commentsCacheByPostId.set(cleanId, nextComments);
+    syncFeedCommentCount(cleanId, nextComments.length);
 
     return nextComments;
   }
@@ -466,6 +613,7 @@
     });
 
     commentsCacheByPostId.set(cleanPostId, nextComments);
+    syncFeedCommentCount(cleanPostId, nextComments.length);
 
     return nextComments;
   }
@@ -515,6 +663,7 @@
     const shouldScroll = options.scrollToBottom !== false;
 
     list.dataset.postId = cleanId;
+    syncFeedCommentCount(cleanId, safeComments.length);
 
     if (!safeComments.length) {
       renderCommentsPlaceholder(list, "Комментариев пока нет. Напиши первый.");
@@ -1034,16 +1183,9 @@
         navigator.vibrate(16);
       }
 
-      dispatchFeedUpdated({
-        action: "comment_added_local",
-        postId
-      });
-
-      await loadCommentsIntoModal(postId, {
+      loadCommentsIntoModal(postId, {
         scrollToBottom: true
       });
-
-      renderFeedSoon(80);
     } catch (error) {
       console.warn("Klevby feed comments modal: комментарий не отправился", error);
 
@@ -1113,18 +1255,10 @@
           });
         }
 
-        dispatchFeedUpdated({
-          action: "comment_deleted_local",
-          postId,
-          commentId: cleanCommentId
-        });
-
-        await loadCommentsIntoModal(postId, {
+        loadCommentsIntoModal(postId, {
           scrollToBottom: false
         });
       }
-
-      renderFeedSoon(80);
     } catch (error) {
       console.warn("Klevby feed comments modal: комментарий не удалился", error);
 
@@ -1157,7 +1291,8 @@
     submitFeedComment,
     deleteFeedComment,
     runLoadComments,
-    runAddComment
+    runAddComment,
+    syncFeedCommentCount
   };
 
   window.KlevbyFeedCommentsModal = commentsModal;
