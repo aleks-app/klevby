@@ -946,6 +946,67 @@
     return columns.join(",");
   }
 
+  function klevbyFeedSupabaseBuildPostsRestQuery(limit, options = {}) {
+    const params = new URLSearchParams();
+    const includeAvatar = options.includeAvatar !== false;
+    const includeEngagementOrder = options.includeEngagementOrder !== false;
+
+    params.set("select", klevbyFeedSupabaseGetPostSelectColumns(includeAvatar));
+
+    params.set(
+      "order",
+      includeEngagementOrder
+        ? "created_at.desc,engagement_score.desc"
+        : "created_at.desc"
+    );
+
+    params.set("limit", String(limit));
+
+    return params.toString();
+  }
+
+  async function klevbyRunFeedPostsRestQuery(limit) {
+    try {
+      const data = await klevbyFeedSupabaseRestRequest(KLEVB_FEED_TABLE, {
+        method: "GET",
+        query: klevbyFeedSupabaseBuildPostsRestQuery(limit, {
+          includeAvatar: true,
+          includeEngagementOrder: true
+        }),
+        requireAuth: false,
+        timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+      });
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        error: null,
+        source: "rest"
+      };
+    } catch (firstError) {
+      const firstMessage = String(firstError?.message || "").toLowerCase();
+
+      if (!firstMessage.includes("author_avatar")) {
+        throw firstError;
+      }
+
+      const data = await klevbyFeedSupabaseRestRequest(KLEVB_FEED_TABLE, {
+        method: "GET",
+        query: klevbyFeedSupabaseBuildPostsRestQuery(limit, {
+          includeAvatar: false,
+          includeEngagementOrder: true
+        }),
+        requireAuth: false,
+        timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+      });
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        error: null,
+        source: "rest_no_avatar"
+      };
+    }
+  }
+
   async function klevbyRunFeedPostsQuery(db, limit) {
     let result = await klevbyFeedSupabaseRejectTimeout(
       db
@@ -989,13 +1050,17 @@
       );
     }
 
-    return result;
+    return {
+      ...result,
+      source: "sdk"
+    };
   }
 
   async function klevbyLoadFeedPostsFromSupabase(options = {}) {
     const db = klevbyFeedSupabaseGetClient();
+    const config = klevbyFeedSupabaseGetConfig();
 
-    if (!db) {
+    if (!db && (!config.supabaseUrl || !config.supabaseAnonKey)) {
       return {
         ok: false,
         items: [],
@@ -1006,7 +1071,19 @@
     const limit = Math.min(Math.max(Number(options.limit || 40), 1), 80);
 
     try {
-      const result = await klevbyRunFeedPostsQuery(db, limit);
+      let result = null;
+
+      try {
+        result = await klevbyRunFeedPostsRestQuery(limit);
+      } catch (restError) {
+        console.debug("Klevby feed: REST загрузка ленты не сработала, пробую SDK", restError);
+
+        if (!db) {
+          throw restError;
+        }
+
+        result = await klevbyRunFeedPostsQuery(db, limit);
+      }
 
       if (result.error) {
         console.error("Klevby feed: ошибка загрузки feed_posts", result.error);
@@ -1031,7 +1108,8 @@
       return {
         ok: true,
         items,
-        error: null
+        error: null,
+        source: result.source || "unknown"
       };
     } catch (error) {
       console.error("Klevby feed: ошибка загрузки Supabase-ленты", error);
