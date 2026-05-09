@@ -2,6 +2,8 @@
   let klevbyFeedRenderRetryTimer = null;
   let klevbyFeedRenderRetryCount = 0;
   let klevbyFeedImageWarmupTimer = null;
+  let klevbyFeedMobileWidthLockBound = false;
+  let klevbyFeedMobileWidthLockTimer = null;
 
   const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
   const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
@@ -148,7 +150,7 @@
   const FEED_CACHE_LIMIT = 40;
   const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
-  const FEED_STYLES_VERSION = "20260509-feed-render-desktop-preload-1";
+  const FEED_STYLES_VERSION = "20260509-feed-render-mobile-lock-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -380,6 +382,149 @@
     }
   }
 
+  function isMobileFeedMode() {
+    try {
+      if (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) {
+        return true;
+      }
+
+      return Number(window.innerWidth || 0) <= 760;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function lockMobileHorizontalScroll() {
+    const html = document.documentElement;
+    const body = document.body;
+
+    if (!html || !body) return;
+
+    if (!isMobileFeedMode()) {
+      html.classList.remove("klevby-feed-mobile-lock");
+      body.classList.remove("klevby-feed-mobile-lock");
+      return;
+    }
+
+    html.classList.add("klevby-feed-mobile-lock");
+    body.classList.add("klevby-feed-mobile-lock");
+
+    const scrollingElement = document.scrollingElement || html;
+    const currentTop = Number(
+      window.scrollY ||
+      scrollingElement.scrollTop ||
+      body.scrollTop ||
+      html.scrollTop ||
+      0
+    );
+
+    const nodes = [
+      scrollingElement,
+      html,
+      body,
+      document.getElementById("homeSection"),
+      document.getElementById("profileFeedSection"),
+      document.querySelector(".social-feed-grid"),
+      document.querySelector(".app-shell"),
+      document.querySelector(".main-shell"),
+      document.querySelector("main")
+    ].filter(Boolean);
+
+    nodes.forEach((node) => {
+      try {
+        if (Number(node.scrollLeft || 0) !== 0) {
+          node.scrollLeft = 0;
+        }
+      } catch (_) {}
+    });
+
+    try {
+      if (Number(window.scrollX || 0) !== 0) {
+        window.scrollTo(0, currentTop);
+      }
+    } catch (_) {}
+  }
+
+  function scheduleMobileFeedWidthLock(reason = "scheduled", delay = 0) {
+    if (!isMobileFeedMode()) {
+      lockMobileHorizontalScroll();
+      return;
+    }
+
+    if (klevbyFeedMobileWidthLockTimer) {
+      clearTimeout(klevbyFeedMobileWidthLockTimer);
+      klevbyFeedMobileWidthLockTimer = null;
+    }
+
+    klevbyFeedMobileWidthLockTimer = setTimeout(() => {
+      klevbyFeedMobileWidthLockTimer = null;
+      lockMobileHorizontalScroll();
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  function runMobileFeedWidthLockBurst(reason = "burst") {
+    if (!isMobileFeedMode()) {
+      lockMobileHorizontalScroll();
+      return;
+    }
+
+    [0, 80, 260, 700, 1300].forEach((delay) => {
+      setTimeout(() => {
+        lockMobileHorizontalScroll();
+      }, delay);
+    });
+  }
+
+  function bindMobileFeedWidthLock() {
+    if (klevbyFeedMobileWidthLockBound) return;
+
+    klevbyFeedMobileWidthLockBound = true;
+
+    window.addEventListener("resize", () => {
+      runMobileFeedWidthLockBurst("resize");
+    }, {
+      passive: true
+    });
+
+    window.addEventListener("orientationchange", () => {
+      runMobileFeedWidthLockBurst("orientationchange");
+    }, {
+      passive: true
+    });
+
+    window.addEventListener("pageshow", () => {
+      runMobileFeedWidthLockBurst("pageshow");
+    }, {
+      passive: true
+    });
+
+    window.addEventListener("focus", () => {
+      runMobileFeedWidthLockBurst("focus");
+    }, {
+      passive: true
+    });
+
+    window.addEventListener("klevby-app-resumed", () => {
+      runMobileFeedWidthLockBurst("klevby_app_resumed");
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        runMobileFeedWidthLockBurst("visibility_visible");
+      }
+    });
+
+    window.addEventListener("scroll", () => {
+      if (!isMobileFeedMode()) return;
+
+      if (Number(window.scrollX || 0) !== 0) {
+        scheduleMobileFeedWidthLock("window_scroll_x", 0);
+      }
+    }, {
+      passive: true
+    });
+  }
+
   function getItemId(item) {
     return String(item?.id || "").trim();
   }
@@ -523,6 +668,7 @@
 
     list.innerHTML = html;
     setListSignature(list, safeSignature, safeSignature, source);
+    scheduleMobileFeedWidthLock("static_html", 40);
 
     return true;
   }
@@ -648,6 +794,7 @@
     setLastItems(safeItems);
     setItemsCacheFromArray(safeItems);
     setListSignature(list, fullSignature, structureSignature, source);
+    scheduleMobileFeedWidthLock("patch_cards", 40);
 
     return true;
   }
@@ -669,6 +816,7 @@
     const currentSignature = String(list.dataset.klevbyFeedSignature || "");
 
     if (listHasRealContent(list) && currentSignature === fullSignature) {
+      scheduleMobileFeedWidthLock("same_signature", 40);
       return true;
     }
 
@@ -699,10 +847,15 @@
       list.dataset.klevbyFeedStructureSignature = structureSignature;
     }
 
+    scheduleMobileFeedWidthLock("render_items", 80);
+
     return Boolean(cards);
   }
 
   function ensureFeedStyles() {
+    bindMobileFeedWidthLock();
+    scheduleMobileFeedWidthLock("ensure_styles", 40);
+
     const oldStyle = document.getElementById("klevbyFeedStyles");
 
     if (oldStyle && oldStyle.dataset.version === FEED_STYLES_VERSION) {
@@ -718,6 +871,74 @@
     style.dataset.version = FEED_STYLES_VERSION;
 
     style.textContent = `
+      @media (max-width: 760px) {
+        html.klevby-feed-mobile-lock,
+        html.klevby-feed-mobile-lock body,
+        body.klevby-feed-mobile-lock {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+          overscroll-behavior-x: none !important;
+          box-sizing: border-box !important;
+        }
+
+        html.klevby-feed-mobile-lock *,
+        html.klevby-feed-mobile-lock *::before,
+        html.klevby-feed-mobile-lock *::after {
+          box-sizing: border-box;
+        }
+
+        html.klevby-feed-mobile-lock #homeSection,
+        html.klevby-feed-mobile-lock #profileFeedSection,
+        html.klevby-feed-mobile-lock .social-feed-grid {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          overflow-x: hidden !important;
+          box-sizing: border-box !important;
+          overscroll-behavior-x: none !important;
+        }
+
+        html.klevby-feed-mobile-lock .profile-feed-card {
+          width: 100% !important;
+          max-width: calc(100vw - 24px) !important;
+          min-width: 0 !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          box-sizing: border-box !important;
+        }
+
+        html.klevby-feed-mobile-lock .profile-feed-image,
+        html.klevby-feed-mobile-lock .profile-feed-body,
+        html.klevby-feed-mobile-lock .profile-feed-author,
+        html.klevby-feed-mobile-lock .profile-feed-author-text,
+        html.klevby-feed-mobile-lock .profile-feed-title,
+        html.klevby-feed-mobile-lock .profile-feed-tags,
+        html.klevby-feed-mobile-lock .profile-feed-actions {
+          max-width: 100% !important;
+          min-width: 0 !important;
+          box-sizing: border-box !important;
+          overflow-x: hidden !important;
+        }
+
+        html.klevby-feed-mobile-lock .profile-feed-title,
+        html.klevby-feed-mobile-lock .profile-feed-author-name,
+        html.klevby-feed-mobile-lock .profile-feed-author-action,
+        html.klevby-feed-mobile-lock .trip-name,
+        html.klevby-feed-mobile-lock .trip-destination {
+          overflow-wrap: anywhere !important;
+          word-break: normal !important;
+        }
+
+        html.klevby-feed-mobile-lock .profile-feed-actions {
+          width: 100% !important;
+        }
+
+        html.klevby-feed-mobile-lock .profile-feed-actions .small-btn {
+          min-width: 0 !important;
+        }
+      }
+
       .social-feed-grid {
         align-items: start;
       }
@@ -1045,6 +1266,10 @@
       @media (max-width: 760px) {
         .profile-feed-card {
           width: 100%;
+          max-width: calc(100vw - 24px) !important;
+          min-width: 0 !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
           border-radius: 26px !important;
         }
 
@@ -1057,6 +1282,9 @@
 
         .profile-feed-body {
           padding: 13px 14px 15px !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
         }
 
         .profile-feed-avatar-img,
@@ -1067,6 +1295,8 @@
 
         .profile-feed-author {
           margin-bottom: 10px;
+          min-width: 0 !important;
+          max-width: 100% !important;
         }
 
         .profile-feed-author-name {
@@ -1081,22 +1311,33 @@
           font-size: 20px !important;
           line-height: 1.12 !important;
           margin-bottom: 11px !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow-wrap: anywhere !important;
         }
 
         .profile-feed-tags {
           gap: 7px !important;
           margin-bottom: 11px !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
         }
 
         .profile-feed-tags .tag {
           min-height: 31px;
           padding: 7px 10px;
           font-size: 12px;
+          min-width: 0 !important;
+          max-width: 100% !important;
         }
 
         .profile-feed-actions {
           grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
           gap: 8px !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
         }
 
         .profile-feed-actions .small-btn {
@@ -1106,6 +1347,7 @@
           padding: 0 8px !important;
           border-radius: 16px !important;
           font-size: 13px !important;
+          min-width: 0 !important;
         }
       }
 
@@ -1136,6 +1378,7 @@
     `;
 
     document.body.appendChild(style);
+    runMobileFeedWidthLockBurst("styles_inserted");
   }
 
   function profilePhotoCardHtml(item, index = 0) {
@@ -1245,6 +1488,7 @@
     if (!list) return;
 
     ensureFeedStyles();
+    scheduleMobileFeedWidthLock("render_start", 0);
 
     const renderToken = nextRenderToken();
     let renderedFallback = false;
@@ -1272,6 +1516,7 @@
       });
 
       scheduleRenderRetry("api_not_ready");
+      scheduleMobileFeedWidthLock("api_not_ready", 120);
       return;
     }
 
@@ -1292,10 +1537,12 @@
         scheduleRenderRetry("fresh_load_failed");
       }
 
+      scheduleMobileFeedWidthLock("fresh_load_failed", 120);
       return;
     }
 
     if (renderToken !== getRenderToken()) {
+      scheduleMobileFeedWidthLock("token_changed", 120);
       return;
     }
 
@@ -1309,6 +1556,7 @@
         });
 
         scheduleRenderRetry("fresh_empty_with_fallback", 5000);
+        scheduleMobileFeedWidthLock("fresh_empty_with_fallback", 120);
         return;
       }
 
@@ -1317,12 +1565,14 @@
       writeFeedCache([]);
       setStaticListHtml(list, emptyHtml(), "empty", "empty");
       scheduleRenderRetry("fresh_empty_without_fallback", 5000);
+      scheduleMobileFeedWidthLock("fresh_empty_without_fallback", 120);
       return;
     }
 
     resetRenderRetry();
     renderFeedItems(list, items, "fresh");
     writeFeedCache(items);
+    runMobileFeedWidthLockBurst("render_done");
   }
 
   function refreshFeedIfHomeVisible() {
