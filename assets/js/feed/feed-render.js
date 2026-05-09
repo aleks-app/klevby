@@ -4,6 +4,7 @@
   let klevbyFeedImageWarmupTimer = null;
   let klevbyFeedMobileWidthLockBound = false;
   let klevbyFeedMobileWidthLockTimer = null;
+  let klevbyFeedLegacyCacheCleanupDone = false;
 
   const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
   const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
@@ -146,11 +147,15 @@
     return Number(window.__klevbyFeedRenderToken || 0);
   }
 
-  const FEED_CACHE_VERSION = 2;
+  const FEED_CACHE_VERSION = 3;
   const FEED_CACHE_LIMIT = 40;
   const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-  const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
-  const FEED_STYLES_VERSION = "20260509-feed-render-mobile-lock-1";
+  const FEED_CACHE_PREFIX = "klevby_feed_cache_v3";
+  const FEED_LEGACY_CACHE_PREFIXES = [
+    "klevby_feed_cache_v1",
+    "klevby_feed_cache_v2"
+  ];
+  const FEED_STYLES_VERSION = "20260509-feed-render-cache-v3-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -191,6 +196,36 @@
     ]);
   }
 
+  function cleanupLegacyFeedCache() {
+    if (klevbyFeedLegacyCacheCleanupDone) return;
+
+    klevbyFeedLegacyCacheCleanupDone = true;
+
+    try {
+      const keysToRemove = [];
+
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = String(localStorage.key(i) || "");
+
+        if (FEED_LEGACY_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach(removeCacheKey);
+
+      if (keysToRemove.length) {
+        console.info("Klevby feed render: old feed cache cleared", {
+          removed: keysToRemove.length
+        });
+      }
+    } catch (error) {
+      console.debug("Klevby feed render: old cache cleanup skipped", {
+        error: String(error?.message || error)
+      });
+    }
+  }
+
   function normalizeFeedCacheItem(item) {
     if (!item || typeof item !== "object") return null;
 
@@ -198,6 +233,11 @@
     const image = String(item.image || item.imageUrl || "").trim();
 
     if (!id || !image) return null;
+
+    const likesCount = Math.max(0, Number(item.likesCount || item.likes_count || 0) || 0);
+    const commentsCount = Math.max(0, Number(item.commentsCount || item.comments_count || 0) || 0);
+    const viewsCount = Math.max(0, Number(item.viewsCount || item.views_count || 0) || 0);
+    const likedByViewer = Boolean(item.likedByViewer || item.viewerLiked || item.liked_by_viewer);
 
     return {
       id,
@@ -212,11 +252,15 @@
       avatar: item.avatar || item.avatarUrl || item.authorAvatarUrl || item.author_avatar_url || "",
       title: item.title || item.caption || "Фото с рыбалки",
       caption: item.caption || item.title || "Фото с рыбалки",
-      likesCount: Number(item.likesCount || item.likes_count || 0) || 0,
-      commentsCount: Number(item.commentsCount || item.comments_count || 0) || 0,
-      viewsCount: Number(item.viewsCount || item.views_count || 0) || 0,
-      likedByViewer: Boolean(item.likedByViewer || item.viewerLiked || item.liked_by_viewer),
-      viewerLiked: Boolean(item.viewerLiked || item.likedByViewer || item.liked_by_viewer),
+      likesCount,
+      likes_count: likesCount,
+      commentsCount,
+      comments_count: commentsCount,
+      viewsCount,
+      views_count: viewsCount,
+      likedByViewer,
+      viewerLiked: likedByViewer,
+      liked_by_viewer: likedByViewer,
       createdAt: item.createdAt || item.created_at || new Date().toISOString(),
       updatedAt: item.updatedAt || item.updated_at || "",
       userId: item.userId || item.user_id || item.ownerId || item.owner_id || null,
@@ -251,6 +295,8 @@
   }
 
   function readFeedCache() {
+    cleanupLegacyFeedCache();
+
     const cacheKeys = getFeedCacheReadKeys();
 
     for (const cacheKey of cacheKeys) {
@@ -291,6 +337,8 @@
   }
 
   function writeFeedCache(items) {
+    cleanupLegacyFeedCache();
+
     const normalized = normalizeFeedCacheItems(items);
     const cacheKeys = getFeedCacheWriteKeys();
 
@@ -1488,6 +1536,7 @@
     if (!list) return;
 
     ensureFeedStyles();
+    cleanupLegacyFeedCache();
     scheduleMobileFeedWidthLock("render_start", 0);
 
     const renderToken = nextRenderToken();
