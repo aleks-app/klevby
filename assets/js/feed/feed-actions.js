@@ -458,11 +458,14 @@
     const item = getCachedFeedItem(cleanId);
     const button = getLikeButtons(cleanId)[0];
     const buttonCount = getButtonLikesCount(cleanId);
+    const itemLikesCount = getItemLikesCount(item);
 
     const likesCount =
-      buttonCount !== null
-        ? buttonCount
-        : getItemLikesCount(item);
+      Number.isFinite(Number(itemLikesCount))
+        ? itemLikesCount
+        : buttonCount !== null
+          ? buttonCount
+          : 0;
 
     let liked = getKnownLikeState(cleanId, item);
 
@@ -1050,7 +1053,8 @@
         desiredLiked: null,
         desiredCount: null,
         rollbackSnapshot: null,
-        lastErrorAt: 0
+        lastErrorAt: 0,
+        lastConfirmedResult: null
       });
     }
 
@@ -1068,6 +1072,7 @@
     }
 
     sync.inFlight = true;
+    sync.lastConfirmedResult = null;
     pendingLikeLocks.add(cleanId);
 
     try {
@@ -1096,6 +1101,11 @@
               : currentSnapshot.likesCount;
 
           applyLocalLikeState(cleanId, desiredLiked, finalCount);
+          sync.lastConfirmedResult = {
+            postId: cleanId,
+            liked: desiredLiked,
+            likesCount: finalCount
+          };
           break;
         }
 
@@ -1118,6 +1128,11 @@
               : currentSnapshot.likesCount;
 
           applyLocalLikeState(cleanId, normalized.liked, finalCount);
+          sync.lastConfirmedResult = {
+            postId: cleanId,
+            liked: normalized.liked,
+            likesCount: finalCount
+          };
           break;
         }
 
@@ -1171,6 +1186,12 @@
       sync.rollbackSnapshot = null;
       protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
       scheduleLikeRefresh();
+
+      return sync.lastConfirmedResult || {
+        postId: cleanId,
+        liked: typeof currentLiked === "boolean" ? currentLiked : null,
+        likesCount: currentSnapshot.likesCount
+      };
     }
   }
 
@@ -1214,7 +1235,17 @@
       navigator.vibrate(12);
     }
 
-    processLikeSync(cleanId);
+    const confirmedResult = await processLikeSync(cleanId);
+
+    if (confirmedResult && typeof confirmedResult === "object") {
+      return confirmedResult;
+    }
+
+    return {
+      postId: cleanId,
+      liked: optimistic.optimisticLiked,
+      likesCount: optimistic.optimisticCount
+    };
   }
 
   async function toggleLikeFromViewer(postId) {
