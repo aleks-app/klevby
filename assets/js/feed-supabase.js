@@ -1839,19 +1839,63 @@
     }
   }
 
-  async function klevbyRegisterFeedView(postId) {
-    const db = klevbyFeedSupabaseGetClient();
+  async function klevbyRegisterFeedViewRest(payload) {
+    const cleanPostId = String(payload?.post_id || "").trim();
 
-    if (!db) {
+    if (!cleanPostId) {
       return false;
     }
 
+    const params = new URLSearchParams();
+    params.set("on_conflict", "post_id,viewer_key");
+
+    await klevbyFeedSupabaseRestRequest(KLEVB_FEED_VIEWS_TABLE, {
+      method: "POST",
+      query: params.toString(),
+      body: [payload],
+      requireAuth: false,
+      prefer: "resolution=ignore-duplicates,return=minimal",
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    return true;
+  }
+
+  async function klevbyRegisterFeedViewSdk(db, payload) {
+    if (!db || !payload?.post_id) {
+      return false;
+    }
+
+    const { error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_VIEWS_TABLE)
+        .upsert([payload], {
+          onConflict: "post_id,viewer_key",
+          ignoreDuplicates: true
+        }),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Просмотр не записался: Supabase не ответил."
+    );
+
+    if (error) {
+      if (klevbyFeedSupabaseIsDuplicateError(error)) {
+        return false;
+      }
+
+      throw error;
+    }
+
+    return true;
+  }
+
+  async function klevbyRegisterFeedView(postId) {
     const cleanPostId = String(postId || "").trim();
 
     if (!cleanPostId) {
       return false;
     }
 
+    const db = klevbyFeedSupabaseGetClient();
     const user = klevbyFeedSupabaseGetCurrentUser();
     const viewerKey = user && user.id
       ? `user_${user.id}`
@@ -1864,40 +1908,36 @@
     };
 
     try {
-      const { error } = await klevbyFeedSupabaseRejectTimeout(
-        db
-          .from(KLEVB_FEED_VIEWS_TABLE)
-          .upsert([payload], {
-            onConflict: "post_id,viewer_key",
-            ignoreDuplicates: true
-          }),
-        KLEVB_FEED_SDK_TIMEOUT_MS,
-        "Просмотр не записался: Supabase не ответил."
-      );
+      const registered = await klevbyRegisterFeedViewRest(payload);
 
-      if (error) {
-        const message = String(error.message || "").toLowerCase();
+      if (registered) {
+        klevbyFeedSupabaseDispatch("view_added", {
+          postId: cleanPostId
+        });
+      }
 
-        if (
-          message.includes("duplicate") ||
-          message.includes("unique") ||
-          error.code === "23505"
-        ) {
-          return false;
-        }
+      return registered;
+    } catch (restError) {
+      console.debug("Klevby feed: REST запись просмотра пропущена, пробую SDK", restError);
 
-        console.warn("Klevby feed: просмотр не записался", error);
+      if (!db) {
         return false;
       }
 
-      klevbyFeedSupabaseDispatch("view_added", {
-        postId: cleanPostId
-      });
+      try {
+        const registered = await klevbyRegisterFeedViewSdk(db, payload);
 
-      return true;
-    } catch (error) {
-      console.warn("Klevby feed: ошибка записи просмотра", error);
-      return false;
+        if (registered) {
+          klevbyFeedSupabaseDispatch("view_added", {
+            postId: cleanPostId
+          });
+        }
+
+        return registered;
+      } catch (sdkError) {
+        console.debug("Klevby feed: просмотр не записался, продолжаю без ошибки", sdkError);
+        return false;
+      }
     }
   }
 
