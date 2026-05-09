@@ -4,40 +4,40 @@
   let klevbyFeedMainRefreshPending = false;
   let klevbyFeedMainResumeBound = false;
   let klevbyFeedMainResumeTimers = [];
+  let klevbyFeedMainInitialTimers = [];
   let klevbyFeedMainDomWatchTimer = null;
+  let klevbyFeedMainDeferredRenderTimer = null;
+  let klevbyFeedMainRawRenderProfileFeed = null;
+  let klevbyFeedMainRawRefreshFeedIfHomeVisible = null;
+  let klevbyFeedMainRenderGuardInstalled = false;
   let klevbyFeedMainLastRefreshStartedAt = 0;
   let klevbyFeedMainLastRefreshFinishedAt = 0;
   let klevbyFeedMainLastSuccessfulRenderAt = 0;
+  let klevbyFeedMainQuietUntil = 0;
+  let klevbyFeedMainQuietReason = "";
 
-  const KLEVB_FEED_MAIN_POLL_MS = 30000;
-  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 1400;
+  const KLEVB_FEED_MAIN_POLL_MS = 0;
+  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 1800;
   const KLEVB_FEED_MAIN_DOM_WATCH_MS = 450;
   const KLEVB_FEED_MAIN_DOM_WATCH_LIMIT = 70;
+  const KLEVB_FEED_MAIN_LIKE_QUIET_MS = 2600;
+  const KLEVB_FEED_MAIN_INTERACTION_DEFER_MS = 1600;
 
   const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
     0,
-    120,
-    350,
-    800,
-    1400,
-    2400,
-    3800,
-    5600,
-    8200,
-    12000,
-    17000,
-    23000
+    180,
+    700,
+    1500,
+    3200,
+    6200
   ];
 
   const KLEVB_FEED_MAIN_RESUME_DELAYS = [
     0,
-    250,
-    700,
-    1400,
+    350,
+    1100,
     2600,
-    4600,
-    7600,
-    12000
+    5600
   ];
 
   function getState() {
@@ -88,9 +88,179 @@
     return Boolean(document.getElementById("profileFeedSection"));
   }
 
-  function isRenderReady() {
+  function isLikeUpdateAction(action) {
+    const value = String(action || "").toLowerCase();
+
+    return (
+      value.includes("like") ||
+      value.includes("лайк")
+    );
+  }
+
+  function isCriticalRefreshReason(reason) {
+    const value = String(reason || "").toLowerCase();
+
+    return (
+      value.includes("manual") ||
+      value.includes("wake") ||
+      value.includes("initial") ||
+      value.includes("module_ready") ||
+      value.includes("dom_watch") ||
+      value.includes("resume") ||
+      value.includes("app_resumed") ||
+      value.includes("visibility_visible") ||
+      value.includes("page_show") ||
+      value.includes("window_focus") ||
+      value.includes("browser_online") ||
+      value.includes("auth_changed") ||
+      value.includes("navigation_home")
+    );
+  }
+
+  function markFeedQuiet(reason = "quiet", duration = KLEVB_FEED_MAIN_LIKE_QUIET_MS) {
+    const until = Date.now() + Math.max(0, Number(duration || 0));
+
+    klevbyFeedMainQuietUntil = Math.max(klevbyFeedMainQuietUntil, until);
+    klevbyFeedMainQuietReason = String(reason || "quiet");
+  }
+
+  function isFeedQuiet() {
+    return Date.now() < Number(klevbyFeedMainQuietUntil || 0);
+  }
+
+  function isUserInteractingWithFeed() {
+    try {
+      return Boolean(document.querySelector(`
+        #profileFeedSection .profile-feed-actions .small-btn:hover,
+        #profileFeedSection .profile-feed-actions .small-btn:active,
+        #profileFeedSection .profile-feed-actions .small-btn:focus,
+        #profileFeedSection .profile-feed-author:hover,
+        #profileFeedSection .profile-feed-author:active,
+        #profileFeedSection .profile-feed-author:focus,
+        #profileFeedSection .profile-feed-card:hover,
+        #profileFeedSection .profile-feed-card:active
+      `));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function shouldDeferRender(reason = "", force = false) {
+    if (force && isCriticalRefreshReason(reason)) {
+      return false;
+    }
+
+    if (isLikeUpdateAction(reason)) {
+      return true;
+    }
+
+    if (isFeedQuiet() && !isCriticalRefreshReason(reason)) {
+      return true;
+    }
+
+    if (isUserInteractingWithFeed() && !isCriticalRefreshReason(reason)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function clearDeferredRenderTimer() {
+    if (klevbyFeedMainDeferredRenderTimer) {
+      clearTimeout(klevbyFeedMainDeferredRenderTimer);
+      klevbyFeedMainDeferredRenderTimer = null;
+    }
+  }
+
+  function scheduleDeferredRender(reason = "deferred_render", delay = KLEVB_FEED_MAIN_INTERACTION_DEFER_MS) {
+    clearDeferredRenderTimer();
+
+    klevbyFeedMainDeferredRenderTimer = setTimeout(() => {
+      klevbyFeedMainDeferredRenderTimer = null;
+
+      if (!isPageVisible()) return;
+      if (!hasFeedDom()) return;
+
+      if (isFeedQuiet() || isUserInteractingWithFeed()) {
+        scheduleDeferredRender(reason + "_still_busy", KLEVB_FEED_MAIN_INTERACTION_DEFER_MS);
+        return;
+      }
+
+      forceRenderFeed(reason, {
+        force: false
+      });
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  function getRawRenderProfileFeed() {
     const render = getRender();
-    return typeof render.renderProfileFeed === "function";
+
+    if (typeof klevbyFeedMainRawRenderProfileFeed === "function") {
+      return klevbyFeedMainRawRenderProfileFeed;
+    }
+
+    if (typeof render.renderProfileFeed === "function") {
+      return render.renderProfileFeed;
+    }
+
+    return null;
+  }
+
+  function installRenderGuard() {
+    const render = getRender();
+
+    if (!render || typeof render.renderProfileFeed !== "function") {
+      return false;
+    }
+
+    if (klevbyFeedMainRenderGuardInstalled && typeof klevbyFeedMainRawRenderProfileFeed === "function") {
+      return true;
+    }
+
+    if (render.renderProfileFeed.__klevbyFeedMainGuarded) {
+      klevbyFeedMainRenderGuardInstalled = true;
+      return true;
+    }
+
+    klevbyFeedMainRawRenderProfileFeed = render.renderProfileFeed.bind(render);
+
+    if (typeof render.refreshFeedIfHomeVisible === "function") {
+      klevbyFeedMainRawRefreshFeedIfHomeVisible = render.refreshFeedIfHomeVisible.bind(render);
+    }
+
+    render.renderProfileFeed = function klevbyFeedMainGuardedRenderProfileFeed() {
+      if (shouldDeferRender("guarded_external_render", false)) {
+        scheduleDeferredRender("guarded_external_render_after_quiet");
+        return Promise.resolve(false);
+      }
+
+      return klevbyFeedMainRawRenderProfileFeed();
+    };
+
+    render.renderProfileFeed.__klevbyFeedMainGuarded = true;
+
+    render.refreshFeedIfHomeVisible = function klevbyFeedMainGuardedRefreshFeedIfHomeVisible() {
+      if (shouldDeferRender("guarded_external_refresh", false)) {
+        scheduleDeferredRender("guarded_external_refresh_after_quiet");
+        return Promise.resolve(false);
+      }
+
+      return forceRenderFeed("guarded_refresh_home_visible", {
+        force: false
+      });
+    };
+
+    render.refreshFeedIfHomeVisible.__klevbyFeedMainGuarded = true;
+
+    klevbyFeedMainRenderGuardInstalled = true;
+
+    return true;
+  }
+
+  function isRenderReady() {
+    installRenderGuard();
+
+    return typeof getRawRenderProfileFeed() === "function";
   }
 
   function isFreshRefreshAllowed(force) {
@@ -139,10 +309,10 @@
   }
 
   function renderProfileFeed() {
-    const render = getRender();
+    const rawRenderProfileFeed = getRawRenderProfileFeed();
 
-    if (typeof render.renderProfileFeed === "function") {
-      return render.renderProfileFeed();
+    if (typeof rawRenderProfileFeed === "function") {
+      return rawRenderProfileFeed();
     }
 
     const list = document.getElementById("profileFeedSection");
@@ -162,26 +332,41 @@
   }
 
   function refreshFeedIfHomeVisible() {
-    const render = getRender();
     const homeSection = document.getElementById("homeSection");
 
-    if (typeof render.refreshFeedIfHomeVisible === "function") {
-      return render.refreshFeedIfHomeVisible();
-    }
-
     if (homeSection && !homeSection.classList.contains("hidden")) {
-      return renderProfileFeed();
+      return forceRenderFeed("home_visible_refresh", {
+        force: false
+      });
     }
 
     if (hasFeedDom()) {
-      return renderProfileFeed();
+      return forceRenderFeed("feed_dom_refresh", {
+        force: false
+      });
     }
 
-    return Promise.resolve();
+    return Promise.resolve(false);
+  }
+
+  function clearInitialRenderTimers() {
+    klevbyFeedMainInitialTimers.forEach((timer) => {
+      clearTimeout(timer);
+    });
+
+    klevbyFeedMainInitialTimers = [];
   }
 
   async function forceRenderFeed(reason = "manual", options = {}) {
     const force = Boolean(options.force);
+    const cleanReason = String(reason || "manual");
+
+    installRenderGuard();
+
+    if (shouldDeferRender(cleanReason, force)) {
+      scheduleDeferredRender(cleanReason + "_deferred");
+      return false;
+    }
 
     if (!force && !isPageVisible()) {
       return false;
@@ -196,7 +381,7 @@
       startFeedDomWatcher();
 
       if (force) {
-        scheduleMainFeedRefresh(reason + "_render_wait", 420, {
+        scheduleMainFeedRefresh(cleanReason + "_render_wait", 420, {
           force: true
         });
       }
@@ -222,9 +407,20 @@
       klevbyFeedMainLastRefreshFinishedAt = Date.now();
       klevbyFeedMainLastSuccessfulRenderAt = Date.now();
 
+      clearInitialRenderTimers();
+
+      if (
+        cleanReason.includes("main_burst") ||
+        cleanReason.includes("resume") ||
+        cleanReason.includes("dom_watch")
+      ) {
+        clearMainResumeTimers();
+        stopFeedDomWatcher();
+      }
+
       window.dispatchEvent(new CustomEvent("klevby-feed-main-refreshed", {
         detail: {
-          reason,
+          reason: cleanReason,
           at: new Date().toISOString()
         }
       }));
@@ -240,10 +436,10 @@
         klevbyFeedMainRefreshPending = false;
 
         setTimeout(() => {
-          forceRenderFeed("pending_after_" + reason, {
+          forceRenderFeed("pending_after_" + cleanReason, {
             force
           });
-        }, 520);
+        }, 720);
       }
     }
   }
@@ -268,6 +464,7 @@
 
   function runMainResumeBurst(reason = "resume") {
     clearMainResumeTimers();
+    clearDeferredRenderTimer();
     startFeedDomWatcher();
 
     const events = getEvents();
@@ -301,10 +498,15 @@
   }
 
   function startMainFeedPolling() {
+    if (KLEVB_FEED_MAIN_POLL_MS <= 0) {
+      return;
+    }
+
     if (klevbyFeedMainRefreshTimer) return;
 
     klevbyFeedMainRefreshTimer = setInterval(() => {
       if (!isPageVisible()) return;
+
       if (!hasFeedDom()) {
         startFeedDomWatcher();
         return;
@@ -383,20 +585,26 @@
     window.addEventListener("klevby-feed-updated", (event) => {
       const action = String(event?.detail?.action || "feed_updated");
 
-      scheduleMainFeedRefresh(action, 160, {
-        force: true
+      if (isLikeUpdateAction(action)) {
+        markFeedQuiet(action, KLEVB_FEED_MAIN_LIKE_QUIET_MS);
+        return;
+      }
+
+      scheduleMainFeedRefresh(action, 500, {
+        force: false
       });
     });
 
     window.addEventListener("klevby-feed-module-ready", () => {
+      installRenderGuard();
       startFeedDomWatcher();
 
-      scheduleMainFeedRefresh("module_ready_fast", 80, {
+      scheduleMainFeedRefresh("module_ready_fast", 120, {
         force: true
       });
 
-      scheduleMainFeedRefresh("module_ready_confirm", 650, {
-        force: true
+      scheduleMainFeedRefresh("module_ready_confirm", 900, {
+        force: false
       });
     });
 
@@ -412,8 +620,8 @@
         key.includes("klevby_profile") ||
         key.includes("sb-")
       ) {
-        scheduleMainFeedRefresh("storage_changed", 260, {
-          force: true
+        scheduleMainFeedRefresh("storage_changed", 420, {
+          force: false
         });
       }
     });
@@ -435,7 +643,7 @@
         text.includes("лента") ||
         text.includes("главная")
       ) {
-        scheduleMainFeedRefresh("navigation_home_click", 180, {
+        scheduleMainFeedRefresh("navigation_home_click", 220, {
           force: true
         });
       }
@@ -592,39 +800,43 @@
   }
 
   function toggleFeedLike(postId) {
+    const cleanPostId = String(postId || "").trim();
     const actions = getActions();
 
+    markFeedQuiet("like_button_click", KLEVB_FEED_MAIN_LIKE_QUIET_MS);
+
     if (typeof actions.toggleLikeFromCard === "function") {
-      return actions.toggleLikeFromCard(postId);
+      return actions.toggleLikeFromCard(cleanPostId);
     }
 
     if (typeof actions.toggleFeedLikeFromCard === "function") {
-      return actions.toggleFeedLikeFromCard(postId);
+      return actions.toggleFeedLikeFromCard(cleanPostId);
     }
 
     if (typeof actions.toggleFeedLike === "function") {
-      return actions.toggleFeedLike(postId);
+      return actions.toggleFeedLike(cleanPostId);
     }
 
     if (typeof window.klevbyToggleFeedLike === "function") {
-      return window.klevbyToggleFeedLike(postId)
-        .then(() => forceRenderFeed("like_clicked", {
-          force: true
-        }))
+      return window.klevbyToggleFeedLike(cleanPostId)
+        .then(() => {
+          markFeedQuiet("like_clicked", KLEVB_FEED_MAIN_LIKE_QUIET_MS);
+          return true;
+        })
         .catch((error) => {
           if (isDuplicateLikeError(error)) {
-            return forceRenderFeed("like_duplicate", {
-              force: true
-            });
+            markFeedQuiet("like_duplicate", KLEVB_FEED_MAIN_LIKE_QUIET_MS);
+            return true;
           }
 
           console.warn("Klevby feed: лайк не сработал", error);
           alert(error?.message || "Не получилось поставить лайк.");
+          return false;
         });
     }
 
     alert("Лайки ещё не подключены.");
-    return Promise.resolve();
+    return Promise.resolve(false);
   }
 
   function exposeLegacyGlobals() {
@@ -657,7 +869,7 @@
 
     window.refreshKlevbyFeedSilently = function refreshKlevbyFeedSilently() {
       return forceRenderFeed("manual_silent_global", {
-        force: true
+        force: false
       });
     };
   }
@@ -670,12 +882,10 @@
     safeCall(utils.ensureFeedStyles);
     safeCall(render.ensureFeedStyles);
 
+    installRenderGuard();
+
     if (typeof events.bindFeedRefreshHooks === "function") {
       events.bindFeedRefreshHooks();
-    }
-
-    if (typeof events.startFeedAutoRefresh === "function") {
-      events.startFeedAutoRefresh();
     }
 
     bindMainResumeHooks();
@@ -711,8 +921,10 @@
   }
 
   function renderLater() {
-    KLEVB_FEED_MAIN_INITIAL_DELAYS.forEach((delay) => {
-      setTimeout(() => {
+    clearInitialRenderTimers();
+
+    klevbyFeedMainInitialTimers = KLEVB_FEED_MAIN_INITIAL_DELAYS.map((delay) => {
+      return setTimeout(() => {
         forceRenderFeed("initial_main_" + delay, {
           force: true
         });
@@ -722,10 +934,13 @@
 
   function initKlevbyFeed() {
     if (window.__klevbyFeedModularStarted) {
+      installRenderGuard();
       startFeedDomWatcher();
-      scheduleMainFeedRefresh("already_started_recheck", 160, {
+
+      scheduleMainFeedRefresh("already_started_recheck", 220, {
         force: true
       });
+
       return;
     }
 
@@ -738,11 +953,11 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260509-feed-main-stable-start-1"
+        version: "20260509-feed-main-like-stable-2"
       }
     }));
 
-    console.log("Klevby feed main stable starter loaded");
+    console.log("Klevby feed main like-stable starter loaded");
   }
 
   if (document.readyState === "loading") {
@@ -762,6 +977,7 @@
     startMainFeedPolling,
     startFeedDomWatcher,
     stopFeedDomWatcher,
+    markFeedQuiet,
     openKlevbyProfileSafe,
     openProfilePhotoFeedItem,
     openFeedCommentModal,
