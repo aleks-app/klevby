@@ -55,6 +55,12 @@
     return window.KlevbyFeedRender || {};
   }
 
+  function delay(ms) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, Math.max(0, Number(ms || 0)));
+    });
+  }
+
   function escapeHtml(value) {
     const core = getCore();
 
@@ -332,17 +338,17 @@
     });
   }
 
-  function renderFeedSoon(delay = 120) {
+  function renderFeedSoon(delayMs = 120) {
     const core = getCore();
 
     if (typeof core.renderFeedSoon === "function") {
-      core.renderFeedSoon(delay);
+      core.renderFeedSoon(delayMs);
       return;
     }
 
-    const safeDelay = Math.max(0, Number(delay || 0));
+    const safeDelay = Math.max(0, Number(delayMs || 0));
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       const renderer = getRender();
 
       if (typeof renderer.renderProfileFeed === "function") {
@@ -375,14 +381,14 @@
     return false;
   }
 
-  function getItemLikeCount(item) {
-    const value = Number(item?.likesCount ?? item?.likes_count ?? 0);
+  function readNumber(value, fallback = 0) {
+    const number = Number(value);
 
-    if (Number.isFinite(value)) {
-      return Math.max(0, value);
+    if (Number.isFinite(number)) {
+      return Math.max(0, number);
     }
 
-    return 0;
+    return Math.max(0, Number(fallback || 0) || 0);
   }
 
   function getViewerButtonLikeCount(button, item) {
@@ -392,7 +398,7 @@
       return Math.max(0, dataCount);
     }
 
-    const itemCount = getItemLikeCount(item);
+    const itemCount = Number(item?.likesCount || item?.likes_count || 0);
 
     if (Number.isFinite(itemCount)) {
       return Math.max(0, itemCount);
@@ -428,83 +434,177 @@
     button.setAttribute("aria-pressed", safeLiked ? "true" : "false");
     button.classList.toggle("liked", safeLiked);
     button.classList.toggle("is-liked", safeLiked);
-    button.classList.toggle("is-pending", pending);
+    button.classList.remove("is-pending");
     button.disabled = Boolean(pending);
   }
 
-  function getLikeResultCount(result, fallbackItem, fallbackButton) {
-    const resultCount = Number(
-      result?.likesCount ??
-      result?.likes_count ??
-      result?.count ??
-      result?.likes
-    );
+  function elementTreeContainsPostId(element, postId) {
+    const cleanId = String(postId || "").trim();
 
-    if (Number.isFinite(resultCount)) {
-      return Math.max(0, resultCount);
+    if (!element || !cleanId) return false;
+
+    let node = element;
+    let depth = 0;
+
+    while (node && node.nodeType === 1 && depth < 9) {
+      const dataset = node.dataset || {};
+
+      for (const key of Object.keys(dataset)) {
+        const value = String(dataset[key] || "");
+
+        if (value === cleanId || value.includes(cleanId)) {
+          return true;
+        }
+      }
+
+      const attributes = Array.from(node.attributes || []);
+
+      for (const attr of attributes) {
+        const value = String(attr.value || "");
+
+        if (value === cleanId || value.includes(cleanId)) {
+          return true;
+        }
+      }
+
+      node = node.parentElement;
+      depth += 1;
     }
 
-    if (fallbackItem) {
-      return getItemLikeCount(fallbackItem);
-    }
-
-    return getViewerButtonLikeCount(fallbackButton, null);
+    return false;
   }
 
-  function getLikeResultLiked(result, fallbackItem, fallbackButton) {
-    const candidates = [
-      result?.liked,
-      result?.likedByViewer,
-      result?.viewerLiked,
-      result?.isLiked,
-      result?.hasLiked,
-      result?.liked_by_viewer
+  function isLikelyLikeButton(button) {
+    if (!button) return false;
+    if (button.id === "klevbyFeedViewerLikeBtn") return false;
+    if (button.closest("#klevbyFeedPhotoViewer")) return false;
+
+    const text = String(button.textContent || "").toLowerCase();
+    const className = String(button.className || "").toLowerCase();
+    const dataset = button.dataset || {};
+    const attributes = Array.from(button.attributes || [])
+      .map((attr) => `${attr.name}=${attr.value}`)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      text.includes("👍") ||
+      text.includes("лайк") ||
+      className.includes("like") ||
+      attributes.includes("like") ||
+      Object.keys(dataset).some((key) => key.toLowerCase().includes("like"))
+    );
+  }
+
+  function findFeedCardLikeButton(postId) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return null;
+
+    const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
+
+    const exactButton = buttons.find((button) => {
+      return (
+        isLikelyLikeButton(button) &&
+        elementTreeContainsPostId(button, cleanId)
+      );
+    });
+
+    if (exactButton) {
+      return exactButton;
+    }
+
+    return null;
+  }
+
+  function readLikeCountFromButton(button, fallback = 0) {
+    if (!button) return readNumber(fallback, 0);
+
+    const dataset = button.dataset || {};
+    const directValues = [
+      dataset.likeCount,
+      dataset.likesCount,
+      dataset.count,
+      button.getAttribute("data-like-count"),
+      button.getAttribute("data-likes-count"),
+      button.getAttribute("aria-label")
     ];
 
-    for (const value of candidates) {
-      if (typeof value === "boolean") return value;
+    for (const value of directValues) {
+      const number = Number(value);
+
+      if (Number.isFinite(number)) {
+        return Math.max(0, number);
+      }
     }
 
-    if (fallbackItem) {
-      return getBooleanLikeStateFromItem(fallbackItem);
+    const match = String(button.textContent || "").match(/-?\d+/);
+
+    if (match) {
+      const number = Number(match[0]);
+
+      if (Number.isFinite(number)) {
+        return Math.max(0, number);
+      }
     }
 
-    return getViewerButtonLiked(fallbackButton, null);
+    return readNumber(fallback, 0);
   }
 
-  async function runViewerLikeToggle(cleanId) {
-    const api = getApi();
+  function readLikedFromButton(button, fallback = false) {
+    if (!button) return Boolean(fallback);
 
-    if (typeof api.toggleLike === "function") {
-      return api.toggleLike(cleanId);
+    const dataset = button.dataset || {};
+    const values = [
+      dataset.liked,
+      dataset.viewerLiked,
+      dataset.isLiked,
+      button.getAttribute("aria-pressed"),
+      button.getAttribute("data-liked"),
+      button.getAttribute("data-viewer-liked")
+    ];
+
+    for (const value of values) {
+      const cleanValue = String(value || "").trim().toLowerCase();
+
+      if (cleanValue === "true" || cleanValue === "1" || cleanValue === "yes") {
+        return true;
+      }
+
+      if (cleanValue === "false" || cleanValue === "0" || cleanValue === "no") {
+        return false;
+      }
     }
 
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.toggleLike === "function"
-    ) {
-      return window.klevbyFeedSupabase.toggleLike(cleanId);
-    }
+    return Boolean(
+      fallback ||
+      button.classList.contains("liked") ||
+      button.classList.contains("is-liked") ||
+      button.classList.contains("active") ||
+      button.classList.contains("is-active")
+    );
+  }
 
-    if (typeof window.klevbyToggleFeedLike === "function") {
-      return window.klevbyToggleFeedLike(cleanId);
-    }
+  function syncViewerLikeButtonFromFeed(postId, fallbackItem = null) {
+    const likeButton = document.getElementById("klevbyFeedViewerLikeBtn");
 
-    if (typeof window.toggleFeedLike === "function") {
-      return window.toggleFeedLike(cleanId);
-    }
+    if (!likeButton) return;
 
-    const actions = window.KlevbyFeedActions || {};
+    const cachedItem = getCachedItem(postId) || fallbackItem || {};
+    const feedButton = findFeedCardLikeButton(postId);
 
-    if (typeof actions.toggleLikeFromViewer === "function") {
-      return actions.toggleLikeFromViewer(cleanId);
-    }
+    const fallbackCount = Number(cachedItem.likesCount || cachedItem.likes_count || likeButton.dataset.likeCount || 0);
+    const fallbackLiked = getBooleanLikeStateFromItem(cachedItem) || getViewerButtonLiked(likeButton, cachedItem);
 
-    if (typeof actions.toggleLikeFromCard === "function") {
-      return actions.toggleLikeFromCard(cleanId);
-    }
+    const count = feedButton
+      ? readLikeCountFromButton(feedButton, fallbackCount)
+      : readNumber(fallbackCount, 0);
 
-    throw new Error("Лайки ещё не подключены.");
+    const liked = feedButton
+      ? readLikedFromButton(feedButton, fallbackLiked)
+      : Boolean(fallbackLiked);
+
+    setViewerLikeButtonState(likeButton, count, liked, false);
   }
 
   function ensurePhotoViewer() {
@@ -632,6 +732,43 @@
     }
   }
 
+  async function runLikeThroughWorkingFeedButton(postId) {
+    const feedLikeButton = findFeedCardLikeButton(postId);
+
+    if (!feedLikeButton || feedLikeButton.disabled) {
+      return false;
+    }
+
+    feedLikeButton.click();
+
+    await delay(420);
+
+    return true;
+  }
+
+  async function runLikeThroughFallbackApi(postId) {
+    const actions = window.KlevbyFeedActions || {};
+    const api = getApi();
+
+    if (typeof actions.toggleLikeFromCard === "function") {
+      return actions.toggleLikeFromCard(postId);
+    }
+
+    if (typeof window.toggleFeedLike === "function") {
+      return window.toggleFeedLike(postId);
+    }
+
+    if (typeof api.toggleLike === "function") {
+      return api.toggleLike(postId);
+    }
+
+    if (typeof window.klevbyToggleFeedLike === "function") {
+      return window.klevbyToggleFeedLike(postId);
+    }
+
+    throw new Error("Лайки ещё не подключены.");
+  }
+
   async function toggleLikeFromViewer(postId) {
     const cleanId = String(postId || "").trim();
 
@@ -641,49 +778,54 @@
     const currentItem = getCachedItem(cleanId);
     const previousCount = getViewerButtonLikeCount(likeButton, currentItem);
     const previousLiked = getViewerButtonLiked(likeButton, currentItem);
+    const nextLiked = !previousLiked;
+    const nextCount = Math.max(0, previousCount + (nextLiked ? 1 : -1));
 
     klevbyFeedViewerLikePending = true;
 
-    pulseButton(likeButton, 160);
-
-    /*
-      В открытой фотографии больше не считаем лайк вручную через +1 / -1.
-      Причина: после resume item может быть чуть устаревшим, и кнопка может думать,
-      что мой лайк ещё не стоит, хотя он уже есть в базе. Из-за этого было 3 -> 4 -> 2.
-      Теперь ждём фактический ответ toggleLike и только потом выставляем финальное число.
-    */
-    setViewerLikeButtonState(likeButton, previousCount, previousLiked, true);
+    pulseButton(likeButton, 140);
+    setViewerLikeButtonState(likeButton, nextCount, nextLiked, true);
 
     try {
-      const result = await runViewerLikeToggle(cleanId);
+      const usedFeedButton = await runLikeThroughWorkingFeedButton(cleanId);
+
+      if (!usedFeedButton) {
+        const result = await runLikeThroughFallbackApi(cleanId);
+
+        if (result && typeof result === "object") {
+          const resultCount = Number(result.likesCount ?? result.likes_count);
+          const resultLiked = result.liked ?? result.viewerLiked ?? result.likedByViewer;
+
+          if (Number.isFinite(resultCount) || typeof resultLiked === "boolean") {
+            setViewerLikeButtonState(
+              likeButton,
+              Number.isFinite(resultCount) ? resultCount : nextCount,
+              typeof resultLiked === "boolean" ? resultLiked : nextLiked,
+              false
+            );
+          }
+        }
+
+        renderFeedSoon(180);
+        await delay(260);
+      }
+
+      syncViewerLikeButtonFromFeed(cleanId, currentItem);
 
       if (navigator.vibrate) {
         navigator.vibrate(12);
       }
-
-      const updatedItem = getCachedItem(cleanId);
-      const finalItem = updatedItem || currentItem;
-      const finalCount = getLikeResultCount(result, finalItem, likeButton);
-      const finalLiked = getLikeResultLiked(result, finalItem, likeButton);
-
-      setViewerLikeButtonState(likeButton, finalCount, finalLiked, false);
-
-      renderFeedSoon(120);
     } catch (error) {
       setViewerLikeButtonState(likeButton, previousCount, previousLiked, false);
-      console.warn("Klevby feed photo viewer: лайк не сработал", error);
-      alert(error?.message || "Не получилось поставить лайк.");
+      console.debug("Klevby feed photo viewer: лайк в открытом фото пропущен", error);
     } finally {
       klevbyFeedViewerLikePending = false;
 
-      setTimeout(() => {
-        const viewer = document.getElementById("klevbyFeedPhotoViewer");
-        const newestItem = getCachedItem(cleanId);
+      const viewer = document.getElementById("klevbyFeedPhotoViewer");
 
-        if (viewer && !viewer.classList.contains("hidden") && newestItem) {
-          openFeedPhotoViewer(newestItem);
-        }
-      }, 260);
+      if (viewer && !viewer.classList.contains("hidden")) {
+        syncViewerLikeButtonFromFeed(cleanId, currentItem);
+      }
     }
   }
 
@@ -755,11 +897,7 @@
       const isSupabase = item.source === "supabase";
 
       likeButton.classList.toggle("hidden", !isSupabase);
-
-      if (!klevbyFeedViewerLikePending) {
-        setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
-      }
-
+      setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
       likeButton.onclick = () => toggleLikeFromViewer(item.id);
     }
 
