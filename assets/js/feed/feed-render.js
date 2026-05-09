@@ -1,9 +1,14 @@
 (function () {
   let klevbyFeedRenderRetryTimer = null;
   let klevbyFeedRenderRetryCount = 0;
+  let klevbyFeedImageWarmupTimer = null;
 
   const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
   const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
+
+  const FEED_DESKTOP_PRELOAD_LIMIT = 16;
+  const FEED_DESKTOP_EAGER_LIMIT = 8;
+  const FEED_DESKTOP_HIGH_PRIORITY_LIMIT = 5;
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -143,7 +148,7 @@
   const FEED_CACHE_LIMIT = 40;
   const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
-  const FEED_STYLES_VERSION = "20260509-feed-render-buttons-unified-1";
+  const FEED_STYLES_VERSION = "20260509-feed-render-desktop-preload-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -363,6 +368,18 @@
     return cleanValue.replace(/["\\]/g, "\\$&");
   }
 
+  function isDesktopFeedMode() {
+    try {
+      if (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) {
+        return false;
+      }
+
+      return Number(window.innerWidth || 0) > 760;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function getItemId(item) {
     return String(item?.id || "").trim();
   }
@@ -510,6 +527,64 @@
     return true;
   }
 
+  function warmDesktopFeedImage(url, index = 0) {
+    const imageUrl = String(url || "").trim();
+
+    if (!imageUrl) return;
+
+    window.__klevbyFeedPreloadedImages = window.__klevbyFeedPreloadedImages || {};
+
+    if (window.__klevbyFeedPreloadedImages[imageUrl]) {
+      return;
+    }
+
+    window.__klevbyFeedPreloadedImages[imageUrl] = true;
+
+    try {
+      const image = new Image();
+
+      image.decoding = "async";
+
+      if ("fetchPriority" in image) {
+        image.fetchPriority = index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
+      }
+
+      image.src = imageUrl;
+
+      if (typeof image.decode === "function") {
+        image.decode().catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  function warmDesktopFeedImages(items, source = "unknown") {
+    if (!isDesktopFeedMode()) return;
+
+    const safeItems = getRenderableFeedItems(items);
+    const urls = uniqueArray(
+      safeItems
+        .slice(0, FEED_DESKTOP_PRELOAD_LIMIT)
+        .map(getItemImage)
+    );
+
+    if (!urls.length) return;
+
+    if (klevbyFeedImageWarmupTimer) {
+      clearTimeout(klevbyFeedImageWarmupTimer);
+      klevbyFeedImageWarmupTimer = null;
+    }
+
+    const delay = source === "cache" || source === "memory" ? 20 : 80;
+
+    klevbyFeedImageWarmupTimer = setTimeout(() => {
+      klevbyFeedImageWarmupTimer = null;
+
+      urls.forEach((url, index) => {
+        warmDesktopFeedImage(url, index);
+      });
+    }, delay);
+  }
+
   function patchExistingFeedCards(list, items, fullSignature, structureSignature, source) {
     if (!list || !listHasRealContent(list)) return false;
 
@@ -580,6 +655,7 @@
   function renderFeedItems(list, items, source = "fresh") {
     const safeItems = getRenderableFeedItems(items);
 
+    warmDesktopFeedImages(safeItems, source);
     setLastItems(safeItems);
     setItemsCacheFromArray(safeItems);
 
@@ -601,9 +677,9 @@
     }
 
     const cards = safeItems
-      .map((item) => {
+      .map((item, index) => {
         try {
-          return profilePhotoCardHtml(item);
+          return profilePhotoCardHtml(item, index);
         } catch (error) {
           console.error("Klevby feed render: ошибка карточки", item, error);
           return "";
@@ -672,15 +748,46 @@
       }
 
       .profile-feed-image {
+        position: relative;
+        overflow: hidden;
         width: 100% !important;
         min-height: 300px !important;
         height: clamp(300px, 38vw, 430px) !important;
         max-height: 430px !important;
         border-radius: 28px 28px 0 0 !important;
+        background-color: #07100d !important;
         background-size: cover !important;
         background-position: center !important;
         background-repeat: no-repeat !important;
         box-shadow: inset 0 -80px 100px rgba(0,0,0,0.18);
+      }
+
+      .profile-feed-image::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20));
+      }
+
+      .profile-feed-image-img {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        border: 0;
+        opacity: 1;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        pointer-events: none;
       }
 
       .profile-feed-body {
@@ -922,6 +1029,19 @@
         font-weight: 600;
       }
 
+      @media (min-width: 761px) {
+        .profile-feed-card {
+          contain: layout paint;
+          will-change: auto;
+        }
+
+        .profile-feed-image {
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+      }
+
       @media (max-width: 760px) {
         .profile-feed-card {
           width: 100%;
@@ -1018,7 +1138,7 @@
     document.body.appendChild(style);
   }
 
-  function profilePhotoCardHtml(item) {
+  function profilePhotoCardHtml(item, index = 0) {
     const safeId = escapeAttr(item?.id || "");
     const safeImage = escapeAttr(item?.image || item?.imageUrl || "");
     const authorName = item?.authorName || "Рыбак";
@@ -1035,6 +1155,16 @@
       ? ` data-liked="${likedState ? "true" : "false"}" aria-pressed="${likedState ? "true" : "false"}"`
       : "";
 
+    const useDesktopImageElement = isDesktopFeedMode();
+    const imageLoading = useDesktopImageElement && index < FEED_DESKTOP_EAGER_LIMIT ? "eager" : "lazy";
+    const imageFetchPriority = useDesktopImageElement && index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
+    const imageBackgroundAttr = useDesktopImageElement
+      ? ""
+      : ` style="background-image: url('${safeImage}')"`;
+    const imageElementHtml = useDesktopImageElement
+      ? `<img class="profile-feed-image-img" src="${safeImage}" alt="" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
+      : "";
+
     const avatarHtml = avatar
       ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
@@ -1049,7 +1179,7 @@
 
     return `
       <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"></div>
+        <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}</div>
 
         <div class="card-body profile-feed-body">
           <button
