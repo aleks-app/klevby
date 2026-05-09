@@ -86,22 +86,21 @@
   }
 
   function setItemsCacheFromArray(items) {
+    const safeItems = Array.isArray(items) ? items : [];
     const state = getState();
 
     if (typeof state.setItemsCacheFromArray === "function") {
-      state.setItemsCacheFromArray(items);
+      state.setItemsCacheFromArray(safeItems);
       return;
     }
 
     const cache = {};
 
-    if (Array.isArray(items)) {
-      items.forEach((item) => {
-        if (item && item.id) {
-          cache[String(item.id)] = item;
-        }
-      });
-    }
+    safeItems.forEach((item) => {
+      if (item && item.id) {
+        cache[String(item.id)] = item;
+      }
+    });
 
     window.__klevbyFeedItemsCache = cache;
   }
@@ -354,6 +353,230 @@
     }, delay);
   }
 
+  function cssEscape(value) {
+    const cleanValue = String(value || "");
+
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+      return CSS.escape(cleanValue);
+    }
+
+    return cleanValue.replace(/["\\]/g, "\\$&");
+  }
+
+  function getItemId(item) {
+    return String(item?.id || "").trim();
+  }
+
+  function getItemImage(item) {
+    return String(item?.image || item?.imageUrl || "").trim();
+  }
+
+  function getItemTitle(item) {
+    return String(item?.title || item?.caption || "Фото с рыбалки").trim();
+  }
+
+  function getItemAuthorName(item) {
+    return String(item?.authorName || item?.author_name || "Рыбак").trim();
+  }
+
+  function getItemAuthorCity(item) {
+    return String(item?.authorCity || item?.author_city || "").trim();
+  }
+
+  function getItemCreatedAt(item) {
+    return String(item?.createdAt || item?.created_at || "").trim();
+  }
+
+  function getItemUpdatedAt(item) {
+    return String(item?.updatedAt || item?.updated_at || "").trim();
+  }
+
+  function getItemLikesCount(item) {
+    return Math.max(0, Number(item?.likesCount || item?.likes_count || 0) || 0);
+  }
+
+  function getItemCommentsCount(item) {
+    return Math.max(0, Number(item?.commentsCount || item?.comments_count || 0) || 0);
+  }
+
+  function getItemViewsCount(item) {
+    return Math.max(0, Number(item?.viewsCount || item?.views_count || 0) || 0);
+  }
+
+  function getItemLikedState(item) {
+    if (!item || typeof item !== "object") return null;
+
+    const candidates = [
+      item.likedByViewer,
+      item.viewerLiked,
+      item.isLiked,
+      item.liked,
+      item.hasLiked,
+      item.liked_by_viewer
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === "boolean") {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  function signaturePart(value) {
+    return String(value ?? "")
+      .replaceAll("\\", "\\\\")
+      .replaceAll("|", "\\|")
+      .replaceAll("\n", " ")
+      .replaceAll("\r", " ");
+  }
+
+  function getFeedStructureSignature(items) {
+    const safeItems = getRenderableFeedItems(items);
+
+    return safeItems
+      .map((item) => {
+        return [
+          getItemId(item),
+          item?.source || "",
+          getItemImage(item),
+          item?.imagePath || item?.image_path || "",
+          getItemAuthorName(item),
+          getItemAuthorCity(item),
+          getAvatar(item),
+          getItemTitle(item),
+          getItemCreatedAt(item),
+          getItemUpdatedAt(item),
+          item?.userId || item?.user_id || item?.ownerId || item?.owner_id || ""
+        ].map(signaturePart).join("|");
+      })
+      .join("||");
+  }
+
+  function getFeedFullSignature(items) {
+    const safeItems = getRenderableFeedItems(items);
+
+    return safeItems
+      .map((item) => {
+        const likedState = getItemLikedState(item);
+
+        return [
+          getItemId(item),
+          item?.source || "",
+          getItemImage(item),
+          item?.imagePath || item?.image_path || "",
+          getItemAuthorName(item),
+          getItemAuthorCity(item),
+          getAvatar(item),
+          getItemTitle(item),
+          getItemCreatedAt(item),
+          getItemUpdatedAt(item),
+          getItemLikesCount(item),
+          getItemCommentsCount(item),
+          getItemViewsCount(item),
+          typeof likedState === "boolean" ? String(likedState) : "unknown",
+          item?.userId || item?.user_id || item?.ownerId || item?.owner_id || ""
+        ].map(signaturePart).join("|");
+      })
+      .join("||");
+  }
+
+  function listHasRealContent(list) {
+    return Boolean(list && list.children && list.children.length > 0);
+  }
+
+  function setListSignature(list, fullSignature, structureSignature, source) {
+    if (!list) return;
+
+    list.dataset.klevbyFeedSignature = String(fullSignature || "");
+    list.dataset.klevbyFeedStructureSignature = String(structureSignature || fullSignature || "");
+    list.dataset.klevbyFeedSource = String(source || "");
+  }
+
+  function setStaticListHtml(list, html, signature, source) {
+    const safeSignature = String(signature || source || "static");
+
+    if (
+      listHasRealContent(list) &&
+      String(list.dataset.klevbyFeedSignature || "") === safeSignature
+    ) {
+      return false;
+    }
+
+    list.innerHTML = html;
+    setListSignature(list, safeSignature, safeSignature, source);
+
+    return true;
+  }
+
+  function patchExistingFeedCards(list, items, fullSignature, structureSignature, source) {
+    if (!list || !listHasRealContent(list)) return false;
+
+    const safeItems = getRenderableFeedItems(items);
+    const cards = Array.from(list.querySelectorAll(".profile-feed-card[data-feed-card-id]"));
+
+    if (!safeItems.length || cards.length !== safeItems.length) {
+      return false;
+    }
+
+    const currentStructure = String(list.dataset.klevbyFeedStructureSignature || "");
+
+    if (!currentStructure || currentStructure !== structureSignature) {
+      return false;
+    }
+
+    let canPatch = true;
+
+    safeItems.forEach((item) => {
+      const id = getItemId(item);
+      const card = list.querySelector(`.profile-feed-card[data-feed-card-id="${cssEscape(id)}"]`);
+
+      if (!id || !card) {
+        canPatch = false;
+      }
+    });
+
+    if (!canPatch) {
+      return false;
+    }
+
+    safeItems.forEach((item) => {
+      const id = getItemId(item);
+      const likesCount = getItemLikesCount(item);
+      const commentsCount = getItemCommentsCount(item);
+      const likedState = getItemLikedState(item);
+
+      const likeButton = list.querySelector(`.profile-feed-like-btn[data-feed-post-id="${cssEscape(id)}"]`);
+      const commentButton = list.querySelector(`.profile-feed-comment-btn[data-feed-post-id="${cssEscape(id)}"]`);
+
+      if (likeButton) {
+        likeButton.textContent = `👍 ${likesCount}`;
+        likeButton.dataset.likeCount = String(likesCount);
+        likeButton.dataset.feedPostId = id;
+
+        if (typeof likedState === "boolean") {
+          likeButton.dataset.liked = likedState ? "true" : "false";
+          likeButton.setAttribute("aria-pressed", likedState ? "true" : "false");
+          likeButton.classList.toggle("liked", likedState);
+          likeButton.classList.toggle("is-liked", likedState);
+        }
+      }
+
+      if (commentButton) {
+        commentButton.textContent = `💬 ${commentsCount}`;
+        commentButton.dataset.commentCount = String(commentsCount);
+        commentButton.dataset.feedPostId = id;
+      }
+    });
+
+    setLastItems(safeItems);
+    setItemsCacheFromArray(safeItems);
+    setListSignature(list, fullSignature, structureSignature, source);
+
+    return true;
+  }
+
   function renderFeedItems(list, items, source = "fresh") {
     const safeItems = getRenderableFeedItems(items);
 
@@ -361,8 +584,20 @@
     setItemsCacheFromArray(safeItems);
 
     if (!safeItems.length) {
-      list.innerHTML = emptyHtml();
+      setStaticListHtml(list, emptyHtml(), "empty", "empty");
       return false;
+    }
+
+    const fullSignature = getFeedFullSignature(safeItems);
+    const structureSignature = getFeedStructureSignature(safeItems);
+    const currentSignature = String(list.dataset.klevbyFeedSignature || "");
+
+    if (listHasRealContent(list) && currentSignature === fullSignature) {
+      return true;
+    }
+
+    if (patchExistingFeedCards(list, safeItems, fullSignature, structureSignature, source)) {
+      return true;
     }
 
     const cards = safeItems
@@ -377,12 +612,16 @@
       .filter(Boolean)
       .join("");
 
-    list.innerHTML = cards || emptyHtml();
+    setStaticListHtml(
+      list,
+      cards || emptyHtml(),
+      cards ? fullSignature : "empty",
+      source
+    );
 
-    console.info("Klevby feed render: rendered", {
-      source,
-      count: safeItems.length
-    });
+    if (cards) {
+      list.dataset.klevbyFeedStructureSignature = structureSignature;
+    }
 
     return Boolean(cards);
   }
@@ -785,27 +1024,31 @@
     const authorName = item?.authorName || "Рыбак";
     const authorCity = item?.authorCity || "";
     const title = item?.title || item?.caption || "Фото с рыбалки";
-    const likesCount = Number(item?.likesCount || 0);
-    const commentsCount = Number(item?.commentsCount || 0);
+    const likesCount = getItemLikesCount(item);
+    const commentsCount = getItemCommentsCount(item);
     const date = formatDate(item?.createdAt);
     const avatar = getAvatar(item);
     const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
     const isSupabase = item?.source === "supabase";
+    const likedState = getItemLikedState(item);
+    const likedAttrs = typeof likedState === "boolean"
+      ? ` data-liked="${likedState ? "true" : "false"}" aria-pressed="${likedState ? "true" : "false"}"`
+      : "";
 
     const avatarHtml = avatar
       ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
 
     const likeButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-like-btn" type="button" onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
+      ? `<button class="small-btn gray profile-feed-like-btn${likedState ? " is-liked liked" : ""}" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}"${likedAttrs} onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
       : "";
 
     const commentButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
+      ? `<button class="small-btn gray profile-feed-comment-btn" type="button" data-feed-post-id="${safeId}" data-comment-count="${commentsCount}" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     return `
-      <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
+      <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
         <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"></div>
 
         <div class="card-body profile-feed-body">
@@ -889,7 +1132,7 @@
         renderedFallback = renderFeedItems(list, cachedItems, "cache");
         fallbackSource = "cache";
       } else {
-        list.innerHTML = loadingHtml();
+        setStaticListHtml(list, loadingHtml(), "loading", "loading");
       }
     }
 
@@ -915,7 +1158,7 @@
       console.warn("Klevby feed render: лента не загрузилась", error);
 
       if (!renderedFallback) {
-        list.innerHTML = loadingHtml();
+        setStaticListHtml(list, loadingHtml(), "loading", "loading");
         scheduleRenderRetry("fresh_load_failed");
       }
 
@@ -942,7 +1185,7 @@
       setLastItems([]);
       setItemsCacheFromArray([]);
       writeFeedCache([]);
-      list.innerHTML = emptyHtml();
+      setStaticListHtml(list, emptyHtml(), "empty", "empty");
       scheduleRenderRetry("fresh_empty_without_fallback", 5000);
       return;
     }
