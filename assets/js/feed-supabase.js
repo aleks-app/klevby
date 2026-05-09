@@ -630,6 +630,144 @@
     };
   }
 
+  function klevbyFeedSupabaseGetPostIds(items) {
+    return Array.from(
+      new Set(
+        (Array.isArray(items) ? items : [])
+          .map((item) => String(item?.id || "").trim())
+          .filter(Boolean)
+      )
+    );
+  }
+
+  function klevbyFeedSupabaseCountCommentsRows(rows) {
+    const counts = new Map();
+
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const postId = String(row?.post_id || row?.postId || "").trim();
+
+      if (!postId) return;
+
+      counts.set(postId, Number(counts.get(postId) || 0) + 1);
+    });
+
+    return counts;
+  }
+
+  async function klevbyFeedSupabaseLoadRealCommentCountsRest(postIds) {
+    const ids = Array.from(
+      new Set(
+        (Array.isArray(postIds) ? postIds : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!ids.length) {
+      return new Map();
+    }
+
+    const params = new URLSearchParams();
+    params.set("select", "post_id");
+    params.set("post_id", `in.(${ids.join(",")})`);
+
+    const data = await klevbyFeedSupabaseRestRequest(KLEVB_FEED_COMMENTS_TABLE, {
+      method: "GET",
+      query: params.toString(),
+      requireAuth: false,
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    return klevbyFeedSupabaseCountCommentsRows(data);
+  }
+
+  async function klevbyFeedSupabaseLoadRealCommentCountsSdk(db, postIds) {
+    const ids = Array.from(
+      new Set(
+        (Array.isArray(postIds) ? postIds : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!db || !ids.length) {
+      return new Map();
+    }
+
+    const { data, error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_COMMENTS_TABLE)
+        .select("post_id")
+        .in("post_id", ids),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Счётчики комментариев не ответили."
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return klevbyFeedSupabaseCountCommentsRows(data);
+  }
+
+  async function klevbyFeedSupabaseLoadRealCommentCounts(db, postIds) {
+    const ids = Array.from(
+      new Set(
+        (Array.isArray(postIds) ? postIds : [])
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!ids.length) {
+      return new Map();
+    }
+
+    try {
+      return await klevbyFeedSupabaseLoadRealCommentCountsRest(ids);
+    } catch (restError) {
+      console.debug("Klevby feed: REST счётчики комментариев пропущены, пробую SDK", restError);
+
+      try {
+        return await klevbyFeedSupabaseLoadRealCommentCountsSdk(db, ids);
+      } catch (sdkError) {
+        console.debug("Klevby feed: реальные счётчики комментариев пропущены", sdkError);
+        return new Map();
+      }
+    }
+  }
+
+  async function klevbyFeedSupabaseApplyRealCommentCounts(db, items) {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    if (!safeItems.length) {
+      return [];
+    }
+
+    const postIds = klevbyFeedSupabaseGetPostIds(safeItems);
+    const counts = await klevbyFeedSupabaseLoadRealCommentCounts(db, postIds);
+
+    if (!counts || !counts.size) {
+      return safeItems;
+    }
+
+    return safeItems.map((item) => {
+      const id = String(item?.id || "").trim();
+
+      if (!id || !counts.has(id)) {
+        return item;
+      }
+
+      const realCount = Math.max(0, Number(counts.get(id) || 0) || 0);
+
+      return {
+        ...item,
+        commentsCount: realCount,
+        comments_count: realCount
+      };
+    });
+  }
+
   async function klevbyFeedSupabaseLoadViewerLikedPostIds(db, postIds, userId) {
     const ids = Array.from(
       new Set(
@@ -741,9 +879,14 @@
         return null;
       }
 
+      const commentCounts = await klevbyFeedSupabaseLoadRealCommentCounts(db, [cleanPostId]);
+      const realCommentsCount = commentCounts.has(cleanPostId)
+        ? Number(commentCounts.get(cleanPostId) || 0)
+        : Number(data?.comments_count || 0);
+
       return {
         likesCount: Number(data?.likes_count || 0),
-        commentsCount: Number(data?.comments_count || 0),
+        commentsCount: Math.max(0, Number(realCommentsCount || 0) || 0),
         viewsCount: Number(data?.views_count || 0),
         engagementScore: Number(data?.engagement_score || 0),
         updatedAt: data?.updated_at || ""
@@ -879,9 +1022,11 @@
         ? result.data.map(klevbyFeedSupabaseNormalizePost).filter(Boolean)
         : [];
 
-      const items = await klevbyFeedSupabaseApplyViewerLikes(db, normalizedItems, {
+      const likedItems = await klevbyFeedSupabaseApplyViewerLikes(db, normalizedItems, {
         restore: true
       });
+
+      const items = await klevbyFeedSupabaseApplyRealCommentCounts(db, likedItems);
 
       return {
         ok: true,
@@ -1170,7 +1315,8 @@
     klevbyFeedSupabaseDispatch(action, {
       postId: cleanPostId,
       liked,
-      likesCount: counters?.likesCount
+      likesCount: counters?.likesCount,
+      commentsCount: counters?.commentsCount
     });
 
     return {
@@ -1351,9 +1497,15 @@
       throw new Error("Комментарий отправился, но Supabase не вернул запись.");
     }
 
+    const commentCounts = await klevbyFeedSupabaseLoadRealCommentCounts(
+      klevbyFeedSupabaseGetClient(),
+      [cleanPostId]
+    );
+
     klevbyFeedSupabaseDispatch("comment_added", {
       postId: cleanPostId,
-      comment: row
+      comment: row,
+      commentsCount: commentCounts.has(cleanPostId) ? Number(commentCounts.get(cleanPostId) || 0) : undefined
     });
 
     return row;
@@ -1421,9 +1573,12 @@
       throw new Error("Не получилось добавить комментарий: " + error.message);
     }
 
+    const commentCounts = await klevbyFeedSupabaseLoadRealCommentCounts(db, [cleanPostId]);
+
     klevbyFeedSupabaseDispatch("comment_added", {
       postId: cleanPostId,
-      comment: data
+      comment: data,
+      commentsCount: commentCounts.has(cleanPostId) ? Number(commentCounts.get(cleanPostId) || 0) : undefined
     });
 
     return data;
