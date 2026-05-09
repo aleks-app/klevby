@@ -11,6 +11,20 @@
   const KLEVB_FEED_VIEWER_KEY = "klevby_feed_viewer_key";
 
   const KLEVB_FEED_AUTH_TIMEOUT_MS = 1400;
+  const KLEVB_FEED_REST_TIMEOUT_MS = 9000;
+  const KLEVB_FEED_SDK_TIMEOUT_MS = 6500;
+
+  const KLEVB_FEED_COMMENT_SELECT = [
+    "id",
+    "post_id",
+    "user_id",
+    "author_name",
+    "author_city",
+    "author_telegram",
+    "text",
+    "created_at",
+    "updated_at"
+  ].join(",");
 
   let klevbyFeedRealtimeChannel = null;
   let klevbyFeedRealtimeCallback = null;
@@ -26,10 +40,193 @@
     return null;
   }
 
+  function klevbyFeedSupabaseGetConfig() {
+    const config = window.KLEVB_CONFIG || window.KlevbyConfig || window.klevbyConfig || {};
+
+    const supabaseUrl =
+      config.SUPABASE_URL ||
+      config.supabaseUrl ||
+      window.SUPABASE_URL ||
+      window.KLEVB_SUPABASE_URL ||
+      "";
+
+    const supabaseAnonKey =
+      config.SUPABASE_ANON_KEY ||
+      config.supabaseAnonKey ||
+      window.SUPABASE_ANON_KEY ||
+      window.KLEVB_SUPABASE_ANON_KEY ||
+      "";
+
+    const supabaseStorageKey =
+      config.SUPABASE_STORAGE_KEY ||
+      config.supabaseStorageKey ||
+      "sb-klevby-auth-token";
+
+    return {
+      supabaseUrl: String(supabaseUrl || "").replace(/\/+$/, ""),
+      supabaseAnonKey: String(supabaseAnonKey || ""),
+      supabaseStorageKey: String(supabaseStorageKey || "sb-klevby-auth-token")
+    };
+  }
+
+  function klevbyFeedSupabaseSafeJsonParse(value) {
+    try {
+      if (!value) return null;
+
+      if (typeof value === "object") {
+        return value;
+      }
+
+      return JSON.parse(String(value));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function klevbyFeedSupabaseExtractSession(value) {
+    const parsed = klevbyFeedSupabaseSafeJsonParse(value);
+
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const candidates = [
+      parsed,
+      parsed.currentSession,
+      parsed.session,
+      parsed.data?.session,
+      parsed.auth?.currentSession,
+      parsed.auth?.session
+    ].filter(Boolean);
+
+    for (const candidate of candidates) {
+      const accessToken =
+        candidate.access_token ||
+        candidate.accessToken ||
+        candidate.provider_token ||
+        "";
+
+      if (!accessToken) continue;
+
+      const user =
+        candidate.user ||
+        parsed.user ||
+        parsed.currentUser ||
+        parsed.data?.user ||
+        null;
+
+      const expiresAt = Number(candidate.expires_at || candidate.expiresAt || 0);
+
+      return {
+        accessToken: String(accessToken),
+        refreshToken: String(candidate.refresh_token || candidate.refreshToken || ""),
+        expiresAt,
+        user
+      };
+    }
+
+    return null;
+  }
+
+  function klevbyFeedSupabaseGetStoredSession() {
+    const config = klevbyFeedSupabaseGetConfig();
+    const directKeys = [
+      config.supabaseStorageKey,
+      "sb-klevby-auth-token"
+    ].filter(Boolean);
+
+    try {
+      for (const key of directKeys) {
+        const raw = localStorage.getItem(key);
+        const session = klevbyFeedSupabaseExtractSession(raw);
+
+        if (session && session.accessToken) {
+          return session;
+        }
+      }
+
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = String(localStorage.key(i) || "");
+
+        if (!key.startsWith("sb-") || !key.endsWith("-auth-token")) {
+          continue;
+        }
+
+        const raw = localStorage.getItem(key);
+        const session = klevbyFeedSupabaseExtractSession(raw);
+
+        if (session && session.accessToken) {
+          return session;
+        }
+      }
+    } catch (error) {
+      console.debug("Klevby feed: stored auth session skipped", error);
+    }
+
+    return null;
+  }
+
+  async function klevbyFeedSupabaseGetAuthContext(options = {}) {
+    const requireAuth = Boolean(options.requireAuth);
+    const storedSession = klevbyFeedSupabaseGetStoredSession();
+
+    if (storedSession && storedSession.accessToken) {
+      return {
+        accessToken: storedSession.accessToken,
+        user: storedSession.user || null,
+        source: "storage"
+      };
+    }
+
+    const db = klevbyFeedSupabaseGetClient();
+
+    if (db && db.auth && typeof db.auth.getSession === "function") {
+      try {
+        const sessionResult = await klevbyFeedSupabaseWithTimeout(
+          db.auth.getSession(),
+          KLEVB_FEED_AUTH_TIMEOUT_MS,
+          null
+        );
+
+        const session = sessionResult?.data?.session || null;
+
+        if (session && session.access_token) {
+          return {
+            accessToken: String(session.access_token),
+            user: session.user || null,
+            source: "sdk_session"
+          };
+        }
+      } catch (error) {
+        console.debug("Klevby feed: auth session skipped", error);
+      }
+    }
+
+    if (requireAuth) {
+      return {
+        accessToken: "",
+        user: null,
+        source: "missing"
+      };
+    }
+
+    return {
+      accessToken: "",
+      user: null,
+      source: "anon"
+    };
+  }
+
   function klevbyFeedSupabaseGetCurrentUser() {
     if (window.currentUser) return window.currentUser;
     if (window.klevbyCurrentUser) return window.klevbyCurrentUser;
     if (window.klevbyUser) return window.klevbyUser;
+
+    const storedSession = klevbyFeedSupabaseGetStoredSession();
+
+    if (storedSession?.user?.id) {
+      return storedSession.user;
+    }
 
     if (typeof window.klevbyGetCurrentUser === "function") {
       try {
@@ -48,11 +245,105 @@
 
   function klevbyFeedSupabaseWithTimeout(promise, timeoutMs, fallbackValue = null) {
     return Promise.race([
-      promise,
+      Promise.resolve(promise),
       new Promise((resolve) => {
         setTimeout(() => resolve(fallbackValue), Math.max(0, Number(timeoutMs || 0)));
       })
     ]);
+  }
+
+  function klevbyFeedSupabaseRejectTimeout(promise, timeoutMs, errorMessage) {
+    let timer = null;
+
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(errorMessage || "Supabase не ответил."));
+        }, Math.max(1200, Number(timeoutMs || 0)));
+      })
+    ]).finally(() => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    });
+  }
+
+  async function klevbyFeedSupabaseRestRequest(path, options = {}) {
+    const config = klevbyFeedSupabaseGetConfig();
+    const cleanPath = String(path || "").replace(/^\/+/, "");
+    const method = String(options.method || "GET").toUpperCase();
+    const requireAuth = Boolean(options.requireAuth);
+    const timeoutMs = Number(options.timeoutMs || KLEVB_FEED_REST_TIMEOUT_MS);
+
+    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+      throw new Error("REST Supabase не настроен.");
+    }
+
+    const authContext = await klevbyFeedSupabaseGetAuthContext({
+      requireAuth
+    });
+
+    if (requireAuth && !authContext.accessToken) {
+      throw new Error("Сначала войди, чтобы выполнить действие.");
+    }
+
+    const query = options.query ? `?${String(options.query).replace(/^\?/, "")}` : "";
+    const url = `${config.supabaseUrl}/rest/v1/${cleanPath}${query}`;
+
+    const headers = {
+      apikey: config.supabaseAnonKey,
+      Authorization: `Bearer ${authContext.accessToken || config.supabaseAnonKey}`,
+      Accept: "application/json"
+    };
+
+    if (options.body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    if (options.prefer) {
+      headers.Prefer = String(options.prefer);
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, Math.max(1200, timeoutMs));
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal
+      });
+
+      const text = await response.text();
+      const data = text ? klevbyFeedSupabaseSafeJsonParse(text) : null;
+
+      if (!response.ok) {
+        const message =
+          data?.message ||
+          data?.error_description ||
+          data?.error ||
+          `Supabase REST ошибка ${response.status}`;
+
+        const error = new Error(message);
+        error.status = response.status;
+        error.data = data;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw new Error("Supabase не ответил.");
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function klevbyFeedSupabaseGetViewerUserId(db, options = {}) {
@@ -110,9 +401,19 @@
       return user;
     }
 
+    const storedSession = klevbyFeedSupabaseGetStoredSession();
+
+    if (storedSession?.user?.id) {
+      return storedSession.user;
+    }
+
     if (typeof window.restoreAuthState === "function") {
       try {
-        await window.restoreAuthState("feed_supabase_action", false);
+        await klevbyFeedSupabaseWithTimeout(
+          window.restoreAuthState("feed_supabase_action", false),
+          KLEVB_FEED_AUTH_TIMEOUT_MS,
+          null
+        );
       } catch (error) {
         console.warn("Klevby feed: не удалось восстановить вход", error);
       }
@@ -128,7 +429,12 @@
 
     if (db && db.auth && typeof db.auth.getUser === "function") {
       try {
-        const result = await db.auth.getUser();
+        const result = await klevbyFeedSupabaseWithTimeout(
+          db.auth.getUser(),
+          KLEVB_FEED_AUTH_TIMEOUT_MS,
+          null
+        );
+
         const authUser = result?.data?.user || null;
 
         if (authUser && authUser.id) {
@@ -340,11 +646,15 @@
     }
 
     try {
-      const { data, error } = await db
-        .from(KLEVB_FEED_LIKES_TABLE)
-        .select("post_id")
-        .eq("user_id", cleanUserId)
-        .in("post_id", ids);
+      const { data, error } = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_LIKES_TABLE)
+          .select("post_id")
+          .eq("user_id", cleanUserId)
+          .in("post_id", ids),
+        KLEVB_FEED_SDK_TIMEOUT_MS,
+        "Проверка лайков не ответила."
+      );
 
       if (error) {
         console.warn("Klevby feed: не удалось проверить мои лайки", error);
@@ -416,11 +726,15 @@
     }
 
     try {
-      const { data, error } = await db
-        .from(KLEVB_FEED_TABLE)
-        .select("likes_count,comments_count,views_count,engagement_score,updated_at")
-        .eq("id", cleanPostId)
-        .maybeSingle();
+      const { data, error } = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_TABLE)
+          .select("likes_count,comments_count,views_count,engagement_score,updated_at")
+          .eq("id", cleanPostId)
+          .maybeSingle(),
+        KLEVB_FEED_SDK_TIMEOUT_MS,
+        "Счётчики поста не ответили."
+      );
 
       if (error) {
         console.debug("Klevby feed: counters skipped", error);
@@ -490,34 +804,46 @@
   }
 
   async function klevbyRunFeedPostsQuery(db, limit) {
-    let result = await db
-      .from(KLEVB_FEED_TABLE)
-      .select(klevbyFeedSupabaseGetPostSelectColumns(true))
-      .order("created_at", { ascending: false })
-      .order("engagement_score", { ascending: false })
-      .limit(limit);
+    let result = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_TABLE)
+        .select(klevbyFeedSupabaseGetPostSelectColumns(true))
+        .order("created_at", { ascending: false })
+        .order("engagement_score", { ascending: false })
+        .limit(limit),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Лента не ответила."
+    );
 
     if (
       result.error &&
       String(result.error.message || "").toLowerCase().includes("author_avatar")
     ) {
-      result = await db
-        .from(KLEVB_FEED_TABLE)
-        .select(klevbyFeedSupabaseGetPostSelectColumns(false))
-        .order("created_at", { ascending: false })
-        .order("engagement_score", { ascending: false })
-        .limit(limit);
+      result = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_TABLE)
+          .select(klevbyFeedSupabaseGetPostSelectColumns(false))
+          .order("created_at", { ascending: false })
+          .order("engagement_score", { ascending: false })
+          .limit(limit),
+        KLEVB_FEED_SDK_TIMEOUT_MS,
+        "Лента не ответила."
+      );
     }
 
     if (
       result.error &&
       String(result.error.message || "").toLowerCase().includes("engagement_score")
     ) {
-      result = await db
-        .from(KLEVB_FEED_TABLE)
-        .select(klevbyFeedSupabaseGetPostSelectColumns(false))
-        .order("created_at", { ascending: false })
-        .limit(limit);
+      result = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_TABLE)
+          .select(klevbyFeedSupabaseGetPostSelectColumns(false))
+          .order("created_at", { ascending: false })
+          .limit(limit),
+        KLEVB_FEED_SDK_TIMEOUT_MS,
+        "Лента не ответила."
+      );
     }
 
     return result;
@@ -609,13 +935,17 @@
     const fileName = `${Date.now()}-${klevbyFeedSupabaseMakeIdPart()}.${extension}`;
     const imagePath = `${user.id}/${fileName}`;
 
-    const uploadResult = await db.storage
-      .from(KLEVB_FEED_BUCKET)
-      .upload(imagePath, blob, {
-        cacheControl: "31536000",
-        contentType: blob.type || "image/jpeg",
-        upsert: false
-      });
+    const uploadResult = await klevbyFeedSupabaseRejectTimeout(
+      db.storage
+        .from(KLEVB_FEED_BUCKET)
+        .upload(imagePath, blob, {
+          cacheControl: "31536000",
+          contentType: blob.type || "image/jpeg",
+          upsert: false
+        }),
+      KLEVB_FEED_REST_TIMEOUT_MS,
+      "Фото не загрузилось: Supabase не ответил."
+    );
 
     if (uploadResult.error) {
       console.error("Klevby feed: ошибка загрузки фото в Storage", uploadResult.error);
@@ -656,11 +986,15 @@
       payload.author_avatar_url = profile.avatar;
     }
 
-    let insertResult = await db
-      .from(KLEVB_FEED_TABLE)
-      .insert([payload])
-      .select(klevbyFeedSupabaseGetPostSelectColumns(true))
-      .single();
+    let insertResult = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_TABLE)
+        .insert([payload])
+        .select(klevbyFeedSupabaseGetPostSelectColumns(true))
+        .single(),
+      KLEVB_FEED_REST_TIMEOUT_MS,
+      "Пост ленты не создался: Supabase не ответил."
+    );
 
     if (
       insertResult.error &&
@@ -668,11 +1002,15 @@
     ) {
       delete payload.author_avatar_url;
 
-      insertResult = await db
-        .from(KLEVB_FEED_TABLE)
-        .insert([payload])
-        .select(klevbyFeedSupabaseGetPostSelectColumns(false))
-        .single();
+      insertResult = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_TABLE)
+          .insert([payload])
+          .select(klevbyFeedSupabaseGetPostSelectColumns(false))
+          .single(),
+        KLEVB_FEED_REST_TIMEOUT_MS,
+        "Пост ленты не создался: Supabase не ответил."
+      );
     }
 
     if (insertResult.error) {
@@ -715,10 +1053,14 @@
       throw new Error("Не указан id поста.");
     }
 
-    const { error } = await db
-      .from(KLEVB_FEED_TABLE)
-      .delete()
-      .eq("id", cleanPostId);
+    const { error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_TABLE)
+        .delete()
+        .eq("id", cleanPostId),
+      KLEVB_FEED_REST_TIMEOUT_MS,
+      "Удаление поста не ответило."
+    );
 
     if (error) {
       console.error("Klevby feed: ошибка удаления feed_posts", error);
@@ -761,12 +1103,16 @@
       throw new Error("Не указан id поста.");
     }
 
-    const existing = await db
-      .from(KLEVB_FEED_LIKES_TABLE)
-      .select("id")
-      .eq("post_id", cleanPostId)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const existing = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_LIKES_TABLE)
+        .select("id")
+        .eq("post_id", cleanPostId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Проверка лайка не ответила."
+    );
 
     if (existing.error) {
       console.error("Klevby feed: ошибка проверки лайка", existing.error);
@@ -777,10 +1123,14 @@
     let action = "like_removed";
 
     if (existing.data && existing.data.id) {
-      const removeResult = await db
-        .from(KLEVB_FEED_LIKES_TABLE)
-        .delete()
-        .eq("id", existing.data.id);
+      const removeResult = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_LIKES_TABLE)
+          .delete()
+          .eq("id", existing.data.id),
+        KLEVB_FEED_REST_TIMEOUT_MS,
+        "Удаление лайка не ответило."
+      );
 
       if (removeResult.error) {
         console.error("Klevby feed: ошибка удаления лайка", removeResult.error);
@@ -790,12 +1140,16 @@
       liked = false;
       action = "like_removed";
     } else {
-      const addResult = await db
-        .from(KLEVB_FEED_LIKES_TABLE)
-        .insert([{
-          post_id: cleanPostId,
-          user_id: user.id
-        }]);
+      const addResult = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_LIKES_TABLE)
+          .insert([{
+            post_id: cleanPostId,
+            user_id: user.id
+          }]),
+        KLEVB_FEED_REST_TIMEOUT_MS,
+        "Добавление лайка не ответило."
+      );
 
       if (addResult.error) {
         if (klevbyFeedSupabaseIsDuplicateError(addResult.error)) {
@@ -830,7 +1184,37 @@
     };
   }
 
-  async function klevbyLoadFeedComments(postId) {
+  async function klevbyLoadFeedCommentsRest(postId) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return {
+        ok: false,
+        comments: [],
+        error: new Error("Не указан id поста")
+      };
+    }
+
+    const params = new URLSearchParams();
+    params.set("select", KLEVB_FEED_COMMENT_SELECT);
+    params.set("post_id", `eq.${cleanPostId}`);
+    params.set("order", "created_at.asc");
+
+    const data = await klevbyFeedSupabaseRestRequest(KLEVB_FEED_COMMENTS_TABLE, {
+      method: "GET",
+      query: params.toString(),
+      requireAuth: false,
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    return {
+      ok: true,
+      comments: Array.isArray(data) ? data : [],
+      error: null
+    };
+  }
+
+  async function klevbyLoadFeedCommentsSdk(postId) {
     const db = klevbyFeedSupabaseGetClient();
 
     if (!db) {
@@ -851,21 +1235,25 @@
       };
     }
 
-    const { data, error } = await db
-      .from(KLEVB_FEED_COMMENTS_TABLE)
-      .select(`
-        id,
-        post_id,
-        user_id,
-        author_name,
-        author_city,
-        author_telegram,
-        text,
-        created_at,
-        updated_at
-      `)
-      .eq("post_id", cleanPostId)
-      .order("created_at", { ascending: true });
+    const { data, error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_COMMENTS_TABLE)
+        .select(`
+          id,
+          post_id,
+          user_id,
+          author_name,
+          author_city,
+          author_telegram,
+          text,
+          created_at,
+          updated_at
+        `)
+        .eq("post_id", cleanPostId)
+        .order("created_at", { ascending: true }),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Комментарии не загрузились: Supabase не ответил."
+    );
 
     if (error) {
       console.error("Klevby feed: ошибка загрузки комментариев", error);
@@ -884,7 +1272,94 @@
     };
   }
 
-  async function klevbyAddFeedComment(postId, text) {
+  async function klevbyLoadFeedComments(postId) {
+    try {
+      return await klevbyLoadFeedCommentsRest(postId);
+    } catch (restError) {
+      console.warn("Klevby feed: REST загрузка комментариев не сработала, пробую SDK", restError);
+
+      try {
+        return await klevbyLoadFeedCommentsSdk(postId);
+      } catch (sdkError) {
+        console.error("Klevby feed: ошибка загрузки комментариев", sdkError);
+
+        return {
+          ok: false,
+          comments: [],
+          error: sdkError
+        };
+      }
+    }
+  }
+
+  async function klevbyAddFeedCommentRest(postId, text) {
+    const cleanPostId = String(postId || "").trim();
+    const cleanText = String(text || "").trim();
+
+    if (!cleanPostId) {
+      throw new Error("Не указан id поста.");
+    }
+
+    if (!cleanText) {
+      throw new Error("Комментарий пустой.");
+    }
+
+    if (cleanText.length > 700) {
+      throw new Error("Комментарий слишком длинный. Максимум 700 символов.");
+    }
+
+    const user = await klevbyFeedSupabaseEnsureUser();
+    const authContext = await klevbyFeedSupabaseGetAuthContext({
+      requireAuth: true
+    });
+
+    const userId =
+      user?.id ||
+      authContext?.user?.id ||
+      "";
+
+    if (!userId) {
+      throw new Error("Сначала войди, чтобы оставить комментарий.");
+    }
+
+    const profile = klevbyFeedSupabaseReadProfileData();
+
+    const payload = {
+      post_id: cleanPostId,
+      user_id: userId,
+      author_name: profile.name || "Рыбак",
+      author_city: profile.city || "",
+      author_telegram: klevbyFeedSupabaseCleanTelegram(profile.telegram),
+      text: cleanText
+    };
+
+    const params = new URLSearchParams();
+    params.set("select", KLEVB_FEED_COMMENT_SELECT);
+
+    const data = await klevbyFeedSupabaseRestRequest(KLEVB_FEED_COMMENTS_TABLE, {
+      method: "POST",
+      query: params.toString(),
+      body: [payload],
+      requireAuth: true,
+      prefer: "return=representation",
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (!row || !row.id) {
+      throw new Error("Комментарий отправился, но Supabase не вернул запись.");
+    }
+
+    klevbyFeedSupabaseDispatch("comment_added", {
+      postId: cleanPostId,
+      comment: row
+    });
+
+    return row;
+  }
+
+  async function klevbyAddFeedCommentSdk(postId, text) {
     const db = klevbyFeedSupabaseGetClient();
 
     if (!db) {
@@ -914,28 +1389,32 @@
 
     const profile = klevbyFeedSupabaseReadProfileData();
 
-    const { data, error } = await db
-      .from(KLEVB_FEED_COMMENTS_TABLE)
-      .insert([{
-        post_id: cleanPostId,
-        user_id: user.id,
-        author_name: profile.name || "Рыбак",
-        author_city: profile.city || "",
-        author_telegram: klevbyFeedSupabaseCleanTelegram(profile.telegram),
-        text: cleanText
-      }])
-      .select(`
-        id,
-        post_id,
-        user_id,
-        author_name,
-        author_city,
-        author_telegram,
-        text,
-        created_at,
-        updated_at
-      `)
-      .single();
+    const { data, error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_COMMENTS_TABLE)
+        .insert([{
+          post_id: cleanPostId,
+          user_id: user.id,
+          author_name: profile.name || "Рыбак",
+          author_city: profile.city || "",
+          author_telegram: klevbyFeedSupabaseCleanTelegram(profile.telegram),
+          text: cleanText
+        }])
+        .select(`
+          id,
+          post_id,
+          user_id,
+          author_name,
+          author_city,
+          author_telegram,
+          text,
+          created_at,
+          updated_at
+        `)
+        .single(),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Комментарий не отправился: Supabase не ответил."
+    );
 
     if (error) {
       console.error("Klevby feed: ошибка добавления комментария", error);
@@ -950,7 +1429,47 @@
     return data;
   }
 
-  async function klevbyDeleteFeedComment(commentId) {
+  async function klevbyAddFeedComment(postId, text) {
+    try {
+      return await klevbyAddFeedCommentRest(postId, text);
+    } catch (restError) {
+      console.warn("Klevby feed: REST отправка комментария не сработала, пробую SDK", restError);
+
+      try {
+        return await klevbyAddFeedCommentSdk(postId, text);
+      } catch (sdkError) {
+        console.error("Klevby feed: ошибка добавления комментария", sdkError);
+        throw sdkError;
+      }
+    }
+  }
+
+  async function klevbyDeleteFeedCommentRest(commentId) {
+    const cleanCommentId = String(commentId || "").trim();
+
+    if (!cleanCommentId) {
+      throw new Error("Не указан id комментария.");
+    }
+
+    const params = new URLSearchParams();
+    params.set("id", `eq.${cleanCommentId}`);
+
+    await klevbyFeedSupabaseRestRequest(KLEVB_FEED_COMMENTS_TABLE, {
+      method: "DELETE",
+      query: params.toString(),
+      requireAuth: true,
+      prefer: "return=minimal",
+      timeoutMs: KLEVB_FEED_REST_TIMEOUT_MS
+    });
+
+    klevbyFeedSupabaseDispatch("comment_deleted", {
+      commentId: cleanCommentId
+    });
+
+    return true;
+  }
+
+  async function klevbyDeleteFeedCommentSdk(commentId) {
     const db = klevbyFeedSupabaseGetClient();
 
     if (!db) {
@@ -963,10 +1482,14 @@
       throw new Error("Не указан id комментария.");
     }
 
-    const { error } = await db
-      .from(KLEVB_FEED_COMMENTS_TABLE)
-      .delete()
-      .eq("id", cleanCommentId);
+    const { error } = await klevbyFeedSupabaseRejectTimeout(
+      db
+        .from(KLEVB_FEED_COMMENTS_TABLE)
+        .delete()
+        .eq("id", cleanCommentId),
+      KLEVB_FEED_SDK_TIMEOUT_MS,
+      "Комментарий не удалился: Supabase не ответил."
+    );
 
     if (error) {
       console.error("Klevby feed: ошибка удаления комментария", error);
@@ -978,6 +1501,16 @@
     });
 
     return true;
+  }
+
+  async function klevbyDeleteFeedComment(commentId) {
+    try {
+      return await klevbyDeleteFeedCommentRest(commentId);
+    } catch (restError) {
+      console.warn("Klevby feed: REST удаление комментария не сработало, пробую SDK", restError);
+
+      return klevbyDeleteFeedCommentSdk(commentId);
+    }
   }
 
   async function klevbyRegisterFeedView(postId) {
@@ -1005,12 +1538,16 @@
     };
 
     try {
-      const { error } = await db
-        .from(KLEVB_FEED_VIEWS_TABLE)
-        .upsert([payload], {
-          onConflict: "post_id,viewer_key",
-          ignoreDuplicates: true
-        });
+      const { error } = await klevbyFeedSupabaseRejectTimeout(
+        db
+          .from(KLEVB_FEED_VIEWS_TABLE)
+          .upsert([payload], {
+            onConflict: "post_id,viewer_key",
+            ignoreDuplicates: true
+          }),
+        KLEVB_FEED_SDK_TIMEOUT_MS,
+        "Просмотр не записался: Supabase не ответил."
+      );
 
       if (error) {
         const message = String(error.message || "").toLowerCase();
