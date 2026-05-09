@@ -458,11 +458,14 @@
     const item = getCachedFeedItem(cleanId);
     const button = getLikeButtons(cleanId)[0];
     const buttonCount = getButtonLikesCount(cleanId);
+    const itemLikesCount = getItemLikesCount(item);
 
     const likesCount =
-      buttonCount !== null
-        ? buttonCount
-        : getItemLikesCount(item);
+      Number.isFinite(Number(itemLikesCount))
+        ? itemLikesCount
+        : buttonCount !== null
+          ? buttonCount
+          : 0;
 
     let liked = getKnownLikeState(cleanId, item);
 
@@ -1050,11 +1053,44 @@
         desiredLiked: null,
         desiredCount: null,
         rollbackSnapshot: null,
-        lastErrorAt: 0
+        lastErrorAt: 0,
+        lastConfirmedResult: null
       });
     }
 
     return likeSyncState.get(cleanId);
+  }
+
+
+
+  async function waitForLikeSyncIdle(postId, timeoutMs = 1600) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return null;
+
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < Math.max(200, Number(timeoutMs || 0))) {
+      const sync = getLikeSync(cleanId);
+
+      if (!sync.inFlight) {
+        if (sync.lastConfirmedResult && typeof sync.lastConfirmedResult === "object") {
+          return sync.lastConfirmedResult;
+        }
+
+        const snapshot = getLikeSnapshot(cleanId);
+
+        return {
+          postId: cleanId,
+          liked: getKnownLikeState(cleanId, snapshot.item),
+          likesCount: snapshot.likesCount
+        };
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+
+    return null;
   }
 
   async function processLikeSync(postId) {
@@ -1068,6 +1104,7 @@
     }
 
     sync.inFlight = true;
+    sync.lastConfirmedResult = null;
     pendingLikeLocks.add(cleanId);
 
     try {
@@ -1096,6 +1133,11 @@
               : currentSnapshot.likesCount;
 
           applyLocalLikeState(cleanId, desiredLiked, finalCount);
+          sync.lastConfirmedResult = {
+            postId: cleanId,
+            liked: desiredLiked,
+            likesCount: finalCount
+          };
           break;
         }
 
@@ -1118,11 +1160,36 @@
               : currentSnapshot.likesCount;
 
           applyLocalLikeState(cleanId, normalized.liked, finalCount);
+          sync.lastConfirmedResult = {
+            postId: cleanId,
+            liked: normalized.liked,
+            likesCount: finalCount
+          };
           break;
         }
 
         if (attempts >= 6) {
           scheduleLikeRefresh(900);
+        }
+      }
+
+
+      if (!sync.lastConfirmedResult) {
+        const latestState = await callReadLikeStateApi(cleanId).catch(() => null);
+
+        if (latestState && typeof latestState.liked === "boolean") {
+          const fallbackSnapshot = getLikeSnapshot(cleanId);
+          const finalCount =
+            latestState.likesCount !== null && latestState.likesCount !== undefined
+              ? latestState.likesCount
+              : fallbackSnapshot.likesCount;
+
+          applyLocalLikeState(cleanId, latestState.liked, finalCount);
+          sync.lastConfirmedResult = {
+            postId: cleanId,
+            liked: latestState.liked,
+            likesCount: finalCount
+          };
         }
       }
     } catch (error) {
@@ -1150,10 +1217,20 @@
       const currentSnapshot = getLikeSnapshot(cleanId);
       const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
 
+      const finalConfirmed = sync.lastConfirmedResult;
+      const finalLiked =
+        finalConfirmed && typeof finalConfirmed.liked === "boolean"
+          ? finalConfirmed.liked
+          : currentLiked;
+      const finalCount =
+        finalConfirmed && Number.isFinite(Number(finalConfirmed.likesCount))
+          ? Math.max(0, Number(finalConfirmed.likesCount))
+          : currentSnapshot.likesCount;
+
       setLikeButtonsState(
         cleanId,
-        currentSnapshot.likesCount,
-        currentLiked,
+        finalCount,
+        finalLiked,
         false
       );
 
@@ -1171,6 +1248,12 @@
       sync.rollbackSnapshot = null;
       protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
       scheduleLikeRefresh();
+
+      return sync.lastConfirmedResult || {
+        postId: cleanId,
+        liked: typeof currentLiked === "boolean" ? currentLiked : null,
+        likesCount: currentSnapshot.likesCount
+      };
     }
   }
 
@@ -1214,7 +1297,29 @@
       navigator.vibrate(12);
     }
 
-    processLikeSync(cleanId);
+    let confirmedResult = null;
+
+    if (sync.inFlight) {
+      confirmedResult = await waitForLikeSyncIdle(cleanId);
+    } else {
+      confirmedResult = await processLikeSync(cleanId);
+    }
+
+    if (confirmedResult && typeof confirmedResult === "object") {
+      return confirmedResult;
+    }
+
+    const latest = await waitForLikeSyncIdle(cleanId, 400);
+
+    if (latest && typeof latest === "object") {
+      return latest;
+    }
+
+    return {
+      postId: cleanId,
+      liked: optimistic.optimisticLiked,
+      likesCount: optimistic.optimisticCount
+    };
   }
 
   async function toggleLikeFromViewer(postId) {

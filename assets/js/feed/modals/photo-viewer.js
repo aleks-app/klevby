@@ -452,7 +452,7 @@
       for (const key of Object.keys(dataset)) {
         const value = String(dataset[key] || "");
 
-        if (value === cleanId || value.includes(cleanId)) {
+        if (value === cleanId) {
           return true;
         }
       }
@@ -462,7 +462,7 @@
       for (const attr of attributes) {
         const value = String(attr.value || "");
 
-        if (value === cleanId || value.includes(cleanId)) {
+        if (value === cleanId) {
           return true;
         }
       }
@@ -591,20 +591,15 @@
     if (!likeButton) return;
 
     const cachedItem = getCachedItem(postId) || fallbackItem || {};
-    const feedButton = findFeedCardLikeButton(postId);
-
     const fallbackCount = Number(cachedItem.likesCount || cachedItem.likes_count || likeButton.dataset.likeCount || 0);
     const fallbackLiked = getBooleanLikeStateFromItem(cachedItem) || getViewerButtonLiked(likeButton, cachedItem);
 
-    const count = feedButton
-      ? readLikeCountFromButton(feedButton, fallbackCount)
-      : readNumber(fallbackCount, 0);
-
-    const liked = feedButton
-      ? readLikedFromButton(feedButton, fallbackLiked)
-      : Boolean(fallbackLiked);
-
-    setViewerLikeButtonState(likeButton, count, liked, false);
+    setViewerLikeButtonState(
+      likeButton,
+      readNumber(fallbackCount, 0),
+      Boolean(fallbackLiked),
+      false
+    );
   }
 
   function ensurePhotoViewer() {
@@ -787,44 +782,41 @@
     setViewerLikeButtonState(likeButton, nextCount, nextLiked, true);
 
     try {
-      const usedFeedButton = await runLikeThroughWorkingFeedButton(cleanId);
+      const result = await runLikeThroughFallbackApi(cleanId);
 
-      if (!usedFeedButton) {
-        const result = await runLikeThroughFallbackApi(cleanId);
+      if (result && typeof result === "object") {
+        const resultCount = Number(result.likesCount ?? result.likes_count);
+        const resultLiked = result.liked ?? result.viewerLiked ?? result.likedByViewer;
 
-        if (result && typeof result === "object") {
-          const resultCount = Number(result.likesCount ?? result.likes_count);
-          const resultLiked = result.liked ?? result.viewerLiked ?? result.likedByViewer;
-
-          if (Number.isFinite(resultCount) || typeof resultLiked === "boolean") {
-            setViewerLikeButtonState(
-              likeButton,
-              Number.isFinite(resultCount) ? resultCount : nextCount,
-              typeof resultLiked === "boolean" ? resultLiked : nextLiked,
-              false
-            );
-          }
+        if (Number.isFinite(resultCount) || typeof resultLiked === "boolean") {
+          setViewerLikeButtonState(
+            likeButton,
+            Number.isFinite(resultCount) ? resultCount : nextCount,
+            typeof resultLiked === "boolean" ? resultLiked : nextLiked,
+            false
+          );
         }
-
-        renderFeedSoon(180);
-        await delay(260);
       }
 
-      syncViewerLikeButtonFromFeed(cleanId, currentItem);
+      renderFeedSoon(180);
+      await delay(260);
+      const freshItemAfterToggle = getCachedItem(cleanId);
+      syncViewerLikeButtonFromFeed(cleanId, freshItemAfterToggle || null);
 
       if (navigator.vibrate) {
         navigator.vibrate(12);
       }
     } catch (error) {
       setViewerLikeButtonState(likeButton, previousCount, previousLiked, false);
-      console.debug("Klevby feed photo viewer: лайк в открытом фото пропущен", error);
+      console.debug("Klevby feed photo viewer: лайк синхронизируется в фоне", error);
     } finally {
       klevbyFeedViewerLikePending = false;
 
       const viewer = document.getElementById("klevbyFeedPhotoViewer");
 
       if (viewer && !viewer.classList.contains("hidden")) {
-        syncViewerLikeButtonFromFeed(cleanId, currentItem);
+        const freshItemAfterToggle = getCachedItem(cleanId);
+        syncViewerLikeButtonFromFeed(cleanId, freshItemAfterToggle || null);
       }
     }
   }
