@@ -45,8 +45,14 @@
     return window.KlevbyFeedApi || {};
   }
 
-  function getActions() {
-    return window.KlevbyFeedActions || {};
+  function getRender() {
+    const core = getCore();
+
+    if (typeof core.getRender === "function") {
+      return core.getRender();
+    }
+
+    return window.KlevbyFeedRender || {};
   }
 
   function escapeHtml(value) {
@@ -158,11 +164,6 @@
       return;
     }
 
-    if (typeof utils.openKlevbyProfileSafe === "function") {
-      utils.openKlevbyProfileSafe();
-      return;
-    }
-
     if (typeof window.openKlevbyProfile === "function") {
       window.openKlevbyProfile();
       return;
@@ -237,6 +238,53 @@
     return null;
   }
 
+  function setModalBodyLock() {
+    const core = getCore();
+
+    if (typeof core.setModalBodyLock === "function") {
+      core.setModalBodyLock();
+      return;
+    }
+
+    document.body.classList.add("post-modal-open");
+  }
+
+  function releaseModalBodyLockIfPossible() {
+    const core = getCore();
+
+    if (typeof core.releaseModalBodyLockIfPossible === "function") {
+      core.releaseModalBodyLockIfPossible();
+      return;
+    }
+
+    const viewer = document.getElementById("klevbyFeedPhotoViewer");
+    const comments = document.getElementById("klevbyFeedCommentModal");
+
+    const viewerOpen = viewer && !viewer.classList.contains("hidden");
+    const commentsOpen = comments && !comments.classList.contains("hidden");
+
+    if (!viewerOpen && !commentsOpen) {
+      document.body.classList.remove("post-modal-open");
+    }
+  }
+
+  function pulseButton(button, duration = 130) {
+    const core = getCore();
+
+    if (typeof core.pulseButton === "function") {
+      core.pulseButton(button, duration);
+      return;
+    }
+
+    if (!button) return;
+
+    button.classList.add("is-pressed");
+
+    window.setTimeout(() => {
+      button.classList.remove("is-pressed");
+    }, Math.max(60, Number(duration || 130)));
+  }
+
   function bindPressFeedback(root) {
     const core = getCore();
 
@@ -284,53 +332,6 @@
     });
   }
 
-  function pulseButton(button, duration = 130) {
-    const core = getCore();
-
-    if (typeof core.pulseButton === "function") {
-      core.pulseButton(button, duration);
-      return;
-    }
-
-    if (!button) return;
-
-    button.classList.add("is-pressed");
-
-    window.setTimeout(() => {
-      button.classList.remove("is-pressed");
-    }, Math.max(60, Number(duration || 130)));
-  }
-
-  function setModalBodyLock() {
-    const core = getCore();
-
-    if (typeof core.setModalBodyLock === "function") {
-      core.setModalBodyLock();
-      return;
-    }
-
-    document.body.classList.add("post-modal-open");
-  }
-
-  function releaseModalBodyLockIfPossible() {
-    const core = getCore();
-
-    if (typeof core.releaseModalBodyLockIfPossible === "function") {
-      core.releaseModalBodyLockIfPossible();
-      return;
-    }
-
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
-    const comments = document.getElementById("klevbyFeedCommentModal");
-
-    const viewerOpen = viewer && !viewer.classList.contains("hidden");
-    const commentsOpen = comments && !comments.classList.contains("hidden");
-
-    if (!viewerOpen && !commentsOpen) {
-      document.body.classList.remove("post-modal-open");
-    }
-  }
-
   function renderFeedSoon(delay = 120) {
     const core = getCore();
 
@@ -339,8 +340,10 @@
       return;
     }
 
+    const safeDelay = Math.max(0, Number(delay || 0));
+
     setTimeout(() => {
-      const renderer = window.KlevbyFeedRender || {};
+      const renderer = getRender();
 
       if (typeof renderer.renderProfileFeed === "function") {
         renderer.renderProfileFeed();
@@ -350,20 +353,7 @@
       if (typeof window.renderProfileFeed === "function") {
         window.renderProfileFeed();
       }
-    }, Math.max(0, Number(delay || 0)));
-  }
-
-  function dispatchFeedUpdated(detail = {}) {
-    const utils = getUtils();
-
-    if (typeof utils.dispatchFeedUpdated === "function") {
-      utils.dispatchFeedUpdated(detail);
-      return;
-    }
-
-    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-      detail
-    }));
+    }, safeDelay);
   }
 
   function getBooleanLikeStateFromItem(item) {
@@ -426,7 +416,6 @@
     button.dataset.liked = safeLiked ? "true" : "false";
     button.dataset.pendingLike = pending ? "1" : "0";
     button.setAttribute("aria-pressed", safeLiked ? "true" : "false");
-    button.setAttribute("aria-busy", pending ? "true" : "false");
     button.classList.toggle("liked", safeLiked);
     button.classList.toggle("is-liked", safeLiked);
     button.classList.toggle("is-pending", pending);
@@ -470,9 +459,9 @@
           </div>
 
           <div class="klevby-feed-viewer-actions">
-            <button id="klevbyFeedViewerLikeBtn" type="button" aria-pressed="false" data-feed-viewer-like="1">👍 0</button>
-            <button id="klevbyFeedViewerCommentBtn" type="button" data-feed-viewer-comments="1">💬 Комментарии</button>
-            <button id="klevbyFeedViewerDeleteBtn" type="button" data-feed-viewer-delete="1">Удалить</button>
+            <button id="klevbyFeedViewerLikeBtn" type="button" aria-pressed="false">👍 0</button>
+            <button id="klevbyFeedViewerCommentBtn" type="button">💬 Комментарии</button>
+            <button id="klevbyFeedViewerDeleteBtn" type="button">Удалить</button>
           </div>
         </div>
       </div>
@@ -493,39 +482,10 @@
 
     viewer.addEventListener("click", (event) => {
       const closeTarget = event.target?.closest?.("[data-feed-viewer-close]");
-      const likeTarget = event.target?.closest?.("[data-feed-viewer-like]");
-      const commentTarget = event.target?.closest?.("[data-feed-viewer-comments]");
-      const deleteTarget = event.target?.closest?.("[data-feed-viewer-delete]");
 
       if (closeTarget) {
         event.preventDefault();
         closeFeedPhotoViewer();
-        return;
-      }
-
-      const postId = String(viewer.dataset.postId || "").trim();
-      const item = getCachedItem(postId);
-
-      if (likeTarget) {
-        event.preventDefault();
-        toggleLikeFromViewer(postId);
-        return;
-      }
-
-      if (commentTarget) {
-        event.preventDefault();
-        pulseButton(commentTarget);
-        openCommentsForViewer(postId);
-        return;
-      }
-
-      if (deleteTarget) {
-        event.preventDefault();
-        pulseButton(deleteTarget);
-
-        if (item) {
-          deleteFeedItem(item);
-        }
       }
     });
 
@@ -544,7 +504,6 @@
 
     if (viewer) {
       viewer.classList.add("hidden");
-      viewer.dataset.postId = "";
     }
 
     if (image) {
@@ -569,27 +528,14 @@
           await api.deletePost(item.id, item.imagePath || "");
         } else if (typeof window.klevbyDeleteFeedPostFromSupabase === "function") {
           await window.klevbyDeleteFeedPostFromSupabase(item.id, item.imagePath || "");
-        } else if (
-          window.klevbyFeedSupabase &&
-          typeof window.klevbyFeedSupabase.deletePost === "function"
-        ) {
-          await window.klevbyFeedSupabase.deletePost(item.id, item.imagePath || "");
         } else {
           throw new Error("Удаление Supabase-фото ещё не подключено.");
         }
       } else if (typeof window.removeProfilePhoto === "function") {
         await window.removeProfilePhoto(item.id);
-      } else {
-        throw new Error("Удаление этого фото сейчас недоступно.");
       }
 
       closeFeedPhotoViewer();
-
-      dispatchFeedUpdated({
-        action: "photo_deleted_local",
-        postId: item.id
-      });
-
       renderFeedSoon(120);
 
       if (navigator.vibrate) {
@@ -619,14 +565,12 @@
     setViewerLikeButtonState(likeButton, nextCount, nextLiked, true);
 
     try {
-      const actions = getActions();
+      const actions = window.KlevbyFeedActions || {};
 
-      if (typeof actions.toggleLikeFromCard === "function") {
+      if (typeof actions.toggleLikeFromViewer === "function") {
+        await actions.toggleLikeFromViewer(cleanId);
+      } else if (typeof actions.toggleLikeFromCard === "function") {
         await actions.toggleLikeFromCard(cleanId);
-      } else if (typeof actions.toggleFeedLikeFromCard === "function") {
-        await actions.toggleFeedLikeFromCard(cleanId);
-      } else if (typeof actions.toggleFeedLike === "function") {
-        await actions.toggleFeedLike(cleanId);
       } else if (typeof window.toggleFeedLike === "function") {
         await window.toggleFeedLike(cleanId);
       } else if (typeof window.klevbyToggleFeedLike === "function") {
@@ -641,7 +585,7 @@
       }
     } catch (error) {
       setViewerLikeButtonState(likeButton, previousCount, previousLiked, false);
-      console.warn("Klevby feed photo viewer: лайк viewer не сработал", error);
+      console.warn("Klevby feed photo viewer: лайк не сработал", error);
       alert(error?.message || "Не получилось поставить лайк.");
     } finally {
       klevbyFeedViewerLikePending = false;
@@ -658,36 +602,32 @@
         const newestItem = getCachedItem(cleanId);
 
         if (viewer && !viewer.classList.contains("hidden") && newestItem) {
-          updateOpenViewerFromItem(newestItem);
+          openFeedPhotoViewer(newestItem);
         }
       }, 260);
     }
   }
 
-  function openCommentsForViewer(postId) {
-    const cleanId = String(postId || "").trim();
-
-    if (!cleanId) return;
-
+  function openFeedCommentModal(postId) {
     const commentsModal = getCommentsModal();
 
     if (typeof commentsModal.openFeedCommentModal === "function") {
-      commentsModal.openFeedCommentModal(cleanId);
+      commentsModal.openFeedCommentModal(postId);
       return;
     }
 
     if (typeof window.openFeedCommentModal === "function") {
-      window.openFeedCommentModal(cleanId);
+      window.openFeedCommentModal(postId);
       return;
     }
 
     alert("Комментарии ещё загружаются. Обнови страницу и попробуй ещё раз.");
   }
 
-  function updateOpenViewerFromItem(item) {
+  function openFeedPhotoViewer(item) {
     if (!item) return;
 
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
+    const viewer = ensurePhotoViewer();
     const image = document.getElementById("klevbyFeedPhotoViewerImage");
     const title = document.getElementById("klevbyFeedPhotoViewerTitle");
     const meta = document.getElementById("klevbyFeedPhotoViewerMeta");
@@ -702,13 +642,10 @@
     const likesCount = Math.max(0, Number(item.likesCount || item.likes_count || 0) || 0);
     const commentsCount = Math.max(0, Number(item.commentsCount || item.comments_count || 0) || 0);
     const viewerLiked = getBooleanLikeStateFromItem(item);
-    const isSupabase = item.source === "supabase";
+    const likesText = item.source === "supabase" ? `👍 ${likesCount}` : "";
+    const commentsText = item.source === "supabase" ? `💬 ${commentsCount}` : "";
 
-    if (viewer) {
-      viewer.dataset.postId = String(item.id || "");
-    }
-
-    if (image && image.src !== imageUrl) {
+    if (image) {
       image.src = imageUrl;
     }
 
@@ -720,8 +657,8 @@
       meta.textContent = [
         cityText,
         dateText,
-        isSupabase ? `👍 ${likesCount}` : "",
-        isSupabase ? `💬 ${commentsCount}` : ""
+        likesText,
+        commentsText
       ].filter(Boolean).join(" • ");
     }
 
@@ -729,25 +666,30 @@
       const canDelete = canManageFeedItem(item);
 
       deleteButton.classList.toggle("hidden", !canDelete);
+      deleteButton.onclick = () => {
+        pulseButton(deleteButton);
+        deleteFeedItem(item);
+      };
     }
 
     if (likeButton) {
+      const isSupabase = item.source === "supabase";
+
       likeButton.classList.toggle("hidden", !isSupabase);
       setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
+      likeButton.onclick = () => toggleLikeFromViewer(item.id);
     }
 
     if (commentButton) {
+      const isSupabase = item.source === "supabase";
+
       commentButton.classList.toggle("hidden", !isSupabase);
       commentButton.textContent = commentsCount ? `💬 ${commentsCount}` : "💬 Комментарии";
+      commentButton.onclick = () => {
+        pulseButton(commentButton);
+        openFeedCommentModal(item.id);
+      };
     }
-  }
-
-  function openFeedPhotoViewer(item) {
-    if (!item) return;
-
-    const viewer = ensurePhotoViewer();
-
-    updateOpenViewerFromItem(item);
 
     viewer.classList.remove("hidden");
     setModalBodyLock();
@@ -763,15 +705,6 @@
         });
       } else if (typeof window.klevbyRegisterFeedView === "function") {
         window.klevbyRegisterFeedView(item.id).then((added) => {
-          if (added) {
-            renderFeedSoon(550);
-          }
-        });
-      } else if (
-        window.klevbyFeedSupabase &&
-        typeof window.klevbyFeedSupabase.registerView === "function"
-      ) {
-        window.klevbyFeedSupabase.registerView(item.id).then((added) => {
           if (added) {
             renderFeedSoon(550);
           }
@@ -815,11 +748,10 @@
     ensurePhotoViewer,
     openProfilePhotoFeedItem,
     openFeedPhotoViewer,
-    updateOpenViewerFromItem,
     closeFeedPhotoViewer,
-    deleteFeedItem,
     toggleLikeFromViewer,
-    openCommentsForViewer
+    deleteFeedItem,
+    setViewerLikeButtonState
   };
 
   window.KlevbyFeedPhotoViewer = photoViewer;
