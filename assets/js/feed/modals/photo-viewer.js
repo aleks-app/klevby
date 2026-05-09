@@ -375,6 +375,16 @@
     return false;
   }
 
+  function getItemLikeCount(item) {
+    const value = Number(item?.likesCount ?? item?.likes_count ?? 0);
+
+    if (Number.isFinite(value)) {
+      return Math.max(0, value);
+    }
+
+    return 0;
+  }
+
   function getViewerButtonLikeCount(button, item) {
     const dataCount = Number(button?.dataset?.likeCount);
 
@@ -382,7 +392,7 @@
       return Math.max(0, dataCount);
     }
 
-    const itemCount = Number(item?.likesCount || item?.likes_count || 0);
+    const itemCount = getItemLikeCount(item);
 
     if (Number.isFinite(itemCount)) {
       return Math.max(0, itemCount);
@@ -420,6 +430,81 @@
     button.classList.toggle("is-liked", safeLiked);
     button.classList.toggle("is-pending", pending);
     button.disabled = Boolean(pending);
+  }
+
+  function getLikeResultCount(result, fallbackItem, fallbackButton) {
+    const resultCount = Number(
+      result?.likesCount ??
+      result?.likes_count ??
+      result?.count ??
+      result?.likes
+    );
+
+    if (Number.isFinite(resultCount)) {
+      return Math.max(0, resultCount);
+    }
+
+    if (fallbackItem) {
+      return getItemLikeCount(fallbackItem);
+    }
+
+    return getViewerButtonLikeCount(fallbackButton, null);
+  }
+
+  function getLikeResultLiked(result, fallbackItem, fallbackButton) {
+    const candidates = [
+      result?.liked,
+      result?.likedByViewer,
+      result?.viewerLiked,
+      result?.isLiked,
+      result?.hasLiked,
+      result?.liked_by_viewer
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === "boolean") return value;
+    }
+
+    if (fallbackItem) {
+      return getBooleanLikeStateFromItem(fallbackItem);
+    }
+
+    return getViewerButtonLiked(fallbackButton, null);
+  }
+
+  async function runViewerLikeToggle(cleanId) {
+    const api = getApi();
+
+    if (typeof api.toggleLike === "function") {
+      return api.toggleLike(cleanId);
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.toggleLike === "function"
+    ) {
+      return window.klevbyFeedSupabase.toggleLike(cleanId);
+    }
+
+    if (typeof window.klevbyToggleFeedLike === "function") {
+      return window.klevbyToggleFeedLike(cleanId);
+    }
+
+    if (typeof window.toggleFeedLike === "function") {
+      return window.toggleFeedLike(cleanId);
+    }
+
+    const actions = window.KlevbyFeedActions || {};
+
+    if (typeof actions.toggleLikeFromViewer === "function") {
+      return actions.toggleLikeFromViewer(cleanId);
+    }
+
+    if (typeof actions.toggleLikeFromCard === "function") {
+      return actions.toggleLikeFromCard(cleanId);
+    }
+
+    throw new Error("Лайки ещё не подключены.");
   }
 
   function ensurePhotoViewer() {
@@ -556,46 +641,40 @@
     const currentItem = getCachedItem(cleanId);
     const previousCount = getViewerButtonLikeCount(likeButton, currentItem);
     const previousLiked = getViewerButtonLiked(likeButton, currentItem);
-    const nextLiked = !previousLiked;
-    const nextCount = Math.max(0, previousCount + (nextLiked ? 1 : -1));
 
     klevbyFeedViewerLikePending = true;
 
     pulseButton(likeButton, 160);
-    setViewerLikeButtonState(likeButton, nextCount, nextLiked, true);
+
+    /*
+      В открытой фотографии больше не считаем лайк вручную через +1 / -1.
+      Причина: после resume item может быть чуть устаревшим, и кнопка может думать,
+      что мой лайк ещё не стоит, хотя он уже есть в базе. Из-за этого было 3 -> 4 -> 2.
+      Теперь ждём фактический ответ toggleLike и только потом выставляем финальное число.
+    */
+    setViewerLikeButtonState(likeButton, previousCount, previousLiked, true);
 
     try {
-      const actions = window.KlevbyFeedActions || {};
-
-      if (typeof actions.toggleLikeFromViewer === "function") {
-        await actions.toggleLikeFromViewer(cleanId);
-      } else if (typeof actions.toggleLikeFromCard === "function") {
-        await actions.toggleLikeFromCard(cleanId);
-      } else if (typeof window.toggleFeedLike === "function") {
-        await window.toggleFeedLike(cleanId);
-      } else if (typeof window.klevbyToggleFeedLike === "function") {
-        await window.klevbyToggleFeedLike(cleanId);
-        renderFeedSoon(120);
-      } else {
-        throw new Error("Лайки ещё не подключены.");
-      }
+      const result = await runViewerLikeToggle(cleanId);
 
       if (navigator.vibrate) {
         navigator.vibrate(12);
       }
+
+      const updatedItem = getCachedItem(cleanId);
+      const finalItem = updatedItem || currentItem;
+      const finalCount = getLikeResultCount(result, finalItem, likeButton);
+      const finalLiked = getLikeResultLiked(result, finalItem, likeButton);
+
+      setViewerLikeButtonState(likeButton, finalCount, finalLiked, false);
+
+      renderFeedSoon(120);
     } catch (error) {
       setViewerLikeButtonState(likeButton, previousCount, previousLiked, false);
       console.warn("Klevby feed photo viewer: лайк не сработал", error);
       alert(error?.message || "Не получилось поставить лайк.");
     } finally {
       klevbyFeedViewerLikePending = false;
-
-      const updatedItem = getCachedItem(cleanId);
-      const finalItem = updatedItem || currentItem;
-      const finalCount = getViewerButtonLikeCount(likeButton, finalItem);
-      const finalLiked = getViewerButtonLiked(likeButton, finalItem);
-
-      setViewerLikeButtonState(likeButton, finalCount, finalLiked, false);
 
       setTimeout(() => {
         const viewer = document.getElementById("klevbyFeedPhotoViewer");
@@ -676,7 +755,11 @@
       const isSupabase = item.source === "supabase";
 
       likeButton.classList.toggle("hidden", !isSupabase);
-      setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
+
+      if (!klevbyFeedViewerLikePending) {
+        setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
+      }
+
       likeButton.onclick = () => toggleLikeFromViewer(item.id);
     }
 
