@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  const ACTIONS_VERSION = "20260509-comments-actions-slim-2";
+
   let commentsLoadSerial = 0;
 
   function getCommentsUtils() {
@@ -27,86 +29,6 @@
     }
 
     return window.KlevbyFeedApi || {};
-  }
-
-  function getCachedItem(postId) {
-    const utils = getCommentsUtils();
-
-    if (typeof utils.getCachedItem === "function") {
-      return utils.getCachedItem(postId);
-    }
-
-    const cleanId = String(postId || "").trim();
-
-    if (!cleanId) return null;
-
-    const cache = window.__klevbyFeedItemsCache || {};
-    return cache[cleanId] || null;
-  }
-
-  function ensureModalStyles() {
-    const utils = getCommentsUtils();
-
-    if (typeof utils.ensureModalStyles === "function") {
-      return utils.ensureModalStyles();
-    }
-
-    return null;
-  }
-
-  function setModalBodyLock() {
-    const utils = getCommentsUtils();
-
-    if (typeof utils.setModalBodyLock === "function") {
-      utils.setModalBodyLock();
-      return;
-    }
-
-    document.body.classList.add("post-modal-open");
-  }
-
-  function releaseModalBodyLockIfPossible() {
-    const utils = getCommentsUtils();
-
-    if (typeof utils.releaseModalBodyLockIfPossible === "function") {
-      utils.releaseModalBodyLockIfPossible();
-      return;
-    }
-
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
-    const comments = document.getElementById("klevbyFeedCommentModal");
-
-    const viewerOpen = viewer && !viewer.classList.contains("hidden");
-    const commentsOpen = comments && !comments.classList.contains("hidden");
-
-    if (!viewerOpen && !commentsOpen) {
-      document.body.classList.remove("post-modal-open");
-    }
-  }
-
-  function pulseButton(button, duration = 130) {
-    const utils = getCommentsUtils();
-
-    if (typeof utils.pulseButton === "function") {
-      utils.pulseButton(button, duration);
-      return;
-    }
-
-    if (!button) return;
-
-    button.classList.add("is-pressed");
-
-    window.setTimeout(() => {
-      button.classList.remove("is-pressed");
-    }, Math.max(60, Number(duration || 130)));
-  }
-
-  function bindPressFeedback(root) {
-    const utils = getCommentsUtils();
-
-    if (typeof utils.bindPressFeedback === "function") {
-      utils.bindPressFeedback(root);
-    }
   }
 
   function withTimeout(promise, timeoutMs, errorMessage) {
@@ -305,107 +227,6 @@
     return token;
   }
 
-  function ensureCommentModal() {
-    ensureModalStyles();
-
-    let modal = document.getElementById("klevbyFeedCommentModal");
-
-    if (modal) {
-      bindPressFeedback(modal);
-      bindCommentModalEvents(modal);
-      return modal;
-    }
-
-    modal = document.createElement("div");
-    modal.id = "klevbyFeedCommentModal";
-    modal.className = "klevby-feed-comment-modal hidden";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-
-    modal.innerHTML = `
-      <div class="klevby-feed-comment-backdrop" data-feed-comments-close="1"></div>
-
-      <div class="klevby-feed-comment-sheet">
-        <button
-          class="klevby-feed-comment-close"
-          type="button"
-          data-feed-comments-close="1"
-          aria-label="Закрыть комментарии"
-        >×</button>
-
-        <h3>Комментарии</h3>
-        <p id="klevbyFeedCommentSubtitle">Смотри отзывы рыбаков и добавляй свой.</p>
-
-        <div id="klevbyFeedCommentsList" class="klevby-feed-comments-list" data-post-id="">
-          <div class="klevby-feed-comments-empty">Загружаем комментарии...</div>
-        </div>
-
-        <textarea
-          id="klevbyFeedCommentText"
-          class="klevby-feed-comment-textarea"
-          maxlength="700"
-          placeholder="Напиши свой комментарий..."
-        ></textarea>
-
-        <div class="klevby-feed-comment-actions">
-          <button class="small-btn green" type="button" data-feed-comments-submit="1">Отправить</button>
-          <button class="small-btn gray" type="button" data-feed-comments-close="1">Закрыть</button>
-        </div>
-
-        <div id="klevbyFeedCommentMessage" class="klevby-feed-comment-message"></div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    bindPressFeedback(modal);
-    bindCommentModalEvents(modal);
-
-    return modal;
-  }
-
-  function bindCommentModalEvents(modal) {
-    if (!modal || modal.dataset.commentModalEventsBound === "1") return;
-
-    modal.dataset.commentModalEventsBound = "1";
-
-    modal.addEventListener("click", (event) => {
-      const closeTarget = event.target?.closest?.("[data-feed-comments-close]");
-      const submitTarget = event.target?.closest?.("[data-feed-comments-submit]");
-      const deleteTarget = event.target?.closest?.("[data-feed-comment-delete-id]");
-
-      if (closeTarget) {
-        event.preventDefault();
-        closeFeedCommentModal();
-        return;
-      }
-
-      if (submitTarget) {
-        event.preventDefault();
-        pulseButton(submitTarget);
-        submitFeedComment();
-        return;
-      }
-
-      if (deleteTarget) {
-        event.preventDefault();
-        pulseButton(deleteTarget);
-        deleteFeedComment(deleteTarget.dataset.feedCommentDeleteId || "");
-      }
-    });
-
-    modal.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeFeedCommentModal();
-      }
-
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        submitFeedComment();
-      }
-    });
-  }
-
   async function runLoadComments(postId) {
     const cleanId = String(postId || "").trim();
 
@@ -500,7 +321,7 @@
 
       setCommentMessage("", false);
     } catch (error) {
-      console.warn("Klevby feed comments modal: комментарии не загрузились", error);
+      console.warn("Klevby feed comments actions: комментарии не загрузились", error);
 
       if (!isCommentModalActiveForPost(cleanId, token)) {
         return;
@@ -527,98 +348,6 @@
         error?.message || "Не удалось загрузить комментарии."
       );
     }
-  }
-
-  function openFeedCommentModal(postId) {
-    const cleanId = String(postId || "").trim();
-    const item = getCachedItem(cleanId);
-
-    if (!cleanId) {
-      alert("Фото не найдено. Обнови страницу и попробуй ещё раз.");
-      return;
-    }
-
-    if (!item) {
-      alert("Фото не найдено в ленте. Обнови страницу и попробуй ещё раз.");
-      return;
-    }
-
-    if (item.source !== "supabase") {
-      alert("Это фото ещё локальное. Комментарии работают для фото из общей ленты.");
-      return;
-    }
-
-    const modal = ensureCommentModal();
-    const textarea = document.getElementById("klevbyFeedCommentText");
-    const message = document.getElementById("klevbyFeedCommentMessage");
-    const subtitle = document.getElementById("klevbyFeedCommentSubtitle");
-    const list = document.getElementById("klevbyFeedCommentsList");
-    const submitButton = modal?.querySelector?.("[data-feed-comments-submit]");
-    const cachedComments = getCachedComments(cleanId);
-
-    modal.dataset.postId = cleanId;
-    scheduleCommentCountSync(40);
-
-    if (list) {
-      list.dataset.postId = cleanId;
-
-      if (cachedComments.length) {
-        renderCommentsList(list, cleanId, cachedComments, {
-          scrollToBottom: false
-        });
-      } else {
-        renderCommentsPlaceholder(list, "Загружаем комментарии...");
-      }
-    }
-
-    if (textarea) {
-      textarea.value = "";
-    }
-
-    if (message) {
-      message.textContent = "";
-      message.classList.remove("error-line");
-    }
-
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.setAttribute("aria-busy", "false");
-      submitButton.classList.remove("is-pending");
-      submitButton.textContent = "Отправить";
-    }
-
-    if (subtitle) {
-      subtitle.textContent = `${item.authorName || "Рыбак"} добавил фото. Ниже комментарии и поле для твоего отзыва.`;
-    }
-
-    modal.classList.remove("hidden");
-    setModalBodyLock();
-
-    loadCommentsIntoModal(cleanId, {
-      scrollToBottom: !cachedComments.length
-    });
-
-    setTimeout(() => {
-      if (textarea && isCommentModalActiveForPost(cleanId)) {
-        textarea.focus({
-          preventScroll: true
-        });
-      }
-    }, 220);
-  }
-
-  function closeFeedCommentModal() {
-    const modal = document.getElementById("klevbyFeedCommentModal");
-
-    if (modal) {
-      modal.classList.add("hidden");
-      modal.dataset.postId = "";
-      modal.dataset.commentsLoadToken = "";
-    }
-
-    setSubmitBusy(false);
-    releaseModalBodyLockIfPossible();
-    scheduleCommentCountSync(80);
   }
 
   async function runAddComment(postId, text) {
@@ -684,7 +413,7 @@
     const list = document.getElementById("klevbyFeedCommentsList");
 
     if (!modal || !textarea) {
-      console.warn("Klevby feed comments modal: submit skipped, DOM not ready");
+      console.warn("Klevby feed comments actions: submit skipped, DOM not ready");
       return;
     }
 
@@ -758,7 +487,7 @@
       scheduleCommentCountSync(80);
       scheduleCommentCountSync(900);
     } catch (error) {
-      console.warn("Klevby feed comments modal: комментарий не отправился", error);
+      console.warn("Klevby feed comments actions: комментарий не отправился", error);
 
       if (message) {
         message.textContent = error?.message || "Не получилось отправить комментарий.";
@@ -834,7 +563,7 @@
         scheduleCommentCountSync(900);
       }
     } catch (error) {
-      console.warn("Klevby feed comments modal: комментарий не удалился", error);
+      console.warn("Klevby feed comments actions: комментарий не удалился", error);
 
       if (message) {
         message.textContent = error?.message || "Не получилось удалить комментарий.";
@@ -844,18 +573,7 @@
   }
 
   function initCommentsActions() {
-    ensureModalStyles();
     bindCommentCountSyncHooks();
-
-    if (!window.__klevbyFeedCommentsActionsKeydownBound) {
-      window.__klevbyFeedCommentsActionsKeydownBound = true;
-
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          closeFeedCommentModal();
-        }
-      });
-    }
   }
 
   if (document.readyState === "loading") {
@@ -865,11 +583,8 @@
   }
 
   const commentsActions = {
-    version: "20260509-comments-actions-slim-1",
+    version: ACTIONS_VERSION,
 
-    ensureCommentModal,
-    openFeedCommentModal,
-    closeFeedCommentModal,
     loadCommentsIntoModal,
     submitFeedComment,
     deleteFeedComment,
@@ -884,11 +599,10 @@
   window.KlevbyFeedCommentsActions = commentsActions;
   window.KlevbyFeedCommentActions = commentsActions;
 
-  window.KlevbyFeedCommentsModal = commentsActions;
-  window.KlevbyFeedCommentModal = commentsActions;
-
-  window.openFeedCommentModal = openFeedCommentModal;
-  window.closeFeedCommentModal = closeFeedCommentModal;
   window.submitFeedComment = submitFeedComment;
   window.deleteFeedComment = deleteFeedComment;
+
+  console.log("Klevby feed comments actions loaded", {
+    version: ACTIONS_VERSION
+  });
 })();
