@@ -1,9 +1,20 @@
 (function () {
   "use strict";
 
-  const ACTIONS_VERSION = "20260509-comments-actions-slim-2";
+  const ACTIONS_VERSION = "20260509-comments-actions-resume-safe-1";
+
+  const LOAD_SOFT_COOLDOWN_MS = 3500;
+  const SOFT_LOG_COOLDOWN_MS = 14000;
+  const BACKGROUND_REFRESH_DELAY_MS = 1400;
+  const BACKGROUND_DELETE_RETRY_DELAY_MS = 1800;
 
   let commentsLoadSerial = 0;
+
+  const commentsLoadInFlightByPostId = new Map();
+  const commentsLoadCooldownUntilByPostId = new Map();
+  const commentsSoftLogAtByKey = new Map();
+  const commentsRefreshTimersByPostId = new Map();
+  const commentsDeleteRetryTimersById = new Map();
 
   function getCommentsUtils() {
     return window.KlevbyFeedCommentsUtils || window.KlevbyFeedCommentUtils || {};
@@ -31,6 +42,10 @@
     return window.KlevbyFeedApi || {};
   }
 
+  function getNow() {
+    return Date.now();
+  }
+
   function withTimeout(promise, timeoutMs, errorMessage) {
     const utils = getCommentsUtils();
 
@@ -44,7 +59,7 @@
       Promise.resolve(promise),
       new Promise((_, reject) => {
         timer = window.setTimeout(() => {
-          reject(new Error(errorMessage));
+          reject(new Error(errorMessage || "Supabase не ответил."));
         }, Math.max(1200, Number(timeoutMs || 0)));
       })
     ]).finally(() => {
@@ -62,6 +77,72 @@
   function getSendTimeoutMs() {
     const utils = getCommentsUtils();
     return Number(utils.COMMENTS_SEND_TIMEOUT_MS || 9000);
+  }
+
+  function isRecoverableSupabaseError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+    const name = String(error?.name || "").toLowerCase();
+
+    return (
+      name.includes("abort") ||
+      message.includes("supabase не ответил") ||
+      message.includes("supabase не ответила") ||
+      message.includes("не ответил") ||
+      message.includes("не ответила") ||
+      message.includes("timeout") ||
+      message.includes("timed out") ||
+      message.includes("abort") ||
+      message.includes("aborted") ||
+      message.includes("network") ||
+      message.includes("failed to fetch") ||
+      message.includes("fetch failed") ||
+      message.includes("load failed")
+    );
+  }
+
+  function softLog(key, message, error, options = {}) {
+    const cleanKey = String(key || "comments-actions");
+    const now = getNow();
+    const lastLogAt = Number(commentsSoftLogAtByKey.get(cleanKey) || 0);
+    const shouldLog = now - lastLogAt > SOFT_LOG_COOLDOWN_MS;
+    const recoverable = isRecoverableSupabaseError(error);
+
+    if (!shouldLog && !options.force) {
+      if (typeof console.debug === "function") {
+        console.debug(message, error);
+      }
+      return;
+    }
+
+    commentsSoftLogAtByKey.set(cleanKey, now);
+
+    if (recoverable && !options.warnRecoverable) {
+      if (typeof console.debug === "function") {
+        console.debug(message, error);
+      }
+      return;
+    }
+
+    console.warn(message, error);
+  }
+
+  function markLoadCooldown(postId, delay = LOAD_SOFT_COOLDOWN_MS) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return;
+
+    commentsLoadCooldownUntilByPostId.set(
+      cleanId,
+      getNow() + Math.max(500, Number(delay || LOAD_SOFT_COOLDOWN_MS))
+    );
+  }
+
+  function isLoadInCooldown(postId) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return false;
+
+    return getNow() < Number(commentsLoadCooldownUntilByPostId.get(cleanId) || 0);
   }
 
   function scheduleCommentCountSync(delay = 80) {
@@ -274,6 +355,41 @@
     };
   }
 
+  function runLoadCommentsDeduped(postId) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) {
+      return Promise.resolve({
+        ok: false,
+        comments: [],
+        error: new Error("Не указан id фото.")
+      });
+    }
+
+    if (commentsLoadInFlightByPostId.has(cleanId)) {
+      return commentsLoadInFlightByPostId.get(cleanId);
+    }
+
+    const promise = runLoadComments(cleanId).finally(() => {
+      commentsLoadInFlightByPostId.delete(cleanId);
+    });
+
+    commentsLoadInFlightByPostId.set(cleanId, promise);
+
+    return promise;
+  }
+
+  function shouldSkipSoftLoad(cleanId, cached, list, options = {}) {
+    if (options.force === true) return false;
+    if (!isLoadInCooldown(cleanId)) return false;
+
+    const hasCached = Array.isArray(cached) && cached.length > 0;
+    const hasCurrentVisibleComments =
+      getCommentsListPostId(list) === cleanId && hasVisibleComments(list);
+
+    return Boolean(hasCached || hasCurrentVisibleComments || options.background);
+  }
+
   async function loadCommentsIntoModal(postId, options = {}) {
     const list = document.getElementById("klevbyFeedCommentsList");
     const cleanId = String(postId || "").trim();
@@ -301,8 +417,15 @@
       renderCommentsPlaceholder(list, "Загружаем комментарии...");
     }
 
+    if (shouldSkipSoftLoad(cleanId, cached, list, options)) {
+      if (!options.background) {
+        setCommentMessage("", false);
+      }
+      return;
+    }
+
     try {
-      const result = await runLoadComments(cleanId);
+      const result = await runLoadCommentsDeduped(cleanId);
 
       if (!result || !result.ok) {
         const error = result?.error || new Error("Не удалось загрузить комментарии.");
@@ -321,25 +444,43 @@
 
       setCommentMessage("", false);
     } catch (error) {
-      console.warn("Klevby feed comments actions: комментарии не загрузились", error);
+      markLoadCooldown(cleanId);
+
+      const latestCached = getCachedComments(cleanId);
+      const canKeepVisible =
+        latestCached.length ||
+        (hasVisibleComments(list) && getCommentsListPostId(list) === cleanId);
+
+      softLog(
+        `load-${cleanId}`,
+        "Klevby feed comments actions: комментарии не обновились",
+        error,
+        {
+          warnRecoverable: !canKeepVisible && !options.background && !options.silent
+        }
+      );
 
       if (!isCommentModalActiveForPost(cleanId, token)) {
         return;
       }
-
-      const latestCached = getCachedComments(cleanId);
 
       if (latestCached.length) {
         renderCommentsList(list, cleanId, latestCached, {
           scrollToBottom: false
         });
 
-        setCommentMessage("Комментарии не обновились. Показываю последние загруженные.", true);
+        if (!options.background && !options.silent) {
+          setCommentMessage("Показываю последние загруженные комментарии.", false);
+        }
+
         return;
       }
 
       if (hasVisibleComments(list) && getCommentsListPostId(list) === cleanId) {
-        setCommentMessage("Комментарии не обновились. Уже показанные комментарии оставлены.", true);
+        if (!options.background && !options.silent) {
+          setCommentMessage("Комментарии не обновились. Уже показанные комментарии оставлены.", false);
+        }
+
         return;
       }
 
@@ -348,6 +489,43 @@
         error?.message || "Не удалось загрузить комментарии."
       );
     }
+  }
+
+  function queueCommentsRefresh(postId, options = {}) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return;
+
+    const oldTimer = commentsRefreshTimersByPostId.get(cleanId);
+
+    if (oldTimer) {
+      window.clearTimeout(oldTimer);
+    }
+
+    const delay = Math.max(250, Number(options.delay || BACKGROUND_REFRESH_DELAY_MS));
+
+    const timer = window.setTimeout(() => {
+      commentsRefreshTimersByPostId.delete(cleanId);
+
+      const modal = document.getElementById("klevbyFeedCommentModal");
+
+      if (!modal || modal.classList.contains("hidden")) {
+        return;
+      }
+
+      if (String(modal.dataset.postId || "").trim() !== cleanId) {
+        return;
+      }
+
+      loadCommentsIntoModal(cleanId, {
+        scrollToBottom: options.scrollToBottom !== false,
+        background: true,
+        silent: true,
+        force: Boolean(options.force)
+      });
+    }, delay);
+
+    commentsRefreshTimersByPostId.set(cleanId, timer);
   }
 
   async function runAddComment(postId, text) {
@@ -480,14 +658,22 @@
         navigator.vibrate(16);
       }
 
-      loadCommentsIntoModal(postId, {
-        scrollToBottom: true
+      queueCommentsRefresh(postId, {
+        scrollToBottom: true,
+        delay: 1200
       });
 
       scheduleCommentCountSync(80);
       scheduleCommentCountSync(900);
     } catch (error) {
-      console.warn("Klevby feed comments actions: комментарий не отправился", error);
+      softLog(
+        `add-${postId}`,
+        "Klevby feed comments actions: комментарий не отправился",
+        error,
+        {
+          warnRecoverable: true
+        }
+      );
 
       if (message) {
         message.textContent = error?.message || "Не получилось отправить комментарий.";
@@ -495,6 +681,102 @@
       }
     } finally {
       setSubmitBusy(false);
+    }
+  }
+
+  async function runDeleteCommentRemote(commentId) {
+    const cleanCommentId = String(commentId || "").trim();
+
+    if (!cleanCommentId) {
+      throw new Error("Не указан id комментария.");
+    }
+
+    if (
+      window.klevbyFeedSupabase &&
+      typeof window.klevbyFeedSupabase.deleteComment === "function"
+    ) {
+      return withTimeout(
+        window.klevbyFeedSupabase.deleteComment(cleanCommentId),
+        getSendTimeoutMs(),
+        "Комментарий не удалился: Supabase не ответил."
+      );
+    }
+
+    if (typeof window.klevbyDeleteFeedComment === "function") {
+      return withTimeout(
+        window.klevbyDeleteFeedComment(cleanCommentId),
+        getSendTimeoutMs(),
+        "Комментарий не удалился: функция удаления не ответила."
+      );
+    }
+
+    const api = getApi();
+
+    if (typeof api.deleteComment === "function") {
+      return withTimeout(
+        api.deleteComment(cleanCommentId),
+        getSendTimeoutMs(),
+        "Комментарий не удалился: API ленты не ответил."
+      );
+    }
+
+    throw new Error("Удаление комментариев ещё не подключено.");
+  }
+
+  function queueBackgroundDeleteRetry(commentId, postId) {
+    const cleanCommentId = String(commentId || "").trim();
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanCommentId) return;
+
+    const oldTimer = commentsDeleteRetryTimersById.get(cleanCommentId);
+
+    if (oldTimer) {
+      window.clearTimeout(oldTimer);
+    }
+
+    const timer = window.setTimeout(async () => {
+      commentsDeleteRetryTimersById.delete(cleanCommentId);
+
+      try {
+        await runDeleteCommentRemote(cleanCommentId);
+
+        if (cleanPostId) {
+          scheduleCommentCountSync(120);
+          queueCommentsRefresh(cleanPostId, {
+            scrollToBottom: false,
+            delay: 1600,
+            force: false
+          });
+        }
+      } catch (error) {
+        softLog(
+          `delete-retry-${cleanCommentId}`,
+          "Klevby feed comments actions: фоновое удаление комментария не подтвердилось",
+          error,
+          {
+            warnRecoverable: false
+          }
+        );
+      }
+    }, BACKGROUND_DELETE_RETRY_DELAY_MS);
+
+    commentsDeleteRetryTimersById.set(cleanCommentId, timer);
+  }
+
+  function restoreCachedComments(postId, previousComments) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId || !Array.isArray(previousComments)) return;
+
+    setCachedComments(cleanPostId, previousComments);
+
+    const list = document.getElementById("klevbyFeedCommentsList");
+
+    if (list && isCommentModalActiveForPost(cleanPostId)) {
+      renderCommentsList(list, cleanPostId, previousComments, {
+        scrollToBottom: false
+      });
     }
   }
 
@@ -511,42 +793,34 @@
       return;
     }
 
-    try {
-      if (
-        window.klevbyFeedSupabase &&
-        typeof window.klevbyFeedSupabase.deleteComment === "function"
-      ) {
-        await withTimeout(
-          window.klevbyFeedSupabase.deleteComment(cleanCommentId),
-          getSendTimeoutMs(),
-          "Комментарий не удалился: Supabase не ответил."
-        );
-      } else if (typeof window.klevbyDeleteFeedComment === "function") {
-        await withTimeout(
-          window.klevbyDeleteFeedComment(cleanCommentId),
-          getSendTimeoutMs(),
-          "Комментарий не удалился: функция удаления не ответила."
-        );
-      } else {
-        const api = getApi();
+    const previousComments = postId ? getCachedComments(postId).slice() : [];
+    let optimisticApplied = false;
 
-        if (typeof api.deleteComment === "function") {
-          await withTimeout(
-            api.deleteComment(cleanCommentId),
-            getSendTimeoutMs(),
-            "Комментарий не удалился: API ленты не ответил."
-          );
-        } else {
-          throw new Error("Удаление комментариев ещё не подключено.");
-        }
+    if (postId && previousComments.length) {
+      const nextComments = removeCachedComment(postId, cleanCommentId);
+      optimisticApplied = true;
+
+      if (list && isCommentModalActiveForPost(postId)) {
+        renderCommentsList(list, postId, nextComments, {
+          scrollToBottom: false
+        });
       }
+    }
+
+    if (message) {
+      message.textContent = "Удаляем комментарий...";
+      message.classList.remove("error-line");
+    }
+
+    try {
+      await runDeleteCommentRemote(cleanCommentId);
 
       if (message) {
         message.textContent = "Комментарий удалён.";
         message.classList.remove("error-line");
       }
 
-      if (postId) {
+      if (postId && !optimisticApplied) {
         const nextComments = removeCachedComment(postId, cleanCommentId);
 
         if (list && isCommentModalActiveForPost(postId)) {
@@ -554,16 +828,48 @@
             scrollToBottom: false
           });
         }
+      }
 
-        loadCommentsIntoModal(postId, {
-          scrollToBottom: false
+      if (postId) {
+        queueCommentsRefresh(postId, {
+          scrollToBottom: false,
+          delay: 1200
         });
 
         scheduleCommentCountSync(80);
         scheduleCommentCountSync(900);
       }
     } catch (error) {
-      console.warn("Klevby feed comments actions: комментарий не удалился", error);
+      const recoverable = isRecoverableSupabaseError(error);
+
+      softLog(
+        `delete-${cleanCommentId}`,
+        "Klevby feed comments actions: комментарий не удалился сразу",
+        error,
+        {
+          warnRecoverable: !recoverable
+        }
+      );
+
+      if (recoverable) {
+        if (message) {
+          message.textContent = optimisticApplied
+            ? "Комментарий убран из окна. Синхронизирую в фоне."
+            : "Supabase подвис. Попробуй ещё раз через пару секунд.";
+          message.classList.toggle("error-line", !optimisticApplied);
+        }
+
+        if (optimisticApplied) {
+          queueBackgroundDeleteRetry(cleanCommentId, postId);
+          scheduleCommentCountSync(900);
+        }
+
+        return;
+      }
+
+      if (optimisticApplied) {
+        restoreCachedComments(postId, previousComments);
+      }
 
       if (message) {
         message.textContent = error?.message || "Не получилось удалить комментарий.";
