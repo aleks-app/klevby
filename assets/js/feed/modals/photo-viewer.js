@@ -7,40 +7,67 @@
     return window.KlevbyFeedModalCore || {};
   }
 
-  function getState() {
-    return window.KlevbyFeedState || {};
-  }
-
-  function getUtils() {
-    return window.KlevbyFeedUtils || {};
-  }
-
-  function getApi() {
-    return window.KlevbyFeedApi || {};
-  }
-
-  function getRender() {
-    return window.KlevbyFeedRender || {};
-  }
-
   function getStyles() {
     return window.KlevbyFeedModalStyles || {};
   }
 
-  function ensureModalStyles() {
-    const styles = getStyles();
+  function getCommentsModal() {
+    return window.KlevbyFeedCommentsModal || {};
+  }
 
-    if (typeof styles.ensureModalStyles === "function") {
-      return styles.ensureModalStyles();
-    }
-
+  function getState() {
     const core = getCore();
 
-    if (typeof core.ensureModalStyles === "function") {
-      return core.ensureModalStyles();
+    if (typeof core.getState === "function") {
+      return core.getState();
     }
 
-    return null;
+    return window.KlevbyFeedState || {};
+  }
+
+  function getUtils() {
+    const core = getCore();
+
+    if (typeof core.getUtils === "function") {
+      return core.getUtils();
+    }
+
+    return window.KlevbyFeedUtils || {};
+  }
+
+  function getApi() {
+    const core = getCore();
+
+    if (typeof core.getApi === "function") {
+      return core.getApi();
+    }
+
+    return window.KlevbyFeedApi || {};
+  }
+
+  function getActions() {
+    return window.KlevbyFeedActions || {};
+  }
+
+  function escapeHtml(value) {
+    const core = getCore();
+
+    if (typeof core.escapeHtml === "function") {
+      return core.escapeHtml(value);
+    }
+
+    const utils = getUtils();
+
+    if (typeof utils.escapeHtml === "function") {
+      return utils.escapeHtml(value);
+    }
+
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
   function formatDate(value) {
@@ -65,7 +92,7 @@
         hour: "2-digit",
         minute: "2-digit"
       });
-    } catch (error) {
+    } catch (_) {
       return "";
     }
   }
@@ -108,7 +135,7 @@
     if (typeof window.isAdmin === "function") {
       try {
         return Boolean(window.isAdmin());
-      } catch (error) {
+      } catch (_) {
         return false;
       }
     }
@@ -131,6 +158,11 @@
       return;
     }
 
+    if (typeof utils.openKlevbyProfileSafe === "function") {
+      utils.openKlevbyProfileSafe();
+      return;
+    }
+
     if (typeof window.openKlevbyProfile === "function") {
       window.openKlevbyProfile();
       return;
@@ -142,14 +174,16 @@
   }
 
   function getCachedItem(postId) {
+    const cleanId = String(postId || "").trim();
     const core = getCore();
 
+    if (!cleanId) return null;
+
     if (typeof core.getCachedItem === "function") {
-      return core.getCachedItem(postId);
+      return core.getCachedItem(cleanId);
     }
 
     const state = getState();
-    const cleanId = String(postId || "");
 
     if (typeof state.getCachedItem === "function") {
       return state.getCachedItem(cleanId);
@@ -187,26 +221,84 @@
     );
   }
 
-  function renderFeedSoon(delay = 180) {
+  function ensureModalStyles() {
+    const styles = getStyles();
+
+    if (typeof styles.ensureModalStyles === "function") {
+      return styles.ensureModalStyles();
+    }
+
     const core = getCore();
 
-    if (typeof core.renderFeedSoon === "function") {
-      core.renderFeedSoon(delay);
+    if (typeof core.ensureModalStyles === "function") {
+      return core.ensureModalStyles();
+    }
+
+    return null;
+  }
+
+  function bindPressFeedback(root) {
+    const core = getCore();
+
+    if (typeof core.bindPressFeedback === "function") {
+      core.bindPressFeedback(root);
       return;
     }
 
-    const renderer = getRender();
+    if (!root || root.dataset.pressFeedbackBound === "1") return;
 
-    setTimeout(() => {
-      if (typeof renderer.renderProfileFeed === "function") {
-        renderer.renderProfileFeed();
-        return;
-      }
+    root.dataset.pressFeedbackBound = "1";
 
-      if (typeof window.renderProfileFeed === "function") {
-        window.renderProfileFeed();
-      }
-    }, delay);
+    root.addEventListener("pointerdown", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button || button.disabled) return;
+
+      button.classList.add("is-pressed");
+    });
+
+    root.addEventListener("pointerup", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      window.setTimeout(() => {
+        button.classList.remove("is-pressed");
+      }, 90);
+    });
+
+    root.addEventListener("pointercancel", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      button.classList.remove("is-pressed");
+    });
+
+    root.addEventListener("pointerleave", (event) => {
+      const button = event.target?.closest?.("button");
+
+      if (!button) return;
+
+      button.classList.remove("is-pressed");
+    });
+  }
+
+  function pulseButton(button, duration = 130) {
+    const core = getCore();
+
+    if (typeof core.pulseButton === "function") {
+      core.pulseButton(button, duration);
+      return;
+    }
+
+    if (!button) return;
+
+    button.classList.add("is-pressed");
+
+    window.setTimeout(() => {
+      button.classList.remove("is-pressed");
+    }, Math.max(60, Number(duration || 130)));
   }
 
   function setModalBodyLock() {
@@ -239,13 +331,42 @@
     }
   }
 
-  function getBooleanLikeStateFromItem(item) {
+  function renderFeedSoon(delay = 120) {
     const core = getCore();
 
-    if (typeof core.getBooleanLikeStateFromItem === "function") {
-      return Boolean(core.getBooleanLikeStateFromItem(item));
+    if (typeof core.renderFeedSoon === "function") {
+      core.renderFeedSoon(delay);
+      return;
     }
 
+    setTimeout(() => {
+      const renderer = window.KlevbyFeedRender || {};
+
+      if (typeof renderer.renderProfileFeed === "function") {
+        renderer.renderProfileFeed();
+        return;
+      }
+
+      if (typeof window.renderProfileFeed === "function") {
+        window.renderProfileFeed();
+      }
+    }, Math.max(0, Number(delay || 0)));
+  }
+
+  function dispatchFeedUpdated(detail = {}) {
+    const utils = getUtils();
+
+    if (typeof utils.dispatchFeedUpdated === "function") {
+      utils.dispatchFeedUpdated(detail);
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+      detail
+    }));
+  }
+
+  function getBooleanLikeStateFromItem(item) {
     if (!item || typeof item !== "object") return false;
 
     const candidates = [
@@ -305,82 +426,11 @@
     button.dataset.liked = safeLiked ? "true" : "false";
     button.dataset.pendingLike = pending ? "1" : "0";
     button.setAttribute("aria-pressed", safeLiked ? "true" : "false");
+    button.setAttribute("aria-busy", pending ? "true" : "false");
     button.classList.toggle("liked", safeLiked);
     button.classList.toggle("is-liked", safeLiked);
     button.classList.toggle("is-pending", pending);
     button.disabled = Boolean(pending);
-  }
-
-  function pulseButton(button, duration = 160) {
-    const core = getCore();
-
-    if (typeof core.pulseButton === "function") {
-      core.pulseButton(button, duration);
-      return;
-    }
-
-    if (!button) return;
-
-    button.classList.add("is-pressed");
-
-    window.setTimeout(() => {
-      button.classList.remove("is-pressed");
-    }, duration);
-  }
-
-  function bindPressFeedback(root) {
-    const core = getCore();
-
-    if (typeof core.bindPressFeedback === "function") {
-      core.bindPressFeedback(root);
-      return;
-    }
-
-    if (!root || root.dataset.pressFeedbackBound === "1") return;
-
-    root.dataset.pressFeedbackBound = "1";
-
-    root.addEventListener("pointerdown", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button || button.disabled) return;
-
-      button.classList.add("is-pressed");
-    });
-
-    root.addEventListener("pointerup", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button) return;
-
-      window.setTimeout(() => {
-        button.classList.remove("is-pressed");
-      }, 90);
-    });
-
-    root.addEventListener("pointercancel", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button) return;
-
-      button.classList.remove("is-pressed");
-    });
-
-    root.addEventListener("pointerleave", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button) return;
-
-      button.classList.remove("is-pressed");
-    });
-
-    root.addEventListener("click", (event) => {
-      const button = event.target?.closest?.("button");
-
-      if (!button || button.disabled) return;
-
-      pulseButton(button, 130);
-    });
   }
 
   function ensurePhotoViewer() {
@@ -390,6 +440,7 @@
 
     if (viewer) {
       bindPressFeedback(viewer);
+      bindPhotoViewerEvents(viewer);
       return viewer;
     }
 
@@ -400,10 +451,18 @@
     viewer.setAttribute("aria-modal", "true");
 
     viewer.innerHTML = `
-      <div class="klevby-feed-viewer-backdrop" onclick="closeFeedPhotoViewer()"></div>
+      <div class="klevby-feed-viewer-backdrop" data-feed-viewer-close="1"></div>
+
       <div class="klevby-feed-viewer-sheet">
-        <button class="klevby-feed-viewer-close" type="button" onclick="closeFeedPhotoViewer()" aria-label="Закрыть фото">×</button>
+        <button
+          class="klevby-feed-viewer-close"
+          type="button"
+          data-feed-viewer-close="1"
+          aria-label="Закрыть фото"
+        >×</button>
+
         <img id="klevbyFeedPhotoViewerImage" class="klevby-feed-viewer-image" alt="Фото из ленты">
+
         <div class="klevby-feed-viewer-info">
           <div>
             <strong id="klevbyFeedPhotoViewerTitle">Фото с рыбалки</strong>
@@ -411,18 +470,70 @@
           </div>
 
           <div class="klevby-feed-viewer-actions">
-            <button id="klevbyFeedViewerLikeBtn" type="button" aria-pressed="false">👍 0</button>
-            <button id="klevbyFeedViewerCommentBtn" type="button">💬 Комментарии</button>
-            <button id="klevbyFeedViewerDeleteBtn" type="button">Удалить</button>
+            <button id="klevbyFeedViewerLikeBtn" type="button" aria-pressed="false" data-feed-viewer-like="1">👍 0</button>
+            <button id="klevbyFeedViewerCommentBtn" type="button" data-feed-viewer-comments="1">💬 Комментарии</button>
+            <button id="klevbyFeedViewerDeleteBtn" type="button" data-feed-viewer-delete="1">Удалить</button>
           </div>
         </div>
       </div>
     `;
 
     document.body.appendChild(viewer);
+
     bindPressFeedback(viewer);
+    bindPhotoViewerEvents(viewer);
 
     return viewer;
+  }
+
+  function bindPhotoViewerEvents(viewer) {
+    if (!viewer || viewer.dataset.photoViewerEventsBound === "1") return;
+
+    viewer.dataset.photoViewerEventsBound = "1";
+
+    viewer.addEventListener("click", (event) => {
+      const closeTarget = event.target?.closest?.("[data-feed-viewer-close]");
+      const likeTarget = event.target?.closest?.("[data-feed-viewer-like]");
+      const commentTarget = event.target?.closest?.("[data-feed-viewer-comments]");
+      const deleteTarget = event.target?.closest?.("[data-feed-viewer-delete]");
+
+      if (closeTarget) {
+        event.preventDefault();
+        closeFeedPhotoViewer();
+        return;
+      }
+
+      const postId = String(viewer.dataset.postId || "").trim();
+      const item = getCachedItem(postId);
+
+      if (likeTarget) {
+        event.preventDefault();
+        toggleLikeFromViewer(postId);
+        return;
+      }
+
+      if (commentTarget) {
+        event.preventDefault();
+        pulseButton(commentTarget);
+        openCommentsForViewer(postId);
+        return;
+      }
+
+      if (deleteTarget) {
+        event.preventDefault();
+        pulseButton(deleteTarget);
+
+        if (item) {
+          deleteFeedItem(item);
+        }
+      }
+    });
+
+    viewer.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeFeedPhotoViewer();
+      }
+    });
   }
 
   function closeFeedPhotoViewer() {
@@ -433,6 +544,7 @@
 
     if (viewer) {
       viewer.classList.add("hidden");
+      viewer.dataset.postId = "";
     }
 
     if (image) {
@@ -457,14 +569,27 @@
           await api.deletePost(item.id, item.imagePath || "");
         } else if (typeof window.klevbyDeleteFeedPostFromSupabase === "function") {
           await window.klevbyDeleteFeedPostFromSupabase(item.id, item.imagePath || "");
+        } else if (
+          window.klevbyFeedSupabase &&
+          typeof window.klevbyFeedSupabase.deletePost === "function"
+        ) {
+          await window.klevbyFeedSupabase.deletePost(item.id, item.imagePath || "");
         } else {
           throw new Error("Удаление Supabase-фото ещё не подключено.");
         }
       } else if (typeof window.removeProfilePhoto === "function") {
         await window.removeProfilePhoto(item.id);
+      } else {
+        throw new Error("Удаление этого фото сейчас недоступно.");
       }
 
       closeFeedPhotoViewer();
+
+      dispatchFeedUpdated({
+        action: "photo_deleted_local",
+        postId: item.id
+      });
+
       renderFeedSoon(120);
 
       if (navigator.vibrate) {
@@ -494,10 +619,14 @@
     setViewerLikeButtonState(likeButton, nextCount, nextLiked, true);
 
     try {
-      const actions = window.KlevbyFeedActions || {};
+      const actions = getActions();
 
       if (typeof actions.toggleLikeFromCard === "function") {
         await actions.toggleLikeFromCard(cleanId);
+      } else if (typeof actions.toggleFeedLikeFromCard === "function") {
+        await actions.toggleFeedLikeFromCard(cleanId);
+      } else if (typeof actions.toggleFeedLike === "function") {
+        await actions.toggleFeedLike(cleanId);
       } else if (typeof window.toggleFeedLike === "function") {
         await window.toggleFeedLike(cleanId);
       } else if (typeof window.klevbyToggleFeedLike === "function") {
@@ -529,16 +658,36 @@
         const newestItem = getCachedItem(cleanId);
 
         if (viewer && !viewer.classList.contains("hidden") && newestItem) {
-          openFeedPhotoViewer(newestItem);
+          updateOpenViewerFromItem(newestItem);
         }
       }, 260);
     }
   }
 
-  function openFeedPhotoViewer(item) {
+  function openCommentsForViewer(postId) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return;
+
+    const commentsModal = getCommentsModal();
+
+    if (typeof commentsModal.openFeedCommentModal === "function") {
+      commentsModal.openFeedCommentModal(cleanId);
+      return;
+    }
+
+    if (typeof window.openFeedCommentModal === "function") {
+      window.openFeedCommentModal(cleanId);
+      return;
+    }
+
+    alert("Комментарии ещё загружаются. Обнови страницу и попробуй ещё раз.");
+  }
+
+  function updateOpenViewerFromItem(item) {
     if (!item) return;
 
-    const viewer = ensurePhotoViewer();
+    const viewer = document.getElementById("klevbyFeedPhotoViewer");
     const image = document.getElementById("klevbyFeedPhotoViewerImage");
     const title = document.getElementById("klevbyFeedPhotoViewerTitle");
     const meta = document.getElementById("klevbyFeedPhotoViewerMeta");
@@ -553,18 +702,26 @@
     const likesCount = Math.max(0, Number(item.likesCount || item.likes_count || 0) || 0);
     const commentsCount = Math.max(0, Number(item.commentsCount || item.comments_count || 0) || 0);
     const viewerLiked = getBooleanLikeStateFromItem(item);
-    const likesText = item.source === "supabase" ? `👍 ${likesCount}` : "";
-    const commentsText = item.source === "supabase" ? `💬 ${commentsCount}` : "";
+    const isSupabase = item.source === "supabase";
 
-    if (image) image.src = imageUrl;
-    if (title) title.textContent = titleText;
+    if (viewer) {
+      viewer.dataset.postId = String(item.id || "");
+    }
+
+    if (image && image.src !== imageUrl) {
+      image.src = imageUrl;
+    }
+
+    if (title) {
+      title.textContent = titleText;
+    }
 
     if (meta) {
       meta.textContent = [
         cityText,
         dateText,
-        likesText,
-        commentsText
+        isSupabase ? `👍 ${likesCount}` : "",
+        isSupabase ? `💬 ${commentsCount}` : ""
       ].filter(Boolean).join(" • ");
     }
 
@@ -572,40 +729,25 @@
       const canDelete = canManageFeedItem(item);
 
       deleteButton.classList.toggle("hidden", !canDelete);
-      deleteButton.onclick = () => {
-        pulseButton(deleteButton);
-        deleteFeedItem(item);
-      };
     }
 
     if (likeButton) {
-      const isSupabase = item.source === "supabase";
-
       likeButton.classList.toggle("hidden", !isSupabase);
       setViewerLikeButtonState(likeButton, likesCount, viewerLiked, false);
-      likeButton.onclick = () => toggleLikeFromViewer(item.id);
     }
 
     if (commentButton) {
-      const isSupabase = item.source === "supabase";
-
       commentButton.classList.toggle("hidden", !isSupabase);
       commentButton.textContent = commentsCount ? `💬 ${commentsCount}` : "💬 Комментарии";
-      commentButton.onclick = () => {
-        pulseButton(commentButton);
-
-        if (typeof window.openFeedCommentModal === "function") {
-          window.openFeedCommentModal(item.id);
-          return;
-        }
-
-        const commentsModal = window.KlevbyFeedCommentsModal || {};
-
-        if (typeof commentsModal.openFeedCommentModal === "function") {
-          commentsModal.openFeedCommentModal(item.id);
-        }
-      };
     }
+  }
+
+  function openFeedPhotoViewer(item) {
+    if (!item) return;
+
+    const viewer = ensurePhotoViewer();
+
+    updateOpenViewerFromItem(item);
 
     viewer.classList.remove("hidden");
     setModalBodyLock();
@@ -625,6 +767,15 @@
             renderFeedSoon(550);
           }
         });
+      } else if (
+        window.klevbyFeedSupabase &&
+        typeof window.klevbyFeedSupabase.registerView === "function"
+      ) {
+        window.klevbyFeedSupabase.registerView(item.id).then((added) => {
+          if (added) {
+            renderFeedSoon(550);
+          }
+        });
       }
     }
 
@@ -634,7 +785,7 @@
   }
 
   function openProfilePhotoFeedItem(photoId) {
-    const cleanId = String(photoId || "");
+    const cleanId = String(photoId || "").trim();
     const cachedItem = getCachedItem(cleanId);
 
     if (cachedItem) {
@@ -650,14 +801,25 @@
     openProfileSafe();
   }
 
+  document.addEventListener("DOMContentLoaded", () => {
+    ensureModalStyles();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeFeedPhotoViewer();
+      }
+    });
+  });
+
   const photoViewer = {
     ensurePhotoViewer,
     openProfilePhotoFeedItem,
     openFeedPhotoViewer,
+    updateOpenViewerFromItem,
     closeFeedPhotoViewer,
     deleteFeedItem,
     toggleLikeFromViewer,
-    setViewerLikeButtonState
+    openCommentsForViewer
   };
 
   window.KlevbyFeedPhotoViewer = photoViewer;
