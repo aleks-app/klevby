@@ -144,7 +144,7 @@
   const FEED_CACHE_LIMIT = 40;
   const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const FEED_CACHE_PREFIX = "klevby_feed_cache_v2";
-  const FEED_STYLES_VERSION = "20260509-feed-render-stable-cache-1";
+  const FEED_STYLES_VERSION = "20260509-feed-render-stable-card-no-jump-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -407,7 +407,11 @@
         align-items: start;
       }
 
-      .profile-feed-card {
+      .profile-feed-card,
+      .profile-feed-card:hover,
+      .profile-feed-card:focus,
+      .profile-feed-card:active,
+      .profile-feed-card:focus-within {
         position: relative;
         overflow: hidden;
         width: min(100%, 620px);
@@ -420,12 +424,21 @@
         box-shadow:
           0 22px 62px rgba(0, 0, 0, 0.44),
           inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-        cursor: pointer;
-        transform: translateZ(0);
+        cursor: default !important;
+        transform: none !important;
+        translate: none !important;
+        scale: 1 !important;
+        animation: none !important;
+        transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease !important;
+      }
+
+      .profile-feed-card::before,
+      .profile-feed-card::after {
+        pointer-events: none;
       }
 
       .profile-feed-card:active {
-        transform: scale(0.992);
+        transform: none !important;
       }
 
       .profile-feed-image {
@@ -438,6 +451,23 @@
         background-position: center !important;
         background-repeat: no-repeat !important;
         box-shadow: inset 0 -80px 100px rgba(0,0,0,0.18);
+        cursor: pointer;
+        transform: none !important;
+        transition: filter 0.16s ease !important;
+      }
+
+      .profile-feed-image:hover {
+        filter: brightness(1.035);
+      }
+
+      .profile-feed-image:active {
+        transform: none !important;
+        filter: brightness(0.98);
+      }
+
+      .profile-feed-image:focus-visible {
+        outline: 2px solid rgba(255, 189, 74, 0.88);
+        outline-offset: -4px;
       }
 
       .profile-feed-body {
@@ -482,6 +512,15 @@
         color: inherit;
         text-align: left;
         cursor: pointer;
+        transform: none !important;
+      }
+
+      .profile-feed-author:hover .profile-feed-author-name {
+        color: #ffbd4a;
+      }
+
+      .profile-feed-author:active {
+        transform: none !important;
       }
 
       .profile-feed-author-text {
@@ -498,6 +537,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        transition: color 0.16s ease;
       }
 
       .profile-feed-author-action {
@@ -568,6 +608,7 @@
         font-size: 14px !important;
         font-weight: 950 !important;
         box-shadow: none !important;
+        cursor: pointer !important;
       }
 
       .profile-feed-open-btn {
@@ -585,6 +626,17 @@
         background: rgba(255,255,255,0.075) !important;
         border-color: rgba(244,178,74,0.16) !important;
         color: rgba(255,248,234,0.90) !important;
+      }
+
+      .profile-feed-open-btn:hover {
+        filter: brightness(1.06);
+      }
+
+      .profile-feed-like-btn:hover,
+      .profile-feed-comment-btn:hover,
+      .profile-feed-profile-btn:hover {
+        background: rgba(255,255,255,0.105) !important;
+        border-color: rgba(244,178,74,0.28) !important;
       }
 
       .profile-feed-like-btn:active,
@@ -635,9 +687,14 @@
       }
 
       @media (max-width: 760px) {
-        .profile-feed-card {
+        .profile-feed-card,
+        .profile-feed-card:hover,
+        .profile-feed-card:focus,
+        .profile-feed-card:active,
+        .profile-feed-card:focus-within {
           width: 100%;
           border-radius: 26px !important;
+          transform: none !important;
         }
 
         .profile-feed-image {
@@ -645,6 +702,10 @@
           height: 34dvh !important;
           max-height: 340px !important;
           border-radius: 26px 26px 0 0 !important;
+        }
+
+        .profile-feed-image:hover {
+          filter: none;
         }
 
         .profile-feed-body {
@@ -746,8 +807,16 @@
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
     return `
-      <article class="card profile-feed-card" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="card-img profile-feed-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"></div>
+      <article class="card profile-feed-card">
+        <div
+          class="card-img profile-feed-image"
+          role="button"
+          tabindex="0"
+          aria-label="Открыть фото"
+          onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')"
+          onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProfilePhotoFeedItem('${safeId}'); }"
+          style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.20)), url('${safeImage}')"
+        ></div>
 
         <div class="card-body profile-feed-body">
           <button
