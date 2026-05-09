@@ -17,27 +17,26 @@
   let klevbyFeedMainQuietReason = "";
 
   const KLEVB_FEED_MAIN_POLL_MS = 0;
-  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 1800;
+  const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 2200;
+  const KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS = 5200;
+  const KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS = 3600;
   const KLEVB_FEED_MAIN_DOM_WATCH_MS = 450;
-  const KLEVB_FEED_MAIN_DOM_WATCH_LIMIT = 70;
+  const KLEVB_FEED_MAIN_DOM_WATCH_LIMIT = 28;
   const KLEVB_FEED_MAIN_LIKE_QUIET_MS = 2600;
   const KLEVB_FEED_MAIN_INTERACTION_DEFER_MS = 1600;
+  const KLEVB_FEED_MAIN_PENDING_AFTER_MS = 900;
 
   const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
     0,
-    180,
-    700,
-    1500,
-    3200,
+    900,
+    2600,
     6200
   ];
 
   const KLEVB_FEED_MAIN_RESUME_DELAYS = [
     0,
-    350,
-    1100,
-    2600,
-    5600
+    900,
+    2600
   ];
 
   function getState() {
@@ -97,23 +96,47 @@
     );
   }
 
-  function isCriticalRefreshReason(reason) {
+  function isStartupRefreshReason(reason) {
     const value = String(reason || "").toLowerCase();
 
     return (
-      value.includes("manual") ||
-      value.includes("wake") ||
       value.includes("initial") ||
       value.includes("module_ready") ||
       value.includes("dom_watch") ||
+      value.includes("already_started") ||
+      value.includes("render_wait")
+    );
+  }
+
+  function isResumeRefreshReason(reason) {
+    const value = String(reason || "").toLowerCase();
+
+    return (
       value.includes("resume") ||
       value.includes("app_resumed") ||
       value.includes("visibility_visible") ||
       value.includes("page_show") ||
       value.includes("window_focus") ||
       value.includes("browser_online") ||
-      value.includes("auth_changed") ||
+      value.includes("auth_changed")
+    );
+  }
+
+  function isManualRefreshReason(reason) {
+    const value = String(reason || "").toLowerCase();
+
+    return (
+      value.includes("manual") ||
+      value.includes("wake") ||
       value.includes("navigation_home")
+    );
+  }
+
+  function isCriticalRefreshReason(reason) {
+    return (
+      isManualRefreshReason(reason) ||
+      isStartupRefreshReason(reason) ||
+      isResumeRefreshReason(reason)
     );
   }
 
@@ -126,6 +149,36 @@
 
   function isFeedQuiet() {
     return Date.now() < Number(klevbyFeedMainQuietUntil || 0);
+  }
+
+  function hasRecentSuccessfulRender(duration) {
+    const lastSuccessfulAt = Number(klevbyFeedMainLastSuccessfulRenderAt || 0);
+
+    if (!lastSuccessfulAt) return false;
+
+    return Date.now() - lastSuccessfulAt < Math.max(0, Number(duration || 0));
+  }
+
+  function shouldSkipDuplicateRender(reason = "", force = false) {
+    const cleanReason = String(reason || "");
+
+    if (isManualRefreshReason(cleanReason)) {
+      return false;
+    }
+
+    if (isStartupRefreshReason(cleanReason)) {
+      return hasRecentSuccessfulRender(KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS);
+    }
+
+    if (isResumeRefreshReason(cleanReason)) {
+      return hasRecentSuccessfulRender(KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS);
+    }
+
+    if (!force) {
+      return false;
+    }
+
+    return hasRecentSuccessfulRender(KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS);
   }
 
   function isUserInteractingWithFeed() {
@@ -234,7 +287,13 @@
         return Promise.resolve(false);
       }
 
-      return klevbyFeedMainRawRenderProfileFeed();
+      if (shouldSkipDuplicateRender("guarded_external_render", false)) {
+        return Promise.resolve(false);
+      }
+
+      return forceRenderFeed("guarded_external_render", {
+        force: false
+      });
     };
 
     render.renderProfileFeed.__klevbyFeedMainGuarded = true;
@@ -328,7 +387,7 @@
       `;
     }
 
-    return Promise.resolve();
+    return Promise.resolve(false);
   }
 
   function refreshFeedIfHomeVisible() {
@@ -381,9 +440,22 @@
       startFeedDomWatcher();
 
       if (force) {
-        scheduleMainFeedRefresh(cleanReason + "_render_wait", 420, {
+        scheduleMainFeedRefresh(cleanReason + "_render_wait", 520, {
           force: true
         });
+      }
+
+      return false;
+    }
+
+    if (shouldSkipDuplicateRender(cleanReason, force)) {
+      if (isStartupRefreshReason(cleanReason)) {
+        clearInitialRenderTimers();
+        stopFeedDomWatcher();
+      }
+
+      if (isResumeRefreshReason(cleanReason)) {
+        clearMainResumeTimers();
       }
 
       return false;
@@ -394,6 +466,10 @@
     }
 
     if (klevbyFeedMainRefreshInProgress) {
+      if (isStartupRefreshReason(cleanReason) || isResumeRefreshReason(cleanReason)) {
+        return false;
+      }
+
       klevbyFeedMainRefreshPending = true;
       return false;
     }
@@ -407,13 +483,12 @@
       klevbyFeedMainLastRefreshFinishedAt = Date.now();
       klevbyFeedMainLastSuccessfulRenderAt = Date.now();
 
-      clearInitialRenderTimers();
+      if (isStartupRefreshReason(cleanReason)) {
+        clearInitialRenderTimers();
+        stopFeedDomWatcher();
+      }
 
-      if (
-        cleanReason.includes("main_burst") ||
-        cleanReason.includes("resume") ||
-        cleanReason.includes("dom_watch")
-      ) {
+      if (isResumeRefreshReason(cleanReason) || cleanReason.includes("main_burst")) {
         clearMainResumeTimers();
         stopFeedDomWatcher();
       }
@@ -439,7 +514,7 @@
           forceRenderFeed("pending_after_" + cleanReason, {
             force
           });
-        }, 720);
+        }, KLEVB_FEED_MAIN_PENDING_AFTER_MS);
       }
     }
   }
@@ -528,6 +603,10 @@
   function startFeedDomWatcher() {
     if (klevbyFeedMainDomWatchTimer) return;
 
+    if (hasRecentSuccessfulRender(KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS)) {
+      return;
+    }
+
     let attempts = 0;
 
     klevbyFeedMainDomWatchTimer = setInterval(() => {
@@ -540,14 +619,15 @@
 
       if (!isPageVisible()) return;
 
+      if (klevbyFeedMainLastSuccessfulRenderAt) {
+        stopFeedDomWatcher();
+        return;
+      }
+
       if (hasFeedDom() && isRenderReady()) {
         forceRenderFeed("dom_watch_ready_" + attempts, {
           force: true
         });
-
-        if (klevbyFeedMainLastSuccessfulRenderAt) {
-          stopFeedDomWatcher();
-        }
       }
     }, KLEVB_FEED_MAIN_DOM_WATCH_MS);
   }
@@ -590,7 +670,7 @@
         return;
       }
 
-      scheduleMainFeedRefresh(action, 500, {
+      scheduleMainFeedRefresh(action, 650, {
         force: false
       });
     });
@@ -599,12 +679,8 @@
       installRenderGuard();
       startFeedDomWatcher();
 
-      scheduleMainFeedRefresh("module_ready_fast", 120, {
+      scheduleMainFeedRefresh("module_ready_fast", 140, {
         force: true
-      });
-
-      scheduleMainFeedRefresh("module_ready_confirm", 900, {
-        force: false
       });
     });
 
@@ -620,7 +696,7 @@
         key.includes("klevby_profile") ||
         key.includes("sb-")
       ) {
-        scheduleMainFeedRefresh("storage_changed", 420, {
+        scheduleMainFeedRefresh("storage_changed", 520, {
           force: false
         });
       }
@@ -643,7 +719,7 @@
         text.includes("лента") ||
         text.includes("главная")
       ) {
-        scheduleMainFeedRefresh("navigation_home_click", 220, {
+        scheduleMainFeedRefresh("navigation_home_click", 260, {
           force: true
         });
       }
@@ -937,7 +1013,7 @@
       installRenderGuard();
       startFeedDomWatcher();
 
-      scheduleMainFeedRefresh("already_started_recheck", 220, {
+      scheduleMainFeedRefresh("already_started_recheck", 260, {
         force: true
       });
 
@@ -953,11 +1029,11 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260509-feed-main-like-stable-2"
+        version: "20260509-feed-main-calm-start-1"
       }
     }));
 
-    console.log("Klevby feed main like-stable starter loaded");
+    console.log("Klevby feed main calm starter loaded");
   }
 
   if (document.readyState === "loading") {
