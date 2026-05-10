@@ -1316,48 +1316,150 @@
 
     if (!cleanId) return;
 
+    if (pendingLikeLocks.has(cleanId)) {
+      const snapshot = getLikeSnapshot(cleanId);
+
+      return {
+        postId: cleanId,
+        liked: snapshot.liked,
+        likesCount: snapshot.likesCount,
+        pending: true
+      };
+    }
+
     protectLikeRender(cleanId);
 
     const sync = getLikeSync(cleanId);
-    let snapshot = getLikeSnapshot(cleanId);
+    const snapshot = getLikeSnapshot(cleanId);
 
-    if (!sync.inFlight) {
+    sync.inFlight = true;
+    sync.rollbackSnapshot = snapshot;
+    pendingLikeLocks.add(cleanId);
+
+    setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, true);
+
+    try {
+      const beforeState = await withSoftTimeout(
+        readDirectLikeState(cleanId),
+        LIKE_WRITE_TIMEOUT_MS,
+        null,
+        "exact_like_before"
+      );
+
+      if (!beforeState || typeof beforeState.liked !== "boolean") {
+        throw new Error("Не удалось проверить состояние лайка.");
+      }
+
+      const desiredLiked = !beforeState.liked;
+      const optimisticCount = Math.max(
+        0,
+        Number(beforeState.likesCount || 0) + (desiredLiked ? 1 : -1)
+      );
+
+      sync.desiredLiked = desiredLiked;
+      sync.desiredCount = optimisticCount;
+
+      applyLocalLikeState(cleanId, desiredLiked, optimisticCount);
+      setLikeButtonsState(cleanId, optimisticCount, desiredLiked, true);
+
+      if (navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+
+      const writeResult = await withSoftTimeout(
+        writeDirectLikeState(cleanId, desiredLiked),
+        LIKE_WRITE_TIMEOUT_MS,
+        null,
+        "exact_like_write"
+      );
+
+      let afterState = null;
+
       try {
-        snapshot = await improveUnknownLikeSnapshot(cleanId, snapshot, true);
-      } catch (error) {
-        console.debug("Klevby feed actions: like preflight failed", {
-          error: String(error?.message || error)
+        afterState = await withSoftTimeout(
+          readDirectLikeState(cleanId),
+          LIKE_WRITE_TIMEOUT_MS,
+          null,
+          "exact_like_after"
+        );
+      } catch (afterError) {
+        console.debug("Klevby feed actions: exact like after skipped", {
+          error: String(afterError?.message || afterError)
         });
       }
+
+      const normalizedWrite = normalizeLikeStateResult(writeResult);
+
+      const finalLiked =
+        afterState && typeof afterState.liked === "boolean"
+          ? afterState.liked
+          : normalizedWrite && typeof normalizedWrite.liked === "boolean"
+            ? normalizedWrite.liked
+            : desiredLiked;
+
+      const finalCount =
+        afterState && Number.isFinite(Number(afterState.likesCount))
+          ? Math.max(0, Number(afterState.likesCount || 0))
+          : normalizedWrite && Number.isFinite(Number(normalizedWrite.likesCount))
+            ? Math.max(0, Number(normalizedWrite.likesCount || 0))
+            : optimisticCount;
+
+      applyLocalLikeState(cleanId, finalLiked, finalCount);
+      setLikeButtonsState(cleanId, finalCount, finalLiked, false);
+
+      sync.desiredLiked = finalLiked;
+      sync.desiredCount = finalCount;
+
+      console.info("Klevby feed actions: exact like synced", {
+        postId: cleanId,
+        beforeLiked: beforeState.liked,
+        finalLiked,
+        finalCount
+      });
+
+      protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
+      scheduleLikeRefresh(1600);
+
+      return {
+        postId: cleanId,
+        liked: finalLiked,
+        likedByViewer: finalLiked,
+        viewerLiked: finalLiked,
+        likesCount: finalCount
+      };
+    } catch (error) {
+      rollbackLikeState(cleanId, snapshot);
+
+      console.warn("Klevby feed actions: лайк не сработал", error);
+
+      const now = Date.now();
+
+      if (now - Number(sync.lastErrorAt || 0) > 2500) {
+        sync.lastErrorAt = now;
+        alert(error?.message || "Не получилось поставить лайк.");
+      }
+
+      return {
+        postId: cleanId,
+        liked: snapshot.liked,
+        likesCount: snapshot.likesCount,
+        error
+      };
+    } finally {
+      pendingLikeLocks.delete(cleanId);
+      sync.inFlight = false;
+      sync.rollbackSnapshot = null;
+
+      const currentSnapshot = getLikeSnapshot(cleanId);
+      const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
+
+      setLikeButtonsState(
+        cleanId,
+        currentSnapshot.likesCount,
+        currentLiked,
+        false
+      );
     }
-
-    if (!sync.inFlight) {
-      sync.rollbackSnapshot = snapshot;
-    }
-
-    const optimistic = applyOptimisticLike(cleanId, snapshot);
-
-    sync.desiredLiked = optimistic.optimisticLiked;
-    sync.desiredCount = optimistic.optimisticCount;
-
-    setLikeButtonsState(
-      cleanId,
-      optimistic.optimisticCount,
-      optimistic.optimisticLiked,
-      false
-    );
-
-    if (navigator.vibrate) {
-      navigator.vibrate(12);
-    }
-
-    processLikeSync(cleanId);
-
-    return {
-      postId: cleanId,
-      liked: optimistic.optimisticLiked,
-      likesCount: optimistic.optimisticCount
-    };
   }
 
   async function toggleLikeFromViewer(postId) {
