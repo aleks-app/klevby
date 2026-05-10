@@ -1,10 +1,7 @@
 (function () {
   "use strict";
 
-  const KLEVB_PROFILE_PHOTOS_KEY = "klevby_profile_photos";
-
   let klevbyFeedViewerLikePending = false;
-  let klevbyFeedViewerDeletePendingIds = new Set();
 
   function getCore() {
     return window.KlevbyFeedModalCore || {};
@@ -452,7 +449,6 @@
   function closeFeedPhotoViewer() {
     const viewer = document.getElementById("klevbyFeedPhotoViewer");
     const image = document.getElementById("klevbyFeedPhotoViewerImage");
-    const deleteButton = document.getElementById("klevbyFeedViewerDeleteBtn");
 
     klevbyFeedViewerLikePending = false;
 
@@ -464,289 +460,41 @@
       image.removeAttribute("src");
     }
 
-    if (deleteButton) {
-      setViewerDeleteButtonBusy(deleteButton, false);
-      deleteButton.onclick = null;
-    }
-
     releaseModalBodyLockIfPossible();
-  }
-
-  function getFeedDeleteKey(item) {
-    return String(item?.id || item?.feedPostId || item?.localId || "").trim();
-  }
-
-  function isFeedDeletePending(item) {
-    const key = getFeedDeleteKey(item);
-    return Boolean(key && klevbyFeedViewerDeletePendingIds.has(key));
-  }
-
-  function setFeedDeletePending(item, isPending) {
-    const key = getFeedDeleteKey(item);
-
-    if (!key) return;
-
-    if (isPending) {
-      klevbyFeedViewerDeletePendingIds.add(key);
-      return;
-    }
-
-    klevbyFeedViewerDeletePendingIds.delete(key);
-  }
-
-  function setViewerDeleteButtonBusy(button, isBusy) {
-    if (!button) return;
-
-    button.disabled = Boolean(isBusy);
-    button.dataset.deleting = isBusy ? "1" : "0";
-    button.setAttribute("aria-busy", isBusy ? "true" : "false");
-    button.textContent = isBusy ? "Удаляю…" : "Удалить";
-  }
-
-  function getItemIdentityList(item) {
-    return Array.from(new Set([
-      item?.id,
-      item?.feedPostId,
-      item?.localId,
-      item?.postId,
-      item?.feed_post_id
-    ].map((value) => String(value || "").trim()).filter(Boolean)));
-  }
-
-  function escapeCssValue(value) {
-    const cleanValue = String(value || "");
-
-    if (window.CSS && typeof window.CSS.escape === "function") {
-      return window.CSS.escape(cleanValue);
-    }
-
-    return cleanValue.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
-  }
-
-  function removeFeedItemDomNow(item) {
-    const ids = getItemIdentityList(item);
-
-    ids.forEach((id) => {
-      const escaped = escapeCssValue(id);
-      const selectors = [
-        `[data-feed-post-id="${escaped}"]`,
-        `[data-post-id="${escaped}"]`,
-        `[data-feed-id="${escaped}"]`,
-        `[data-item-id="${escaped}"]`,
-        `[data-id="${escaped}"]`,
-        `button[onclick*="${escaped}"]`,
-        `a[onclick*="${escaped}"]`
-      ];
-
-      selectors.forEach((selector) => {
-        let nodes = [];
-
-        try {
-          nodes = Array.from(document.querySelectorAll(selector));
-        } catch (_) {
-          nodes = [];
-        }
-
-        nodes.forEach((node) => {
-          const card = node.closest?.(
-            ".klevby-feed-card, .klevby-feed-post, .klevby-feed-item, .profile-feed-card, .feed-card, .feed-photo-card, .post-card, article, li"
-          );
-
-          if (card && card.id !== "klevbyFeedPhotoViewer") {
-            card.remove();
-          }
-        });
-      });
-    });
-  }
-
-  function rememberOptimisticDeletedFeedItem(item) {
-    const ids = getItemIdentityList(item);
-
-    if (!window.__klevbyFeedOptimisticDeletedIds) {
-      window.__klevbyFeedOptimisticDeletedIds = new Set();
-    }
-
-    if (!window.__klevbyFeedOptimisticDeletedAt) {
-      window.__klevbyFeedOptimisticDeletedAt = {};
-    }
-
-    ids.forEach((id) => {
-      window.__klevbyFeedOptimisticDeletedIds.add(id);
-      window.__klevbyFeedOptimisticDeletedAt[id] = Date.now();
-
-      if (window.__klevbyFeedItemsCache && typeof window.__klevbyFeedItemsCache === "object") {
-        delete window.__klevbyFeedItemsCache[id];
-      }
-    });
-
-    const state = getState();
-    const methods = [
-      "removeCachedItem",
-      "deleteCachedItem",
-      "removeItem",
-      "deleteItem",
-      "markDeleted"
-    ];
-
-    methods.forEach((methodName) => {
-      if (typeof state[methodName] !== "function") return;
-
-      ids.forEach((id) => {
-        try {
-          state[methodName](id);
-        } catch (_) {
-          // optional state cleanup
-        }
-      });
-    });
-  }
-
-  function removeFeedItemFromProfileLocalPhotos(item) {
-    const ids = getItemIdentityList(item);
-
-    if (!ids.length) return false;
-
-    try {
-      const raw = localStorage.getItem(KLEVB_PROFILE_PHOTOS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-
-      if (!Array.isArray(parsed) || !parsed.length) return false;
-
-      const updated = parsed.filter((photo) => {
-        return !ids.some((id) => {
-          return (
-            String(photo?.id || "") === id ||
-            String(photo?.feedPostId || "") === id ||
-            String(photo?.feed_post_id || "") === id
-          );
-        });
-      });
-
-      if (updated.length === parsed.length) return false;
-
-      localStorage.setItem(KLEVB_PROFILE_PHOTOS_KEY, JSON.stringify(updated));
-
-      if (typeof window.updateKlevbyProfileView === "function") {
-        try {
-          window.updateKlevbyProfileView();
-        } catch (_) {
-          // optional profile refresh
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.warn("Klevby feed photo viewer: локальные фото профиля не обновились после удаления", error);
-      return false;
-    }
-  }
-
-  function dispatchOptimisticFeedDelete(item, stage = "optimistic") {
-    const postId = String(item?.id || item?.feedPostId || "").trim();
-
-    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-      detail: {
-        action: "feed_photo_deleted_optimistic",
-        postId,
-        photoId: postId,
-        itemId: postId,
-        imagePath: item?.imagePath || "",
-        item,
-        optimistic: stage === "optimistic",
-        background: stage !== "server_confirmed",
-        stage
-      }
-    }));
-
-    window.dispatchEvent(new CustomEvent("klevby-feed-photo-deleted", {
-      detail: {
-        postId,
-        photoId: postId,
-        itemId: postId,
-        imagePath: item?.imagePath || "",
-        item,
-        optimistic: stage === "optimistic",
-        background: stage !== "server_confirmed",
-        stage
-      }
-    }));
-  }
-
-  async function deleteFeedItemOnServer(item) {
-    const api = getApi();
-
-    if (item.source === "supabase") {
-      if (typeof api.deletePost === "function") {
-        await api.deletePost(item.id, item.imagePath || "");
-        return true;
-      }
-
-      if (typeof window.klevbyDeleteFeedPostFromSupabase === "function") {
-        await window.klevbyDeleteFeedPostFromSupabase(item.id, item.imagePath || "");
-        return true;
-      }
-
-      throw new Error("Удаление Supabase-фото ещё не подключено.");
-    }
-
-    if (typeof window.removeProfilePhoto === "function") {
-      await window.removeProfilePhoto(item.id);
-      return true;
-    }
-
-    return true;
-  }
-
-  function runFeedItemDeleteInBackground(item) {
-    window.setTimeout(async () => {
-      try {
-        await deleteFeedItemOnServer(item);
-
-        dispatchOptimisticFeedDelete(item, "server_confirmed");
-        renderFeedSoon(120);
-
-        console.info("Klevby feed photo viewer: фото удалено на сервере в фоне", {
-          postId: item?.id || ""
-        });
-      } catch (error) {
-        console.warn("Klevby feed photo viewer: фото скрыто локально, но серверное удаление не подтвердилось", {
-          postId: item?.id || "",
-          error
-        });
-      } finally {
-        setFeedDeletePending(item, false);
-      }
-    }, 0);
   }
 
   async function deleteFeedItem(item) {
     if (!item || !item.id) return;
 
-    if (isFeedDeletePending(item)) {
-      return;
-    }
-
     if (!confirm("Удалить фото из ленты? Это действие нельзя отменить.")) {
       return;
     }
 
-    const deleteButton = document.getElementById("klevbyFeedViewerDeleteBtn");
+    const api = getApi();
 
-    setFeedDeletePending(item, true);
-    setViewerDeleteButtonBusy(deleteButton, true);
+    try {
+      if (item.source === "supabase") {
+        if (typeof api.deletePost === "function") {
+          await api.deletePost(item.id, item.imagePath || "");
+        } else if (typeof window.klevbyDeleteFeedPostFromSupabase === "function") {
+          await window.klevbyDeleteFeedPostFromSupabase(item.id, item.imagePath || "");
+        } else {
+          throw new Error("Удаление Supabase-фото ещё не подключено.");
+        }
+      } else if (typeof window.removeProfilePhoto === "function") {
+        await window.removeProfilePhoto(item.id);
+      }
 
-    rememberOptimisticDeletedFeedItem(item);
-    removeFeedItemFromProfileLocalPhotos(item);
-    removeFeedItemDomNow(item);
-    closeFeedPhotoViewer();
-    dispatchOptimisticFeedDelete(item, "optimistic");
+      closeFeedPhotoViewer();
+      renderFeedSoon(120);
 
-    if (navigator.vibrate) {
-      navigator.vibrate(18);
+      if (navigator.vibrate) {
+        navigator.vibrate(18);
+      }
+    } catch (error) {
+      console.error("Klevby feed photo viewer: не удалось удалить фото", error);
+      alert(error?.message || "Не получилось удалить фото.");
     }
-
-    runFeedItemDeleteInBackground(item);
   }
 
   async function toggleLikeFromViewer() {
@@ -791,14 +539,9 @@
 
     if (deleteButton) {
       const canDelete = canManageFeedItem(item);
-      const isDeleting = isFeedDeletePending(item);
 
       deleteButton.classList.toggle("hidden", !canDelete);
-      setViewerDeleteButtonBusy(deleteButton, isDeleting);
-
       deleteButton.onclick = () => {
-        if (deleteButton.disabled || deleteButton.dataset.deleting === "1") return;
-
         pulseButton(deleteButton);
         deleteFeedItem(item);
       };
