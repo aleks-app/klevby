@@ -115,13 +115,29 @@
   async function ensureCurrentUser() {
     let user = getCurrentUser();
 
+    if (user && typeof user.then === "function") {
+      try {
+        user = await withSoftTimeout(user, LIKE_READ_TIMEOUT_MS, null, "current_user_promise");
+      } catch (error) {
+        console.debug("Klevby feed actions: current user promise skipped", {
+          error: String(error?.message || error)
+        });
+        user = null;
+      }
+    }
+
     if (user && user.id) {
       return user;
     }
 
     if (typeof window.restoreAuthState === "function") {
       try {
-        await window.restoreAuthState("feed_like_action", false);
+        await withSoftTimeout(
+          window.restoreAuthState("feed_like_action", false),
+          LIKE_READ_TIMEOUT_MS,
+          null,
+          "restore_auth_state"
+        );
       } catch (error) {
         console.debug("Klevby feed actions: restore auth skipped", {
           error: String(error?.message || error)
@@ -131,8 +147,42 @@
 
     user = getCurrentUser();
 
+    if (user && typeof user.then === "function") {
+      try {
+        user = await withSoftTimeout(user, LIKE_READ_TIMEOUT_MS, null, "current_user_after_restore");
+      } catch (error) {
+        console.debug("Klevby feed actions: current user after restore skipped", {
+          error: String(error?.message || error)
+        });
+        user = null;
+      }
+    }
+
     if (user && user.id) {
       return user;
+    }
+
+    const db = getSupabaseClient();
+
+    if (db && db.auth && typeof db.auth.getUser === "function") {
+      try {
+        const result = await withSoftTimeout(
+          db.auth.getUser(),
+          LIKE_READ_TIMEOUT_MS,
+          null,
+          "auth_get_user"
+        );
+
+        const authUser = result?.data?.user || null;
+
+        if (authUser && authUser.id) {
+          return authUser;
+        }
+      } catch (error) {
+        console.debug("Klevby feed actions: auth.getUser skipped", {
+          error: String(error?.message || error)
+        });
+      }
     }
 
     return null;
@@ -1107,37 +1157,31 @@
   async function callToggleLikeApi(cleanId) {
     const api = getApi();
 
-    if (typeof api.toggleLike === "function") {
-      return await withSoftTimeout(
-        api.toggleLike(cleanId),
-        LIKE_WRITE_TIMEOUT_MS,
-        null,
-        "toggle_like_api"
-      );
+    const candidate =
+      window.klevbyFeedSupabase && typeof window.klevbyFeedSupabase.toggleLike === "function"
+        ? window.klevbyFeedSupabase.toggleLike
+        : typeof window.klevbyToggleFeedLike === "function"
+          ? window.klevbyToggleFeedLike
+          : typeof api.toggleLike === "function"
+            ? api.toggleLike
+            : null;
+
+    if (typeof candidate !== "function") {
+      throw new Error("Лайки ещё не подключены.");
     }
 
-    if (typeof window.klevbyToggleFeedLike === "function") {
-      return await withSoftTimeout(
-        window.klevbyToggleFeedLike(cleanId),
-        LIKE_WRITE_TIMEOUT_MS,
-        null,
-        "toggle_like_global"
-      );
+    const result = await withSoftTimeout(
+      candidate(cleanId),
+      LIKE_WRITE_TIMEOUT_MS,
+      null,
+      "toggle_like_server_authority"
+    );
+
+    if (!result) {
+      throw new Error("Supabase не успел подтвердить лайк.");
     }
 
-    if (
-      window.klevbyFeedSupabase &&
-      typeof window.klevbyFeedSupabase.toggleLike === "function"
-    ) {
-      return await withSoftTimeout(
-        window.klevbyFeedSupabase.toggleLike(cleanId),
-        LIKE_WRITE_TIMEOUT_MS,
-        null,
-        "toggle_like_supabase_bridge"
-      );
-    }
-
-    throw new Error("Лайки ещё не подключены.");
+    return result;
   }
 
   async function handleDuplicateLikeError(cleanId, snapshot) {
@@ -1339,70 +1383,51 @@
     setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, true);
 
     try {
-      const beforeState = await withSoftTimeout(
-        readDirectLikeState(cleanId),
-        LIKE_WRITE_TIMEOUT_MS,
-        null,
-        "exact_like_before"
-      );
+      const result = await callToggleLikeApi(cleanId);
+      const normalized = normalizeLikeStateResult(result);
 
-      if (!beforeState || typeof beforeState.liked !== "boolean") {
-        throw new Error("Не удалось проверить состояние лайка.");
+      if (!normalized || typeof normalized.liked !== "boolean") {
+        throw new Error("Supabase не вернул состояние лайка.");
       }
 
-      const desiredLiked = !beforeState.liked;
-      const optimisticCount = Math.max(
-        0,
-        Number(beforeState.likesCount || 0) + (desiredLiked ? 1 : -1)
-      );
-
-      sync.desiredLiked = desiredLiked;
-      sync.desiredCount = optimisticCount;
-
-      applyLocalLikeState(cleanId, desiredLiked, optimisticCount);
-      setLikeButtonsState(cleanId, optimisticCount, desiredLiked, true);
-
-      if (navigator.vibrate) {
-        navigator.vibrate(12);
-      }
-
-      const writeResult = await withSoftTimeout(
-        writeDirectLikeState(cleanId, desiredLiked),
-        LIKE_WRITE_TIMEOUT_MS,
-        null,
-        "exact_like_write"
-      );
-
-      let afterState = null;
+      let finalLiked = normalized.liked;
+      let finalCount =
+        normalized.likesCount !== null && normalized.likesCount !== undefined
+          ? Math.max(0, Number(normalized.likesCount || 0) || 0)
+          : null;
 
       try {
-        afterState = await withSoftTimeout(
+        const exactAfter = await withSoftTimeout(
           readDirectLikeState(cleanId),
-          LIKE_WRITE_TIMEOUT_MS,
+          LIKE_READ_TIMEOUT_MS,
           null,
-          "exact_like_after"
+          "exact_like_after_optional"
         );
+
+        if (exactAfter && typeof exactAfter.liked === "boolean") {
+          finalLiked = exactAfter.liked;
+
+          if (Number.isFinite(Number(exactAfter.likesCount))) {
+            finalCount = Math.max(0, Number(exactAfter.likesCount || 0));
+          }
+        }
       } catch (afterError) {
-        console.debug("Klevby feed actions: exact like after skipped", {
+        console.debug("Klevby feed actions: optional exact after skipped", {
           error: String(afterError?.message || afterError)
         });
       }
 
-      const normalizedWrite = normalizeLikeStateResult(writeResult);
+      if (finalCount === null) {
+        const previousLiked =
+          typeof snapshot.liked === "boolean"
+            ? snapshot.liked
+            : !finalLiked;
 
-      const finalLiked =
-        afterState && typeof afterState.liked === "boolean"
-          ? afterState.liked
-          : normalizedWrite && typeof normalizedWrite.liked === "boolean"
-            ? normalizedWrite.liked
-            : desiredLiked;
-
-      const finalCount =
-        afterState && Number.isFinite(Number(afterState.likesCount))
-          ? Math.max(0, Number(afterState.likesCount || 0))
-          : normalizedWrite && Number.isFinite(Number(normalizedWrite.likesCount))
-            ? Math.max(0, Number(normalizedWrite.likesCount || 0))
-            : optimisticCount;
+        finalCount = Math.max(
+          0,
+          Number(snapshot.likesCount || 0) + (finalLiked && !previousLiked ? 1 : !finalLiked && previousLiked ? -1 : 0)
+        );
+      }
 
       applyLocalLikeState(cleanId, finalLiked, finalCount);
       setLikeButtonsState(cleanId, finalCount, finalLiked, false);
@@ -1410,9 +1435,12 @@
       sync.desiredLiked = finalLiked;
       sync.desiredCount = finalCount;
 
-      console.info("Klevby feed actions: exact like synced", {
+      if (navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+
+      console.info("Klevby feed actions: server like synced", {
         postId: cleanId,
-        beforeLiked: beforeState.liked,
         finalLiked,
         finalCount
       });
