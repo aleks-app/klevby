@@ -12,20 +12,20 @@
   const likeRenderProtectedUntil = new Map();
   const likeSyncState = new Map();
 
-  const KLEVB_FEED_TABLE = "feed_posts";
   const KLEVB_FEED_LIKES_TABLE = "feed_likes";
 
   const LIKE_RENDER_PROTECTION_MS = 5200;
   const LIKE_BACKGROUND_REFRESH_MS = 6200;
   const LIKE_PROTECTION_RECHECK_MS = 900;
-  const LIKE_PREFLIGHT_TIMEOUT_MS = 850;
   const LIKE_READ_TIMEOUT_MS = 2200;
   const LIKE_WRITE_TIMEOUT_MS = 12000;
   const LIKE_RESUME_REFRESH_DELAY_MS = 180;
   const LIKE_RECENT_RESUME_MS = 14000;
-  const LIKE_BACKGROUND_VERIFY_DELAYS = [1400, 3000, 5500, 9000];
+  const LIKE_BACKGROUND_VERIFY_DELAYS = [900, 1800, 3200, 5600, 9000];
 
   const FEED_AUTO_REFRESH_MS = 45000;
+  const VIEWER_LIKES_STORAGE_PREFIX = "klevby_feed_viewer_likes_v1";
+  const VIEWER_LAST_USER_KEY = "klevby_feed_last_like_user_id";
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -41,10 +41,6 @@
 
   function getModals() {
     return window.KlevbyFeedModals || {};
-  }
-
-  function getUtils() {
-    return window.KlevbyFeedUtils || {};
   }
 
   function withSoftTimeout(promise, timeoutMs, fallbackValue = null, label = "operation") {
@@ -115,10 +111,40 @@
     return null;
   }
 
+  function isPromiseLike(value) {
+    return Boolean(value && typeof value.then === "function");
+  }
+
+  function rememberViewerUserId(userId) {
+    const cleanUserId = String(userId || "").trim();
+
+    if (!cleanUserId) return;
+
+    try {
+      localStorage.setItem(VIEWER_LAST_USER_KEY, cleanUserId);
+    } catch (_) {}
+  }
+
+  function getKnownViewerUserIdSync() {
+    const user = getCurrentUser();
+
+    if (user && !isPromiseLike(user) && user.id) {
+      const cleanUserId = String(user.id || "").trim();
+      rememberViewerUserId(cleanUserId);
+      return cleanUserId;
+    }
+
+    try {
+      return String(localStorage.getItem(VIEWER_LAST_USER_KEY) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
   async function ensureCurrentUser() {
     let user = getCurrentUser();
 
-    if (user && typeof user.then === "function") {
+    if (isPromiseLike(user)) {
       try {
         user = await withSoftTimeout(user, LIKE_READ_TIMEOUT_MS, null, "current_user_promise");
       } catch (error) {
@@ -130,6 +156,7 @@
     }
 
     if (user && user.id) {
+      rememberViewerUserId(user.id);
       return user;
     }
 
@@ -150,7 +177,7 @@
 
     user = getCurrentUser();
 
-    if (user && typeof user.then === "function") {
+    if (isPromiseLike(user)) {
       try {
         user = await withSoftTimeout(user, LIKE_READ_TIMEOUT_MS, null, "current_user_after_restore");
       } catch (error) {
@@ -162,6 +189,7 @@
     }
 
     if (user && user.id) {
+      rememberViewerUserId(user.id);
       return user;
     }
 
@@ -179,6 +207,7 @@
         const authUser = result?.data?.user || null;
 
         if (authUser && authUser.id) {
+          rememberViewerUserId(authUser.id);
           return authUser;
         }
       } catch (error) {
@@ -186,6 +215,47 @@
           error: String(error?.message || error)
         });
       }
+    }
+
+    return null;
+  }
+
+  function getViewerLikeStorageKey(userId = "") {
+    const cleanUserId = String(userId || getKnownViewerUserIdSync() || "anon").trim() || "anon";
+    return `${VIEWER_LIKES_STORAGE_PREFIX}:${cleanUserId}`;
+  }
+
+  function readViewerLikesCache(userId = "") {
+    try {
+      const raw = localStorage.getItem(getViewerLikeStorageKey(userId));
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeViewerLikeCache(postId, liked, userId = "") {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return;
+
+    try {
+      const cache = readViewerLikesCache(userId);
+      cache[cleanId] = Boolean(liked);
+      localStorage.setItem(getViewerLikeStorageKey(userId), JSON.stringify(cache));
+    } catch (_) {}
+  }
+
+  function readViewerLikeCacheValue(postId, userId = "") {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return null;
+
+    const cache = readViewerLikesCache(userId);
+
+    if (typeof cache[cleanId] === "boolean") {
+      return cache[cleanId];
     }
 
     return null;
@@ -317,16 +387,6 @@
     return null;
   }
 
-  function getKnownLikeState(postId, item = null) {
-    const cleanId = String(postId || "").trim();
-
-    if (viewerLikeState.has(cleanId)) {
-      return viewerLikeState.get(cleanId);
-    }
-
-    return getKnownLikeStateFromItem(item);
-  }
-
   function getLikeButtons(postId) {
     const cleanId = String(postId || "").trim();
 
@@ -353,6 +413,29 @@
       const onclickValue = String(button.getAttribute("onclick") || "");
       return onclickValue.includes(cleanId);
     });
+  }
+
+  function getKnownLikeState(postId, item = null) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return null;
+
+    if (viewerLikeState.has(cleanId)) {
+      return viewerLikeState.get(cleanId);
+    }
+
+    const button = getLikeButtons(cleanId)[0];
+
+    if (button?.dataset?.liked === "true") return true;
+    if (button?.dataset?.liked === "false") return false;
+
+    const cachedLiked = readViewerLikeCacheValue(cleanId);
+
+    if (typeof cachedLiked === "boolean") {
+      return cachedLiked;
+    }
+
+    return getKnownLikeStateFromItem(item);
   }
 
   function isButtonHoveredOrFocused(button) {
@@ -444,10 +527,6 @@
     }
 
     return pendingLikeLocks.size > 0;
-  }
-
-  function isRecentlyResumed() {
-    return Date.now() - Number(lastLikeResumeAt || 0) < LIKE_RECENT_RESUME_MS;
   }
 
   function resetLikeRuntimeState(reason = "resume") {
@@ -580,7 +659,7 @@
     const safePending = Boolean(pending);
 
     getLikeButtons(cleanId).forEach((button) => {
-      button.textContent = safePending ? `⏳ ${safeCount}` : `👍 ${safeCount}`;
+      button.textContent = `👍 ${safeCount}`;
       button.dataset.pendingLike = safePending ? "1" : "0";
       button.dataset.likeCount = String(safeCount);
       button.dataset.feedPostId = cleanId;
@@ -633,7 +712,6 @@
   function getLikeSnapshot(postId) {
     const cleanId = String(postId || "").trim();
     const item = getCachedFeedItem(cleanId);
-    const button = getLikeButtons(cleanId)[0];
     const buttonCount = getButtonLikesCount(cleanId);
     const itemLikesCount = item ? getItemLikesCount(item) : null;
 
@@ -646,8 +724,8 @@
 
     let liked = getKnownLikeState(cleanId, item);
 
-    if (typeof liked !== "boolean" && button?.dataset?.liked) {
-      liked = String(button.dataset.liked) === "true";
+    if (typeof liked !== "boolean") {
+      liked = false;
     }
 
     return {
@@ -663,6 +741,7 @@
     const safeLiked = Boolean(liked);
 
     viewerLikeState.set(cleanId, safeLiked);
+    writeViewerLikeCache(cleanId, safeLiked);
 
     patchLocalFeedItem(cleanId, {
       likedByViewer: safeLiked,
@@ -740,6 +819,24 @@
     };
   }
 
+  function isDuplicateLikeError(error) {
+    const code = String(error?.code || error?.details?.code || "").trim();
+    const message = String(error?.message || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    const hint = String(error?.hint || "").toLowerCase();
+    const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
+
+    return (
+      code === "23505" ||
+      code === "409" ||
+      message.includes("duplicate key") ||
+      message.includes("feed_likes_unique_user_post") ||
+      details.includes("feed_likes_unique_user_post") ||
+      hint.includes("feed_likes_unique_user_post") ||
+      constraint.includes("feed_likes_unique_user_post")
+    );
+  }
+
   async function readDirectLikeState(cleanId) {
     const db = getSupabaseClient();
 
@@ -756,7 +853,8 @@
     const rowsResult = await db
       .from(KLEVB_FEED_LIKES_TABLE)
       .select("user_id")
-      .eq("post_id", cleanId);
+      .eq("post_id", cleanId)
+      .limit(10000);
 
     if (rowsResult.error) {
       throw rowsResult.error;
@@ -773,9 +871,14 @@
       }
     });
 
+    const liked = uniqueUsers.has(String(user.id));
+    const likesCount = uniqueUsers.size;
+
+    writeViewerLikeCache(cleanId, liked, user.id);
+
     return {
-      liked: uniqueUsers.has(String(user.id)),
-      likesCount: uniqueUsers.size
+      liked,
+      likesCount
     };
   }
 
@@ -790,12 +893,6 @@
 
     if (!user || !user.id) {
       throw new Error("Сначала войди, чтобы поставить лайк.");
-    }
-
-    const before = await readDirectLikeState(cleanId);
-
-    if (before && before.liked === desiredLiked) {
-      return before;
     }
 
     if (desiredLiked) {
@@ -821,13 +918,13 @@
       }
     }
 
-    try {
-      const after = await readDirectLikeState(cleanId);
+    const after = await readDirectLikeState(cleanId);
 
-      if (after && typeof after.liked === "boolean") {
-        return after;
-      }
-    } catch (_) {}
+    if (after && typeof after.liked === "boolean") {
+      return after;
+    }
+
+    writeViewerLikeCache(cleanId, Boolean(desiredLiked), user.id);
 
     return {
       liked: Boolean(desiredLiked),
@@ -937,226 +1034,18 @@
       }
     }
 
-    try {
-      const directResult = await withSoftTimeout(
-        writeDirectLikeState(cleanId, desiredLiked),
-        LIKE_WRITE_TIMEOUT_MS,
-        null,
-        "direct_set_like"
-      );
-
-      if (directResult && typeof directResult.liked === "boolean") {
-        return directResult;
-      }
-    } catch (directError) {
-      console.debug("Klevby feed actions: direct set like skipped", {
-        error: String(directError?.message || directError)
-      });
-
-      const beforeToggle = await callReadLikeStateApi(cleanId).catch(() => null);
-
-      if (beforeToggle && beforeToggle.liked === desiredLiked) {
-        return beforeToggle;
-      }
-
-      const toggleResult = await callToggleLikeApi(cleanId);
-      const normalizedToggle = normalizeLikeStateResult(toggleResult);
-
-      if (normalizedToggle) {
-        return normalizedToggle;
-      }
-
-      return {
-        liked: Boolean(desiredLiked),
-        likesCount: null
-      };
-    }
-
-    return {
-      liked: Boolean(desiredLiked),
-      likesCount: null
-    };
-  }
-
-  async function callUnlikeApi(cleanId) {
-    const api = getApi();
-
-    const candidates = [
-      api.unlike,
-      api.removeLike,
-      api.deleteLike,
-      api.unlikePost,
-      api.removePostLike,
-      window.klevbyUnlikeFeedLike,
-      window.klevbyRemoveFeedLike,
-      window.klevbyFeedSupabase?.unlike,
-      window.klevbyFeedSupabase?.removeLike,
-      window.klevbyFeedSupabase?.deleteLike,
-      window.klevbyFeedSupabase?.unlikePost,
-      window.klevbyFeedSupabase?.removePostLike
-    ];
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== "function") continue;
-
-      try {
-        return await withSoftTimeout(
-          candidate(cleanId),
-          LIKE_WRITE_TIMEOUT_MS,
-          null,
-          "unlike_candidate"
-        );
-      } catch (error) {
-        console.debug("Klevby feed actions: explicit unlike skipped", {
-          error: String(error?.message || error)
-        });
-      }
-    }
-
-    return withSoftTimeout(
-      writeDirectLikeState(cleanId, false),
+    const directResult = await withSoftTimeout(
+      writeDirectLikeState(cleanId, desiredLiked),
       LIKE_WRITE_TIMEOUT_MS,
-      null,
-      "direct_unlike"
-    );
-  }
-
-  async function improveUnknownLikeSnapshot(postId, snapshot, force = false) {
-    if (!force && typeof snapshot?.liked === "boolean") {
-      return snapshot;
-    }
-
-    const cleanId = String(postId || "").trim();
-    const serverState = await withSoftTimeout(
-      callReadLikeStateApi(cleanId),
-      LIKE_PREFLIGHT_TIMEOUT_MS,
-      null,
-      "like_preflight"
+      {
+        pendingConfirm: true,
+        postId: cleanId,
+        desiredLiked: Boolean(desiredLiked)
+      },
+      "direct_set_like"
     );
 
-    if (!serverState || typeof serverState.liked !== "boolean") {
-      return snapshot;
-    }
-
-    const likesCount =
-      serverState.likesCount !== null && serverState.likesCount !== undefined
-        ? serverState.likesCount
-        : snapshot.likesCount;
-
-    applyLocalLikeState(cleanId, serverState.liked, likesCount);
-
-    return {
-      ...snapshot,
-      item: getCachedFeedItem(cleanId) || snapshot.item,
-      likesCount,
-      liked: serverState.liked
-    };
-  }
-
-  function applyOptimisticLike(postId, snapshot) {
-    const cleanId = String(postId || "").trim();
-
-    const previousLiked =
-      typeof snapshot?.liked === "boolean"
-        ? snapshot.liked
-        : false;
-
-    const optimisticLiked = !previousLiked;
-    const optimisticCount = Math.max(
-      0,
-      Number(snapshot.likesCount || 0) + (optimisticLiked ? 1 : -1)
-    );
-
-    applyLocalLikeState(cleanId, optimisticLiked, optimisticCount);
-
-    return {
-      ...snapshot,
-      liked: previousLiked,
-      optimisticLiked,
-      optimisticCount,
-      optimisticApplied: true
-    };
-  }
-
-  function reconcileLikeAfterSuccess(postId, snapshot, result) {
-    const cleanId = String(postId || "").trim();
-    const serverLiked = extractServerLikedState(result);
-    const serverLikesCount = extractServerLikesCount(result);
-
-    if (typeof serverLiked === "boolean") {
-      let finalCount = serverLikesCount;
-
-      if (finalCount === null) {
-        if (snapshot.liked === true && serverLiked === false) {
-          finalCount = Math.max(0, snapshot.likesCount - 1);
-        } else if (snapshot.liked === false && serverLiked === true) {
-          finalCount = snapshot.likesCount + 1;
-        } else if (snapshot.liked === null || snapshot.liked === undefined) {
-          finalCount = Math.max(0, snapshot.likesCount + (serverLiked ? 1 : -1));
-        } else {
-          finalCount = snapshot.likesCount;
-        }
-      }
-
-      applyLocalLikeState(cleanId, serverLiked, finalCount);
-      setLikeButtonsState(cleanId, finalCount, serverLiked, false);
-      return;
-    }
-
-    if (serverLikesCount !== null && typeof snapshot.optimisticLiked === "boolean") {
-      applyLocalLikeState(cleanId, snapshot.optimisticLiked, serverLikesCount);
-      setLikeButtonsState(cleanId, serverLikesCount, snapshot.optimisticLiked, false);
-      return;
-    }
-
-    if (snapshot.optimisticApplied && typeof snapshot.optimisticLiked === "boolean") {
-      setLikeButtonsState(cleanId, snapshot.optimisticCount, snapshot.optimisticLiked, false);
-      return;
-    }
-
-    setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, false);
-    scheduleLikeRefresh();
-  }
-
-  function rollbackLikeState(postId, snapshot) {
-    const cleanId = String(postId || "").trim();
-
-    if (typeof snapshot.liked === "boolean") {
-      viewerLikeState.set(cleanId, snapshot.liked);
-    } else {
-      viewerLikeState.delete(cleanId);
-    }
-
-    patchLocalFeedItem(cleanId, {
-      likedByViewer: snapshot.liked === true,
-      viewerLiked: snapshot.liked === true,
-      isLiked: snapshot.liked === true,
-      liked: snapshot.liked === true,
-      hasLiked: snapshot.liked === true,
-      liked_by_viewer: snapshot.liked === true,
-      likesCount: snapshot.likesCount,
-      likes_count: snapshot.likesCount
-    });
-
-    setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, false);
-  }
-
-  function isDuplicateLikeError(error) {
-    const code = String(error?.code || error?.details?.code || "").trim();
-    const message = String(error?.message || "").toLowerCase();
-    const details = String(error?.details || "").toLowerCase();
-    const hint = String(error?.hint || "").toLowerCase();
-    const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
-
-    return (
-      code === "23505" ||
-      code === "409" ||
-      message.includes("duplicate key") ||
-      message.includes("feed_likes_unique_user_post") ||
-      details.includes("feed_likes_unique_user_post") ||
-      hint.includes("feed_likes_unique_user_post") ||
-      constraint.includes("feed_likes_unique_user_post")
-    );
+    return directResult;
   }
 
   function scheduleLikeRefresh(delay = LIKE_BACKGROUND_REFRESH_MS) {
@@ -1256,77 +1145,6 @@
     }, Math.max(500, Number(delay || 0)));
   }
 
-  async function callToggleLikeApi(cleanId) {
-    const api = getApi();
-
-    const candidate =
-      window.klevbyFeedSupabase && typeof window.klevbyFeedSupabase.toggleLike === "function"
-        ? window.klevbyFeedSupabase.toggleLike
-        : typeof window.klevbyToggleFeedLike === "function"
-          ? window.klevbyToggleFeedLike
-          : typeof api.toggleLike === "function"
-            ? api.toggleLike
-            : null;
-
-    if (typeof candidate !== "function") {
-      throw new Error("Лайки ещё не подключены.");
-    }
-
-    const timeoutMs = isRecentlyResumed()
-      ? Math.max(LIKE_WRITE_TIMEOUT_MS, 14000)
-      : LIKE_WRITE_TIMEOUT_MS;
-
-    const result = await withSoftTimeout(
-      candidate(cleanId),
-      timeoutMs,
-      {
-        pendingConfirm: true,
-        postId: cleanId
-      },
-      "toggle_like_server_authority"
-    );
-
-    return result;
-  }
-
-  async function handleDuplicateLikeError(cleanId, snapshot) {
-    const shouldTryUnlike =
-      snapshot.liked === true ||
-      snapshot.liked === null ||
-      snapshot.liked === undefined;
-
-    if (shouldTryUnlike) {
-      try {
-        const unlikeResult = await callUnlikeApi(cleanId);
-        const normalizedUnlike = normalizeLikeStateResult(unlikeResult);
-        const serverLikesCount = extractServerLikesCount(unlikeResult);
-        const finalCount =
-          normalizedUnlike?.likesCount !== null && normalizedUnlike?.likesCount !== undefined
-            ? normalizedUnlike.likesCount
-            : serverLikesCount !== null
-              ? serverLikesCount
-              : Math.max(0, snapshot.likesCount - 1);
-
-        applyLocalLikeState(cleanId, false, finalCount);
-        setLikeButtonsState(cleanId, finalCount, false, false);
-        scheduleLikeRefresh();
-        return true;
-      } catch (error) {
-        console.debug("Klevby feed actions: duplicate unlike fallback", {
-          error: String(error?.message || error)
-        });
-      }
-    }
-
-    const stableCount = Math.max(0, Number(snapshot.likesCount || 0) || 0);
-
-    applyLocalLikeState(cleanId, true, stableCount);
-    setLikeButtonsState(cleanId, stableCount, true, false);
-    scheduleLikeRefresh();
-
-    return true;
-  }
-
   function getLikeSync(postId) {
     const cleanId = String(postId || "").trim();
 
@@ -1343,121 +1161,33 @@
     return likeSyncState.get(cleanId);
   }
 
-  async function processLikeSync(postId) {
-    const cleanId = String(postId || "").trim();
-    if (!cleanId) return;
+  async function commitLikeState(cleanId, desiredLiked, snapshot) {
+    const result = await callSetLikeStateApi(cleanId, desiredLiked);
 
-    const sync = getLikeSync(cleanId);
-
-    if (sync.inFlight) {
-      return;
+    if (result?.pendingConfirm) {
+      scheduleBackgroundLikeVerification(cleanId, snapshot, "slow_set_like_confirm", 0);
+      return null;
     }
 
-    sync.inFlight = true;
-    pendingLikeLocks.add(cleanId);
+    let normalized = normalizeLikeStateResult(result);
 
-    try {
-      let attempts = 0;
-
-      while (attempts < 6) {
-        attempts += 1;
-
-        const desiredLiked = sync.desiredLiked;
-
-        if (typeof desiredLiked !== "boolean") {
-          break;
-        }
-
-        const before = await callReadLikeStateApi(cleanId).catch(() => null);
-
-        if (
-          before &&
-          typeof before.liked === "boolean" &&
-          before.liked === desiredLiked
-        ) {
-          const currentSnapshot = getLikeSnapshot(cleanId);
-          const finalCount =
-            before.likesCount !== null && before.likesCount !== undefined
-              ? before.likesCount
-              : currentSnapshot.likesCount;
-
-          applyLocalLikeState(cleanId, desiredLiked, finalCount);
-          break;
-        }
-
-        const result = await callSetLikeStateApi(cleanId, desiredLiked);
-        const normalized = normalizeLikeStateResult(result) || {
-          liked: desiredLiked,
-          likesCount: null
-        };
-
-        const latestDesired = sync.desiredLiked;
-
-        if (
-          typeof normalized.liked === "boolean" &&
-          normalized.liked === latestDesired
-        ) {
-          const currentSnapshot = getLikeSnapshot(cleanId);
-          const finalCount =
-            normalized.likesCount !== null && normalized.likesCount !== undefined
-              ? normalized.likesCount
-              : currentSnapshot.likesCount;
-
-          applyLocalLikeState(cleanId, normalized.liked, finalCount);
-          break;
-        }
-
-        if (attempts >= 6) {
-          scheduleLikeRefresh(900);
-        }
-      }
-    } catch (error) {
-      if (isDuplicateLikeError(error)) {
-        const snapshot = getLikeSnapshot(cleanId);
-        await handleDuplicateLikeError(cleanId, snapshot);
-      } else {
-        const rollbackSnapshot = sync.rollbackSnapshot || getLikeSnapshot(cleanId);
-
-        rollbackLikeState(cleanId, rollbackSnapshot);
-
-        console.warn("Klevby feed actions: лайк не сработал", error);
-
-        const now = Date.now();
-
-        if (now - Number(sync.lastErrorAt || 0) > 2500) {
-          sync.lastErrorAt = now;
-          alert(error?.message || "Не получилось поставить лайк.");
-        }
-      }
-    } finally {
-      pendingLikeLocks.delete(cleanId);
-      sync.inFlight = false;
-
-      const currentSnapshot = getLikeSnapshot(cleanId);
-      const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
-
-      setLikeButtonsState(
-        cleanId,
-        currentSnapshot.likesCount,
-        currentLiked,
-        false
+    if (!normalized || typeof normalized.liked !== "boolean") {
+      const exactAfter = await withSoftTimeout(
+        readDirectLikeState(cleanId),
+        LIKE_READ_TIMEOUT_MS,
+        null,
+        "exact_like_after_missing_state"
       );
 
-      if (
-        typeof sync.desiredLiked === "boolean" &&
-        typeof currentLiked === "boolean" &&
-        sync.desiredLiked !== currentLiked
-      ) {
-        setTimeout(() => {
-          processLikeSync(cleanId);
-        }, 80);
-        return;
-      }
-
-      sync.rollbackSnapshot = null;
-      protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
-      scheduleLikeRefresh();
+      normalized = normalizeLikeStateResult(exactAfter);
     }
+
+    if (!normalized || typeof normalized.liked !== "boolean") {
+      scheduleBackgroundLikeVerification(cleanId, snapshot, "missing_set_like_state", 0);
+      return null;
+    }
+
+    return normalized;
   }
 
   async function toggleLikeFromCard(postId) {
@@ -1476,87 +1206,53 @@
       };
     }
 
-    protectLikeRender(cleanId);
+    const snapshot = getLikeSnapshot(cleanId);
+    const desiredLiked = !Boolean(snapshot.liked);
+    const optimisticCount = Math.max(
+      0,
+      Number(snapshot.likesCount || 0) + (desiredLiked ? 1 : -1)
+    );
 
     const sync = getLikeSync(cleanId);
-    const snapshot = getLikeSnapshot(cleanId);
 
     sync.inFlight = true;
     sync.rollbackSnapshot = snapshot;
-    pendingLikeLocks.add(cleanId);
+    sync.desiredLiked = desiredLiked;
+    sync.desiredCount = optimisticCount;
 
-    setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, true);
+    pendingLikeLocks.add(cleanId);
+    protectLikeRender(cleanId);
+
+    applyLocalLikeState(cleanId, desiredLiked, optimisticCount);
+    setLikeButtonsState(cleanId, optimisticCount, desiredLiked, true);
+
+    if (navigator.vibrate) {
+      navigator.vibrate(12);
+    }
+
+    console.info("Klevby feed actions: optimistic like applied", {
+      postId: cleanId,
+      desiredLiked,
+      optimisticCount
+    });
 
     try {
-      const result = await callToggleLikeApi(cleanId);
+      const normalized = await commitLikeState(cleanId, desiredLiked, snapshot);
 
-      if (result?.pendingConfirm) {
-        console.info("Klevby feed actions: server like pending confirmation", {
-          postId: cleanId,
-          recentlyResumed: isRecentlyResumed()
-        });
-
-        scheduleBackgroundLikeVerification(cleanId, snapshot, "slow_server_confirm", 0);
-
+      if (!normalized) {
         return {
           postId: cleanId,
-          liked: snapshot.liked,
-          likesCount: snapshot.likesCount,
+          liked: desiredLiked,
+          likesCount: optimisticCount,
           pending: true
         };
       }
 
-      const normalized = normalizeLikeStateResult(result);
-
-      if (!normalized || typeof normalized.liked !== "boolean") {
-        scheduleBackgroundLikeVerification(cleanId, snapshot, "missing_server_state", 0);
-
-        return {
-          postId: cleanId,
-          liked: snapshot.liked,
-          likesCount: snapshot.likesCount,
-          pending: true
-        };
-      }
-
-      let finalLiked = normalized.liked;
-      let finalCount =
+      const finalLiked = normalized.liked;
+      const finalCount =
         normalized.likesCount !== null && normalized.likesCount !== undefined
           ? Math.max(0, Number(normalized.likesCount || 0) || 0)
-          : null;
-
-      try {
-        const exactAfter = await withSoftTimeout(
-          readDirectLikeState(cleanId),
-          LIKE_READ_TIMEOUT_MS,
-          null,
-          "exact_like_after_optional"
-        );
-
-        if (exactAfter && typeof exactAfter.liked === "boolean") {
-          finalLiked = exactAfter.liked;
-
-          if (Number.isFinite(Number(exactAfter.likesCount))) {
-            finalCount = Math.max(0, Number(exactAfter.likesCount || 0));
-          }
-        }
-      } catch (afterError) {
-        console.debug("Klevby feed actions: optional exact after skipped", {
-          error: String(afterError?.message || afterError)
-        });
-      }
-
-      if (finalCount === null) {
-        const previousLiked =
-          typeof snapshot.liked === "boolean"
-            ? snapshot.liked
-            : !finalLiked;
-
-        finalCount = Math.max(
-          0,
-          Number(snapshot.likesCount || 0) + (finalLiked && !previousLiked ? 1 : !finalLiked && previousLiked ? -1 : 0)
-        );
-      }
+          : optimisticCount;
 
       applyLocalLikeState(cleanId, finalLiked, finalCount);
       setLikeButtonsState(cleanId, finalCount, finalLiked, false);
@@ -1564,11 +1260,7 @@
       sync.desiredLiked = finalLiked;
       sync.desiredCount = finalCount;
 
-      if (navigator.vibrate) {
-        navigator.vibrate(12);
-      }
-
-      console.info("Klevby feed actions: server like synced", {
+      console.info("Klevby feed actions: explicit like synced", {
         postId: cleanId,
         finalLiked,
         finalCount
@@ -1585,7 +1277,7 @@
         likesCount: finalCount
       };
     } catch (error) {
-      if (isRecentlyResumed()) {
+      if (Date.now() - Number(lastLikeResumeAt || 0) < LIKE_RECENT_RESUME_MS) {
         console.warn("Klevby feed actions: like delayed after resume, verifying in background", {
           postId: cleanId,
           error: String(error?.message || error)
@@ -1595,8 +1287,8 @@
 
         return {
           postId: cleanId,
-          liked: snapshot.liked,
-          likesCount: snapshot.likesCount,
+          liked: desiredLiked,
+          likesCount: optimisticCount,
           pending: true,
           error
         };
@@ -1640,6 +1332,26 @@
         );
       }
     }
+  }
+
+  function rollbackLikeState(postId, snapshot) {
+    const cleanId = String(postId || "").trim();
+
+    viewerLikeState.set(cleanId, Boolean(snapshot.liked));
+    writeViewerLikeCache(cleanId, Boolean(snapshot.liked));
+
+    patchLocalFeedItem(cleanId, {
+      likedByViewer: snapshot.liked === true,
+      viewerLiked: snapshot.liked === true,
+      isLiked: snapshot.liked === true,
+      liked: snapshot.liked === true,
+      hasLiked: snapshot.liked === true,
+      liked_by_viewer: snapshot.liked === true,
+      likesCount: snapshot.likesCount,
+      likes_count: snapshot.likesCount
+    });
+
+    setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, false);
   }
 
   async function toggleLikeFromViewer(postId) {
@@ -1851,6 +1563,8 @@
     }
 
     window.addEventListener("klevby-auth-changed", () => {
+      viewerLikeState.clear();
+
       setTimeout(() => {
         if (hasActiveLikeRenderProtection()) {
           scheduleLikeRefresh();
