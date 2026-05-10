@@ -10,6 +10,7 @@ const KLEVB_PROFILE_PHOTO_QUALITY = 0.68;
 const KLEVB_PROFILE_AVATAR_MAX_SIDE = 520;
 const KLEVB_PROFILE_AVATAR_QUALITY = 0.78;
 const KLEVB_PROFILE_AVATAR_BUCKET = "profile-avatars";
+const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
 
 let klevbyMainTabbarSnapshot = null;
 let klevbyOriginalGoHomeTop = null;
@@ -476,57 +477,9 @@ function getCurrentProfileUser() {
     window.klevbyCurrentUser ||
     window.klevbyUser ||
     (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
+    getProfileUserFromStoredAuth() ||
     null
   );
-}
-
-async function resolveCurrentProfileUser(supabase = null) {
-  const localUser = getCurrentProfileUser();
-
-  if (localUser?.id) {
-    return localUser;
-  }
-
-  const client = supabase || getProfileSupabaseClient();
-
-  if (!client?.auth) {
-    console.info("[KlevbyProfile] Пользователь не найден локально, Supabase auth недоступен.");
-    return null;
-  }
-
-  if (typeof client.auth.getUser === "function") {
-    try {
-      const { data, error } = await client.auth.getUser();
-
-      if (!error && data?.user?.id) {
-        return data.user;
-      }
-
-      if (error) {
-        console.warn("[KlevbyProfile] auth.getUser не вернул пользователя.", error);
-      }
-    } catch (error) {
-      console.warn("[KlevbyProfile] Ошибка auth.getUser.", error);
-    }
-  }
-
-  if (typeof client.auth.getSession === "function") {
-    try {
-      const { data, error } = await client.auth.getSession();
-
-      if (!error && data?.session?.user?.id) {
-        return data.session.user;
-      }
-
-      if (error) {
-        console.warn("[KlevbyProfile] auth.getSession не вернул пользователя.", error);
-      }
-    } catch (error) {
-      console.warn("[KlevbyProfile] Ошибка auth.getSession.", error);
-    }
-  }
-
-  return null;
 }
 
 function getProfileNameFromCurrentUser() {
@@ -582,6 +535,151 @@ function getProfileSupabaseClient() {
   return window.supabaseClient || window.klevbySupabase || null;
 }
 
+function getProfileSupabaseUrl() {
+  const config = window.KLEVB_CONFIG || window.KlevbyConfig || {};
+  const client = getProfileSupabaseClient();
+
+  return String(
+    config.SUPABASE_URL ||
+    config.supabaseUrl ||
+    config.supabase_url ||
+    window.SUPABASE_URL ||
+    client?.supabaseUrl ||
+    ""
+  ).replace(/\/+$/, "");
+}
+
+function getProfileSupabaseAnonKey() {
+  const config = window.KLEVB_CONFIG || window.KlevbyConfig || {};
+  const client = getProfileSupabaseClient();
+
+  return String(
+    config.SUPABASE_ANON_KEY ||
+    config.supabaseAnonKey ||
+    config.supabase_anon_key ||
+    window.SUPABASE_ANON_KEY ||
+    client?.supabaseKey ||
+    ""
+  );
+}
+
+function getProfileStoredAuthData() {
+  try {
+    const preferredKeys = [
+      "sb-klevby-auth-token",
+      "supabase.auth.token"
+    ];
+
+    for (const key of preferredKeys) {
+      const raw = localStorage.getItem(key);
+      const parsed = parseProfileAuthStorageValue(raw);
+
+      if (parsed) {
+        return parsed;
+      }
+    }
+
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index) || "";
+
+      if (!key.includes("auth-token") && !key.startsWith("sb-")) {
+        continue;
+      }
+
+      const raw = localStorage.getItem(key);
+      const parsed = parseProfileAuthStorageValue(raw);
+
+      if (parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.warn("[KlevbyProfile] Не удалось прочитать auth из localStorage.", error);
+  }
+
+  return null;
+}
+
+function parseProfileAuthStorageValue(raw) {
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
+  }
+}
+
+function getProfileAccessTokenFromStoredAuth() {
+  const authData = getProfileStoredAuthData();
+
+  return (
+    authData?.access_token ||
+    authData?.currentSession?.access_token ||
+    authData?.session?.access_token ||
+    authData?.data?.session?.access_token ||
+    ""
+  );
+}
+
+function getProfileUserFromStoredAuth() {
+  const authData = getProfileStoredAuthData();
+
+  return (
+    authData?.user ||
+    authData?.currentSession?.user ||
+    authData?.session?.user ||
+    authData?.data?.session?.user ||
+    null
+  );
+}
+
+async function resolveCurrentProfileUser(supabase = null) {
+  const localUser =
+    window.currentUser ||
+    window.klevbyCurrentUser ||
+    window.klevbyUser ||
+    (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
+    null;
+
+  if (localUser?.id) {
+    return localUser;
+  }
+
+  const storedUser = getProfileUserFromStoredAuth();
+
+  if (storedUser?.id) {
+    return storedUser;
+  }
+
+  const client = supabase || getProfileSupabaseClient();
+
+  if (!client?.auth || typeof client.auth.getUser !== "function") {
+    console.info("[KlevbyProfile] Пользователь не найден локально, Supabase auth недоступен.");
+    return null;
+  }
+
+  try {
+    const { data, error } = await promiseWithTimeout(
+      client.auth.getUser(),
+      2500,
+      "auth.getUser timeout"
+    );
+
+    if (!error && data?.user?.id) {
+      return data.user;
+    }
+
+    if (error) {
+      console.warn("[KlevbyProfile] auth.getUser не вернул пользователя.", error);
+    }
+  } catch (error) {
+    console.warn("[KlevbyProfile] Ошибка auth.getUser.", error);
+  }
+
+  return null;
+}
+
 function dataUrlToBlobSafe(dataUrl) {
   if (
     window.KlevbyFeedSupabaseCore &&
@@ -612,31 +710,222 @@ function dataUrlToBlobSafe(dataUrl) {
   return new Blob([bytes], { type: mime });
 }
 
+function encodeStoragePath(path) {
+  return String(path || "")
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+}
+
+function promiseWithTimeout(promise, timeoutMs, message = "Timeout") {
+  let timer = null;
+
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(message));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = KLEVB_PROFILE_REST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function getProfileRestAuthContext() {
+  const supabaseUrl = getProfileSupabaseUrl();
+  const anonKey = getProfileSupabaseAnonKey();
+  const accessToken = getProfileAccessTokenFromStoredAuth();
+
+  return {
+    supabaseUrl,
+    anonKey,
+    accessToken
+  };
+}
+
+function makeProfilePublicAvatarUrl(supabaseUrl, avatarPath) {
+  const cleanUrl = String(supabaseUrl || "").replace(/\/+$/, "");
+  const encodedPath = encodeStoragePath(avatarPath);
+  return `${cleanUrl}/storage/v1/object/public/${KLEVB_PROFILE_AVATAR_BUCKET}/${encodedPath}?v=${Date.now()}`;
+}
+
+async function uploadProfileAvatarByRest(avatarBlob, avatarPath) {
+  const { supabaseUrl, anonKey, accessToken } = getProfileRestAuthContext();
+
+  if (!supabaseUrl || !anonKey || !accessToken) {
+    throw new Error("Нет Supabase URL, anon key или access token для REST upload.");
+  }
+
+  const encodedPath = encodeStoragePath(avatarPath);
+  const url = `${supabaseUrl}/storage/v1/object/${KLEVB_PROFILE_AVATAR_BUCKET}/${encodedPath}`;
+
+  console.info("[KlevbyProfile] REST upload аватара старт.", {
+    bucket: KLEVB_PROFILE_AVATAR_BUCKET,
+    path: avatarPath,
+    size: avatarBlob.size,
+    type: avatarBlob.type || "image/jpeg"
+  });
+
+  const response = await fetchWithTimeout(url, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": avatarBlob.type || "image/jpeg",
+      "Cache-Control": "3600",
+      "x-upsert": "true"
+    },
+    body: avatarBlob
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Storage REST upload failed ${response.status}: ${text || response.statusText}`);
+  }
+
+  console.info("[KlevbyProfile] REST upload аватара завершён.", {
+    status: response.status,
+    path: avatarPath
+  });
+
+  return {
+    avatarUrl: makeProfilePublicAvatarUrl(supabaseUrl, avatarPath),
+    avatarPath,
+    responseText: text
+  };
+}
+
+async function updateProfileAvatarRowByRest(userId, avatarUrl, avatarPath) {
+  const { supabaseUrl, anonKey, accessToken } = getProfileRestAuthContext();
+
+  if (!supabaseUrl || !anonKey || !accessToken || !userId) {
+    throw new Error("Нет данных для REST update profiles.");
+  }
+
+  const url = `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`;
+
+  const response = await fetchWithTimeout(url, {
+    method: "PATCH",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      avatar_url: avatarUrl,
+      avatar_path: avatarPath,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`profiles REST update failed ${response.status}: ${text || response.statusText}`);
+  }
+
+  console.info("[KlevbyProfile] profiles.avatar_url/avatar_path обновлены через REST.", {
+    avatarPath,
+    avatarUrl
+  });
+
+  return true;
+}
+
+async function readProfileAvatarRowByRest(userId) {
+  const { supabaseUrl, anonKey, accessToken } = getProfileRestAuthContext();
+
+  if (!supabaseUrl || !anonKey || !accessToken || !userId) {
+    return "";
+  }
+
+  const url = `${supabaseUrl}/rest/v1/profiles?select=avatar_url&id=eq.${encodeURIComponent(userId)}&limit=1`;
+
+  const response = await fetchWithTimeout(url, {
+    method: "GET",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
+    }
+  }, 5000);
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`profiles REST read failed ${response.status}: ${text || response.statusText}`);
+  }
+
+  const rows = text ? JSON.parse(text) : [];
+  const avatarUrl = String(rows?.[0]?.avatar_url || "").trim();
+
+  return avatarUrl;
+}
+
 async function uploadProfileAvatarToSupabase(dataUrl) {
   const supabase = getProfileSupabaseClient();
   const currentUser = await resolveCurrentProfileUser(supabase);
 
-  if (!supabase || !currentUser?.id) {
-    console.info("[KlevbyProfile] Supabase/user недоступен, оставляем локальный аватар.");
+  if (!currentUser?.id) {
+    console.info("[KlevbyProfile] Пользователь недоступен, оставляем локальный аватар.");
     return null;
   }
 
   const avatarPath = `${currentUser.id}/avatar.jpg`;
   const avatarBlob = dataUrlToBlobSafe(dataUrl);
 
-  console.info("[KlevbyProfile] Загружаем аватар в Supabase Storage.", {
+  try {
+    const restResult = await uploadProfileAvatarByRest(avatarBlob, avatarPath);
+    await updateProfileAvatarRowByRest(currentUser.id, restResult.avatarUrl, restResult.avatarPath);
+
+    return {
+      avatarUrl: restResult.avatarUrl,
+      avatarPath: restResult.avatarPath
+    };
+  } catch (restError) {
+    console.warn("[KlevbyProfile] REST upload/update аватара не сработал.", restError);
+  }
+
+  if (!supabase?.storage) {
+    console.info("[KlevbyProfile] Supabase Storage SDK недоступен, оставляем локальный аватар.");
+    return null;
+  }
+
+  console.info("[KlevbyProfile] Пробуем fallback через Supabase SDK Storage.", {
     bucket: KLEVB_PROFILE_AVATAR_BUCKET,
     path: avatarPath,
     size: avatarBlob.size
   });
 
-  const { error: uploadError } = await supabase.storage
+  const uploadPromise = supabase.storage
     .from(KLEVB_PROFILE_AVATAR_BUCKET)
     .upload(avatarPath, avatarBlob, {
       contentType: avatarBlob.type || "image/jpeg",
       cacheControl: "3600",
       upsert: true
     });
+
+  const { error: uploadError } = await promiseWithTimeout(
+    uploadPromise,
+    KLEVB_PROFILE_REST_TIMEOUT_MS,
+    "Supabase SDK avatar upload timeout"
+  );
 
   if (uploadError) {
     throw uploadError;
@@ -646,13 +935,14 @@ async function uploadProfileAvatarToSupabase(dataUrl) {
     .from(KLEVB_PROFILE_AVATAR_BUCKET)
     .getPublicUrl(avatarPath);
 
-  const avatarUrl = publicData?.publicUrl || "";
+  const cleanAvatarUrl = publicData?.publicUrl || "";
+  const avatarUrl = cleanAvatarUrl ? `${cleanAvatarUrl}?v=${Date.now()}` : "";
 
   if (!avatarUrl) {
     throw new Error("Не удалось получить public URL аватара.");
   }
 
-  const { error: profileError } = await supabase
+  const updatePromise = supabase
     .from("profiles")
     .update({
       avatar_url: avatarUrl,
@@ -661,11 +951,17 @@ async function uploadProfileAvatarToSupabase(dataUrl) {
     })
     .eq("id", currentUser.id);
 
+  const { error: profileError } = await promiseWithTimeout(
+    updatePromise,
+    7000,
+    "Supabase SDK profile avatar update timeout"
+  );
+
   if (profileError) {
     throw profileError;
   }
 
-  console.info("[KlevbyProfile] profiles.avatar_url/avatar_path обновлены.", {
+  console.info("[KlevbyProfile] Аватар загружен через SDK fallback.", {
     avatarPath,
     avatarUrl
   });
@@ -760,15 +1056,37 @@ async function loadProfileAvatarFromSupabase() {
   const supabase = getProfileSupabaseClient();
   const currentUser = await resolveCurrentProfileUser(supabase);
 
-  if (!supabase || !currentUser?.id) {
+  if (!currentUser?.id) {
     return null;
   }
 
-  const { data, error } = await supabase
+  try {
+    const avatarUrlFromRest = await readProfileAvatarRowByRest(currentUser.id);
+
+    if (avatarUrlFromRest) {
+      setProfileAvatar(avatarUrlFromRest);
+      console.info("[KlevbyProfile] Загружен avatar_url из profiles через REST.");
+      return avatarUrlFromRest;
+    }
+  } catch (restError) {
+    console.warn("[KlevbyProfile] REST avatar_url read не сработал, пробуем SDK fallback.", restError);
+  }
+
+  if (!supabase) {
+    return null;
+  }
+
+  const queryPromise = supabase
     .from("profiles")
     .select("avatar_url")
     .eq("id", currentUser.id)
     .maybeSingle();
+
+  const { data, error } = await promiseWithTimeout(
+    queryPromise,
+    5000,
+    "Supabase SDK avatar_url read timeout"
+  );
 
   if (error) throw error;
 
