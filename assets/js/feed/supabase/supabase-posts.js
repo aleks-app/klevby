@@ -1268,6 +1268,31 @@
     }
   }
 
+  function removeFeedStorageFileInBackground(db, imagePath = "", postId = "") {
+    const cleanImagePath = String(imagePath || "").trim();
+
+    if (!cleanImagePath) return;
+
+    setTimeout(() => {
+      removeFeedStorageFileSafe(db, cleanImagePath)
+        .then((ok) => {
+          if (ok) {
+            console.info("Klevby feed: файл Storage удалён в фоне", {
+              postId: String(postId || ""),
+              imagePath: cleanImagePath
+            });
+          }
+        })
+        .catch((error) => {
+          console.warn("Klevby feed: фоновое удаление Storage не сработало", {
+            postId: String(postId || ""),
+            imagePath: cleanImagePath,
+            error
+          });
+        });
+    }, 0);
+  }
+
   async function deleteFeedPostFromSupabase(postId, imagePath = "") {
     const cleanPostId = String(postId || "").trim();
 
@@ -1335,11 +1360,11 @@
       throw new Error("Не получилось удалить пост: удаление не подтвердилось.");
     }
 
-    await removeFeedStorageFileSafe(db, imagePath);
-
     Core.dispatch("deleted", {
       postId: cleanPostId
     });
+
+    removeFeedStorageFileInBackground(db, imagePath, cleanPostId);
 
     return true;
   }
@@ -1363,6 +1388,8 @@
     insertFeedPostViaRest,
     deleteFeedPostViaSdk,
     deleteFeedPostViaRest,
+    removeFeedStorageFileSafe,
+    removeFeedStorageFileInBackground,
     deleteFeedPostFromSupabase
   };
 })();
