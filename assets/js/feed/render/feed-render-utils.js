@@ -7,6 +7,52 @@
     return window.KlevbyFeedState || {};
   }
 
+  function escapeHtml(value) {
+    const utils = getUtils();
+
+    if (typeof utils.escapeHtml === "function") {
+      return utils.escapeHtml(value);
+    }
+
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(value) {
+    const utils = getUtils();
+
+    if (typeof utils.escapeAttr === "function") {
+      return utils.escapeAttr(value);
+    }
+
+    return escapeHtml(value).replaceAll("`", "&#096;");
+  }
+
+  function formatDate(value) {
+    const utils = getUtils();
+
+    if (typeof utils.formatDate === "function") {
+      return utils.formatDate(value);
+    }
+
+    if (!value) return "";
+
+    try {
+      return new Date(value).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (_) {
+      return "";
+    }
+  }
+
   function cssEscape(value) {
     const cleanValue = String(value || "");
 
@@ -219,6 +265,9 @@
   }
 
   const utils = {
+    escapeHtml,
+    escapeAttr,
+    formatDate,
     cssEscape,
     uniqueArray,
     getAvatar,
