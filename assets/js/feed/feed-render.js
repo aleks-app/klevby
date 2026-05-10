@@ -5,6 +5,9 @@
   let klevbyFeedMobileWidthLockBound = false;
   let klevbyFeedMobileWidthLockTimer = null;
   let klevbyFeedLegacyCacheCleanupDone = false;
+  let klevbyFeedLikeTapFlashBound = false;
+
+  const klevbyFeedLikeTapFlashTimers = new WeakMap();
 
   const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
   const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
@@ -155,7 +158,7 @@
     "klevby_feed_cache_v1",
     "klevby_feed_cache_v2"
   ];
-  const FEED_STYLES_VERSION = "20260510-feed-like-touch-hover-fix-1";
+  const FEED_STYLES_VERSION = "20260510-feed-like-tap-flash-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -573,6 +576,79 @@
     });
   }
 
+  function triggerLikeTapFlash(button) {
+    if (!button || !button.classList) return;
+
+    const oldTimer = klevbyFeedLikeTapFlashTimers.get(button);
+
+    if (oldTimer) {
+      clearTimeout(oldTimer);
+      klevbyFeedLikeTapFlashTimers.delete(button);
+    }
+
+    button.classList.remove("klevby-like-tap-flash");
+
+    try {
+      void button.offsetWidth;
+    } catch (_) {}
+
+    button.classList.add("klevby-like-tap-flash");
+
+    const timer = setTimeout(() => {
+      button.classList.remove("klevby-like-tap-flash");
+      klevbyFeedLikeTapFlashTimers.delete(button);
+
+      try {
+        button.blur();
+      } catch (_) {}
+    }, 150);
+
+    klevbyFeedLikeTapFlashTimers.set(button, timer);
+  }
+
+  function bindLikeTapFlash() {
+    if (klevbyFeedLikeTapFlashBound) return;
+
+    klevbyFeedLikeTapFlashBound = true;
+
+    const handlePress = (event) => {
+      const button = event.target?.closest?.(".profile-feed-like-btn");
+
+      if (!button) return;
+
+      triggerLikeTapFlash(button);
+    };
+
+    if (window.PointerEvent) {
+      document.addEventListener("pointerdown", handlePress, {
+        passive: true,
+        capture: true
+      });
+    } else {
+      document.addEventListener("touchstart", handlePress, {
+        passive: true,
+        capture: true
+      });
+
+      document.addEventListener("mousedown", handlePress, {
+        passive: true,
+        capture: true
+      });
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+
+      const button = event.target?.closest?.(".profile-feed-like-btn");
+
+      if (!button) return;
+
+      triggerLikeTapFlash(button);
+    }, {
+      capture: true
+    });
+  }
+
   function getItemId(item) {
     return String(item?.id || "").trim();
   }
@@ -902,6 +978,7 @@
 
   function ensureFeedStyles() {
     bindMobileFeedWidthLock();
+    bindLikeTapFlash();
     scheduleMobileFeedWidthLock("ensure_styles", 40);
 
     const oldStyle = document.getElementById("klevbyFeedStyles");
@@ -1280,6 +1357,56 @@
           linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.045)),
           rgba(18, 28, 23, 0.86) !important;
         color: rgba(255,248,234,0.94) !important;
+      }
+
+      @keyframes klevbyLikeTapFlash {
+        0% {
+          border-color: rgba(255, 189, 74, 0.70);
+          background:
+            linear-gradient(180deg, rgba(255, 189, 74, 0.28), rgba(255, 255, 255, 0.075)),
+            rgba(30, 42, 34, 0.96);
+          color: #fff8ea;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.10),
+            0 10px 24px rgba(255, 171, 48, 0.14),
+            0 10px 22px rgba(0, 0, 0, 0.20);
+          transform: scale(0.985);
+        }
+
+        58% {
+          border-color: rgba(255, 189, 74, 0.52);
+          background:
+            linear-gradient(180deg, rgba(255, 189, 74, 0.18), rgba(255, 255, 255, 0.06)),
+            rgba(24, 34, 28, 0.94);
+          color: #fff8ea;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 8px 18px rgba(255, 171, 48, 0.10),
+            0 10px 20px rgba(0, 0, 0, 0.18);
+          transform: scale(0.992);
+        }
+
+        100% {
+          border-color: rgba(244, 178, 74, 0.22);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.045)),
+            rgba(18, 28, 23, 0.86);
+          color: rgba(255,248,234,0.94);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.055),
+            0 10px 22px rgba(0, 0, 0, 0.18);
+          transform: translateZ(0);
+        }
+      }
+
+      .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash,
+      .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:hover,
+      .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:focus,
+      .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:focus-visible,
+      .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:active {
+        animation: klevbyLikeTapFlash 145ms ease-out 1 both !important;
+        outline: none !important;
+        filter: none !important;
       }
 
       .home-empty-card {
