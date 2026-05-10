@@ -1,14 +1,9 @@
 (function () {
   let klevbyFeedRenderRetryTimer = null;
   let klevbyFeedRenderRetryCount = 0;
-  let klevbyFeedImageWarmupTimer = null;
 
   const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
   const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
-
-  const FEED_DESKTOP_PRELOAD_LIMIT = 16;
-  const FEED_DESKTOP_EAGER_LIMIT = 8;
-  const FEED_DESKTOP_HIGH_PRIORITY_LIMIT = 5;
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -28,6 +23,10 @@
 
   function getCache() {
     return window.KlevbyFeedRenderCache || {};
+  }
+
+  function getImages() {
+    return window.KlevbyFeedRenderImages || {};
   }
 
   function escapeHtml(value) {
@@ -221,10 +220,6 @@
     });
   }
 
-  function uniqueArray(values) {
-    return Array.from(new Set(values.filter(Boolean)));
-  }
-
   function resetRenderRetry() {
     klevbyFeedRenderRetryCount = 0;
 
@@ -279,6 +274,12 @@
   }
 
   function isDesktopFeedMode() {
+    const images = getImages();
+
+    if (typeof images.isDesktopFeedMode === "function") {
+      return images.isDesktopFeedMode();
+    }
+
     try {
       if (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) {
         return false;
@@ -288,6 +289,44 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function warmDesktopFeedImages(items, source = "unknown") {
+    const images = getImages();
+
+    if (typeof images.warmDesktopFeedImages === "function") {
+      images.warmDesktopFeedImages(items, source);
+    }
+  }
+
+  function getImageLoadingForIndex(index = 0) {
+    const images = getImages();
+
+    if (typeof images.getImageLoadingForIndex === "function") {
+      return images.getImageLoadingForIndex(index);
+    }
+
+    return isDesktopFeedMode() && Number(index || 0) < 8 ? "eager" : "lazy";
+  }
+
+  function getImageFetchPriorityForIndex(index = 0) {
+    const images = getImages();
+
+    if (typeof images.getImageFetchPriorityForIndex === "function") {
+      return images.getImageFetchPriorityForIndex(index);
+    }
+
+    return isDesktopFeedMode() && Number(index || 0) < 5 ? "high" : "auto";
+  }
+
+  function shouldUseDesktopImageElement() {
+    const images = getImages();
+
+    if (typeof images.shouldUseDesktopImageElement === "function") {
+      return images.shouldUseDesktopImageElement();
+    }
+
+    return isDesktopFeedMode();
   }
 
   function getItemId(item) {
@@ -438,64 +477,6 @@
     return true;
   }
 
-  function warmDesktopFeedImage(url, index = 0) {
-    const imageUrl = String(url || "").trim();
-
-    if (!imageUrl) return;
-
-    window.__klevbyFeedPreloadedImages = window.__klevbyFeedPreloadedImages || {};
-
-    if (window.__klevbyFeedPreloadedImages[imageUrl]) {
-      return;
-    }
-
-    window.__klevbyFeedPreloadedImages[imageUrl] = true;
-
-    try {
-      const image = new Image();
-
-      image.decoding = "async";
-
-      if ("fetchPriority" in image) {
-        image.fetchPriority = index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
-      }
-
-      image.src = imageUrl;
-
-      if (typeof image.decode === "function") {
-        image.decode().catch(() => {});
-      }
-    } catch (_) {}
-  }
-
-  function warmDesktopFeedImages(items, source = "unknown") {
-    if (!isDesktopFeedMode()) return;
-
-    const safeItems = getRenderableFeedItems(items);
-    const urls = uniqueArray(
-      safeItems
-        .slice(0, FEED_DESKTOP_PRELOAD_LIMIT)
-        .map(getItemImage)
-    );
-
-    if (!urls.length) return;
-
-    if (klevbyFeedImageWarmupTimer) {
-      clearTimeout(klevbyFeedImageWarmupTimer);
-      klevbyFeedImageWarmupTimer = null;
-    }
-
-    const delay = source === "cache" || source === "memory" ? 20 : 80;
-
-    klevbyFeedImageWarmupTimer = setTimeout(() => {
-      klevbyFeedImageWarmupTimer = null;
-
-      urls.forEach((url, index) => {
-        warmDesktopFeedImage(url, index);
-      });
-    }, delay);
-  }
-
   function patchExistingFeedCards(list, items, fullSignature, structureSignature, source) {
     if (!list || !listHasRealContent(list)) return false;
 
@@ -634,9 +615,9 @@
       ? ` data-liked="${likedState ? "true" : "false"}" aria-pressed="${likedState ? "true" : "false"}"`
       : "";
 
-    const useDesktopImageElement = isDesktopFeedMode();
-    const imageLoading = useDesktopImageElement && index < FEED_DESKTOP_EAGER_LIMIT ? "eager" : "lazy";
-    const imageFetchPriority = useDesktopImageElement && index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
+    const useDesktopImageElement = shouldUseDesktopImageElement();
+    const imageLoading = getImageLoadingForIndex(index);
+    const imageFetchPriority = getImageFetchPriorityForIndex(index);
     const imageBackgroundAttr = useDesktopImageElement
       ? ""
       : ` style="background-image: url('${safeImage}')"`;
