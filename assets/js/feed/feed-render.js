@@ -2,7 +2,6 @@
   let klevbyFeedRenderRetryTimer = null;
   let klevbyFeedRenderRetryCount = 0;
   let klevbyFeedImageWarmupTimer = null;
-  let klevbyFeedLegacyCacheCleanupDone = false;
 
   const FEED_RENDER_RETRY_DELAYS = [300, 800, 1600, 3000, 5500, 9000];
   const FEED_RENDER_MAX_RETRIES = FEED_RENDER_RETRY_DELAYS.length;
@@ -10,15 +9,6 @@
   const FEED_DESKTOP_PRELOAD_LIMIT = 16;
   const FEED_DESKTOP_EAGER_LIMIT = 8;
   const FEED_DESKTOP_HIGH_PRIORITY_LIMIT = 5;
-
-  const FEED_CACHE_VERSION = 3;
-  const FEED_CACHE_LIMIT = 40;
-  const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-  const FEED_CACHE_PREFIX = "klevby_feed_cache_v3";
-  const FEED_LEGACY_CACHE_PREFIXES = [
-    "klevby_feed_cache_v1",
-    "klevby_feed_cache_v2"
-  ];
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -34,6 +24,10 @@
 
   function getStyles() {
     return window.KlevbyFeedRenderStyles || {};
+  }
+
+  function getCache() {
+    return window.KlevbyFeedRenderCache || {};
   }
 
   function escapeHtml(value) {
@@ -182,133 +176,41 @@
     }
   }
 
-  function getFeedCacheOwnerKey() {
-    const possibleUser =
-      window.klevbyCurrentUser ||
-      window.currentUser ||
-      window.klevbyUser ||
-      null;
-
-    const userId = String(possibleUser?.id || "").trim();
-
-    if (userId) {
-      return userId;
-    }
-
-    return "anon";
-  }
-
-  function uniqueArray(values) {
-    return Array.from(new Set(values.filter(Boolean)));
-  }
-
-  function getFeedCacheReadKeys() {
-    const ownerKey = getFeedCacheOwnerKey();
-
-    return uniqueArray([
-      `${FEED_CACHE_PREFIX}_${ownerKey}`,
-      `${FEED_CACHE_PREFIX}_global`,
-      `${FEED_CACHE_PREFIX}_anon`
-    ]);
-  }
-
-  function getFeedCacheWriteKeys() {
-    const ownerKey = getFeedCacheOwnerKey();
-
-    return uniqueArray([
-      `${FEED_CACHE_PREFIX}_${ownerKey}`,
-      `${FEED_CACHE_PREFIX}_global`
-    ]);
-  }
-
-  function removeCacheKey(cacheKey) {
-    try {
-      localStorage.removeItem(cacheKey);
-    } catch (_) {}
-  }
-
   function cleanupLegacyFeedCache() {
-    if (klevbyFeedLegacyCacheCleanupDone) return;
+    const cache = getCache();
 
-    klevbyFeedLegacyCacheCleanupDone = true;
-
-    try {
-      const keysToRemove = [];
-
-      for (let i = 0; i < localStorage.length; i += 1) {
-        const key = String(localStorage.key(i) || "");
-
-        if (FEED_LEGACY_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-          keysToRemove.push(key);
-        }
-      }
-
-      keysToRemove.forEach(removeCacheKey);
-
-      if (keysToRemove.length) {
-        console.info("Klevby feed render: old feed cache cleared", {
-          removed: keysToRemove.length
-        });
-      }
-    } catch (error) {
-      console.debug("Klevby feed render: old cache cleanup skipped", {
-        error: String(error?.message || error)
-      });
+    if (typeof cache.cleanupLegacyFeedCache === "function") {
+      cache.cleanupLegacyFeedCache();
     }
   }
 
-  function normalizeFeedCacheItem(item) {
-    if (!item || typeof item !== "object") return null;
+  function readFeedCache() {
+    const cache = getCache();
 
-    const id = String(item.id || "").trim();
-    const image = String(item.image || item.imageUrl || "").trim();
+    if (typeof cache.readFeedCache === "function") {
+      const items = cache.readFeedCache();
+      return Array.isArray(items) ? items : [];
+    }
 
-    if (!id || !image) return null;
-
-    const likesCount = Math.max(0, Number(item.likesCount || item.likes_count || 0) || 0);
-    const commentsCount = Math.max(0, Number(item.commentsCount || item.comments_count || 0) || 0);
-    const viewsCount = Math.max(0, Number(item.viewsCount || item.views_count || 0) || 0);
-    const likedByViewer = Boolean(item.likedByViewer || item.viewerLiked || item.liked_by_viewer);
-
-    return {
-      id,
-      source: item.source || "",
-      image,
-      imageUrl: item.imageUrl || item.image || "",
-      imagePath: item.imagePath || item.image_path || "",
-      authorName: item.authorName || item.author_name || "Рыбак",
-      authorCity: item.authorCity || item.author_city || "",
-      authorAvatarUrl: item.authorAvatarUrl || item.author_avatar_url || item.avatarUrl || item.avatar || "",
-      avatarUrl: item.avatarUrl || item.authorAvatarUrl || item.author_avatar_url || item.avatar || "",
-      avatar: item.avatar || item.avatarUrl || item.authorAvatarUrl || item.author_avatar_url || "",
-      title: item.title || item.caption || "Фото с рыбалки",
-      caption: item.caption || item.title || "Фото с рыбалки",
-      likesCount,
-      likes_count: likesCount,
-      commentsCount,
-      comments_count: commentsCount,
-      viewsCount,
-      views_count: viewsCount,
-      likedByViewer,
-      viewerLiked: likedByViewer,
-      liked_by_viewer: likedByViewer,
-      createdAt: item.createdAt || item.created_at || new Date().toISOString(),
-      updatedAt: item.updatedAt || item.updated_at || "",
-      userId: item.userId || item.user_id || item.ownerId || item.owner_id || null,
-      ownerId: item.ownerId || item.owner_id || item.userId || item.user_id || null
-    };
+    return [];
   }
 
-  function normalizeFeedCacheItems(items) {
-    if (!Array.isArray(items)) return [];
+  function writeFeedCache(items) {
+    const cache = getCache();
 
-    return items
-      .map(normalizeFeedCacheItem)
-      .filter(Boolean)
-      .slice(0, FEED_CACHE_LIMIT);
+    if (typeof cache.writeFeedCache === "function") {
+      cache.writeFeedCache(items);
+    }
   }
 
   function getRenderableFeedItems(items) {
+    const cache = getCache();
+
+    if (typeof cache.getRenderableFeedItems === "function") {
+      const renderableItems = cache.getRenderableFeedItems(items);
+      return Array.isArray(renderableItems) ? renderableItems : [];
+    }
+
     if (!Array.isArray(items)) return [];
 
     return items.filter((item) => {
@@ -319,75 +221,8 @@
     });
   }
 
-  function readFeedCache() {
-    cleanupLegacyFeedCache();
-
-    const cacheKeys = getFeedCacheReadKeys();
-
-    for (const cacheKey of cacheKeys) {
-      try {
-        const raw = localStorage.getItem(cacheKey);
-        if (!raw) continue;
-
-        const parsed = JSON.parse(raw);
-        const version = Number(parsed?.version || 0);
-        const savedAt = Number(parsed?.savedAt || 0);
-
-        if (version !== FEED_CACHE_VERSION || !savedAt) {
-          removeCacheKey(cacheKey);
-          continue;
-        }
-
-        if (Date.now() - savedAt > FEED_CACHE_TTL_MS) {
-          removeCacheKey(cacheKey);
-          continue;
-        }
-
-        const normalized = normalizeFeedCacheItems(parsed?.items || []);
-
-        if (normalized.length) {
-          return normalized;
-        }
-      } catch (error) {
-        removeCacheKey(cacheKey);
-
-        console.debug("Klevby feed render: cache read skipped", {
-          key: cacheKey,
-          error: String(error?.message || error)
-        });
-      }
-    }
-
-    return [];
-  }
-
-  function writeFeedCache(items) {
-    cleanupLegacyFeedCache();
-
-    const normalized = normalizeFeedCacheItems(items);
-    const cacheKeys = getFeedCacheWriteKeys();
-
-    try {
-      if (!normalized.length) {
-        cacheKeys.forEach(removeCacheKey);
-        return;
-      }
-
-      const payload = JSON.stringify({
-        version: FEED_CACHE_VERSION,
-        savedAt: Date.now(),
-        count: normalized.length,
-        items: normalized
-      });
-
-      cacheKeys.forEach((cacheKey) => {
-        localStorage.setItem(cacheKey, payload);
-      });
-    } catch (error) {
-      console.debug("Klevby feed render: cache write skipped", {
-        error: String(error?.message || error)
-      });
-    }
+  function uniqueArray(values) {
+    return Array.from(new Set(values.filter(Boolean)));
   }
 
   function resetRenderRetry() {
@@ -1002,7 +837,8 @@
     emptyHtml,
     loadingHtml,
     renderProfileFeed,
-    refreshFeedIfHomeVisible
+    refreshFeedIfHomeVisible,
+    getRenderableFeedItems
   };
 
   window.KlevbyFeedRender = renderer;
