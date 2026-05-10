@@ -155,7 +155,7 @@
     "klevby_feed_cache_v1",
     "klevby_feed_cache_v2"
   ];
-  const FEED_STYLES_VERSION = "20260509-feed-render-cache-v3-1";
+  const FEED_STYLES_VERSION = "20260510-feed-like-touch-hover-fix-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -1214,6 +1214,10 @@
           0 10px 22px rgba(0, 0, 0, 0.18) !important;
         cursor: pointer !important;
         transform: translateZ(0) !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
         transition:
           background 0.16s ease,
           border-color 0.16s ease,
@@ -1222,18 +1226,38 @@
           transform 0.08s ease !important;
       }
 
-      .profile-feed-actions .small-btn:hover,
-      .profile-feed-actions .small-btn:focus-visible {
-        border-color: rgba(255, 189, 74, 0.46) !important;
-        background:
-          linear-gradient(180deg, rgba(255, 189, 74, 0.18), rgba(255, 255, 255, 0.055)),
-          rgba(24, 34, 28, 0.94) !important;
-        color: #fff8ea !important;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.075),
-          0 12px 26px rgba(255, 171, 48, 0.10),
-          0 12px 28px rgba(0, 0, 0, 0.22) !important;
-        outline: none !important;
+      @media (hover: hover) and (pointer: fine) {
+        .profile-feed-actions .small-btn:hover,
+        .profile-feed-actions .small-btn:focus-visible {
+          border-color: rgba(255, 189, 74, 0.46) !important;
+          background:
+            linear-gradient(180deg, rgba(255, 189, 74, 0.18), rgba(255, 255, 255, 0.055)),
+            rgba(24, 34, 28, 0.94) !important;
+          color: #fff8ea !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.075),
+            0 12px 26px rgba(255, 171, 48, 0.10),
+            0 12px 28px rgba(0, 0, 0, 0.22) !important;
+          outline: none !important;
+        }
+      }
+
+      @media (hover: none), (pointer: coarse) {
+        .profile-feed-actions .profile-feed-like-btn:hover,
+        .profile-feed-actions .profile-feed-like-btn:focus,
+        .profile-feed-actions .profile-feed-like-btn:focus-visible,
+        .profile-feed-actions .profile-feed-like-btn:active {
+          border-color: rgba(244, 178, 74, 0.22) !important;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.045)),
+            rgba(18, 28, 23, 0.86) !important;
+          color: rgba(255,248,234,0.94) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.055),
+            0 10px 22px rgba(0, 0, 0, 0.18) !important;
+          outline: none !important;
+          filter: none !important;
+        }
       }
 
       .profile-feed-actions .small-btn:active {
