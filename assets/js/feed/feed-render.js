@@ -158,7 +158,7 @@
     "klevby_feed_cache_v1",
     "klevby_feed_cache_v2"
   ];
-  const FEED_STYLES_VERSION = "20260510-feed-like-tap-flash-android-1";
+  const FEED_STYLES_VERSION = "20260510-feed-like-tap-flash-1";
 
   function getFeedCacheOwnerKey() {
     const possibleUser =
@@ -445,22 +445,6 @@
     }
   }
 
-  function isAndroidDevice() {
-    try {
-      return /Android/i.test(String(navigator.userAgent || ""));
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function getLikeTapFlashDuration() {
-    if (isAndroidDevice()) {
-      return 230;
-    }
-
-    return 150;
-  }
-
   function lockMobileHorizontalScroll() {
     const html = document.documentElement;
     const body = document.body;
@@ -596,7 +580,6 @@
     if (!button || !button.classList) return;
 
     const oldTimer = klevbyFeedLikeTapFlashTimers.get(button);
-    const flashDuration = getLikeTapFlashDuration();
 
     if (oldTimer) {
       clearTimeout(oldTimer);
@@ -604,10 +587,6 @@
     }
 
     button.classList.remove("klevby-like-tap-flash");
-
-    try {
-      button.style.setProperty("--klevby-like-flash-duration", `${flashDuration}ms`);
-    } catch (_) {}
 
     try {
       void button.offsetWidth;
@@ -622,7 +601,7 @@
       try {
         button.blur();
       } catch (_) {}
-    }, flashDuration + 40);
+    }, 150);
 
     klevbyFeedLikeTapFlashTimers.set(button, timer);
   }
@@ -1382,27 +1361,27 @@
 
       @keyframes klevbyLikeTapFlash {
         0% {
-          border-color: rgba(255, 189, 74, 0.76);
+          border-color: rgba(255, 189, 74, 0.70);
           background:
-            linear-gradient(180deg, rgba(255, 189, 74, 0.32), rgba(255, 255, 255, 0.085)),
-            rgba(32, 45, 36, 0.98);
+            linear-gradient(180deg, rgba(255, 189, 74, 0.28), rgba(255, 255, 255, 0.075)),
+            rgba(30, 42, 34, 0.96);
           color: #fff8ea;
           box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.12),
-            0 10px 24px rgba(255, 171, 48, 0.17),
+            inset 0 1px 0 rgba(255, 255, 255, 0.10),
+            0 10px 24px rgba(255, 171, 48, 0.14),
             0 10px 22px rgba(0, 0, 0, 0.20);
           transform: scale(0.985);
         }
 
-        62% {
-          border-color: rgba(255, 189, 74, 0.54);
+        58% {
+          border-color: rgba(255, 189, 74, 0.52);
           background:
-            linear-gradient(180deg, rgba(255, 189, 74, 0.20), rgba(255, 255, 255, 0.06)),
+            linear-gradient(180deg, rgba(255, 189, 74, 0.18), rgba(255, 255, 255, 0.06)),
             rgba(24, 34, 28, 0.94);
           color: #fff8ea;
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.08),
-            0 8px 18px rgba(255, 171, 48, 0.11),
+            0 8px 18px rgba(255, 171, 48, 0.10),
             0 10px 20px rgba(0, 0, 0, 0.18);
           transform: scale(0.992);
         }
@@ -1425,7 +1404,7 @@
       .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:focus,
       .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:focus-visible,
       .profile-feed-actions .profile-feed-like-btn.klevby-like-tap-flash:active {
-        animation: klevbyLikeTapFlash var(--klevby-like-flash-duration, 150ms) ease-out 1 both !important;
+        animation: klevbyLikeTapFlash 145ms ease-out 1 both !important;
         outline: none !important;
         filter: none !important;
       }
@@ -1633,7 +1612,7 @@
       : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
 
     const likeButton = isSupabase
-      ? `<button class="small-btn gray profile-feed-like-btn${likedState ? " is-liked liked" : ""}" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}"${likedAttrs} onclick="event.stopPropagation(); window.klevbyFlashFeedLikeButton && window.klevbyFlashFeedLikeButton(this); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
+      ? `<button class="small-btn gray profile-feed-like-btn${likedState ? " is-liked liked" : ""}" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}"${likedAttrs} onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 ${likesCount}</button>`
       : "";
 
     const commentButton = isSupabase
@@ -1817,13 +1796,11 @@
     emptyHtml,
     loadingHtml,
     renderProfileFeed,
-    refreshFeedIfHomeVisible,
-    triggerLikeTapFlash
+    refreshFeedIfHomeVisible
   };
 
   window.KlevbyFeedRender = renderer;
 
   window.renderProfileFeed = renderProfileFeed;
   window.profilePhotoCardHtml = profilePhotoCardHtml;
-  window.klevbyFlashFeedLikeButton = triggerLikeTapFlash;
 })();
