@@ -51,6 +51,25 @@
     );
   }
 
+  function isDeleteRestFallbackError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+    const name = String(error?.name || "").toLowerCase();
+    const payload = `${name} ${message}`;
+
+    return (
+      payload.includes("timeout") ||
+      payload.includes("не ответило") ||
+      payload.includes("timed out") ||
+      payload.includes("network") ||
+      payload.includes("fetch") ||
+      payload.includes("websocket") ||
+      payload.includes("closed") ||
+      payload.includes("connection") ||
+      payload.includes("supabase") ||
+      payload.includes("failed")
+    );
+  }
+
   function buildPostsRestQuery(limit, options = {}) {
     const params = new URLSearchParams();
     const includeAvatar = options.includeAvatar !== false;
@@ -68,6 +87,12 @@
     params.set("limit", String(limit));
 
     return params.toString();
+  }
+
+  function buildDeletePostRestQuery(postId) {
+    const cleanPostId = String(postId || "").trim();
+
+    return `id=eq.${encodeURIComponent(cleanPostId)}`;
   }
 
   async function runFeedPostsRestQuery(limit) {
@@ -385,20 +410,43 @@
     return item;
   }
 
-  async function deleteFeedPostFromSupabase(postId, imagePath = "") {
-    const db = Core.getClient();
+  async function recoverSupabaseClientBeforeDelete(reason = "") {
+    const recover =
+      typeof window.recoverSupabaseClient === "function"
+        ? window.recoverSupabaseClient
+        : typeof window.klevbyRecoverSupabaseClient === "function"
+          ? window.klevbyRecoverSupabaseClient
+          : null;
 
+    if (!recover) return false;
+
+    try {
+      console.info("Klevby feed: пробую восстановить Supabase перед REST delete", {
+        reason: String(reason || "")
+      });
+
+      await Core.rejectTimeout(
+        Promise.resolve(recover({
+          reason: "feed_delete_fallback",
+          source: "supabase-posts"
+        })),
+        3500,
+        "Supabase recover не ответил."
+      );
+
+      return true;
+    } catch (error) {
+      console.warn("Klevby feed: recover перед REST delete не сработал", error);
+      return false;
+    }
+  }
+
+  async function deleteFeedPostViaSdk(db, cleanPostId) {
     if (!db) {
-      throw new Error("Supabase ещё не готов.");
+      throw new Error("Supabase SDK client недоступен.");
     }
 
-    const cleanPostId = String(postId || "").trim();
-
-    if (!cleanPostId) {
-      throw new Error("Не указан id поста.");
-    }
-
-    const { error } = await Core.rejectTimeout(
+    const result = await Core.rejectTimeout(
       db
         .from(Core.TABLE)
         .delete()
@@ -407,20 +455,128 @@
       "Удаление поста не ответило."
     );
 
-    if (error) {
-      console.error("Klevby feed: ошибка удаления feed_posts", error);
-      throw new Error("Не получилось удалить пост: " + error.message);
+    if (result?.error) {
+      throw result.error;
     }
 
-    if (imagePath) {
-      try {
-        await db.storage
+    return true;
+  }
+
+  async function deleteFeedPostViaRest(cleanPostId) {
+    if (!Rest || typeof Rest.restRequest !== "function") {
+      throw new Error("REST-модуль Supabase-ленты недоступен.");
+    }
+
+    await Rest.restRequest(Core.TABLE, {
+      method: "DELETE",
+      query: buildDeletePostRestQuery(cleanPostId),
+      requireAuth: true,
+      timeoutMs: Core.REST_TIMEOUT_MS,
+      headers: {
+        Prefer: "return=minimal"
+      }
+    });
+
+    return true;
+  }
+
+  async function removeFeedStorageFileSafe(db, imagePath = "") {
+    const cleanImagePath = String(imagePath || "").trim();
+
+    if (!cleanImagePath) return true;
+
+    if (!db || !db.storage) {
+      console.warn("Klevby feed: пост удалён, но Storage SDK недоступен для удаления файла", {
+        imagePath: cleanImagePath
+      });
+
+      return false;
+    }
+
+    try {
+      await Core.rejectTimeout(
+        db.storage
           .from(Core.BUCKET)
-          .remove([imagePath]);
-      } catch (storageError) {
-        console.warn("Klevby feed: пост удалён, но файл Storage удалить не получилось", storageError);
+          .remove([cleanImagePath]),
+        Core.REST_TIMEOUT_MS,
+        "Удаление файла Storage не ответило."
+      );
+
+      return true;
+    } catch (storageError) {
+      console.warn("Klevby feed: пост удалён, но файл Storage удалить не получилось", storageError);
+      return false;
+    }
+  }
+
+  async function deleteFeedPostFromSupabase(postId, imagePath = "") {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      throw new Error("Не указан id поста.");
+    }
+
+    let db = Core.getClient();
+    let sdkError = null;
+    let deleted = false;
+
+    if (db) {
+      try {
+        await deleteFeedPostViaSdk(db, cleanPostId);
+        deleted = true;
+
+        console.info("Klevby feed: feed_posts удалён через SDK", {
+          postId: cleanPostId
+        });
+      } catch (error) {
+        sdkError = error;
+
+        console.warn("Klevby feed: SDK delete feed_posts не сработал, пробую REST fallback", {
+          postId: cleanPostId,
+          fallbackReason: String(error?.message || error),
+          isLikelyResumeError: isDeleteRestFallbackError(error)
+        });
+      }
+    } else {
+      sdkError = new Error("Supabase SDK client недоступен.");
+      console.warn("Klevby feed: SDK client недоступен, пробую REST delete", {
+        postId: cleanPostId
+      });
+    }
+
+    if (!deleted) {
+      await recoverSupabaseClientBeforeDelete(sdkError?.message || sdkError || "sdk_delete_failed");
+
+      db = Core.getClient() || db;
+
+      try {
+        await deleteFeedPostViaRest(cleanPostId);
+        deleted = true;
+
+        console.info("Klevby feed: feed_posts удалён через REST fallback", {
+          postId: cleanPostId
+        });
+      } catch (restError) {
+        console.error("Klevby feed: ошибка удаления feed_posts", {
+          postId: cleanPostId,
+          sdkError,
+          restError
+        });
+
+        const message =
+          restError?.message ||
+          sdkError?.message ||
+          "Удаление поста не ответило.";
+
+        throw new Error("Не получилось удалить пост: " + message);
       }
     }
+
+    if (!deleted) {
+      throw new Error("Не получилось удалить пост: удаление не подтвердилось.");
+    }
+
+    await removeFeedStorageFileSafe(db, imagePath);
 
     Core.dispatch("deleted", {
       postId: cleanPostId
@@ -432,11 +588,15 @@
   window.KlevbyFeedSupabasePosts = {
     getPostSelectColumns,
     isPostsRestFallbackError,
+    isDeleteRestFallbackError,
     buildPostsRestQuery,
+    buildDeletePostRestQuery,
     runFeedPostsRestQuery,
     runFeedPostsQuery,
     loadFeedPostsFromSupabase,
     createFeedPhotoPost,
+    deleteFeedPostViaSdk,
+    deleteFeedPostViaRest,
     deleteFeedPostFromSupabase
   };
 })();
