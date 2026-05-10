@@ -518,6 +518,28 @@
     return getKnownLikeStateFromItem(item);
   }
 
+  function releaseLikeButtonPressVisual(button) {
+    if (!button) return;
+
+    const clear = () => {
+      button.classList.remove("is-pending-like", "is-pending", "liked", "is-liked");
+
+      try {
+        if (button === document.activeElement) {
+          button.blur();
+        }
+      } catch (_) {}
+    };
+
+    clear();
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(clear);
+    }
+
+    setTimeout(clear, 80);
+  }
+
   function isButtonHoveredOrFocused(button) {
     if (!button) return false;
 
@@ -640,7 +662,7 @@
         button.disabled = false;
         button.dataset.pendingLike = "0";
         button.setAttribute("aria-busy", "false");
-        button.classList.remove("is-pending-like", "is-pending");
+        releaseLikeButtonPressVisual(button);
       });
 
     console.info("Klevby feed actions: like runtime reset", {
@@ -746,18 +768,15 @@
 
       button.disabled = false;
       button.setAttribute("aria-busy", safePending ? "true" : "false");
-      button.classList.toggle("is-pending-like", false);
-      button.classList.toggle("is-pending", false);
+
+      releaseLikeButtonPressVisual(button);
 
       if (typeof liked === "boolean") {
         button.dataset.liked = liked ? "true" : "false";
         button.setAttribute("aria-pressed", liked ? "true" : "false");
-        button.classList.toggle("liked", liked);
-        button.classList.toggle("is-liked", liked);
       } else {
         button.removeAttribute("aria-pressed");
         delete button.dataset.liked;
-        button.classList.remove("liked", "is-liked");
       }
     });
   }
