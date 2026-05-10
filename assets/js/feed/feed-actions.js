@@ -5,6 +5,7 @@
   let likeRefreshTimer = null;
   let likeResumeResetTimer = null;
   let lastLikeRuntimeResetAt = 0;
+  let lastLikeResumeAt = 0;
 
   const pendingLikeLocks = new Set();
   const viewerLikeState = new Map();
@@ -18,9 +19,11 @@
   const LIKE_BACKGROUND_REFRESH_MS = 6200;
   const LIKE_PROTECTION_RECHECK_MS = 900;
   const LIKE_PREFLIGHT_TIMEOUT_MS = 850;
-  const LIKE_READ_TIMEOUT_MS = 1800;
-  const LIKE_WRITE_TIMEOUT_MS = 5000;
+  const LIKE_READ_TIMEOUT_MS = 2200;
+  const LIKE_WRITE_TIMEOUT_MS = 12000;
   const LIKE_RESUME_REFRESH_DELAY_MS = 180;
+  const LIKE_RECENT_RESUME_MS = 14000;
+  const LIKE_BACKGROUND_VERIFY_DELAYS = [1400, 3000, 5500, 9000];
 
   const FEED_AUTO_REFRESH_MS = 45000;
 
@@ -443,6 +446,10 @@
     return pendingLikeLocks.size > 0;
   }
 
+  function isRecentlyResumed() {
+    return Date.now() - Number(lastLikeResumeAt || 0) < LIKE_RECENT_RESUME_MS;
+  }
+
   function resetLikeRuntimeState(reason = "resume") {
     const now = Date.now();
 
@@ -483,12 +490,22 @@
   }
 
   function recoverFeedAfterResume(reason = "resume", delay = LIKE_RESUME_REFRESH_DELAY_MS) {
+    lastLikeResumeAt = Date.now();
+
     if (likeResumeResetTimer) {
       clearTimeout(likeResumeResetTimer);
       likeResumeResetTimer = null;
     }
 
     resetLikeRuntimeState(reason);
+
+    setTimeout(() => {
+      ensureCurrentUser().catch((error) => {
+        console.debug("Klevby feed actions: resume auth warmup skipped", {
+          error: String(error?.message || error)
+        });
+      });
+    }, 80);
 
     likeResumeResetTimer = setTimeout(() => {
       likeResumeResetTimer = null;
@@ -560,16 +577,18 @@
   function setLikeButtonsState(postId, likesCount, liked, pending = false) {
     const cleanId = String(postId || "").trim();
     const safeCount = Math.max(0, Number(likesCount || 0) || 0);
+    const safePending = Boolean(pending);
 
     getLikeButtons(cleanId).forEach((button) => {
-      button.textContent = `👍 ${safeCount}`;
-      button.dataset.pendingLike = pending ? "1" : "0";
+      button.textContent = safePending ? `⏳ ${safeCount}` : `👍 ${safeCount}`;
+      button.dataset.pendingLike = safePending ? "1" : "0";
       button.dataset.likeCount = String(safeCount);
       button.dataset.feedPostId = cleanId;
 
-      button.disabled = false;
-      button.setAttribute("aria-busy", pending ? "true" : "false");
-      button.classList.remove("is-pending-like");
+      button.disabled = safePending;
+      button.setAttribute("aria-busy", safePending ? "true" : "false");
+      button.classList.toggle("is-pending-like", safePending);
+      button.classList.toggle("is-pending", safePending);
 
       if (typeof liked === "boolean") {
         button.dataset.liked = liked ? "true" : "false";
@@ -1154,6 +1173,89 @@
     }, Math.max(400, Number(delay || LIKE_BACKGROUND_REFRESH_MS)));
   }
 
+  function scheduleBackgroundLikeVerification(postId, snapshot = {}, reason = "background", attempt = 0) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return;
+
+    const delay = LIKE_BACKGROUND_VERIFY_DELAYS[Math.min(
+      Math.max(0, Number(attempt || 0)),
+      LIKE_BACKGROUND_VERIFY_DELAYS.length - 1
+    )];
+
+    window.setTimeout(async () => {
+      try {
+        const serverState = await callReadLikeStateApi(cleanId);
+
+        if (serverState && typeof serverState.liked === "boolean") {
+          const finalCount =
+            serverState.likesCount !== null && serverState.likesCount !== undefined
+              ? Math.max(0, Number(serverState.likesCount || 0) || 0)
+              : Math.max(0, Number(snapshot.likesCount || 0) || 0);
+
+          applyLocalLikeState(cleanId, serverState.liked, finalCount);
+          setLikeButtonsState(cleanId, finalCount, serverState.liked, false);
+
+          const sync = getLikeSync(cleanId);
+          sync.inFlight = false;
+          sync.rollbackSnapshot = null;
+          sync.desiredLiked = serverState.liked;
+          sync.desiredCount = finalCount;
+
+          pendingLikeLocks.delete(cleanId);
+          protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
+          scheduleLikeRefresh(900);
+
+          console.info("Klevby feed actions: background like verified", {
+            postId: cleanId,
+            liked: serverState.liked,
+            likesCount: finalCount,
+            reason,
+            attempt
+          });
+
+          return;
+        }
+      } catch (error) {
+        console.debug("Klevby feed actions: background like verification skipped", {
+          postId: cleanId,
+          reason,
+          attempt,
+          error: String(error?.message || error)
+        });
+      }
+
+      if (attempt + 1 < LIKE_BACKGROUND_VERIFY_DELAYS.length) {
+        scheduleBackgroundLikeVerification(cleanId, snapshot, reason, attempt + 1);
+        return;
+      }
+
+      pendingLikeLocks.delete(cleanId);
+
+      const sync = getLikeSync(cleanId);
+      sync.inFlight = false;
+      sync.rollbackSnapshot = null;
+
+      const currentSnapshot = getLikeSnapshot(cleanId);
+      const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
+
+      setLikeButtonsState(
+        cleanId,
+        currentSnapshot.likesCount,
+        currentLiked,
+        false
+      );
+
+      refreshFeedIfHomeVisible();
+      refreshOpenCommentsIfNeeded(180);
+
+      console.warn("Klevby feed actions: background like verification gave up", {
+        postId: cleanId,
+        reason
+      });
+    }, Math.max(500, Number(delay || 0)));
+  }
+
   async function callToggleLikeApi(cleanId) {
     const api = getApi();
 
@@ -1170,16 +1272,19 @@
       throw new Error("Лайки ещё не подключены.");
     }
 
+    const timeoutMs = isRecentlyResumed()
+      ? Math.max(LIKE_WRITE_TIMEOUT_MS, 14000)
+      : LIKE_WRITE_TIMEOUT_MS;
+
     const result = await withSoftTimeout(
       candidate(cleanId),
-      LIKE_WRITE_TIMEOUT_MS,
-      null,
+      timeoutMs,
+      {
+        pendingConfirm: true,
+        postId: cleanId
+      },
       "toggle_like_server_authority"
     );
-
-    if (!result) {
-      throw new Error("Supabase не успел подтвердить лайк.");
-    }
 
     return result;
   }
@@ -1384,10 +1489,34 @@
 
     try {
       const result = await callToggleLikeApi(cleanId);
+
+      if (result?.pendingConfirm) {
+        console.info("Klevby feed actions: server like pending confirmation", {
+          postId: cleanId,
+          recentlyResumed: isRecentlyResumed()
+        });
+
+        scheduleBackgroundLikeVerification(cleanId, snapshot, "slow_server_confirm", 0);
+
+        return {
+          postId: cleanId,
+          liked: snapshot.liked,
+          likesCount: snapshot.likesCount,
+          pending: true
+        };
+      }
+
       const normalized = normalizeLikeStateResult(result);
 
       if (!normalized || typeof normalized.liked !== "boolean") {
-        throw new Error("Supabase не вернул состояние лайка.");
+        scheduleBackgroundLikeVerification(cleanId, snapshot, "missing_server_state", 0);
+
+        return {
+          postId: cleanId,
+          liked: snapshot.liked,
+          likesCount: snapshot.likesCount,
+          pending: true
+        };
       }
 
       let finalLiked = normalized.liked;
@@ -1456,6 +1585,23 @@
         likesCount: finalCount
       };
     } catch (error) {
+      if (isRecentlyResumed()) {
+        console.warn("Klevby feed actions: like delayed after resume, verifying in background", {
+          postId: cleanId,
+          error: String(error?.message || error)
+        });
+
+        scheduleBackgroundLikeVerification(cleanId, snapshot, "resume_error_background_verify", 0);
+
+        return {
+          postId: cleanId,
+          liked: snapshot.liked,
+          likesCount: snapshot.likesCount,
+          pending: true,
+          error
+        };
+      }
+
       rollbackLikeState(cleanId, snapshot);
 
       console.warn("Klevby feed actions: лайк не сработал", error);
@@ -1474,19 +1620,25 @@
         error
       };
     } finally {
-      pendingLikeLocks.delete(cleanId);
-      sync.inFlight = false;
-      sync.rollbackSnapshot = null;
+      const stillPending = pendingLikeLocks.has(cleanId) && getLikeButtons(cleanId).some((button) => {
+        return button.dataset.pendingLike === "1";
+      });
 
-      const currentSnapshot = getLikeSnapshot(cleanId);
-      const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
+      if (!stillPending) {
+        pendingLikeLocks.delete(cleanId);
+        sync.inFlight = false;
+        sync.rollbackSnapshot = null;
 
-      setLikeButtonsState(
-        cleanId,
-        currentSnapshot.likesCount,
-        currentLiked,
-        false
-      );
+        const currentSnapshot = getLikeSnapshot(cleanId);
+        const currentLiked = getKnownLikeState(cleanId, currentSnapshot.item);
+
+        setLikeButtonsState(
+          cleanId,
+          currentSnapshot.likesCount,
+          currentLiked,
+          false
+        );
+      }
     }
   }
 
