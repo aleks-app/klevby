@@ -70,6 +70,39 @@
     );
   }
 
+  function isCreateRestFallbackError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+    const name = String(error?.name || "").toLowerCase();
+    const payload = `${name} ${message}`;
+
+    return (
+      payload.includes("timeout") ||
+      payload.includes("не ответил") ||
+      payload.includes("не ответило") ||
+      payload.includes("timed out") ||
+      payload.includes("network") ||
+      payload.includes("fetch") ||
+      payload.includes("websocket") ||
+      payload.includes("closed") ||
+      payload.includes("connection") ||
+      payload.includes("supabase") ||
+      payload.includes("failed") ||
+      payload.includes("load failed")
+    );
+  }
+
+  function isObjectAlreadyExistsError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+    const status = Number(error?.status || error?.statusCode || 0);
+
+    return (
+      status === 409 ||
+      message.includes("already exists") ||
+      message.includes("duplicate") ||
+      message.includes("resource already exists")
+    );
+  }
+
   function buildPostsRestQuery(limit, options = {}) {
     const params = new URLSearchParams();
     const includeAvatar = options.includeAvatar !== false;
@@ -93,6 +126,324 @@
     const cleanPostId = String(postId || "").trim();
 
     return `id=eq.${encodeURIComponent(cleanPostId)}`;
+  }
+
+  function buildInsertPostRestQuery(includeAvatar = true) {
+    const params = new URLSearchParams();
+    params.set("select", getPostSelectColumns(includeAvatar));
+    return params.toString();
+  }
+
+  function buildFindPostByImagePathRestQuery(imagePath, includeAvatar = true) {
+    const params = new URLSearchParams();
+    params.set("select", getPostSelectColumns(includeAvatar));
+    params.set("image_path", `eq.${String(imagePath || "").trim()}`);
+    params.set("limit", "1");
+    return params.toString();
+  }
+
+  function encodeStoragePath(path) {
+    return String(path || "")
+      .split("/")
+      .map((part) => encodeURIComponent(part))
+      .join("/");
+  }
+
+  function getConfig() {
+    if (Core && typeof Core.getConfig === "function") {
+      try {
+        return Core.getConfig() || {};
+      } catch (error) {
+        console.warn("Klevby feed: Core.getConfig не сработал", error);
+      }
+    }
+
+    return window.KLEVB_CONFIG || window.klevbyConfig || {};
+  }
+
+  function getSupabaseUrl() {
+    const config = getConfig();
+    return String(
+      config.supabaseUrl ||
+      config.SUPABASE_URL ||
+      window.KLEVB_CONFIG?.SUPABASE_URL ||
+      ""
+    ).replace(/\/+$/, "");
+  }
+
+  function getSupabaseAnonKey() {
+    const config = getConfig();
+    return String(
+      config.supabaseAnonKey ||
+      config.SUPABASE_ANON_KEY ||
+      window.KLEVB_CONFIG?.SUPABASE_ANON_KEY ||
+      ""
+    );
+  }
+
+  function getSupabaseStorageKeys() {
+    const config = getConfig();
+    const explicitKeys = [
+      config.supabaseStorageKey,
+      config.SUPABASE_STORAGE_KEY,
+      window.KLEVB_CONFIG?.SUPABASE_STORAGE_KEY,
+      "sb-klevby-auth-token"
+    ].filter(Boolean);
+
+    try {
+      const detectedKeys = Object.keys(localStorage || {})
+        .filter((key) => /^sb-.*-auth-token$/i.test(key));
+
+      return Array.from(new Set([...explicitKeys, ...detectedKeys]));
+    } catch (error) {
+      return Array.from(new Set(explicitKeys));
+    }
+  }
+
+  function normalizeStoredSession(parsed) {
+    if (!parsed || typeof parsed !== "object") return null;
+
+    if (parsed.currentSession?.access_token) {
+      return parsed.currentSession;
+    }
+
+    if (parsed.session?.access_token) {
+      return parsed.session;
+    }
+
+    if (parsed.access_token) {
+      return parsed;
+    }
+
+    return null;
+  }
+
+  function readStoredSupabaseSession() {
+    const keys = getSupabaseStorageKeys();
+
+    for (const key of keys) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        const parsed = JSON.parse(raw);
+        const session = normalizeStoredSession(parsed);
+
+        if (session?.access_token) {
+          return session;
+        }
+      } catch (error) {
+        // silently skip broken storage keys
+      }
+    }
+
+    return null;
+  }
+
+  function getStoredAccessToken() {
+    const session = readStoredSupabaseSession();
+    return String(session?.access_token || "");
+  }
+
+  function getStoredUser() {
+    const session = readStoredSupabaseSession();
+    return session?.user || null;
+  }
+
+  async function getAuthContextSafe(requireAuth = false) {
+    let token = "";
+    let user = null;
+
+    if (Auth && typeof Auth.getAuthContext === "function") {
+      try {
+        const context = await Core.rejectTimeout(
+          Promise.resolve(Auth.getAuthContext(requireAuth)),
+          3500,
+          "Supabase auth context не ответил."
+        );
+
+        token = String(
+          context?.accessToken ||
+          context?.access_token ||
+          context?.token ||
+          context?.session?.access_token ||
+          ""
+        );
+
+        user = context?.user || context?.session?.user || null;
+      } catch (error) {
+        console.debug("Klevby feed: Auth.getAuthContext не сработал, пробую fallback", error);
+      }
+    }
+
+    if (!token) {
+      const db = Core.getClient ? Core.getClient() : null;
+
+      if (db?.auth && typeof db.auth.getSession === "function") {
+        try {
+          const { data, error } = await Core.rejectTimeout(
+            db.auth.getSession(),
+            3500,
+            "Supabase getSession не ответил."
+          );
+
+          if (!error && data?.session?.access_token) {
+            token = String(data.session.access_token || "");
+            user = data.session.user || user;
+          }
+        } catch (error) {
+          console.debug("Klevby feed: auth.getSession не сработал, читаю localStorage", error);
+        }
+      }
+    }
+
+    if (!token) {
+      token = getStoredAccessToken();
+    }
+
+    if (!user) {
+      user = getStoredUser();
+    }
+
+    if (requireAuth && !token) {
+      throw new Error("Нет активной сессии Supabase.");
+    }
+
+    return {
+      token,
+      user
+    };
+  }
+
+  async function directSupabaseRequest(path, options = {}) {
+    const supabaseUrl = getSupabaseUrl();
+    const anonKey = getSupabaseAnonKey();
+
+    if (!supabaseUrl || !anonKey) {
+      throw new Error("Supabase config недоступен для REST-запроса.");
+    }
+
+    const cleanPath = String(path || "").startsWith("/")
+      ? String(path || "")
+      : `/${String(path || "")}`;
+
+    const query = options.query ? `?${String(options.query).replace(/^\?/, "")}` : "";
+    const url = `${supabaseUrl}${cleanPath}${query}`;
+    const method = String(options.method || "GET").toUpperCase();
+    const timeoutMs = Number(options.timeoutMs || Core.REST_TIMEOUT_MS || 9000);
+    const requireAuth = options.requireAuth !== false;
+    const authContext = await getAuthContextSafe(requireAuth);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    const headers = {
+      apikey: anonKey,
+      ...(options.headers || {})
+    };
+
+    if (authContext.token) {
+      headers.Authorization = `Bearer ${authContext.token}`;
+    } else if (requireAuth) {
+      clearTimeout(timer);
+      throw new Error("Нет токена Supabase для REST-запроса.");
+    }
+
+    const fetchOptions = {
+      method,
+      headers,
+      signal: controller.signal
+    };
+
+    if (options.body !== undefined) {
+      if (
+        options.body instanceof Blob ||
+        options.body instanceof FormData ||
+        typeof options.body === "string"
+      ) {
+        fetchOptions.body = options.body;
+      } else {
+        headers["Content-Type"] = headers["Content-Type"] || "application/json";
+        fetchOptions.body = JSON.stringify(options.body);
+      }
+    }
+
+    try {
+      const response = await fetch(url, fetchOptions);
+      const text = await response.text();
+
+      if (!response.ok) {
+        let payload = null;
+
+        try {
+          payload = text ? JSON.parse(text) : null;
+        } catch (error) {
+          payload = null;
+        }
+
+        const error = new Error(
+          payload?.message ||
+          payload?.error ||
+          text ||
+          `${response.status} ${response.statusText}`
+        );
+
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.details = payload?.details || "";
+        error.hint = payload?.hint || "";
+        error.payload = payload;
+        throw error;
+      }
+
+      if (options.parseJson === false) {
+        return text || null;
+      }
+
+      if (!text) return null;
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return text;
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw new Error("REST-запрос Supabase не ответил.");
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function restTableRequestDirect(table, options = {}) {
+    return directSupabaseRequest(`/rest/v1/${String(table || "")}`, options);
+  }
+
+  function getPublicStorageUrl(db, bucket, path) {
+    const cleanBucket = String(bucket || "").trim();
+    const cleanPath = String(path || "").trim();
+
+    if (!cleanBucket || !cleanPath) return "";
+
+    try {
+      const publicUrlResult = db?.storage
+        ?.from(cleanBucket)
+        ?.getPublicUrl(cleanPath);
+
+      const publicUrl = publicUrlResult?.data?.publicUrl || "";
+
+      if (publicUrl) return publicUrl;
+    } catch (error) {
+      // fallback below
+    }
+
+    const supabaseUrl = getSupabaseUrl();
+
+    if (!supabaseUrl) return "";
+
+    return `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(cleanBucket)}/${encodeStoragePath(cleanPath)}`;
   }
 
   async function runFeedPostsRestQuery(limit) {
@@ -269,14 +620,454 @@
     }
   }
 
-  async function createFeedPhotoPost(photoData = {}) {
-    const db = Core.getClient();
+  async function ensureFeedUserForCreate() {
+    if (Auth && typeof Auth.ensureUser === "function") {
+      try {
+        const user = await Core.rejectTimeout(
+          Promise.resolve(Auth.ensureUser()),
+          4500,
+          "Пользователь Supabase не ответил."
+        );
 
+        if (user?.id) return user;
+      } catch (error) {
+        console.warn("Klevby feed: Auth.ensureUser не ответил, пробую session fallback", error);
+      }
+    }
+
+    const authContext = await getAuthContextSafe(true);
+
+    if (authContext.user?.id) {
+      return authContext.user;
+    }
+
+    throw new Error("Сначала войди или создай профиль, чтобы фото было видно в общей ленте.");
+  }
+
+  function isPublicUrl(value) {
+    return /^https?:\/\//i.test(String(value || "").trim());
+  }
+
+  async function loadAuthorAvatarUrlFromProfiles(userId) {
+    const cleanUserId = String(userId || "").trim();
+
+    if (!cleanUserId) return "";
+
+    const params = new URLSearchParams();
+    params.set("select", "avatar_url");
+    params.set("id", `eq.${cleanUserId}`);
+    params.set("limit", "1");
+
+    try {
+      const data = await restTableRequestDirect("profiles", {
+        method: "GET",
+        query: params.toString(),
+        requireAuth: true,
+        timeoutMs: 3500
+      });
+
+      const row = Array.isArray(data) ? data[0] : data;
+      const avatarUrl = String(row?.avatar_url || "").trim();
+
+      return isPublicUrl(avatarUrl) ? avatarUrl : "";
+    } catch (error) {
+      console.debug("Klevby feed: avatar_url из profiles не подтянулся для поста", error);
+      return "";
+    }
+  }
+
+  async function resolveAuthorAvatarUrl(user, profile = {}) {
+    const directUrl = String(
+      profile.author_avatar_url ||
+      profile.avatar_url ||
+      profile.avatarUrl ||
+      profile.avatar ||
+      ""
+    ).trim();
+
+    if (isPublicUrl(directUrl)) {
+      return directUrl;
+    }
+
+    return loadAuthorAvatarUrlFromProfiles(user?.id || "");
+  }
+
+  async function recoverSupabaseClient(reason = "", source = "feed") {
+    const recover =
+      typeof window.recoverSupabaseClient === "function"
+        ? window.recoverSupabaseClient
+        : typeof window.klevbyRecoverSupabaseClient === "function"
+          ? window.klevbyRecoverSupabaseClient
+          : null;
+
+    if (!recover) return false;
+
+    try {
+      console.info("Klevby feed: пробую восстановить Supabase", {
+        reason: String(reason || ""),
+        source
+      });
+
+      await Core.rejectTimeout(
+        Promise.resolve(recover({
+          reason: source,
+          source: "supabase-posts"
+        })),
+        3500,
+        "Supabase recover не ответил."
+      );
+
+      return true;
+    } catch (error) {
+      console.warn("Klevby feed: recover Supabase не сработал", error);
+      return false;
+    }
+  }
+
+  async function uploadFeedStorageViaSdk(db, imagePath, blob) {
+    if (!db?.storage) {
+      throw new Error("Supabase Storage SDK недоступен.");
+    }
+
+    const uploadResult = await Core.rejectTimeout(
+      db.storage
+        .from(Core.BUCKET)
+        .upload(imagePath, blob, {
+          cacheControl: "31536000",
+          contentType: blob.type || "image/jpeg",
+          upsert: false
+        }),
+      Core.REST_TIMEOUT_MS,
+      "Фото не загрузилось: Supabase не ответил."
+    );
+
+    if (uploadResult?.error) {
+      throw uploadResult.error;
+    }
+
+    return {
+      path: imagePath,
+      source: "sdk_storage"
+    };
+  }
+
+  async function uploadFeedStorageViaRest(imagePath, blob) {
+    const cleanBucket = String(Core.BUCKET || "").trim();
+    const cleanPath = String(imagePath || "").trim();
+
+    if (!cleanBucket || !cleanPath) {
+      throw new Error("Не указан bucket/path для загрузки фото.");
+    }
+
+    await directSupabaseRequest(
+      `/storage/v1/object/${encodeURIComponent(cleanBucket)}/${encodeStoragePath(cleanPath)}`,
+      {
+        method: "POST",
+        requireAuth: true,
+        timeoutMs: Core.REST_TIMEOUT_MS,
+        headers: {
+          "Content-Type": blob.type || "image/jpeg",
+          "Cache-Control": "31536000",
+          "x-upsert": "true"
+        },
+        body: blob,
+        parseJson: false
+      }
+    );
+
+    return {
+      path: imagePath,
+      source: "rest_storage"
+    };
+  }
+
+  async function uploadFeedStorageWithFallback(db, imagePath, blob) {
+    try {
+      const result = await uploadFeedStorageViaSdk(db, imagePath, blob);
+      const imageUrl = getPublicStorageUrl(db, Core.BUCKET, imagePath);
+
+      console.info("Klevby feed: фото загружено в Storage через SDK", {
+        imagePath
+      });
+
+      return {
+        ...result,
+        imageUrl
+      };
+    } catch (sdkError) {
+      console.warn("Klevby feed: SDK upload Storage не сработал, пробую REST fallback", {
+        imagePath,
+        fallbackReason: String(sdkError?.message || sdkError),
+        isLikelyResumeError: isCreateRestFallbackError(sdkError)
+      });
+
+      await recoverSupabaseClient(sdkError?.message || sdkError || "sdk_upload_failed", "feed_upload_fallback");
+
+      try {
+        const result = await uploadFeedStorageViaRest(imagePath, blob);
+        const nextDb = Core.getClient ? Core.getClient() : db;
+        const imageUrl = getPublicStorageUrl(nextDb || db, Core.BUCKET, imagePath);
+
+        console.info("Klevby feed: фото загружено в Storage через REST fallback", {
+          imagePath
+        });
+
+        return {
+          ...result,
+          imageUrl
+        };
+      } catch (restError) {
+        if (isObjectAlreadyExistsError(restError)) {
+          const nextDb = Core.getClient ? Core.getClient() : db;
+          const imageUrl = getPublicStorageUrl(nextDb || db, Core.BUCKET, imagePath);
+
+          console.warn("Klevby feed: Storage REST вернул duplicate, считаю файл уже загруженным", {
+            imagePath
+          });
+
+          return {
+            path: imagePath,
+            imageUrl,
+            source: "rest_storage_existing"
+          };
+        }
+
+        console.error("Klevby feed: REST upload Storage не сработал", {
+          imagePath,
+          sdkError,
+          restError
+        });
+
+        throw new Error("Фото не загрузилось в Supabase Storage: " + (restError?.message || sdkError?.message || restError));
+      }
+    }
+  }
+
+  async function findFeedPostByImagePathViaRest(imagePath) {
+    const cleanImagePath = String(imagePath || "").trim();
+
+    if (!cleanImagePath) return null;
+
+    const attempts = [true, false];
+    let lastError = null;
+
+    for (const includeAvatar of attempts) {
+      try {
+        const data = await restTableRequestDirect(Core.TABLE, {
+          method: "GET",
+          query: buildFindPostByImagePathRestQuery(cleanImagePath, includeAvatar),
+          requireAuth: true,
+          timeoutMs: Core.REST_TIMEOUT_MS
+        });
+
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (row?.id) {
+          return row;
+        }
+
+        return null;
+      } catch (error) {
+        lastError = error;
+
+        if (!isPostsRestFallbackError(error)) {
+          throw error;
+        }
+      }
+    }
+
+    if (lastError) {
+      console.debug("Klevby feed: поиск поста по image_path не сработал", lastError);
+    }
+
+    return null;
+  }
+
+  async function insertFeedPostViaSdk(db, payload) {
     if (!db) {
+      throw new Error("Supabase SDK client недоступен.");
+    }
+
+    const insertPayload = {
+      ...payload
+    };
+
+    let insertResult = await Core.rejectTimeout(
+      db
+        .from(Core.TABLE)
+        .insert([insertPayload])
+        .select(getPostSelectColumns(true))
+        .single(),
+      Core.REST_TIMEOUT_MS,
+      "Пост ленты не создался: Supabase не ответил."
+    );
+
+    if (
+      insertResult?.error &&
+      String(insertResult.error.message || "").toLowerCase().includes("author_avatar")
+    ) {
+      delete insertPayload.author_avatar_url;
+
+      insertResult = await Core.rejectTimeout(
+        db
+          .from(Core.TABLE)
+          .insert([insertPayload])
+          .select(getPostSelectColumns(false))
+          .single(),
+        Core.REST_TIMEOUT_MS,
+        "Пост ленты не создался: Supabase не ответил."
+      );
+    }
+
+    if (insertResult?.error) {
+      throw insertResult.error;
+    }
+
+    return {
+      data: insertResult?.data || null,
+      payload: insertPayload,
+      source: "sdk_insert"
+    };
+  }
+
+  async function insertFeedPostViaRest(payload) {
+    const attempts = [
+      {
+        includeAvatar: true,
+        payload: { ...payload },
+        source: "rest_insert"
+      },
+      {
+        includeAvatar: false,
+        payload: (() => {
+          const cleanPayload = { ...payload };
+          delete cleanPayload.author_avatar_url;
+          return cleanPayload;
+        })(),
+        source: "rest_insert_no_avatar"
+      }
+    ];
+
+    let lastError = null;
+
+    for (const attempt of attempts) {
+      try {
+        const data = await restTableRequestDirect(Core.TABLE, {
+          method: "POST",
+          query: buildInsertPostRestQuery(attempt.includeAvatar),
+          requireAuth: true,
+          timeoutMs: Core.REST_TIMEOUT_MS,
+          headers: {
+            Prefer: "return=representation"
+          },
+          body: attempt.payload
+        });
+
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (!row?.id) {
+          throw new Error("REST insert feed_posts не вернул созданный пост.");
+        }
+
+        return {
+          data: row,
+          payload: attempt.payload,
+          source: attempt.source
+        };
+      } catch (error) {
+        lastError = error;
+
+        if (attempt.includeAvatar && isPostsRestFallbackError(error)) {
+          console.debug("Klevby feed: REST insert с avatar пропущен, пробую без avatar", error);
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw lastError || new Error("REST insert feed_posts не сработал.");
+  }
+
+  async function insertFeedPostWithFallback(db, payload, imagePath) {
+    try {
+      const result = await insertFeedPostViaSdk(db, payload);
+
+      console.info("Klevby feed: feed_posts создан через SDK", {
+        postId: result?.data?.id || ""
+      });
+
+      return result;
+    } catch (sdkError) {
+      console.warn("Klevby feed: SDK insert feed_posts не сработал, пробую REST fallback", {
+        imagePath,
+        fallbackReason: String(sdkError?.message || sdkError),
+        isLikelyResumeError: isCreateRestFallbackError(sdkError)
+      });
+
+      await recoverSupabaseClient(sdkError?.message || sdkError || "sdk_insert_failed", "feed_insert_fallback");
+
+      try {
+        const existing = await findFeedPostByImagePathViaRest(imagePath);
+
+        if (existing?.id) {
+          console.warn("Klevby feed: после SDK insert timeout найден уже созданный post по image_path", {
+            postId: existing.id,
+            imagePath
+          });
+
+          return {
+            data: existing,
+            payload,
+            source: "rest_existing_after_sdk_insert"
+          };
+        }
+      } catch (findError) {
+        console.debug("Klevby feed: перед REST insert не удалось проверить существующий post", findError);
+      }
+
+      try {
+        const result = await insertFeedPostViaRest(payload);
+
+        console.info("Klevby feed: feed_posts создан через REST fallback", {
+          postId: result?.data?.id || "",
+          source: result?.source || "rest_insert"
+        });
+
+        return result;
+      } catch (restError) {
+        if (isObjectAlreadyExistsError(restError)) {
+          const existing = await findFeedPostByImagePathViaRest(imagePath);
+
+          if (existing?.id) {
+            return {
+              data: existing,
+              payload,
+              source: "rest_existing_after_duplicate"
+            };
+          }
+        }
+
+        console.error("Klevby feed: REST insert feed_posts не сработал", {
+          imagePath,
+          sdkError,
+          restError
+        });
+
+        throw new Error("Пост ленты не создался: " + (restError?.message || sdkError?.message || restError));
+      }
+    }
+  }
+
+  async function createFeedPhotoPost(photoData = {}) {
+    let db = Core.getClient();
+    const config = getConfig();
+
+    if (!db && (!config.supabaseUrl && !config.SUPABASE_URL)) {
       throw new Error("Supabase ещё не готов. Обнови страницу.");
     }
 
-    const user = await Auth.ensureUser();
+    const user = await ensureFeedUserForCreate();
 
     if (!user || !user.id) {
       throw new Error("Сначала войди или создай профиль, чтобы фото было видно в общей ленте.");
@@ -288,8 +1079,8 @@
       throw new Error("Фото не найдено для загрузки.");
     }
 
-    const profile = Auth.readProfileData();
-    const cleanTelegram = Core.cleanTelegram(profile.telegram);
+    const profile = Auth.readProfileData ? Auth.readProfileData() : {};
+    const cleanTelegram = Core.cleanTelegram ? Core.cleanTelegram(profile.telegram) : String(profile.telegram || "").trim();
     const blob = Core.dataUrlToBlob(dataUrl);
 
     if (blob.size > 5 * 1024 * 1024) {
@@ -305,28 +1096,10 @@
     const fileName = `${Date.now()}-${Core.makeIdPart()}.${extension}`;
     const imagePath = `${user.id}/${fileName}`;
 
-    const uploadResult = await Core.rejectTimeout(
-      db.storage
-        .from(Core.BUCKET)
-        .upload(imagePath, blob, {
-          cacheControl: "31536000",
-          contentType: blob.type || "image/jpeg",
-          upsert: false
-        }),
-      Core.REST_TIMEOUT_MS,
-      "Фото не загрузилось: Supabase не ответил."
-    );
+    const uploadResult = await uploadFeedStorageWithFallback(db, imagePath, blob);
+    db = Core.getClient ? Core.getClient() || db : db;
 
-    if (uploadResult.error) {
-      console.error("Klevby feed: ошибка загрузки фото в Storage", uploadResult.error);
-      throw new Error("Фото не загрузилось в Supabase Storage: " + uploadResult.error.message);
-    }
-
-    const publicUrlResult = db.storage
-      .from(Core.BUCKET)
-      .getPublicUrl(imagePath);
-
-    const imageUrl = publicUrlResult?.data?.publicUrl || "";
+    const imageUrl = uploadResult?.imageUrl || getPublicStorageUrl(db, Core.BUCKET, imagePath);
 
     if (!imageUrl) {
       throw new Error("Supabase не вернул публичную ссылку на фото.");
@@ -341,7 +1114,7 @@
     const payload = {
       user_id: user.id,
       type: "profile_photo",
-      author_name: profile.name || "Рыбак",
+      author_name: profile.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Рыбак",
       author_city: profile.city || "",
       author_telegram: cleanTelegram,
       caption: caption || "Фото с рыбалки",
@@ -352,49 +1125,22 @@
       image_size_kb: Number(photoData.sizeKb || photoData.savedSizeKb || Math.round(blob.size / 1024) || 0)
     };
 
-    if (profile.avatar) {
-      payload.author_avatar_url = profile.avatar;
+    const authorAvatarUrl = await resolveAuthorAvatarUrl(user, profile);
+
+    if (authorAvatarUrl) {
+      payload.author_avatar_url = authorAvatarUrl;
     }
 
-    let insertResult = await Core.rejectTimeout(
-      db
-        .from(Core.TABLE)
-        .insert([payload])
-        .select(getPostSelectColumns(true))
-        .single(),
-      Core.REST_TIMEOUT_MS,
-      "Пост ленты не создался: Supabase не ответил."
-    );
+    let insertResult = null;
 
-    if (
-      insertResult.error &&
-      String(insertResult.error.message || "").toLowerCase().includes("author_avatar")
-    ) {
-      delete payload.author_avatar_url;
+    try {
+      insertResult = await insertFeedPostWithFallback(db, payload, imagePath);
+    } catch (insertError) {
+      console.error("Klevby feed: запись feed_posts не создалась", insertError);
 
-      insertResult = await Core.rejectTimeout(
-        db
-          .from(Core.TABLE)
-          .insert([payload])
-          .select(getPostSelectColumns(false))
-          .single(),
-        Core.REST_TIMEOUT_MS,
-        "Пост ленты не создался: Supabase не ответил."
-      );
-    }
+      await removeFeedStorageFileSafe(db, imagePath);
 
-    if (insertResult.error) {
-      console.error("Klevby feed: запись feed_posts не создалась", insertResult.error);
-
-      try {
-        await db.storage
-          .from(Core.BUCKET)
-          .remove([imagePath]);
-      } catch (removeError) {
-        console.warn("Klevby feed: не удалось удалить фото после ошибки записи", removeError);
-      }
-
-      throw new Error("Пост ленты не создался: " + insertResult.error.message);
+      throw insertError;
     }
 
     const item = Normalize.applyViewerLikeState(
@@ -411,34 +1157,7 @@
   }
 
   async function recoverSupabaseClientBeforeDelete(reason = "") {
-    const recover =
-      typeof window.recoverSupabaseClient === "function"
-        ? window.recoverSupabaseClient
-        : typeof window.klevbyRecoverSupabaseClient === "function"
-          ? window.klevbyRecoverSupabaseClient
-          : null;
-
-    if (!recover) return false;
-
-    try {
-      console.info("Klevby feed: пробую восстановить Supabase перед REST delete", {
-        reason: String(reason || "")
-      });
-
-      await Core.rejectTimeout(
-        Promise.resolve(recover({
-          reason: "feed_delete_fallback",
-          source: "supabase-posts"
-        })),
-        3500,
-        "Supabase recover не ответил."
-      );
-
-      return true;
-    } catch (error) {
-      console.warn("Klevby feed: recover перед REST delete не сработал", error);
-      return false;
-    }
+    return recoverSupabaseClient(reason, "feed_delete_fallback");
   }
 
   async function deleteFeedPostViaSdk(db, cleanPostId) {
@@ -464,7 +1183,18 @@
 
   async function deleteFeedPostViaRest(cleanPostId) {
     if (!Rest || typeof Rest.restRequest !== "function") {
-      throw new Error("REST-модуль Supabase-ленты недоступен.");
+      await restTableRequestDirect(Core.TABLE, {
+        method: "DELETE",
+        query: buildDeletePostRestQuery(cleanPostId),
+        requireAuth: true,
+        timeoutMs: Core.REST_TIMEOUT_MS,
+        headers: {
+          Prefer: "return=minimal"
+        },
+        parseJson: false
+      });
+
+      return true;
     }
 
     await Rest.restRequest(Core.TABLE, {
@@ -480,31 +1210,60 @@
     return true;
   }
 
+  async function removeFeedStorageFileViaRest(imagePath = "") {
+    const cleanImagePath = String(imagePath || "").trim();
+    const cleanBucket = String(Core.BUCKET || "").trim();
+
+    if (!cleanImagePath || !cleanBucket) return true;
+
+    await directSupabaseRequest(`/storage/v1/object/${encodeURIComponent(cleanBucket)}`, {
+      method: "DELETE",
+      requireAuth: true,
+      timeoutMs: Core.REST_TIMEOUT_MS,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: {
+        prefixes: [cleanImagePath]
+      },
+      parseJson: false
+    });
+
+    return true;
+  }
+
   async function removeFeedStorageFileSafe(db, imagePath = "") {
     const cleanImagePath = String(imagePath || "").trim();
 
     if (!cleanImagePath) return true;
 
-    if (!db || !db.storage) {
-      console.warn("Klevby feed: пост удалён, но Storage SDK недоступен для удаления файла", {
-        imagePath: cleanImagePath
-      });
+    if (db?.storage) {
+      try {
+        await Core.rejectTimeout(
+          db.storage
+            .from(Core.BUCKET)
+            .remove([cleanImagePath]),
+          Core.REST_TIMEOUT_MS,
+          "Удаление файла Storage не ответило."
+        );
 
-      return false;
+        return true;
+      } catch (storageError) {
+        console.warn("Klevby feed: Storage SDK remove не сработал, пробую REST remove", storageError);
+      }
     }
 
     try {
-      await Core.rejectTimeout(
-        db.storage
-          .from(Core.BUCKET)
-          .remove([cleanImagePath]),
-        Core.REST_TIMEOUT_MS,
-        "Удаление файла Storage не ответило."
-      );
-
+      await removeFeedStorageFileViaRest(cleanImagePath);
       return true;
-    } catch (storageError) {
-      console.warn("Klevby feed: пост удалён, но файл Storage удалить не получилось", storageError);
+    } catch (restStorageError) {
+      const status = Number(restStorageError?.status || 0);
+
+      if (status === 404) {
+        return true;
+      }
+
+      console.warn("Klevby feed: пост удалён, но файл Storage удалить не получилось", restStorageError);
       return false;
     }
   }
@@ -589,12 +1348,19 @@
     getPostSelectColumns,
     isPostsRestFallbackError,
     isDeleteRestFallbackError,
+    isCreateRestFallbackError,
     buildPostsRestQuery,
     buildDeletePostRestQuery,
+    buildInsertPostRestQuery,
+    buildFindPostByImagePathRestQuery,
     runFeedPostsRestQuery,
     runFeedPostsQuery,
     loadFeedPostsFromSupabase,
     createFeedPhotoPost,
+    uploadFeedStorageViaSdk,
+    uploadFeedStorageViaRest,
+    insertFeedPostViaSdk,
+    insertFeedPostViaRest,
     deleteFeedPostViaSdk,
     deleteFeedPostViaRest,
     deleteFeedPostFromSupabase
