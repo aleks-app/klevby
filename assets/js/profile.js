@@ -21,6 +21,7 @@ let klevbyProfileFeedSyncInProgress = false;
 let klevbyProfileFeedSyncTimer = null;
 let klevbyProfilePhotoUploadInProgress = false;
 let klevbyProfileUploadStatusTimer = null;
+let klevbyProfilePhotoDeletePendingIds = new Set();
 
 function getDefaultProfileData() {
   return {
@@ -1897,38 +1898,148 @@ function estimateDataUrlSizeKb(dataUrl) {
   return Math.round(bytes / 1024);
 }
 
-async function removeProfilePhoto(photoId) {
+function getProfilePhotoDeleteKey(photoId) {
+  return String(photoId || "").trim();
+}
+
+function isProfilePhotoDeletePending(photoId) {
+  const key = getProfilePhotoDeleteKey(photoId);
+  return Boolean(key && klevbyProfilePhotoDeletePendingIds.has(key));
+}
+
+function setProfilePhotoDeletePending(photoId, isPending) {
+  const key = getProfilePhotoDeleteKey(photoId);
+
+  if (!key) return;
+
+  if (isPending) {
+    klevbyProfilePhotoDeletePendingIds.add(key);
+    return;
+  }
+
+  klevbyProfilePhotoDeletePendingIds.delete(key);
+}
+
+function setProfileViewerDeleteButtonBusy(button, isBusy) {
+  if (!button) return;
+
+  button.disabled = Boolean(isBusy);
+  button.dataset.deleting = isBusy ? "1" : "0";
+  button.setAttribute("aria-busy", isBusy ? "true" : "false");
+  button.textContent = isBusy ? "Удаляю…" : "Удалить";
+}
+
+function findProfilePhotoById(photoId) {
   const cleanId = String(photoId || "");
   const photos = readProfilePhotos();
-  const photo = photos.find((item) => String(item.id) === cleanId || String(item.feedPostId) === cleanId);
 
-  if (!photo) return;
+  const photo = photos.find((item) => {
+    return String(item.id) === cleanId || String(item.feedPostId || "") === cleanId;
+  });
 
-  if (photo.feedPostId && typeof window.klevbyDeleteFeedPostFromSupabase === "function") {
-    try {
-      await window.klevbyDeleteFeedPostFromSupabase(photo.feedPostId, photo.feedImagePath || "");
-    } catch (error) {
-      console.warn("Klevby profile: Supabase-фото не удалилось", error);
-      alert(error?.message || "Не получилось удалить фото из общей ленты.");
-      return;
+  return {
+    cleanId,
+    photos,
+    photo: photo || null
+  };
+}
+
+function dispatchProfilePhotoDeletedEvent(photo, cleanId, stage = "optimistic") {
+  const postId = String(photo?.feedPostId || "").trim();
+  const imagePath = String(photo?.feedImagePath || "").trim();
+
+  window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+    detail: {
+      action: "profile_photo_deleted",
+      photoId: cleanId,
+      postId,
+      imagePath,
+      optimistic: stage === "optimistic",
+      background: stage !== "server_confirmed",
+      stage
     }
+  }));
+
+  window.dispatchEvent(new CustomEvent("klevby-profile-photo-deleted", {
+    detail: {
+      photoId: cleanId,
+      postId,
+      imagePath,
+      photo,
+      optimistic: stage === "optimistic",
+      background: stage !== "server_confirmed",
+      stage
+    }
+  }));
+}
+
+function runProfilePhotoServerDeleteInBackground(photo, cleanId) {
+  const postId = String(photo?.feedPostId || "").trim();
+  const imagePath = String(photo?.feedImagePath || "").trim();
+
+  if (!postId || typeof window.klevbyDeleteFeedPostFromSupabase !== "function") {
+    setProfilePhotoDeletePending(cleanId, false);
+    return;
   }
+
+  window.setTimeout(async () => {
+    try {
+      await window.klevbyDeleteFeedPostFromSupabase(postId, imagePath);
+
+      dispatchProfilePhotoDeletedEvent(photo, cleanId, "server_confirmed");
+
+      console.info("Klevby profile: фото удалено на сервере в фоне", {
+        photoId: cleanId,
+        postId
+      });
+    } catch (error) {
+      console.warn("Klevby profile: фото скрыто локально, но серверное удаление не подтвердилось", {
+        photoId: cleanId,
+        postId,
+        error
+      });
+
+      showProfileUploadStatus("Фото скрыто. Серверное удаление может завершиться после обновления.", "warning");
+      hideProfileUploadStatus(2600);
+    } finally {
+      setProfilePhotoDeletePending(cleanId, false);
+    }
+  }, 0);
+}
+
+async function removeProfilePhoto(photoId) {
+  const { cleanId, photos, photo } = findProfilePhotoById(photoId);
+
+  if (!photo || !cleanId) return;
+
+  if (isProfilePhotoDeletePending(cleanId) || isProfilePhotoDeletePending(photo.feedPostId)) {
+    return;
+  }
+
+  setProfilePhotoDeletePending(cleanId, true);
+
+  if (photo.feedPostId) {
+    setProfilePhotoDeletePending(photo.feedPostId, true);
+  }
+
+  const deleteButton = document.getElementById("profilePhotoViewerDelete");
+  setProfileViewerDeleteButtonBusy(deleteButton, true);
 
   const updatedPhotos = photos.filter((item) => {
     return String(item.id) !== cleanId && String(item.feedPostId || "") !== cleanId;
   });
 
   saveProfilePhotos(updatedPhotos);
-  updateKlevbyProfileView();
   closeProfilePhotoViewer();
-  refreshProfileFeedSoon(250);
+  updateKlevbyProfileView();
+  refreshProfileFeedSoon(0);
 
-  window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-    detail: {
-      action: "profile_photo_deleted",
-      photoId: cleanId
-    }
-  }));
+  dispatchProfilePhotoDeletedEvent(photo, cleanId, "optimistic");
+  runProfilePhotoServerDeleteInBackground(photo, cleanId);
+
+  if (navigator.vibrate) {
+    navigator.vibrate(18);
+  }
 }
 
 function cleanupOldProfileReportGrid(contentCard) {
@@ -2137,6 +2248,11 @@ function ensureProfilePhotoViewer() {
         transition: 0.18s ease;
       }
 
+      .profile-photo-viewer-info button:disabled {
+        opacity: 0.72;
+        cursor: wait;
+      }
+
       .profile-photo-card {
         width: 100%;
         padding: 0;
@@ -2179,7 +2295,17 @@ function openProfilePhotoViewer(photoId) {
   }
 
   if (deleteButton) {
-    deleteButton.onclick = () => removeProfilePhoto(photo.id || cleanId);
+    const deleteKey = photo.id || photo.feedPostId || cleanId;
+    const isDeleting = isProfilePhotoDeletePending(deleteKey) || isProfilePhotoDeletePending(photo.feedPostId);
+
+    setProfileViewerDeleteButtonBusy(deleteButton, isDeleting);
+
+    deleteButton.onclick = () => {
+      if (deleteButton.disabled || deleteButton.dataset.deleting === "1") return;
+
+      setProfileViewerDeleteButtonBusy(deleteButton, true);
+      removeProfilePhoto(deleteKey);
+    };
   }
 
   viewer.classList.remove("hidden");
@@ -2193,6 +2319,7 @@ function openProfilePhotoViewer(photoId) {
 function closeProfilePhotoViewer() {
   const viewer = document.getElementById("profilePhotoViewer");
   const image = document.getElementById("profilePhotoViewerImage");
+  const deleteButton = document.getElementById("profilePhotoViewerDelete");
 
   if (viewer) {
     viewer.classList.add("hidden");
@@ -2200,6 +2327,11 @@ function closeProfilePhotoViewer() {
 
   if (image) {
     image.removeAttribute("src");
+  }
+
+  if (deleteButton) {
+    setProfileViewerDeleteButtonBusy(deleteButton, false);
+    deleteButton.onclick = null;
   }
 
   document.body.classList.remove("post-modal-open");
