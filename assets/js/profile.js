@@ -9,6 +9,7 @@ const KLEVB_PROFILE_PHOTO_MAX_SIDE = 1080;
 const KLEVB_PROFILE_PHOTO_QUALITY = 0.68;
 const KLEVB_PROFILE_AVATAR_MAX_SIDE = 520;
 const KLEVB_PROFILE_AVATAR_QUALITY = 0.78;
+const KLEVB_PROFILE_AVATAR_BUCKET = "profile-avatars";
 
 let klevbyMainTabbarSnapshot = null;
 let klevbyOriginalGoHomeTop = null;
@@ -524,6 +525,96 @@ function triggerProfileAvatarInput() {
   if (input) input.click();
 }
 
+function getProfileSupabaseClient() {
+  if (window.KlevbyFeedSupabaseCore && typeof window.KlevbyFeedSupabaseCore.getClient === "function") {
+    return window.KlevbyFeedSupabaseCore.getClient();
+  }
+
+  return window.supabaseClient || window.klevbySupabase || null;
+}
+
+function dataUrlToBlobSafe(dataUrl) {
+  if (
+    window.KlevbyFeedSupabaseCore &&
+    typeof window.KlevbyFeedSupabaseCore.dataUrlToBlob === "function"
+  ) {
+    return window.KlevbyFeedSupabaseCore.dataUrlToBlob(dataUrl);
+  }
+
+  const value = String(dataUrl || "");
+  const parts = value.split(",");
+
+  if (parts.length < 2) {
+    throw new Error("Некорректный формат аватара.");
+  }
+
+  const header = parts[0] || "";
+  const base64 = parts[1] || "";
+  const mimeMatch = header.match(/data:([^;]+);base64/i);
+  const mime = mimeMatch && mimeMatch[1] ? mimeMatch[1] : "image/jpeg";
+
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i += 1) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mime });
+}
+
+async function uploadProfileAvatarToSupabase(dataUrl) {
+  const supabase = getProfileSupabaseClient();
+  const currentUser = getCurrentProfileUser();
+
+  if (!supabase || !currentUser?.id) {
+    console.info("[KlevbyProfile] Supabase/user недоступен, оставляем локальный аватар.");
+    return null;
+  }
+
+  const avatarPath = `${currentUser.id}/avatar.jpg`;
+  const avatarBlob = dataUrlToBlobSafe(dataUrl);
+
+  const { error: uploadError } = await supabase.storage
+    .from(KLEVB_PROFILE_AVATAR_BUCKET)
+    .upload(avatarPath, avatarBlob, {
+      contentType: avatarBlob.type || "image/jpeg",
+      upsert: true
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data: publicData } = supabase.storage
+    .from(KLEVB_PROFILE_AVATAR_BUCKET)
+    .getPublicUrl(avatarPath);
+
+  const avatarUrl = publicData?.publicUrl || "";
+
+  if (!avatarUrl) {
+    throw new Error("Не удалось получить public URL аватара.");
+  }
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      avatar_url: avatarUrl,
+      avatar_path: avatarPath,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", currentUser.id);
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  return {
+    avatarUrl,
+    avatarPath
+  };
+}
+
 async function handleLocalAvatarUpload(event) {
   const file = event?.target?.files?.[0];
 
@@ -551,6 +642,18 @@ async function handleLocalAvatarUpload(event) {
 
     setProfileAvatar(compressedAvatar.dataUrl);
     showProfileAvatarSavedMessage();
+    console.info("[KlevbyProfile] Локальный аватар обновлён.");
+
+    uploadProfileAvatarToSupabase(compressedAvatar.dataUrl)
+      .then((result) => {
+        if (!result?.avatarUrl) return;
+
+        setProfileAvatar(result.avatarUrl);
+        console.info("[KlevbyProfile] Аватар загружен в Supabase Storage и профиль обновлён.");
+      })
+      .catch((uploadError) => {
+        console.warn("[KlevbyProfile] Upload аватара в Supabase не удался, оставляем local fallback.", uploadError);
+      });
 
     if (navigator.vibrate) {
       navigator.vibrate(18);
@@ -586,6 +689,35 @@ function restoreLocalProfileAvatar() {
   } catch (error) {
     console.warn("Klevby profile: аватар не восстановился", error);
   }
+
+  loadProfileAvatarFromSupabase().catch((error) => {
+    console.warn("[KlevbyProfile] Не удалось подтянуть avatar_url из profiles, используем localStorage.", error);
+  });
+}
+
+async function loadProfileAvatarFromSupabase() {
+  const supabase = getProfileSupabaseClient();
+  const currentUser = getCurrentProfileUser();
+
+  if (!supabase || !currentUser?.id) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("avatar_url")
+    .eq("id", currentUser.id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const avatarUrl = String(data?.avatar_url || "").trim();
+
+  if (!avatarUrl) return null;
+
+  setProfileAvatar(avatarUrl);
+  console.info("[KlevbyProfile] Загружен avatar_url из profiles.");
+  return avatarUrl;
 }
 
 function setProfileAvatar(src) {
