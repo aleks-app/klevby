@@ -138,6 +138,22 @@
     return Boolean(value && typeof value.then === "function");
   }
 
+  function isMobileLikeViewport() {
+    try {
+      const width = Number(window.innerWidth || document.documentElement.clientWidth || 0);
+      const screenMin = Math.min(Number(screen.width || 0), Number(screen.height || 0));
+
+      return (
+        width <= 900 ||
+        screenMin <= 900 ||
+        window.matchMedia("(pointer: coarse)").matches ||
+        window.navigator.standalone === true
+      );
+    } catch (_) {
+      return true;
+    }
+  }
+
   function rememberViewerUserId(userId) {
     const cleanUserId = String(userId || "").trim();
 
@@ -495,6 +511,39 @@
     });
   }
 
+  function releaseLikeButtonVisualState(postId) {
+    const cleanId = String(postId || "").trim();
+    if (!cleanId) return;
+
+    const release = () => {
+      getLikeButtons(cleanId).forEach((button) => {
+        try {
+          button.classList.remove("is-pending-like", "is-pending");
+
+          if (button.dataset.pendingLike === "1") {
+            button.dataset.pendingLike = "0";
+          }
+
+          button.setAttribute("aria-busy", "false");
+
+          if (document.activeElement === button && typeof button.blur === "function") {
+            button.blur();
+          }
+        } catch (_) {}
+      });
+    };
+
+    release();
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(release);
+    }
+
+    window.setTimeout(release, 60);
+    window.setTimeout(release, 180);
+    window.setTimeout(release, 420);
+  }
+
   function getKnownLikeState(postId, item = null) {
     const cleanId = String(postId || "").trim();
 
@@ -518,30 +567,12 @@
     return getKnownLikeStateFromItem(item);
   }
 
-  function releaseLikeButtonPressVisual(button) {
-    if (!button) return;
-
-    const clear = () => {
-      button.classList.remove("is-pending-like", "is-pending", "liked", "is-liked");
-
-      try {
-        if (button === document.activeElement) {
-          button.blur();
-        }
-      } catch (_) {}
-    };
-
-    clear();
-
-    if (typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(clear);
-    }
-
-    setTimeout(clear, 80);
-  }
-
   function isButtonHoveredOrFocused(button) {
     if (!button) return false;
+
+    if (isMobileLikeViewport()) {
+      return false;
+    }
 
     try {
       return (
@@ -580,6 +611,7 @@
     }
 
     likeRenderProtectedUntil.delete(cleanId);
+    releaseLikeButtonVisualState(cleanId);
   }
 
   function protectLikeRender(postId, duration = LIKE_RENDER_PROTECTION_MS) {
@@ -618,6 +650,7 @@
     }
 
     likeRenderProtectedUntil.delete(cleanId);
+    releaseLikeButtonVisualState(cleanId);
     return false;
   }
 
@@ -662,7 +695,11 @@
         button.disabled = false;
         button.dataset.pendingLike = "0";
         button.setAttribute("aria-busy", "false");
-        releaseLikeButtonPressVisual(button);
+        button.classList.remove("is-pending-like", "is-pending");
+
+        if (document.activeElement === button && typeof button.blur === "function") {
+          button.blur();
+        }
       });
 
     console.info("Klevby feed actions: like runtime reset", {
@@ -768,17 +805,22 @@
 
       button.disabled = false;
       button.setAttribute("aria-busy", safePending ? "true" : "false");
-
-      releaseLikeButtonPressVisual(button);
+      button.classList.toggle("is-pending-like", false);
+      button.classList.toggle("is-pending", false);
 
       if (typeof liked === "boolean") {
         button.dataset.liked = liked ? "true" : "false";
         button.setAttribute("aria-pressed", liked ? "true" : "false");
+        button.classList.toggle("liked", liked);
+        button.classList.toggle("is-liked", liked);
       } else {
         button.removeAttribute("aria-pressed");
         delete button.dataset.liked;
+        button.classList.remove("liked", "is-liked");
       }
     });
+
+    releaseLikeButtonVisualState(cleanId);
   }
 
   function patchLocalFeedItem(postId, patch = {}) {
@@ -1348,6 +1390,8 @@
     if (pendingLikeLocks.has(cleanId)) {
       const snapshot = getLikeSnapshot(cleanId);
 
+      releaseLikeButtonVisualState(cleanId);
+
       return {
         postId: cleanId,
         liked: snapshot.liked,
@@ -1375,6 +1419,7 @@
 
     applyLocalLikeState(cleanId, desiredLiked, optimisticCount);
     setLikeButtonsState(cleanId, optimisticCount, desiredLiked, false);
+    releaseLikeButtonVisualState(cleanId);
 
     if (navigator.vibrate) {
       navigator.vibrate(12);
@@ -1393,6 +1438,7 @@
 
       applyLocalLikeState(cleanId, finalLiked, finalCount);
       setLikeButtonsState(cleanId, finalCount, finalLiked, false);
+      releaseLikeButtonVisualState(cleanId);
 
       sync.desiredLiked = finalLiked;
       sync.desiredCount = finalCount;
@@ -1424,6 +1470,7 @@
 
         applyLocalLikeState(cleanId, verified.liked, verifiedCount);
         setLikeButtonsState(cleanId, verifiedCount, verified.liked, false);
+        releaseLikeButtonVisualState(cleanId);
         scheduleLikeRefresh(900);
 
         console.warn("Klevby feed actions: like verified after error", {
@@ -1440,6 +1487,7 @@
       }
 
       rollbackLikeState(cleanId, snapshot);
+      releaseLikeButtonVisualState(cleanId);
 
       console.warn("Klevby feed actions: лайк не сработал", error);
 
@@ -1475,6 +1523,8 @@
         currentLiked,
         false
       );
+
+      releaseLikeButtonVisualState(cleanId);
     }
   }
 
@@ -1496,6 +1546,7 @@
     });
 
     setLikeButtonsState(cleanId, snapshot.likesCount, snapshot.liked, false);
+    releaseLikeButtonVisualState(cleanId);
   }
 
   async function toggleLikeFromViewer(postId) {
@@ -1517,6 +1568,8 @@
       if (updatedItem && typeof modals.openFeedPhotoViewer === "function") {
         modals.openFeedPhotoViewer(updatedItem);
       }
+
+      releaseLikeButtonVisualState(cleanId);
     }, 320);
   }
 
