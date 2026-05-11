@@ -37,106 +37,135 @@
     1600
   ];
 
-  function getState() {
-    return window.KlevbyFeedState || {};
-  }
+  const feedMainCore = window.KlevbyFeedMainCore || {};
 
-  function getUtils() {
-    return window.KlevbyFeedUtils || {};
-  }
+  const getState = typeof feedMainCore.getState === "function"
+    ? feedMainCore.getState
+    : function () {
+      return window.KlevbyFeedState || {};
+    };
 
-  function getApi() {
-    return window.KlevbyFeedApi || {};
-  }
+  const getUtils = typeof feedMainCore.getUtils === "function"
+    ? feedMainCore.getUtils
+    : function () {
+      return window.KlevbyFeedUtils || {};
+    };
 
-  function getRender() {
-    return window.KlevbyFeedRender || {};
-  }
+  const getApi = typeof feedMainCore.getApi === "function"
+    ? feedMainCore.getApi
+    : function () {
+      return window.KlevbyFeedApi || {};
+    };
 
-  function getModals() {
-    return window.KlevbyFeedModals || {};
-  }
+  const getRender = typeof feedMainCore.getRender === "function"
+    ? feedMainCore.getRender
+    : function () {
+      return window.KlevbyFeedRender || {};
+    };
 
-  function getActions() {
-    return window.KlevbyFeedActions || {};
-  }
+  const getModals = typeof feedMainCore.getModals === "function"
+    ? feedMainCore.getModals
+    : function () {
+      return window.KlevbyFeedModals || {};
+    };
 
-  function getEvents() {
-    return window.KlevbyFeedEvents || {};
-  }
+  const getActions = typeof feedMainCore.getActions === "function"
+    ? feedMainCore.getActions
+    : function () {
+      return window.KlevbyFeedActions || {};
+    };
 
-  function safeCall(fn, args = [], fallbackValue = undefined) {
-    try {
-      if (typeof fn === "function") {
-        return fn.apply(null, args);
+  const getEvents = typeof feedMainCore.getEvents === "function"
+    ? feedMainCore.getEvents
+    : function () {
+      return window.KlevbyFeedEvents || {};
+    };
+
+  const safeCall = typeof feedMainCore.safeCall === "function"
+    ? feedMainCore.safeCall
+    : function (fn, args = [], fallbackValue = undefined) {
+      try {
+        if (typeof fn === "function") {
+          return fn.apply(null, args);
+        }
+      } catch (error) {
+        console.warn("Klevby feed: ошибка вызова функции", error);
       }
-    } catch (error) {
-      console.warn("Klevby feed: ошибка вызова функции", error);
-    }
 
-    return fallbackValue;
-  }
+      return fallbackValue;
+    };
 
-  function isPageVisible() {
-    return document.visibilityState !== "hidden";
-  }
+  const isPageVisible = typeof feedMainCore.isPageVisible === "function"
+    ? feedMainCore.isPageVisible
+    : function () {
+      return document.visibilityState !== "hidden";
+    };
 
-  function hasFeedDom() {
-    return Boolean(document.getElementById("profileFeedSection"));
-  }
+  const hasFeedDom = typeof feedMainCore.hasFeedDom === "function"
+    ? feedMainCore.hasFeedDom
+    : function () {
+      return Boolean(document.getElementById("profileFeedSection"));
+    };
 
-  function isLikeUpdateAction(action) {
-    const value = String(action || "").toLowerCase();
+  const isLikeUpdateAction = typeof feedMainCore.isLikeUpdateAction === "function"
+    ? feedMainCore.isLikeUpdateAction
+    : function (action) {
+      const value = String(action || "").toLowerCase();
 
-    return (
-      value.includes("like") ||
-      value.includes("лайк")
-    );
-  }
+      return value.includes("like") || value.includes("лайк");
+    };
 
-  function isStartupRefreshReason(reason) {
-    const value = String(reason || "").toLowerCase();
+  const isStartupRefreshReason = typeof feedMainCore.isStartupRefreshReason === "function"
+    ? feedMainCore.isStartupRefreshReason
+    : function (reason) {
+      const value = String(reason || "").toLowerCase();
 
-    return (
-      value.includes("initial") ||
-      value.includes("module_ready") ||
-      value.includes("dom_watch") ||
-      value.includes("already_started") ||
-      value.includes("render_wait")
-    );
-  }
+      return (
+        value.includes("initial") ||
+        value.includes("module_ready") ||
+        value.includes("dom_watch") ||
+        value.includes("already_started") ||
+        value.includes("render_wait")
+      );
+    };
 
-  function isResumeRefreshReason(reason) {
-    const value = String(reason || "").toLowerCase();
+  const isResumeRefreshReason = typeof feedMainCore.isResumeRefreshReason === "function"
+    ? feedMainCore.isResumeRefreshReason
+    : function (reason) {
+      const value = String(reason || "").toLowerCase();
 
-    return (
-      value.includes("resume") ||
-      value.includes("app_resumed") ||
-      value.includes("visibility_visible") ||
-      value.includes("page_show") ||
-      value.includes("window_focus") ||
-      value.includes("browser_online") ||
-      value.includes("auth_changed")
-    );
-  }
+      return (
+        value.includes("resume") ||
+        value.includes("app_resumed") ||
+        value.includes("visibility_visible") ||
+        value.includes("page_show") ||
+        value.includes("window_focus") ||
+        value.includes("browser_online") ||
+        value.includes("auth_changed")
+      );
+    };
 
-  function isManualRefreshReason(reason) {
-    const value = String(reason || "").toLowerCase();
+  const isManualRefreshReason = typeof feedMainCore.isManualRefreshReason === "function"
+    ? feedMainCore.isManualRefreshReason
+    : function (reason) {
+      const value = String(reason || "").toLowerCase();
 
-    return (
-      value.includes("manual") ||
-      value.includes("wake") ||
-      value.includes("navigation_home")
-    );
-  }
+      return (
+        value.includes("manual") ||
+        value.includes("wake") ||
+        value.includes("navigation_home")
+      );
+    };
 
-  function isCriticalRefreshReason(reason) {
-    return (
-      isManualRefreshReason(reason) ||
-      isStartupRefreshReason(reason) ||
-      isResumeRefreshReason(reason)
-    );
-  }
+  const isCriticalRefreshReason = typeof feedMainCore.isCriticalRefreshReason === "function"
+    ? feedMainCore.isCriticalRefreshReason
+    : function (reason) {
+      return (
+        isManualRefreshReason(reason) ||
+        isStartupRefreshReason(reason) ||
+        isResumeRefreshReason(reason)
+      );
+    };
 
   function markFeedQuiet(reason = "quiet", duration = KLEVB_FEED_MAIN_LIKE_QUIET_MS) {
     const until = Date.now() + Math.max(0, Number(duration || 0));
@@ -317,22 +346,24 @@
     return !hasFeedDom() || !isRenderReady();
   }
 
-  function isDuplicateLikeError(error) {
-    const code = String(error?.code || error?.details?.code || "").trim();
-    const message = String(error?.message || "").toLowerCase();
-    const details = String(error?.details || "").toLowerCase();
-    const hint = String(error?.hint || "").toLowerCase();
-    const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
+  const isDuplicateLikeError = typeof feedMainCore.isDuplicateLikeError === "function"
+    ? feedMainCore.isDuplicateLikeError
+    : function (error) {
+      const code = String(error?.code || error?.details?.code || "").trim();
+      const message = String(error?.message || "").toLowerCase();
+      const details = String(error?.details || "").toLowerCase();
+      const hint = String(error?.hint || "").toLowerCase();
+      const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
 
-    return (
-      code === "23505" ||
-      message.includes("duplicate key") ||
-      message.includes("feed_likes_unique_user_post") ||
-      details.includes("feed_likes_unique_user_post") ||
-      hint.includes("feed_likes_unique_user_post") ||
-      constraint.includes("feed_likes_unique_user_post")
-    );
-  }
+      return (
+        code === "23505" ||
+        message.includes("duplicate key") ||
+        message.includes("feed_likes_unique_user_post") ||
+        details.includes("feed_likes_unique_user_post") ||
+        hint.includes("feed_likes_unique_user_post") ||
+        constraint.includes("feed_likes_unique_user_post")
+      );
+    };
 
   function openKlevbyProfileSafe() {
     const utils = getUtils();
