@@ -28,27 +28,77 @@
   const VIEWER_LIKES_STORAGE_PREFIX = "klevby_feed_viewer_likes_v1";
   const VIEWER_LAST_USER_KEY = "klevby_feed_last_like_user_id";
 
+  function getCore() {
+    return window.KlevbyFeedActionsCore || {};
+  }
+
   function getState() {
+    const core = getCore();
+
+    if (typeof core.getState === "function") {
+      return core.getState();
+    }
+
     return window.KlevbyFeedState || {};
   }
 
   function getApi() {
+    const core = getCore();
+
+    if (typeof core.getApi === "function") {
+      return core.getApi();
+    }
+
     return window.KlevbyFeedApi || {};
   }
 
   function getRender() {
+    const core = getCore();
+
+    if (typeof core.getRender === "function") {
+      return core.getRender();
+    }
+
     return window.KlevbyFeedRender || {};
   }
 
   function getModals() {
+    const core = getCore();
+
+    if (typeof core.getModals === "function") {
+      return core.getModals();
+    }
+
     return window.KlevbyFeedModals || {};
   }
 
   function getUtils() {
+    const core = getCore();
+
+    if (typeof core.getUtils === "function") {
+      return core.getUtils();
+    }
+
     return window.KlevbyFeedUtils || {};
   }
 
+  function isPromiseLike(value) {
+    const core = getCore();
+
+    if (typeof core.isPromiseLike === "function") {
+      return core.isPromiseLike(value);
+    }
+
+    return Boolean(value && typeof value.then === "function");
+  }
+
   function withSoftTimeout(promise, timeoutMs, fallbackValue = null, label = "operation") {
+    const core = getCore();
+
+    if (typeof core.withSoftTimeout === "function") {
+      return core.withSoftTimeout(promise, timeoutMs, fallbackValue, label);
+    }
+
     const safeTimeout = Math.max(250, Number(timeoutMs || 0) || 0);
     let finished = false;
     let timer = null;
@@ -94,6 +144,12 @@
   }
 
   function getSupabaseClient() {
+    const core = getCore();
+
+    if (typeof core.getSupabaseClient === "function") {
+      return core.getSupabaseClient();
+    }
+
     if (window.supabaseClient) return window.supabaseClient;
     if (window.klevbySupabase) return window.klevbySupabase;
 
@@ -105,6 +161,12 @@
   }
 
   function getSupabaseUrl() {
+    const core = getCore();
+
+    if (typeof core.getSupabaseUrl === "function") {
+      return core.getSupabaseUrl();
+    }
+
     return String(
       window.KLEVB_CONFIG?.SUPABASE_URL ||
       window.KlevbyConfig?.SUPABASE_URL ||
@@ -114,6 +176,12 @@
   }
 
   function getSupabaseAnonKey() {
+    const core = getCore();
+
+    if (typeof core.getSupabaseAnonKey === "function") {
+      return core.getSupabaseAnonKey();
+    }
+
     return String(
       window.KLEVB_CONFIG?.SUPABASE_ANON_KEY ||
       window.KlevbyConfig?.SUPABASE_ANON_KEY ||
@@ -123,6 +191,12 @@
   }
 
   function getCurrentUser() {
+    const core = getCore();
+
+    if (typeof core.getCurrentUser === "function") {
+      return core.getCurrentUser();
+    }
+
     if (window.currentUser) return window.currentUser;
     if (window.klevbyCurrentUser) return window.klevbyCurrentUser;
     if (window.klevbyUser) return window.klevbyUser;
@@ -134,11 +208,13 @@
     return null;
   }
 
-  function isPromiseLike(value) {
-    return Boolean(value && typeof value.then === "function");
-  }
-
   function isMobileLikeViewport() {
+    const core = getCore();
+
+    if (typeof core.isMobileLikeViewport === "function") {
+      return core.isMobileLikeViewport();
+    }
+
     try {
       const width = Number(window.innerWidth || document.documentElement.clientWidth || 0);
       const screenMin = Math.min(Number(screen.width || 0), Number(screen.height || 0));
@@ -155,6 +231,13 @@
   }
 
   function rememberViewerUserId(userId) {
+    const core = getCore();
+
+    if (typeof core.rememberViewerUserId === "function") {
+      core.rememberViewerUserId(userId);
+      return;
+    }
+
     const cleanUserId = String(userId || "").trim();
 
     if (!cleanUserId) return;
@@ -165,6 +248,12 @@
   }
 
   function getKnownViewerUserIdSync() {
+    const core = getCore();
+
+    if (typeof core.getKnownViewerUserIdSync === "function") {
+      return core.getKnownViewerUserIdSync();
+    }
+
     const user = getCurrentUser();
 
     if (user && !isPromiseLike(user) && user.id) {
@@ -181,6 +270,12 @@
   }
 
   function readStoredSupabaseAccessToken() {
+    const core = getCore();
+
+    if (typeof core.readStoredSupabaseAccessToken === "function") {
+      return core.readStoredSupabaseAccessToken();
+    }
+
     try {
       const keys = [];
 
@@ -213,6 +308,12 @@
   }
 
   async function getSupabaseAccessToken() {
+    const core = getCore();
+
+    if (typeof core.getSupabaseAccessToken === "function") {
+      return core.getSupabaseAccessToken();
+    }
+
     const db = getSupabaseClient();
 
     if (db && db.auth && typeof db.auth.getSession === "function") {
@@ -238,6 +339,14 @@
   }
 
   async function ensureCurrentUser() {
+    const core = getCore();
+
+    if (typeof core.ensureCurrentUser === "function") {
+      return core.ensureCurrentUser({
+        timeoutMs: LIKE_READ_TIMEOUT_MS
+      });
+    }
+
     let user = getCurrentUser();
 
     if (isPromiseLike(user)) {
@@ -358,12 +467,24 @@
   }
 
   function isHomeVisible() {
+    const core = getCore();
+
+    if (typeof core.isHomeVisible === "function") {
+      return core.isHomeVisible();
+    }
+
     const homeSection = document.getElementById("homeSection");
 
     return Boolean(homeSection && !homeSection.classList.contains("hidden"));
   }
 
   function renderFeed() {
+    const core = getCore();
+
+    if (typeof core.renderFeed === "function") {
+      return core.renderFeed();
+    }
+
     const renderer = getRender();
 
     if (typeof renderer.renderProfileFeed === "function") {
@@ -378,12 +499,24 @@
   }
 
   function refreshFeedIfHomeVisible() {
+    const core = getCore();
+
+    if (typeof core.refreshFeedIfHomeVisible === "function") {
+      return core.refreshFeedIfHomeVisible();
+    }
+
     if (!isHomeVisible()) return Promise.resolve();
 
     return renderFeed();
   }
 
   function refreshOpenCommentsIfNeeded(delay = 140) {
+    const core = getCore();
+
+    if (typeof core.refreshOpenCommentsIfNeeded === "function") {
+      return core.refreshOpenCommentsIfNeeded(delay);
+    }
+
     const modal = document.getElementById("klevbyFeedCommentModal");
     const postId = String(modal?.dataset?.postId || "");
 
@@ -406,6 +539,12 @@
   }
 
   function getLastItemsArray() {
+    const core = getCore();
+
+    if (typeof core.getLastItemsArray === "function") {
+      return core.getLastItemsArray();
+    }
+
     const state = getState();
 
     if (typeof state.getLastItems === "function") {
@@ -419,6 +558,13 @@
   }
 
   function setLastItemsArray(items) {
+    const core = getCore();
+
+    if (typeof core.setLastItemsArray === "function") {
+      core.setLastItemsArray(items);
+      return;
+    }
+
     const safeItems = Array.isArray(items) ? items : [];
     const state = getState();
 
@@ -445,6 +591,12 @@
   }
 
   function getCachedFeedItem(postId) {
+    const core = getCore();
+
+    if (typeof core.getCachedFeedItem === "function") {
+      return core.getCachedFeedItem(postId);
+    }
+
     const cleanId = String(postId || "").trim();
     if (!cleanId) return null;
 
@@ -461,10 +613,22 @@
   }
 
   function getItemLikesCount(item) {
+    const core = getCore();
+
+    if (typeof core.getItemLikesCount === "function") {
+      return core.getItemLikesCount(item);
+    }
+
     return Math.max(0, Number(item?.likesCount || item?.likes_count || 0) || 0);
   }
 
   function getKnownLikeStateFromItem(item) {
+    const core = getCore();
+
+    if (typeof core.getKnownLikeStateFromItem === "function") {
+      return core.getKnownLikeStateFromItem(item);
+    }
+
     if (!item || typeof item !== "object") return null;
 
     const candidates = [
@@ -734,6 +898,12 @@
   }
 
   function extractPostIdFromDetail(detail = {}) {
+    const core = getCore();
+
+    if (typeof core.extractPostIdFromDetail === "function") {
+      return core.extractPostIdFromDetail(detail);
+    }
+
     const payload = detail?.payload || detail?.record || detail || {};
 
     return String(
@@ -750,6 +920,12 @@
   }
 
   function isLikeUpdateDetail(detail = {}) {
+    const core = getCore();
+
+    if (typeof core.isFeedLikeUpdateDetail === "function") {
+      return core.isFeedLikeUpdateDetail(detail);
+    }
+
     const action = String(detail?.action || "").toLowerCase();
     const table = String(detail?.table || detail?.payload?.table || "").toLowerCase();
 
@@ -824,6 +1000,12 @@
   }
 
   function patchLocalFeedItem(postId, patch = {}) {
+    const core = getCore();
+
+    if (typeof core.patchLocalFeedItem === "function") {
+      return core.patchLocalFeedItem(postId, patch);
+    }
+
     const cleanId = String(postId || "").trim();
     if (!cleanId) return null;
 
