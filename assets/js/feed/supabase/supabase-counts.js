@@ -4,6 +4,33 @@
   const Rest = window.KlevbyFeedSupabaseRest || {};
   const Normalize = window.KlevbyFeedSupabaseNormalize || {};
 
+  function getViewerLikesRenderTimeoutMs() {
+    const restTimeout = Number(Core.REST_TIMEOUT_MS || 9000);
+    return Math.min(Math.max(restTimeout, 1200), 3000);
+  }
+
+  function getViewerLikesExactTimeoutMs() {
+    const restTimeout = Number(Core.REST_TIMEOUT_MS || 9000);
+    return Math.min(Math.max(restTimeout, 2500), 6500);
+  }
+
+  function logViewerLikesSkipped(stage, error, quiet = true) {
+    const message = String(error?.message || error || "");
+
+    if (quiet) {
+      console.debug("Klevby feed: проверка моих лайков пропущена", {
+        stage,
+        reason: message
+      });
+      return;
+    }
+
+    console.warn("Klevby feed: ошибка проверки моих лайков", {
+      stage,
+      error
+    });
+  }
+
   function countCommentsRows(rows, postIds = []) {
     const counts = Normalize.makeZeroCountMap(postIds);
 
@@ -244,7 +271,7 @@
     });
   }
 
-  async function loadViewerLikedPostIdsRest(postIds, userId) {
+  async function loadViewerLikedPostIdsRest(postIds, userId, options = {}) {
     const ids = Normalize.normalizeIds(postIds);
     const cleanUserId = String(userId || "").trim();
 
@@ -261,7 +288,7 @@
       method: "GET",
       query: params.toString(),
       requireAuth: true,
-      timeoutMs: Core.REST_TIMEOUT_MS
+      timeoutMs: Number(options.timeoutMs || Core.REST_TIMEOUT_MS || 9000)
     });
 
     return new Set(
@@ -271,7 +298,7 @@
     );
   }
 
-  async function loadViewerLikedPostIdsSdk(db, postIds, userId) {
+  async function loadViewerLikedPostIdsSdk(db, postIds, userId, options = {}) {
     const ids = Normalize.normalizeIds(postIds);
     const cleanUserId = String(userId || "").trim();
 
@@ -285,7 +312,7 @@
         .select("post_id")
         .eq("user_id", cleanUserId)
         .in("post_id", ids),
-      Core.SDK_TIMEOUT_MS,
+      Number(options.timeoutMs || Core.SDK_TIMEOUT_MS || 6500),
       "Проверка лайков не ответила."
     );
 
@@ -300,27 +327,34 @@
     );
   }
 
-  async function loadViewerLikedPostIds(db, postIds, userId) {
+  async function loadViewerLikedPostIds(db, postIds, userId, options = {}) {
     const ids = Normalize.normalizeIds(postIds);
     const cleanUserId = String(userId || "").trim();
+    const allowSdkFallback = options.allowSdkFallback !== false;
+    const quiet = options.quiet !== false;
+    const timeoutMs = Number(options.timeoutMs || Core.REST_TIMEOUT_MS || 9000);
 
     if (!ids.length || !cleanUserId) {
       return new Set();
     }
 
     try {
-      return await loadViewerLikedPostIdsRest(ids, cleanUserId);
+      return await loadViewerLikedPostIdsRest(ids, cleanUserId, {
+        timeoutMs
+      });
     } catch (restError) {
-      console.debug("Klevby feed: REST проверка моих лайков пропущена, пробую SDK", restError);
+      logViewerLikesSkipped("rest", restError, quiet);
 
-      if (!db) {
+      if (!db || !allowSdkFallback) {
         return new Set();
       }
 
       try {
-        return await loadViewerLikedPostIdsSdk(db, ids, cleanUserId);
+        return await loadViewerLikedPostIdsSdk(db, ids, cleanUserId, {
+          timeoutMs: Number(options.sdkTimeoutMs || Core.SDK_TIMEOUT_MS || timeoutMs)
+        });
       } catch (sdkError) {
-        console.warn("Klevby feed: ошибка проверки моих лайков", sdkError);
+        logViewerLikesSkipped("sdk", sdkError, quiet);
         return new Set();
       }
     }
@@ -344,7 +378,12 @@
     const likedPostIds = await loadViewerLikedPostIds(
       db,
       safeItems.map((item) => item?.id),
-      userId
+      userId,
+      {
+        allowSdkFallback: false,
+        quiet: true,
+        timeoutMs: getViewerLikesRenderTimeoutMs()
+      }
     );
 
     return safeItems.map((item) => {
@@ -373,7 +412,13 @@
       const likedPostIds = await loadViewerLikedPostIds(
         db,
         [cleanPostId],
-        cleanUserId
+        cleanUserId,
+        {
+          allowSdkFallback: true,
+          quiet: true,
+          timeoutMs: getViewerLikesExactTimeoutMs(),
+          sdkTimeoutMs: getViewerLikesExactTimeoutMs()
+        }
       );
 
       liked = likedPostIds.has(cleanPostId);
