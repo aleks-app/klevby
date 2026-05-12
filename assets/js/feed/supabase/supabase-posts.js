@@ -990,28 +990,85 @@
   }
 
   async function insertFeedPostWithFallback(db, payload, imagePath) {
-    try {
-      const result = await insertFeedPostViaSdk(db, payload);
+    let restError = null;
 
-      console.info("Klevby feed: feed_posts создан через SDK", {
+    try {
+      const result = await insertFeedPostViaRest(payload);
+
+      console.info("Klevby feed: feed_posts создан через REST-first", {
+        postId: result?.data?.id || "",
+        source: result?.source || "rest_insert"
+      });
+
+      return result;
+    } catch (error) {
+      restError = error;
+
+      if (isObjectAlreadyExistsError(error)) {
+        try {
+          const existing = await findFeedPostByImagePathViaRest(imagePath);
+
+          if (existing?.id) {
+            console.warn("Klevby feed: REST-first insert вернул duplicate, найден существующий post по image_path", {
+              postId: existing.id,
+              imagePath
+            });
+
+            return {
+              data: existing,
+              payload,
+              source: "rest_existing_after_duplicate"
+            };
+          }
+        } catch (findError) {
+          console.debug("Klevby feed: после REST duplicate не удалось найти существующий post", findError);
+        }
+      }
+
+      console.warn("Klevby feed: REST-first insert feed_posts не сработал, пробую SDK fallback", {
+        imagePath,
+        fallbackReason: String(error?.message || error),
+        isLikelyResumeError: isCreateRestFallbackError(error)
+      });
+    }
+
+    try {
+      const existing = await findFeedPostByImagePathViaRest(imagePath);
+
+      if (existing?.id) {
+        console.warn("Klevby feed: после REST insert timeout найден уже созданный post по image_path", {
+          postId: existing.id,
+          imagePath
+        });
+
+        return {
+          data: existing,
+          payload,
+          source: "rest_existing_after_rest_timeout"
+        };
+      }
+    } catch (findError) {
+      console.debug("Klevby feed: перед SDK fallback не удалось проверить существующий post", findError);
+    }
+
+    await recoverSupabaseClient(restError?.message || restError || "rest_insert_failed", "feed_insert_sdk_fallback");
+
+    const nextDb = Core.getClient ? Core.getClient() || db : db;
+
+    try {
+      const result = await insertFeedPostViaSdk(nextDb, payload);
+
+      console.info("Klevby feed: feed_posts создан через SDK fallback", {
         postId: result?.data?.id || ""
       });
 
       return result;
     } catch (sdkError) {
-      console.warn("Klevby feed: SDK insert feed_posts не сработал, пробую REST fallback", {
-        imagePath,
-        fallbackReason: String(sdkError?.message || sdkError),
-        isLikelyResumeError: isCreateRestFallbackError(sdkError)
-      });
-
-      await recoverSupabaseClient(sdkError?.message || sdkError || "sdk_insert_failed", "feed_insert_fallback");
-
       try {
         const existing = await findFeedPostByImagePathViaRest(imagePath);
 
         if (existing?.id) {
-          console.warn("Klevby feed: после SDK insert timeout найден уже созданный post по image_path", {
+          console.warn("Klevby feed: после SDK fallback timeout найден уже созданный post по image_path", {
             postId: existing.id,
             imagePath
           });
@@ -1019,43 +1076,32 @@
           return {
             data: existing,
             payload,
-            source: "rest_existing_after_sdk_insert"
+            source: "rest_existing_after_sdk_fallback"
           };
         }
       } catch (findError) {
-        console.debug("Klevby feed: перед REST insert не удалось проверить существующий post", findError);
+        console.debug("Klevby feed: после SDK fallback не удалось проверить существующий post", findError);
       }
 
-      try {
-        const result = await insertFeedPostViaRest(payload);
+      if (isObjectAlreadyExistsError(sdkError)) {
+        const existing = await findFeedPostByImagePathViaRest(imagePath);
 
-        console.info("Klevby feed: feed_posts создан через REST fallback", {
-          postId: result?.data?.id || "",
-          source: result?.source || "rest_insert"
-        });
-
-        return result;
-      } catch (restError) {
-        if (isObjectAlreadyExistsError(restError)) {
-          const existing = await findFeedPostByImagePathViaRest(imagePath);
-
-          if (existing?.id) {
-            return {
-              data: existing,
-              payload,
-              source: "rest_existing_after_duplicate"
-            };
-          }
+        if (existing?.id) {
+          return {
+            data: existing,
+            payload,
+            source: "rest_existing_after_sdk_duplicate"
+          };
         }
-
-        console.error("Klevby feed: REST insert feed_posts не сработал", {
-          imagePath,
-          sdkError,
-          restError
-        });
-
-        throw new Error("Пост ленты не создался: " + (restError?.message || sdkError?.message || restError));
       }
+
+      console.error("Klevby feed: feed_posts не создался ни через REST-first, ни через SDK fallback", {
+        imagePath,
+        restError,
+        sdkError
+      });
+
+      throw new Error("Пост ленты не создался: " + (restError?.message || sdkError?.message || restError || sdkError));
     }
   }
 
