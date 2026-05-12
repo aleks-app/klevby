@@ -553,6 +553,13 @@
     if (navigator.vibrate) {
       navigator.vibrate(10);
     }
+
+    try {
+      const ranking = window.KlevbyFeedRanking || null;
+      if (ranking && typeof ranking.markPostSeen === "function") {
+        ranking.markPostSeen(item?.id, item || {});
+      }
+    } catch (_) {}
   }
 
   function openProfilePhotoFeedItem(photoId) {
