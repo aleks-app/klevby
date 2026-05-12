@@ -39,6 +39,17 @@
     return cleanValue;
   }
 
+  function waitForFrame() {
+    return new Promise((resolve) => {
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+
+      setTimeout(resolve, 0);
+    });
+  }
+
   function parseProfileAuthStorageValue(raw) {
     if (!raw) return null;
 
@@ -248,6 +259,66 @@
         source: photo.feedPostId ? "supabase" : (photo.source || "local")
       };
     });
+  }
+
+  function countUserPosts(profileName) {
+    try {
+      const postsArray = Array.isArray(window.posts) ? window.posts : [];
+      const currentUser = getCurrentProfileUser();
+      const ownerName = String(profileName || "").trim().toLowerCase();
+
+      const userPosts = postsArray.filter((post) => {
+        const postName = String(post?.name || "").trim().toLowerCase();
+        const postOwnerId = post?.owner_id || post?.user_id || "";
+        const currentUserId = currentUser?.id || "";
+
+        if (currentUserId && postOwnerId && String(postOwnerId) === String(currentUserId)) {
+          return true;
+        }
+
+        return postName && ownerName && postName === ownerName;
+      });
+
+      return userPosts.length || 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
+    const uploadedUrl = feedItem?.imageUrl || feedItem?.image || "";
+
+    return {
+      id: `photo_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      src: uploadedUrl || compressedPhoto.dataUrl,
+      title: "Фото с рыбалки",
+      createdAt: new Date().toISOString(),
+      originalSizeKb: Math.round((file?.size || 0) / 1024),
+      savedSizeKb: compressedPhoto.sizeKb,
+      width: compressedPhoto.width,
+      height: compressedPhoto.height,
+      source: feedItem ? "supabase" : "local",
+      feedPostId: feedItem?.id || "",
+      feedImagePath: feedItem?.imagePath || "",
+      feedImageUrl: uploadedUrl,
+      feedSyncError: ""
+    };
+  }
+
+  function updateLocalPhotoWithFeedItem(photo, feedItem) {
+    if (!photo || !feedItem) return photo;
+
+    const uploadedUrl = feedItem.imageUrl || feedItem.image || photo.feedImageUrl || "";
+
+    return {
+      ...photo,
+      src: uploadedUrl || photo.src,
+      source: "supabase",
+      feedPostId: feedItem.id || photo.feedPostId || "",
+      feedImagePath: feedItem.imagePath || photo.feedImagePath || "",
+      feedImageUrl: uploadedUrl || photo.feedImageUrl || "",
+      feedSyncError: ""
+    };
   }
 
   function getProfileSupabaseClient() {
@@ -823,6 +894,9 @@
     readProfilePhotos,
     saveProfilePhotos,
     getProfileFeedItems,
+    countUserPosts,
+    makeLocalProfilePhoto,
+    updateLocalPhotoWithFeedItem,
 
     getCurrentProfileUser,
     getProfileNameFromCurrentUser,
@@ -850,6 +924,7 @@
     uploadProfileAvatarToSupabase,
     loadProfileAvatarFromSupabase,
 
+    waitForFrame,
     blobToDataUrl,
     estimateDataUrlSizeKb,
     compressImageFile,
@@ -859,6 +934,6 @@
   };
 
   console.log("Klevby profile core loaded", {
-    version: "20260512-profile-core-1"
+    version: "20260512-profile-core-2"
   });
 })();
