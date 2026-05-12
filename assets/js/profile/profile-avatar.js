@@ -1,5 +1,5 @@
 (function () {
-  const PROFILE_AVATAR_VERSION = "20260512-profile-avatar-split-1";
+  const PROFILE_AVATAR_VERSION = "20260512-profile-avatar-feed-sync-1";
 
   const KLEVB_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
   const KLEVB_PROFILE_AVATAR_MAX_SIDE = 520;
@@ -9,11 +9,21 @@
     return window.KlevbyProfileCore || {};
   }
 
-  function requireCoreMethod(name) {
+  function getCoreMethod(name) {
     const core = getCore();
 
     if (core && typeof core[name] === "function") {
       return core[name].bind(core);
+    }
+
+    return null;
+  }
+
+  function requireCoreMethod(name) {
+    const method = getCoreMethod(name);
+
+    if (method) {
+      return method;
     }
 
     const error = new Error(`KlevbyProfileCore.${name} is not available`);
@@ -43,6 +53,73 @@
 
   function promiseWithTimeout(promise, timeoutMs, message = "Timeout") {
     return requireCoreMethod("promiseWithTimeout")(promise, timeoutMs, message);
+  }
+
+  function isPublicUrl(value) {
+    return /^https?:\/\//i.test(String(value || "").trim());
+  }
+
+  function saveAvatarFallback(src) {
+    if (!src) return;
+
+    try {
+      localStorage.setItem(KLEVB_PROFILE_AVATAR_KEY, src);
+    } catch (error) {
+      console.warn("[KlevbyProfile] Не удалось сохранить fallback аватара.", error);
+    }
+  }
+
+  function refreshFeedAfterAvatarSync() {
+    setTimeout(() => {
+      try {
+        if (typeof window.refreshFeedNow === "function") {
+          window.refreshFeedNow();
+          return;
+        }
+
+        if (typeof window.renderProfileFeed === "function") {
+          window.renderProfileFeed();
+        }
+      } catch (error) {
+        console.warn("[KlevbyProfile] Лента не обновилась после синхронизации аватара.", error);
+      }
+    }, 220);
+  }
+
+  async function syncAuthorAvatarInFeed(avatarUrl) {
+    const cleanAvatarUrl = String(avatarUrl || "").trim();
+
+    if (!isPublicUrl(cleanAvatarUrl)) {
+      return false;
+    }
+
+    const syncMethod = getCoreMethod("syncFeedPostsAuthorAvatarSafe");
+
+    if (!syncMethod) {
+      console.warn("[KlevbyProfile] syncFeedPostsAuthorAvatarSafe недоступен в profile-core.js.");
+      return false;
+    }
+
+    const supabase = getProfileSupabaseClient();
+    const currentUser = await resolveCurrentProfileUser(supabase);
+
+    if (!currentUser?.id) {
+      console.warn("[KlevbyProfile] Не удалось определить user_id для синхронизации аватара в ленте.");
+      return false;
+    }
+
+    const ok = await syncMethod(currentUser.id, cleanAvatarUrl);
+
+    if (ok) {
+      console.info("[KlevbyProfile] Аватар автора синхронизирован со старыми постами ленты.", {
+        userId: currentUser.id,
+        avatarUrl: cleanAvatarUrl
+      });
+
+      refreshFeedAfterAvatarSync();
+    }
+
+    return ok;
   }
 
   async function handleLocalAvatarUpload(event) {
@@ -76,10 +153,17 @@
 
       uploadProfileAvatarToSupabase(compressedAvatar.dataUrl)
         .then((result) => {
-          if (!result?.avatarUrl) return;
+          const avatarUrl = String(result?.avatarUrl || "").trim();
 
-          setProfileAvatar(result.avatarUrl);
+          if (!avatarUrl) return;
+
+          saveAvatarFallback(avatarUrl);
+          setProfileAvatar(avatarUrl);
           console.info("[KlevbyProfile] Аватар загружен в Supabase Storage и профиль обновлён.");
+
+          syncAuthorAvatarInFeed(avatarUrl).catch((syncError) => {
+            console.warn("[KlevbyProfile] Аватар загружен, но в старые посты ленты не синхронизировался.", syncError);
+          });
         })
         .catch((uploadError) => {
           console.warn("[KlevbyProfile] Upload аватара в Supabase не удался, оставляем local fallback.", uploadError);
@@ -137,6 +221,7 @@
       const avatarUrlFromRest = await readProfileAvatarRowByRest(currentUser.id);
 
       if (avatarUrlFromRest) {
+        saveAvatarFallback(avatarUrlFromRest);
         setProfileAvatar(avatarUrlFromRest);
         console.info("[KlevbyProfile] Загружен avatar_url из profiles через REST.");
         return avatarUrlFromRest;
@@ -167,6 +252,7 @@
 
     if (!avatarUrl) return null;
 
+    saveAvatarFallback(avatarUrl);
     setProfileAvatar(avatarUrl);
     console.info("[KlevbyProfile] Загружен avatar_url из profiles.");
     return avatarUrl;
@@ -213,7 +299,8 @@
     restoreLocalProfileAvatar,
     loadProfileAvatarFromSupabase,
     setProfileAvatar,
-    resetMobileProfileAvatar
+    resetMobileProfileAvatar,
+    syncAuthorAvatarInFeed
   };
 
   console.log("Klevby profile avatar module loaded", {
