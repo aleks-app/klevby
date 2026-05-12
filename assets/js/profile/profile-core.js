@@ -6,6 +6,7 @@
 
   const KLEVB_PROFILE_MAX_PHOTOS = 8;
   const KLEVB_PROFILE_AVATAR_BUCKET = "profile-avatars";
+  const KLEVB_PROFILE_FEED_POSTS_TABLE = "feed_posts";
   const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
   const KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS = 90;
 
@@ -38,6 +39,10 @@
     if (match && match[1]) return `@${match[1]}`;
 
     return cleanValue;
+  }
+
+  function isPublicUrl(value) {
+    return /^https?:\/\//i.test(String(value || "").trim());
   }
 
   function waitForFrame() {
@@ -761,6 +766,166 @@
     return true;
   }
 
+  async function updateFeedPostsAuthorAvatarByRest(userId, avatarUrl) {
+    const cleanUserId = String(userId || "").trim();
+    const cleanAvatarUrl = String(avatarUrl || "").trim();
+
+    if (!cleanUserId || !isPublicUrl(cleanAvatarUrl)) {
+      return false;
+    }
+
+    const { supabaseUrl, anonKey, accessToken } = await getFreshProfileRestAuthContext({
+      requireAuth: true
+    });
+
+    if (!supabaseUrl || !anonKey || !accessToken) {
+      throw new Error("Нет данных для REST update feed_posts.author_avatar_url.");
+    }
+
+    const url = `${supabaseUrl}/rest/v1/${KLEVB_PROFILE_FEED_POSTS_TABLE}?user_id=eq.${encodeURIComponent(cleanUserId)}`;
+
+    const response = await fetchWithTimeout(url, {
+      method: "PATCH",
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify({
+        author_avatar_url: cleanAvatarUrl
+      })
+    }, 7000);
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`feed_posts REST avatar update failed ${response.status}: ${text || response.statusText}`);
+    }
+
+    console.info("[KlevbyProfileCore] feed_posts.author_avatar_url обновлён через REST.", {
+      userId: cleanUserId,
+      avatarUrl: cleanAvatarUrl
+    });
+
+    return true;
+  }
+
+  async function updateFeedPostsAuthorAvatarBySdk(userId, avatarUrl) {
+    const cleanUserId = String(userId || "").trim();
+    const cleanAvatarUrl = String(avatarUrl || "").trim();
+    const supabase = getProfileSupabaseClient();
+
+    if (!supabase || !cleanUserId || !isPublicUrl(cleanAvatarUrl)) {
+      return false;
+    }
+
+    const updatePromise = supabase
+      .from(KLEVB_PROFILE_FEED_POSTS_TABLE)
+      .update({
+        author_avatar_url: cleanAvatarUrl
+      })
+      .eq("user_id", cleanUserId);
+
+    const { error } = await promiseWithTimeout(
+      updatePromise,
+      7000,
+      "Supabase SDK feed_posts avatar update timeout"
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    console.info("[KlevbyProfileCore] feed_posts.author_avatar_url обновлён через SDK fallback.", {
+      userId: cleanUserId,
+      avatarUrl: cleanAvatarUrl
+    });
+
+    return true;
+  }
+
+  function notifyFeedAuthorAvatarUpdated(userId, avatarUrl) {
+    const detail = {
+      action: "profile_author_avatar_updated",
+      userId: String(userId || ""),
+      avatarUrl: String(avatarUrl || "")
+    };
+
+    try {
+      window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+        detail
+      }));
+    } catch (error) {
+      console.debug("[KlevbyProfileCore] klevby-feed-updated не отправился.", error);
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent("klevby-profile-avatar-updated", {
+        detail
+      }));
+    } catch (error) {
+      console.debug("[KlevbyProfileCore] klevby-profile-avatar-updated не отправился.", error);
+    }
+
+    setTimeout(() => {
+      try {
+        if (typeof window.refreshFeedNow === "function") {
+          window.refreshFeedNow();
+          return;
+        }
+
+        if (typeof window.renderProfileFeed === "function") {
+          window.renderProfileFeed();
+        }
+      } catch (error) {
+        console.warn("[KlevbyProfileCore] Лента не обновилась после обновления аватара.", error);
+      }
+    }, 180);
+  }
+
+  async function syncFeedPostsAuthorAvatar(userId, avatarUrl) {
+    const cleanUserId = String(userId || "").trim();
+    const cleanAvatarUrl = String(avatarUrl || "").trim();
+
+    if (!cleanUserId || !isPublicUrl(cleanAvatarUrl)) {
+      return false;
+    }
+
+    try {
+      const ok = await updateFeedPostsAuthorAvatarByRest(cleanUserId, cleanAvatarUrl);
+
+      if (ok) {
+        notifyFeedAuthorAvatarUpdated(cleanUserId, cleanAvatarUrl);
+        return true;
+      }
+    } catch (restError) {
+      console.warn("[KlevbyProfileCore] REST sync author_avatar_url в feed_posts не сработал, пробую SDK fallback.", restError);
+    }
+
+    try {
+      const ok = await updateFeedPostsAuthorAvatarBySdk(cleanUserId, cleanAvatarUrl);
+
+      if (ok) {
+        notifyFeedAuthorAvatarUpdated(cleanUserId, cleanAvatarUrl);
+        return true;
+      }
+    } catch (sdkError) {
+      console.warn("[KlevbyProfileCore] SDK sync author_avatar_url в feed_posts не сработал.", sdkError);
+    }
+
+    return false;
+  }
+
+  async function syncFeedPostsAuthorAvatarSafe(userId, avatarUrl) {
+    try {
+      return await syncFeedPostsAuthorAvatar(userId, avatarUrl);
+    } catch (error) {
+      console.warn("[KlevbyProfileCore] Не удалось обновить аватар автора в старых постах ленты.", error);
+      return false;
+    }
+  }
+
   async function readProfileAvatarRowByRest(userId) {
     const { supabaseUrl, anonKey, accessToken } = await getFreshProfileRestAuthContext({
       requireAuth: false
@@ -808,6 +973,7 @@
     try {
       const restResult = await uploadProfileAvatarByRest(avatarBlob, avatarPath);
       await updateProfileAvatarRowByRest(currentUser.id, restResult.avatarUrl, restResult.avatarPath);
+      await syncFeedPostsAuthorAvatarSafe(currentUser.id, restResult.avatarUrl);
 
       return {
         avatarUrl: restResult.avatarUrl,
@@ -875,6 +1041,8 @@
     if (profileError) {
       throw profileError;
     }
+
+    await syncFeedPostsAuthorAvatarSafe(currentUser.id, avatarUrl);
 
     console.info("[KlevbyProfileCore] Аватар загружен через SDK fallback.", {
       avatarPath,
@@ -1073,6 +1241,7 @@
       KLEVB_PROFILE_PHOTOS_KEY,
       KLEVB_PROFILE_MAX_PHOTOS,
       KLEVB_PROFILE_AVATAR_BUCKET,
+      KLEVB_PROFILE_FEED_POSTS_TABLE,
       KLEVB_PROFILE_REST_TIMEOUT_MS,
       KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS
     },
@@ -1114,6 +1283,10 @@
     makeProfilePublicAvatarUrl,
     uploadProfileAvatarByRest,
     updateProfileAvatarRowByRest,
+    updateFeedPostsAuthorAvatarByRest,
+    updateFeedPostsAuthorAvatarBySdk,
+    syncFeedPostsAuthorAvatar,
+    syncFeedPostsAuthorAvatarSafe,
     readProfileAvatarRowByRest,
     uploadProfileAvatarToSupabase,
     loadProfileAvatarFromSupabase,
@@ -1124,10 +1297,11 @@
     compressImageFile,
 
     escapeHtml,
-    formatTelegramLabel
+    formatTelegramLabel,
+    isPublicUrl
   };
 
   console.log("Klevby profile core loaded", {
-    version: "20260512-profile-core-3"
+    version: "20260512-profile-core-4"
   });
 })();
