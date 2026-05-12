@@ -16,6 +16,7 @@
   let klevbyFeedMainLastResumeAt = 0;
   let klevbyFeedMainQuietUntil = 0;
   let klevbyFeedMainQuietReason = "";
+  let klevbyFeedMainLegacyBridge = null;
 
   const KLEVB_FEED_MAIN_POLL_MS = 0;
   const KLEVB_FEED_MAIN_MIN_REFRESH_GAP_MS = 2600;
@@ -164,6 +165,25 @@
         isManualRefreshReason(reason) ||
         isStartupRefreshReason(reason) ||
         isResumeRefreshReason(reason)
+      );
+    };
+
+  const isDuplicateLikeError = typeof feedMainCore.isDuplicateLikeError === "function"
+    ? feedMainCore.isDuplicateLikeError
+    : function (error) {
+      const code = String(error?.code || error?.details?.code || "").trim();
+      const message = String(error?.message || "").toLowerCase();
+      const details = String(error?.details || "").toLowerCase();
+      const hint = String(error?.hint || "").toLowerCase();
+      const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
+
+      return (
+        code === "23505" ||
+        message.includes("duplicate key") ||
+        message.includes("feed_likes_unique_user_post") ||
+        details.includes("feed_likes_unique_user_post") ||
+        hint.includes("feed_likes_unique_user_post") ||
+        constraint.includes("feed_likes_unique_user_post")
       );
     };
 
@@ -344,42 +364,6 @@
     if (hasRecentSuccessfulRender(KLEVB_FEED_MAIN_STARTUP_DUPLICATE_GAP_MS)) return false;
 
     return !hasFeedDom() || !isRenderReady();
-  }
-
-  const isDuplicateLikeError = typeof feedMainCore.isDuplicateLikeError === "function"
-    ? feedMainCore.isDuplicateLikeError
-    : function (error) {
-      const code = String(error?.code || error?.details?.code || "").trim();
-      const message = String(error?.message || "").toLowerCase();
-      const details = String(error?.details || "").toLowerCase();
-      const hint = String(error?.hint || "").toLowerCase();
-      const constraint = String(error?.constraint || error?.details?.constraint || "").toLowerCase();
-
-      return (
-        code === "23505" ||
-        message.includes("duplicate key") ||
-        message.includes("feed_likes_unique_user_post") ||
-        details.includes("feed_likes_unique_user_post") ||
-        hint.includes("feed_likes_unique_user_post") ||
-        constraint.includes("feed_likes_unique_user_post")
-      );
-    };
-
-  function openKlevbyProfileSafe() {
-    const utils = getUtils();
-
-    if (typeof utils.openKlevbyProfileSafe === "function") {
-      return utils.openKlevbyProfileSafe();
-    }
-
-    if (typeof window.openKlevbyProfile === "function") {
-      window.openKlevbyProfile();
-      return;
-    }
-
-    if (typeof window.showSection === "function") {
-      window.showSection("profile");
-    }
   }
 
   function renderProfileFeed() {
@@ -739,208 +723,42 @@
     }, true);
   }
 
-  function getProfileFeedItemsSafe() {
-    const render = getRender();
-    const utils = getUtils();
-
-    if (typeof render.getProfileFeedItemsSafe === "function") {
-      return render.getProfileFeedItemsSafe();
+  function getLegacyBridge() {
+    if (klevbyFeedMainLegacyBridge) {
+      return klevbyFeedMainLegacyBridge;
     }
 
-    if (typeof utils.getProfileFeedItemsSafe === "function") {
-      return utils.getProfileFeedItemsSafe();
+    const legacyModule = window.KlevbyFeedMainLegacy || {};
+
+    if (typeof legacyModule.createBridge === "function") {
+      klevbyFeedMainLegacyBridge = legacyModule.createBridge({
+        getRender,
+        getUtils,
+        getModals,
+        getActions,
+        markFeedQuiet,
+        forceRenderFeed,
+        runMainResumeBurst,
+        renderProfileFeed,
+        isDuplicateLikeError,
+        likeQuietMs: KLEVB_FEED_MAIN_LIKE_QUIET_MS
+      }) || {};
+    } else {
+      klevbyFeedMainLegacyBridge = {};
+      console.warn("Klevby feed main: legacy bridge module not found");
     }
 
-    try {
-      if (typeof window.getProfileFeedItems === "function") {
-        const items = window.getProfileFeedItems();
-        return Array.isArray(items) ? items : [];
-      }
-    } catch (error) {
-      console.warn("Klevby feed: не удалось получить фото профиля", error);
-    }
-
-    return [];
-  }
-
-  function getFilteredProfileFeedItems(options = {}) {
-    const render = getRender();
-    const utils = getUtils();
-
-    if (typeof render.getFilteredProfileFeedItems === "function") {
-      return render.getFilteredProfileFeedItems(options);
-    }
-
-    if (typeof utils.getFilteredProfileFeedItems === "function") {
-      return utils.getFilteredProfileFeedItems(options);
-    }
-
-    return getProfileFeedItemsSafe();
-  }
-
-  function profilePhotoCardHtml(item) {
-    const render = getRender();
-
-    if (typeof render.profilePhotoCardHtml === "function") {
-      return render.profilePhotoCardHtml(item);
-    }
-
-    return "";
-  }
-
-  function openProfilePhotoFeedItem(postId) {
-    const modals = getModals();
-    const actions = getActions();
-
-    if (typeof modals.openProfilePhotoFeedItem === "function") {
-      return modals.openProfilePhotoFeedItem(postId);
-    }
-
-    if (typeof actions.openProfilePhotoFeedItem === "function") {
-      return actions.openProfilePhotoFeedItem(postId);
-    }
-
-    if (typeof window.openProfilePhotoViewer === "function") {
-      return window.openProfilePhotoViewer(postId);
-    }
-
-    return openKlevbyProfileSafe();
-  }
-
-  function closeFeedPhotoViewer() {
-    const modals = getModals();
-
-    if (typeof modals.closeFeedPhotoViewer === "function") {
-      return modals.closeFeedPhotoViewer();
-    }
-
-    const viewer = document.getElementById("klevbyFeedPhotoViewer");
-    const image = document.getElementById("klevbyFeedPhotoViewerImage");
-
-    if (viewer) {
-      viewer.classList.add("hidden");
-    }
-
-    if (image) {
-      image.removeAttribute("src");
-    }
-
-    document.body.classList.remove("post-modal-open");
-  }
-
-  function openFeedCommentModal(postId) {
-    const modals = getModals();
-
-    if (typeof modals.openFeedCommentModal === "function") {
-      return modals.openFeedCommentModal(postId);
-    }
-
-    alert("Комментарии ещё загружаются. Обнови страницу и попробуй ещё раз.");
-    return undefined;
-  }
-
-  function closeFeedCommentModal() {
-    const modals = getModals();
-
-    if (typeof modals.closeFeedCommentModal === "function") {
-      return modals.closeFeedCommentModal();
-    }
-
-    const modal = document.getElementById("klevbyFeedCommentModal");
-
-    if (modal) {
-      modal.classList.add("hidden");
-      modal.dataset.postId = "";
-    }
-
-    document.body.classList.remove("post-modal-open");
-  }
-
-  function submitFeedComment() {
-    const actions = getActions();
-    const modals = getModals();
-
-    if (typeof actions.submitFeedComment === "function") {
-      return actions.submitFeedComment();
-    }
-
-    if (typeof modals.submitFeedComment === "function") {
-      return modals.submitFeedComment();
-    }
-
-    alert("Отправка комментариев ещё не подключена.");
-    return Promise.resolve();
-  }
-
-  function deleteFeedComment(commentId) {
-    const actions = getActions();
-    const modals = getModals();
-
-    if (typeof actions.deleteFeedComment === "function") {
-      return actions.deleteFeedComment(commentId);
-    }
-
-    if (typeof modals.deleteFeedComment === "function") {
-      return modals.deleteFeedComment(commentId);
-    }
-
-    alert("Удаление комментариев ещё не подключено.");
-    return Promise.resolve();
-  }
-
-  function toggleFeedLike(postId) {
-    const cleanPostId = String(postId || "").trim();
-    const actions = getActions();
-
-    markFeedQuiet("like_button_click", KLEVB_FEED_MAIN_LIKE_QUIET_MS);
-
-    if (typeof actions.toggleLikeFromCard === "function") {
-      return actions.toggleLikeFromCard(cleanPostId);
-    }
-
-    if (typeof actions.toggleFeedLikeFromCard === "function") {
-      return actions.toggleFeedLikeFromCard(cleanPostId);
-    }
-
-    if (typeof actions.toggleFeedLike === "function") {
-      return actions.toggleFeedLike(cleanPostId);
-    }
-
-    if (typeof window.klevbyToggleFeedLike === "function") {
-      return window.klevbyToggleFeedLike(cleanPostId)
-        .then(() => {
-          markFeedQuiet("like_clicked", KLEVB_FEED_MAIN_LIKE_QUIET_MS);
-          return true;
-        })
-        .catch((error) => {
-          if (isDuplicateLikeError(error)) {
-            markFeedQuiet("like_duplicate", KLEVB_FEED_MAIN_LIKE_QUIET_MS);
-            return true;
-          }
-
-          console.warn("Klevby feed: лайк не сработал", error);
-          alert(error?.message || "Не получилось поставить лайк.");
-          return false;
-        });
-    }
-
-    alert("Лайки ещё не подключены.");
-    return Promise.resolve(false);
+    return klevbyFeedMainLegacyBridge;
   }
 
   function exposeLegacyGlobals() {
-    window.getProfileFeedItemsSafe = getProfileFeedItemsSafe;
-    window.getFilteredProfileFeedItems = getFilteredProfileFeedItems;
-    window.openKlevbyProfileSafe = openKlevbyProfileSafe;
-    window.openProfilePhotoFeedItem = openProfilePhotoFeedItem;
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.exposeLegacyGlobals === "function") {
+      return legacy.exposeLegacyGlobals();
+    }
+
     window.renderProfileFeed = renderProfileFeed;
-    window.profilePhotoCardHtml = profilePhotoCardHtml;
-    window.toggleFeedLike = toggleFeedLike;
-    window.closeFeedPhotoViewer = closeFeedPhotoViewer;
-    window.openFeedCommentModal = openFeedCommentModal;
-    window.closeFeedCommentModal = closeFeedCommentModal;
-    window.submitFeedComment = submitFeedComment;
-    window.deleteFeedComment = deleteFeedComment;
 
     window.klevbyForceRenderFeed = function klevbyForceRenderFeed() {
       return forceRenderFeed("manual_force_global", {
@@ -961,6 +779,101 @@
         force: false
       });
     };
+
+    return false;
+  }
+
+  function openKlevbyProfileSafe() {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.openKlevbyProfileSafe === "function") {
+      return legacy.openKlevbyProfileSafe();
+    }
+
+    if (typeof window.openKlevbyProfile === "function") {
+      window.openKlevbyProfile();
+      return undefined;
+    }
+
+    if (typeof window.showSection === "function") {
+      window.showSection("profile");
+    }
+
+    return undefined;
+  }
+
+  function openProfilePhotoFeedItem(postId) {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.openProfilePhotoFeedItem === "function") {
+      return legacy.openProfilePhotoFeedItem(postId);
+    }
+
+    return openKlevbyProfileSafe();
+  }
+
+  function closeFeedPhotoViewer() {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.closeFeedPhotoViewer === "function") {
+      return legacy.closeFeedPhotoViewer();
+    }
+
+    return undefined;
+  }
+
+  function openFeedCommentModal(postId) {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.openFeedCommentModal === "function") {
+      return legacy.openFeedCommentModal(postId);
+    }
+
+    alert("Комментарии ещё загружаются. Обнови страницу и попробуй ещё раз.");
+    return undefined;
+  }
+
+  function closeFeedCommentModal() {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.closeFeedCommentModal === "function") {
+      return legacy.closeFeedCommentModal();
+    }
+
+    return undefined;
+  }
+
+  function submitFeedComment() {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.submitFeedComment === "function") {
+      return legacy.submitFeedComment();
+    }
+
+    alert("Отправка комментариев ещё не подключена.");
+    return Promise.resolve();
+  }
+
+  function deleteFeedComment(commentId) {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.deleteFeedComment === "function") {
+      return legacy.deleteFeedComment(commentId);
+    }
+
+    alert("Удаление комментариев ещё не подключено.");
+    return Promise.resolve();
+  }
+
+  function toggleFeedLike(postId) {
+    const legacy = getLegacyBridge();
+
+    if (typeof legacy.toggleFeedLike === "function") {
+      return legacy.toggleFeedLike(postId);
+    }
+
+    alert("Лайки ещё не подключены.");
+    return Promise.resolve(false);
   }
 
   function warmUpModules() {
@@ -1041,7 +954,7 @@
 
     window.dispatchEvent(new CustomEvent("klevby-feed-module-ready", {
       detail: {
-        version: "20260509-feed-main-light-desktop-1"
+        version: "20260512-feed-main-legacy-split-1"
       }
     }));
 
@@ -1066,6 +979,7 @@
     startFeedDomWatcher,
     stopFeedDomWatcher,
     markFeedQuiet,
+    getLegacyBridge,
     openKlevbyProfileSafe,
     openProfilePhotoFeedItem,
     openFeedCommentModal,
