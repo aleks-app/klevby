@@ -782,64 +782,87 @@
   }
 
   async function uploadFeedStorageWithFallback(db, imagePath, blob) {
-    try {
-      const result = await uploadFeedStorageViaSdk(db, imagePath, blob);
-      const imageUrl = getPublicStorageUrl(db, Core.BUCKET, imagePath);
+    let restError = null;
 
-      console.info("Klevby feed: фото загружено в Storage через SDK", {
+    try {
+      const result = await uploadFeedStorageViaRest(imagePath, blob);
+      const nextDb = Core.getClient ? Core.getClient() : db;
+      const imageUrl = getPublicStorageUrl(nextDb || db, Core.BUCKET, imagePath);
+
+      console.info("Klevby feed: фото загружено в Storage через REST-first", {
         imagePath
       });
 
       return {
         ...result,
-        imageUrl
+        imageUrl,
+        source: "rest_storage"
       };
-    } catch (sdkError) {
-      console.warn("Klevby feed: SDK upload Storage не сработал, пробую REST fallback", {
-        imagePath,
-        fallbackReason: String(sdkError?.message || sdkError),
-        isLikelyResumeError: isCreateRestFallbackError(sdkError)
-      });
+    } catch (error) {
+      restError = error;
 
-      await recoverSupabaseClient(sdkError?.message || sdkError || "sdk_upload_failed", "feed_upload_fallback");
-
-      try {
-        const result = await uploadFeedStorageViaRest(imagePath, blob);
+      if (isObjectAlreadyExistsError(error)) {
         const nextDb = Core.getClient ? Core.getClient() : db;
         const imageUrl = getPublicStorageUrl(nextDb || db, Core.BUCKET, imagePath);
 
-        console.info("Klevby feed: фото загружено в Storage через REST fallback", {
+        console.warn("Klevby feed: Storage REST-first вернул duplicate, считаю файл уже загруженным", {
           imagePath
         });
 
         return {
-          ...result,
-          imageUrl
+          path: imagePath,
+          imageUrl,
+          source: "rest_storage_existing"
         };
-      } catch (restError) {
-        if (isObjectAlreadyExistsError(restError)) {
-          const nextDb = Core.getClient ? Core.getClient() : db;
-          const imageUrl = getPublicStorageUrl(nextDb || db, Core.BUCKET, imagePath);
+      }
 
-          console.warn("Klevby feed: Storage REST вернул duplicate, считаю файл уже загруженным", {
-            imagePath
-          });
+      console.warn("Klevby feed: REST-first upload Storage не сработал, пробую SDK fallback", {
+        imagePath,
+        fallbackReason: String(error?.message || error),
+        isLikelyResumeError: isCreateRestFallbackError(error)
+      });
+    }
 
-          return {
-            path: imagePath,
-            imageUrl,
-            source: "rest_storage_existing"
-          };
-        }
+    await recoverSupabaseClient(restError?.message || restError || "rest_upload_failed", "feed_upload_sdk_fallback");
 
-        console.error("Klevby feed: REST upload Storage не сработал", {
-          imagePath,
-          sdkError,
-          restError
+    const nextDb = Core.getClient ? Core.getClient() || db : db;
+
+    try {
+      const result = await uploadFeedStorageViaSdk(nextDb, imagePath, blob);
+      const imageUrl = getPublicStorageUrl(nextDb || db, Core.BUCKET, imagePath);
+
+      console.info("Klevby feed: фото загружено в Storage через SDK fallback", {
+        imagePath
+      });
+
+      return {
+        ...result,
+        imageUrl,
+        source: "sdk_storage_fallback"
+      };
+    } catch (sdkError) {
+      if (isObjectAlreadyExistsError(sdkError)) {
+        const finalDb = Core.getClient ? Core.getClient() || nextDb || db : nextDb || db;
+        const imageUrl = getPublicStorageUrl(finalDb, Core.BUCKET, imagePath);
+
+        console.warn("Klevby feed: SDK fallback Storage вернул duplicate, считаю файл уже загруженным", {
+          imagePath
         });
 
-        throw new Error("Фото не загрузилось в Supabase Storage: " + (restError?.message || sdkError?.message || restError));
+        return {
+          path: imagePath,
+          imageUrl,
+          source: "sdk_storage_existing_after_rest_timeout"
+        };
       }
+
+      console.error("Klevby feed: Storage upload не сработал ни через REST-first, ни через SDK fallback", {
+        imagePath,
+        restError,
+        sdkError
+      });
+
+      throw new Error("Фото не загрузилось в Supabase Storage: " + (restError?.message || sdkError?.message || restError || sdkError));
     }
   }
 
