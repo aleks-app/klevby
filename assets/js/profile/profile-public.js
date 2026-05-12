@@ -200,7 +200,11 @@
     `;
 
     block.querySelectorAll("[data-kpp-index]").forEach((btn) => {
-      btn.addEventListener("click", () => openPhotoViewer(Number(btn.dataset.kppIndex || -1)));
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openPhotoViewer(Number(btn.dataset.kppIndex || -1));
+      });
     });
   }
 
