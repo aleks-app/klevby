@@ -65,6 +65,22 @@ function requireProfileAvatarMethod(name) {
   throw error;
 }
 
+function getProfileSettings() {
+  return window.KlevbyProfileSettings || {};
+}
+
+function requireProfileSettingsMethod(name) {
+  const settings = getProfileSettings();
+
+  if (settings && typeof settings[name] === "function") {
+    return settings[name].bind(settings);
+  }
+
+  const error = new Error(`KlevbyProfileSettings.${name} is not available`);
+  console.error("[KlevbyProfile] profile-settings.js не готов или функция не найдена:", name, error);
+  throw error;
+}
+
 function getDefaultProfileData() {
   return requireProfileCoreMethod("getDefaultProfileData")();
 }
@@ -225,6 +241,42 @@ function resetMobileProfileAvatar() {
   return requireProfileAvatarMethod("resetMobileProfileAvatar")();
 }
 
+function openProfileSettingsModal() {
+  return requireProfileSettingsMethod("openProfileSettingsModal")();
+}
+
+function closeProfileSettingsModal(updateButton = true) {
+  return requireProfileSettingsMethod("closeProfileSettingsModal")(updateButton);
+}
+
+function handleProfileSettingsBackdrop(event) {
+  return requireProfileSettingsMethod("handleProfileSettingsBackdrop")(event);
+}
+
+function fillProfileSettingsForm() {
+  return requireProfileSettingsMethod("fillProfileSettingsForm")();
+}
+
+function saveProfileSettings() {
+  return requireProfileSettingsMethod("saveProfileSettings")();
+}
+
+function syncProfileDataToMainInputs(data) {
+  return requireProfileSettingsMethod("syncProfileDataToMainInputs")(data);
+}
+
+function pulseProfileSaved() {
+  return requireProfileSettingsMethod("pulseProfileSaved")();
+}
+
+function logoutFromProfileSettings() {
+  return requireProfileSettingsMethod("logoutFromProfileSettings")();
+}
+
+function bindProfileInputSync() {
+  return requireProfileSettingsMethod("bindProfileInputSync")();
+}
+
 function setProfileScreenChrome(isActive) {
   return requireProfileUiMethod("setProfileScreenChrome")(isActive);
 }
@@ -350,151 +402,6 @@ function patchProfileCardButtonsSafe() {
   }
 }
 
-function openProfileSettingsModal() {
-  const modal = document.getElementById("profileSettingsModal");
-  const message = document.getElementById("profileSettingsMessage");
-
-  if (!modal) return;
-
-  setProfileScreenChrome(true);
-  fillProfileSettingsForm();
-
-  if (message) {
-    message.textContent = "";
-    message.classList.remove("error-line");
-  }
-
-  modal.classList.remove("hidden");
-  document.body.classList.add("post-modal-open");
-
-  applyProfileTabbar();
-  setProfileTabActive(3);
-  updateProfileHomeFloatButton();
-
-  setTimeout(() => {
-    const nameInput = document.getElementById("profileSettingsNameInput");
-    if (nameInput) nameInput.focus({ preventScroll: true });
-  }, 120);
-}
-
-function closeProfileSettingsModal(updateButton = true) {
-  const modal = document.getElementById("profileSettingsModal");
-
-  if (modal) {
-    modal.classList.add("hidden");
-  }
-
-  document.body.classList.remove("post-modal-open");
-
-  if (updateButton) {
-    setTimeout(updateProfileHomeFloatButton, 80);
-  }
-}
-
-function handleProfileSettingsBackdrop(event) {
-  if (!event || event.target?.id !== "profileSettingsModal") return;
-  closeProfileSettingsModal(true);
-}
-
-function fillProfileSettingsForm() {
-  const data = readProfileData();
-
-  const nameInput = document.getElementById("profileSettingsNameInput");
-  const telegramInput = document.getElementById("profileSettingsTelegramInput");
-  const cityInput = document.getElementById("profileSettingsCityInput");
-  const aboutInput = document.getElementById("profileSettingsAboutInput");
-
-  if (nameInput) nameInput.value = data.name || "";
-  if (telegramInput) telegramInput.value = data.telegram || "";
-  if (cityInput) cityInput.value = data.city || "";
-  if (aboutInput) aboutInput.value = data.about || "";
-}
-
-function saveProfileSettings() {
-  const message = document.getElementById("profileSettingsMessage");
-
-  const nameInput = document.getElementById("profileSettingsNameInput");
-  const telegramInput = document.getElementById("profileSettingsTelegramInput");
-  const cityInput = document.getElementById("profileSettingsCityInput");
-  const aboutInput = document.getElementById("profileSettingsAboutInput");
-
-  const name = nameInput ? nameInput.value.trim() : "";
-  const telegram = telegramInput ? telegramInput.value.trim() : "";
-  const city = cityInput ? cityInput.value.trim() : "";
-  const about = aboutInput ? aboutInput.value.trim() : "";
-
-  if (!name) {
-    if (message) {
-      message.textContent = "Укажи никнейм, чтобы профиль нормально отображался.";
-      message.classList.add("error-line");
-    }
-
-    if (nameInput) nameInput.focus();
-    return;
-  }
-
-  const saved = saveProfileData({
-    name,
-    telegram,
-    city,
-    about
-  });
-
-  syncProfileDataToMainInputs(saved);
-  updateKlevbyProfileView();
-  pulseProfileSaved();
-
-  if (message) {
-    message.classList.remove("error-line");
-    message.textContent = "✅ Анкета сохранена.";
-  }
-
-  if (navigator.vibrate) {
-    navigator.vibrate(18);
-  }
-
-  setTimeout(() => {
-    closeProfileSettingsModal(false);
-    openKlevbyProfile();
-  }, 420);
-}
-
-function syncProfileDataToMainInputs(data) {
-  const nameInput = document.getElementById("nameInput");
-  const cityInput = document.getElementById("cityInput");
-  const telegramInput = document.getElementById("telegramInput");
-  const usernameInput = document.getElementById("usernameInput");
-
-  if (data.name) {
-    if (nameInput && !nameInput.value.trim()) nameInput.value = data.name;
-    if (usernameInput && !usernameInput.value.trim()) usernameInput.value = data.name;
-  }
-
-  if (data.city && cityInput && !cityInput.value.trim()) {
-    cityInput.value = data.city;
-  }
-
-  if (data.telegram && telegramInput && !telegramInput.value.trim()) {
-    telegramInput.value = data.telegram;
-  }
-}
-
-function pulseProfileSaved() {
-  const card = document.querySelector(".profile-main-card");
-
-  if (!card) return;
-
-  card.classList.remove("profile-saved-pulse");
-
-  requestAnimationFrame(() => {
-    card.classList.add("profile-saved-pulse");
-
-    setTimeout(() => {
-      card.classList.remove("profile-saved-pulse");
-    }, 700);
-  });
-}
-
 function updateKlevbyProfileView() {
   const data = readProfileData();
 
@@ -579,44 +486,6 @@ function countUserPosts(profileName) {
   } catch (error) {
     return 0;
   }
-}
-
-function logoutFromProfileSettings() {
-  try {
-    if (typeof logout === "function") {
-      logout();
-    }
-  } catch (error) {
-    console.warn("Klevby profile: выход не сработал", error);
-  }
-
-  closeProfileSettingsModal(true);
-}
-
-function bindProfileInputSync() {
-  const nameInput = document.getElementById("nameInput");
-  const usernameInput = document.getElementById("usernameInput");
-
-  [nameInput, usernameInput].forEach((input) => {
-    if (!input) return;
-
-    input.addEventListener("input", () => {
-      const value = input.value.trim();
-
-      if (!value) return;
-
-      const current = readProfileData();
-
-      if (!current.name) {
-        saveProfileData({
-          ...current,
-          name: value
-        });
-
-        updateKlevbyProfileView();
-      }
-    });
-  });
 }
 
 function openProfilePhotoAction() {
