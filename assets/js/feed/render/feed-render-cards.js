@@ -178,7 +178,7 @@
           <button
             class="profile-feed-author"
             type="button"
-            onclick="event.stopPropagation(); openKlevbyProfileSafe()"
+            onclick="event.stopPropagation(); ${item?.userId ? `openKlevbyPublicProfile('${escapeAttr(item.userId)}', { authorName: '${escapeAttr(authorName)}', authorAvatarUrl: '${escapeAttr(avatar || "")}', authorCity: '${escapeAttr(authorCity)}' })` : `openKlevbyProfileSafe()`}"
             aria-label="Открыть профиль автора"
           >
             ${avatarHtml}
