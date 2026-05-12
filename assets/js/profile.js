@@ -349,7 +349,24 @@ function showHomeSectionFallback() {
   return requireProfileUiMethod("showHomeSectionFallback")();
 }
 
+
+function openKlevbyPublicProfile(userId, fallbackData = {}) {
+  if (window.KlevbyProfilePublic && typeof window.KlevbyProfilePublic.openKlevbyPublicProfile === "function") {
+    return window.KlevbyProfilePublic.openKlevbyPublicProfile(userId, fallbackData);
+  }
+
+  return openKlevbyProfile();
+}
+
 function openKlevbyProfile() {
+  try {
+    if (window.KlevbyProfilePublic && typeof window.KlevbyProfilePublic.closePublicProfileMode === "function") {
+      window.KlevbyProfilePublic.closePublicProfileMode();
+    }
+  } catch (error) {
+    console.warn("Klevby profile: public mode close skipped", error);
+  }
+
   setProfileReturnMode(false);
   setProfileScreenChrome(true);
 
