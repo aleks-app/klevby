@@ -141,9 +141,21 @@
     });
 
     if (supabaseResult.ok && Array.isArray(supabaseResult.items) && supabaseResult.items.length) {
+      let rankedItems = supabaseResult.items;
+      const ranking = window.KlevbyFeedRanking || null;
+
+      if (ranking && typeof ranking.rankFeedItems === "function") {
+        try {
+          rankedItems = ranking.rankFeedItems(supabaseResult.items, {});
+        } catch (error) {
+          console.warn("Klevby feed api: ranking fallback to original order", error);
+          rankedItems = supabaseResult.items;
+        }
+      }
+
       return {
         source: "supabase",
-        items: supabaseResult.items
+        items: rankedItems
       };
     }
 
