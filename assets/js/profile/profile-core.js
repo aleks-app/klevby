@@ -7,6 +7,7 @@
   const KLEVB_PROFILE_MAX_PHOTOS = 8;
   const KLEVB_PROFILE_AVATAR_BUCKET = "profile-avatars";
   const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
+  const KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS = 90;
 
   function getDefaultProfileData() {
     return {
@@ -101,22 +102,91 @@
     return null;
   }
 
+  function getProfileSessionFromAuthData(authData) {
+    if (!authData || typeof authData !== "object") {
+      return null;
+    }
+
+    if (authData.currentSession?.access_token) {
+      return authData.currentSession;
+    }
+
+    if (authData.session?.access_token) {
+      return authData.session;
+    }
+
+    if (authData.data?.session?.access_token) {
+      return authData.data.session;
+    }
+
+    if (authData.access_token) {
+      return authData;
+    }
+
+    return null;
+  }
+
+  function decodeJwtPayload(token) {
+    const value = String(token || "").trim();
+
+    if (!value || !value.includes(".")) {
+      return null;
+    }
+
+    try {
+      const payloadPart = value.split(".")[1] || "";
+      const normalized = payloadPart
+        .replace(/-/g, "+")
+        .replace(/_/g, "/")
+        .padEnd(Math.ceil(payloadPart.length / 4) * 4, "=");
+
+      return JSON.parse(atob(normalized));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getJwtExpiresAtMs(token) {
+    const payload = decodeJwtPayload(token);
+    const exp = Number(payload?.exp || 0);
+
+    if (!exp) {
+      return 0;
+    }
+
+    return exp * 1000;
+  }
+
+  function isProfileAccessTokenUsable(token, graceSeconds = KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS) {
+    const value = String(token || "").trim();
+
+    if (!value) {
+      return false;
+    }
+
+    const expiresAtMs = getJwtExpiresAtMs(value);
+
+    if (!expiresAtMs) {
+      return true;
+    }
+
+    return expiresAtMs > Date.now() + (Number(graceSeconds || 0) * 1000);
+  }
+
   function getProfileAccessTokenFromStoredAuth() {
     const authData = getProfileStoredAuthData();
+    const session = getProfileSessionFromAuthData(authData);
+    const token = String(session?.access_token || "");
 
-    return (
-      authData?.access_token ||
-      authData?.currentSession?.access_token ||
-      authData?.session?.access_token ||
-      authData?.data?.session?.access_token ||
-      ""
-    );
+    return token;
   }
 
   function getProfileUserFromStoredAuth() {
     const authData = getProfileStoredAuthData();
+    const session = getProfileSessionFromAuthData(authData);
 
     return (
+      session?.user ||
       authData?.user ||
       authData?.currentSession?.user ||
       authData?.session?.user ||
@@ -372,35 +442,36 @@
       return localUser;
     }
 
+    const client = supabase || getProfileSupabaseClient();
+
+    if (client?.auth && typeof client.auth.getUser === "function") {
+      try {
+        const { data, error } = await promiseWithTimeout(
+          client.auth.getUser(),
+          2500,
+          "auth.getUser timeout"
+        );
+
+        if (!error && data?.user?.id) {
+          return data.user;
+        }
+
+        if (error) {
+          console.debug("[KlevbyProfileCore] auth.getUser не вернул пользователя.", error);
+        }
+      } catch (error) {
+        console.debug("[KlevbyProfileCore] Ошибка auth.getUser.", error);
+      }
+    }
+
     const storedUser = getProfileUserFromStoredAuth();
 
     if (storedUser?.id) {
       return storedUser;
     }
 
-    const client = supabase || getProfileSupabaseClient();
-
-    if (!client?.auth || typeof client.auth.getUser !== "function") {
+    if (!client?.auth) {
       console.info("[KlevbyProfileCore] Пользователь не найден локально, Supabase auth недоступен.");
-      return null;
-    }
-
-    try {
-      const { data, error } = await promiseWithTimeout(
-        client.auth.getUser(),
-        2500,
-        "auth.getUser timeout"
-      );
-
-      if (!error && data?.user?.id) {
-        return data.user;
-      }
-
-      if (error) {
-        console.warn("[KlevbyProfileCore] auth.getUser не вернул пользователя.", error);
-      }
-    } catch (error) {
-      console.warn("[KlevbyProfileCore] Ошибка auth.getUser.", error);
     }
 
     return null;
@@ -474,12 +545,123 @@
   function getProfileRestAuthContext() {
     const supabaseUrl = getProfileSupabaseUrl();
     const anonKey = getProfileSupabaseAnonKey();
-    const accessToken = getProfileAccessTokenFromStoredAuth();
+    const storedToken = getProfileAccessTokenFromStoredAuth();
+    const accessToken = isProfileAccessTokenUsable(storedToken) ? storedToken : "";
 
     return {
       supabaseUrl,
       anonKey,
       accessToken
+    };
+  }
+
+  async function getSessionFromSupabaseAuth(client, options = {}) {
+    if (!client?.auth || typeof client.auth.getSession !== "function") {
+      return null;
+    }
+
+    let session = null;
+
+    try {
+      const result = await promiseWithTimeout(
+        client.auth.getSession(),
+        3500,
+        "Supabase auth.getSession timeout"
+      );
+
+      if (!result?.error && result?.data?.session?.access_token) {
+        session = result.data.session;
+      } else if (result?.error) {
+        console.debug("[KlevbyProfileCore] auth.getSession вернул ошибку.", result.error);
+      }
+    } catch (error) {
+      console.debug("[KlevbyProfileCore] auth.getSession не ответил.", error);
+    }
+
+    if (
+      session?.access_token &&
+      isProfileAccessTokenUsable(session.access_token, options.graceSeconds)
+    ) {
+      return session;
+    }
+
+    if (
+      session?.access_token &&
+      !isProfileAccessTokenUsable(session.access_token, options.graceSeconds) &&
+      typeof client.auth.refreshSession === "function"
+    ) {
+      try {
+        console.info("[KlevbyProfileCore] Supabase session устарела, пробую refreshSession.");
+
+        const refreshResult = await promiseWithTimeout(
+          client.auth.refreshSession(),
+          4500,
+          "Supabase auth.refreshSession timeout"
+        );
+
+        const refreshedSession = refreshResult?.data?.session || null;
+
+        if (
+          !refreshResult?.error &&
+          refreshedSession?.access_token &&
+          isProfileAccessTokenUsable(refreshedSession.access_token, options.graceSeconds)
+        ) {
+          console.info("[KlevbyProfileCore] Supabase session обновлена.");
+          return refreshedSession;
+        }
+
+        if (refreshResult?.error) {
+          console.warn("[KlevbyProfileCore] auth.refreshSession вернул ошибку.", refreshResult.error);
+        }
+      } catch (error) {
+        console.warn("[KlevbyProfileCore] auth.refreshSession не ответил.", error);
+      }
+    }
+
+    return null;
+  }
+
+  async function getFreshProfileRestAuthContext(options = {}) {
+    const supabaseUrl = getProfileSupabaseUrl();
+    const anonKey = getProfileSupabaseAnonKey();
+    const requireAuth = options.requireAuth !== false;
+    const graceSeconds = Number(options.graceSeconds || KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS);
+
+    let accessToken = "";
+    let user = null;
+
+    const client = getProfileSupabaseClient();
+    const authSession = await getSessionFromSupabaseAuth(client, {
+      graceSeconds
+    });
+
+    if (authSession?.access_token && isProfileAccessTokenUsable(authSession.access_token, graceSeconds)) {
+      accessToken = String(authSession.access_token || "");
+      user = authSession.user || null;
+    }
+
+    if (!accessToken) {
+      const storedAuthData = getProfileStoredAuthData();
+      const storedSession = getProfileSessionFromAuthData(storedAuthData);
+      const storedToken = String(storedSession?.access_token || "");
+
+      if (storedToken && isProfileAccessTokenUsable(storedToken, graceSeconds)) {
+        accessToken = storedToken;
+        user = storedSession?.user || getProfileUserFromStoredAuth() || null;
+      } else if (storedToken) {
+        console.info("[KlevbyProfileCore] Старый access_token протух, не использую его для REST.");
+      }
+    }
+
+    if (requireAuth && !accessToken) {
+      throw new Error("Нет свежей Supabase-сессии для REST-запроса.");
+    }
+
+    return {
+      supabaseUrl,
+      anonKey,
+      accessToken,
+      user
     };
   }
 
@@ -491,10 +673,12 @@
   }
 
   async function uploadProfileAvatarByRest(avatarBlob, avatarPath) {
-    const { supabaseUrl, anonKey, accessToken } = getProfileRestAuthContext();
+    const { supabaseUrl, anonKey, accessToken } = await getFreshProfileRestAuthContext({
+      requireAuth: true
+    });
 
     if (!supabaseUrl || !anonKey || !accessToken) {
-      throw new Error("Нет Supabase URL, anon key или access token для REST upload.");
+      throw new Error("Нет Supabase URL, anon key или свежего access token для REST upload.");
     }
 
     const encodedPath = encodeStoragePath(avatarPath);
@@ -538,7 +722,9 @@
   }
 
   async function updateProfileAvatarRowByRest(userId, avatarUrl, avatarPath) {
-    const { supabaseUrl, anonKey, accessToken } = getProfileRestAuthContext();
+    const { supabaseUrl, anonKey, accessToken } = await getFreshProfileRestAuthContext({
+      requireAuth: true
+    });
 
     if (!supabaseUrl || !anonKey || !accessToken || !userId) {
       throw new Error("Нет данных для REST update profiles.");
@@ -576,7 +762,9 @@
   }
 
   async function readProfileAvatarRowByRest(userId) {
-    const { supabaseUrl, anonKey, accessToken } = getProfileRestAuthContext();
+    const { supabaseUrl, anonKey, accessToken } = await getFreshProfileRestAuthContext({
+      requireAuth: false
+    });
 
     if (!supabaseUrl || !anonKey || !accessToken || !userId) {
       return "";
@@ -885,7 +1073,8 @@
       KLEVB_PROFILE_PHOTOS_KEY,
       KLEVB_PROFILE_MAX_PHOTOS,
       KLEVB_PROFILE_AVATAR_BUCKET,
-      KLEVB_PROFILE_REST_TIMEOUT_MS
+      KLEVB_PROFILE_REST_TIMEOUT_MS,
+      KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS
     },
 
     getDefaultProfileData,
@@ -904,6 +1093,10 @@
 
     parseProfileAuthStorageValue,
     getProfileStoredAuthData,
+    getProfileSessionFromAuthData,
+    decodeJwtPayload,
+    getJwtExpiresAtMs,
+    isProfileAccessTokenUsable,
     getProfileAccessTokenFromStoredAuth,
     getProfileUserFromStoredAuth,
 
@@ -917,6 +1110,7 @@
     promiseWithTimeout,
     fetchWithTimeout,
     getProfileRestAuthContext,
+    getFreshProfileRestAuthContext,
     makeProfilePublicAvatarUrl,
     uploadProfileAvatarByRest,
     updateProfileAvatarRowByRest,
@@ -934,6 +1128,6 @@
   };
 
   console.log("Klevby profile core loaded", {
-    version: "20260512-profile-core-2"
+    version: "20260512-profile-core-3"
   });
 })();
