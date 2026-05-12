@@ -332,7 +332,12 @@
     const method = String(options.method || "GET").toUpperCase();
     const timeoutMs = Number(options.timeoutMs || Core.REST_TIMEOUT_MS || 9000);
     const requireAuth = options.requireAuth !== false;
-    const authContext = await getAuthContextSafe(requireAuth);
+    const attachAuth = requireAuth || options.attachAuth === true || options.includeAuth === true;
+
+    const authContext = attachAuth
+      ? await getAuthContextSafe(requireAuth)
+      : { token: "", user: null };
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -446,7 +451,79 @@
     return `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(cleanBucket)}/${encodeStoragePath(cleanPath)}`;
   }
 
-  async function runFeedPostsRestQuery(limit) {
+  async function runFeedPostsDirectRestQuery(limit) {
+    const attempts = [
+      {
+        includeAvatar: true,
+        includeEngagementOrder: true,
+        source: "direct_rest"
+      },
+      {
+        includeAvatar: false,
+        includeEngagementOrder: true,
+        source: "direct_rest_no_avatar"
+      },
+      {
+        includeAvatar: true,
+        includeEngagementOrder: false,
+        source: "direct_rest_no_engagement_order"
+      },
+      {
+        includeAvatar: false,
+        includeEngagementOrder: false,
+        source: "direct_rest_simple"
+      }
+    ];
+
+    let lastError = null;
+
+    for (const attempt of attempts) {
+      try {
+        const data = await restTableRequestDirect(Core.TABLE, {
+          method: "GET",
+          query: buildPostsRestQuery(limit, attempt),
+          requireAuth: false,
+          attachAuth: false,
+          timeoutMs: Core.REST_TIMEOUT_MS
+        });
+
+        console.info("Klevby feed: feed_posts загружены через direct REST-first", {
+          source: attempt.source,
+          count: Array.isArray(data) ? data.length : 0
+        });
+
+        return {
+          data: Array.isArray(data) ? data : [],
+          error: null,
+          source: attempt.source
+        };
+      } catch (error) {
+        lastError = error;
+
+        if (!isPostsRestFallbackError(error)) {
+          console.debug("Klevby feed: direct REST загрузка ленты не сработала", {
+            source: attempt.source,
+            error: String(error?.message || error)
+          });
+
+          throw error;
+        }
+
+        console.debug("Klevby feed: direct REST вариант ленты пропущен", {
+          source: attempt.source,
+          error: String(error?.message || error)
+        });
+      }
+    }
+
+    throw lastError || new Error("Direct REST лента не ответила.");
+  }
+
+  async function runFeedPostsBridgeRestQuery(limit) {
+    if (!Rest || typeof Rest.restRequest !== "function") {
+      throw new Error("KlevbyFeedSupabaseRest.restRequest недоступен.");
+    }
+
     const attempts = [
       {
         includeAvatar: true,
@@ -493,14 +570,33 @@
           throw error;
         }
 
-        console.debug("Klevby feed: REST вариант ленты пропущен", {
+        console.debug("Klevby feed: REST bridge вариант ленты пропущен", {
           source: attempt.source,
           error: String(error?.message || error)
         });
       }
     }
 
-    throw lastError || new Error("REST лента не ответила.");
+    throw lastError || new Error("REST bridge лента не ответила.");
+  }
+
+  async function runFeedPostsRestQuery(limit) {
+    try {
+      return await runFeedPostsDirectRestQuery(limit);
+    } catch (directError) {
+      console.debug("Klevby feed: direct REST загрузка ленты не сработала, пробую REST bridge", directError);
+
+      try {
+        return await runFeedPostsBridgeRestQuery(limit);
+      } catch (bridgeError) {
+        console.debug("Klevby feed: REST bridge загрузка ленты не сработала", {
+          directError,
+          bridgeError
+        });
+
+        throw bridgeError || directError;
+      }
+    }
   }
 
   async function runFeedPostsQuery(db, limit) {
@@ -553,10 +649,10 @@
   }
 
   async function loadFeedPostsFromSupabase(options = {}) {
-    const db = Core.getClient();
-    const config = Core.getConfig();
+    const db = Core.getClient ? Core.getClient() : null;
+    const config = getConfig();
 
-    if (!db && (!config.supabaseUrl || !config.supabaseAnonKey)) {
+    if (!db && (!config.supabaseUrl && !config.SUPABASE_URL)) {
       return {
         ok: false,
         items: [],
@@ -572,7 +668,7 @@
       try {
         result = await runFeedPostsRestQuery(limit);
       } catch (restError) {
-        console.debug("Klevby feed: REST загрузка ленты не сработала, пробую SDK", restError);
+        console.warn("Klevby feed: REST загрузка ленты не сработала, пробую SDK fallback", restError);
 
         if (!db) {
           throw restError;
@@ -1129,7 +1225,7 @@
   }
 
   async function createFeedPhotoPost(photoData = {}) {
-    let db = Core.getClient();
+    let db = Core.getClient ? Core.getClient() : null;
     const config = getConfig();
 
     if (!db && (!config.supabaseUrl && !config.SUPABASE_URL)) {
@@ -1264,6 +1360,23 @@
       });
 
       return true;
+    }
+
+    try {
+      await restTableRequestDirect(Core.TABLE, {
+        method: "DELETE",
+        query: buildDeletePostRestQuery(cleanPostId),
+        requireAuth: true,
+        timeoutMs: Core.REST_TIMEOUT_MS,
+        headers: {
+          Prefer: "return=minimal"
+        },
+        parseJson: false
+      });
+
+      return true;
+    } catch (directError) {
+      console.debug("Klevby feed: direct REST delete не сработал, пробую REST bridge", directError);
     }
 
     await Rest.restRequest(Core.TABLE, {
@@ -1413,7 +1526,7 @@
       throw new Error("Не указан id поста.");
     }
 
-    let db = Core.getClient();
+    let db = Core.getClient ? Core.getClient() : null;
     let restError = null;
     let deleted = false;
 
@@ -1484,6 +1597,8 @@
     buildDeletePostRestQuery,
     buildInsertPostRestQuery,
     buildFindPostByImagePathRestQuery,
+    runFeedPostsDirectRestQuery,
+    runFeedPostsBridgeRestQuery,
     runFeedPostsRestQuery,
     runFeedPostsQuery,
     loadFeedPostsFromSupabase,
