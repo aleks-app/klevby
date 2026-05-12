@@ -224,6 +224,14 @@
       id: item?.id || "",
       source: item?.source || "",
       image: item?.image || item?.imageUrl || "",
+      avatar:
+        item?.authorAvatarUrl ||
+        item?.authorAvatar ||
+        item?.avatarUrl ||
+        item?.avatar_url ||
+        item?.author_avatar_url ||
+        item?.author_avatar ||
+        "",
       likesCount: getItemLikesCount(item),
       commentsCount: getItemCommentsCount(item),
       liked: getItemLikedState(item)

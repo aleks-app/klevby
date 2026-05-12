@@ -188,6 +188,10 @@
     }
   }
 
+  function getProfileFeedAvatarSafe(item = null) {
+    return getProfileFeedAvatar(item);
+  }
+
   function getProfileFeedItemsSafe() {
     try {
       if (typeof window.getProfileFeedItems === "function") {
@@ -396,6 +400,7 @@
     readProfileData,
     getLocalAvatar,
     getProfileFeedAvatar,
+    getProfileFeedAvatarSafe,
     getProfileFeedItemsSafe,
     getProfileFeedSearchText,
     getFilteredProfileFeedItems,
