@@ -349,7 +349,24 @@ function showHomeSectionFallback() {
   return requireProfileUiMethod("showHomeSectionFallback")();
 }
 
+
+function openKlevbyPublicProfile(userId, fallbackData = {}) {
+  if (window.KlevbyProfilePublic && typeof window.KlevbyProfilePublic.openKlevbyPublicProfile === "function") {
+    return window.KlevbyProfilePublic.openKlevbyPublicProfile(userId, fallbackData);
+  }
+
+  return openKlevbyProfile();
+}
+
 function openKlevbyProfile() {
+  try {
+    if (window.KlevbyProfilePublic && typeof window.KlevbyProfilePublic.closePublicProfileMode === "function") {
+      window.KlevbyProfilePublic.closePublicProfileMode();
+    }
+  } catch (error) {
+    console.warn("Klevby profile: public mode close skipped", error);
+  }
+
   setProfileReturnMode(false);
   setProfileScreenChrome(true);
 
@@ -402,6 +419,44 @@ function patchProfileCardButtonsSafe() {
   }
 }
 
+
+function restoreProfilePhotosFromFeedCacheIfNeeded() {
+  const photos = readProfilePhotos();
+  if (photos.length) return photos;
+
+  try {
+    const currentUser = getCurrentProfileUser();
+    const userId = String(currentUser?.id || "").trim();
+    const feedState = window.KlevbyFeedState || null;
+    const feedItems = feedState && typeof feedState.getLastItems === "function" ? feedState.getLastItems() : [];
+    if (!userId || !Array.isArray(feedItems) || !feedItems.length) return photos;
+
+    const recovered = feedItems
+      .filter((item) => String(item?.userId || item?.user_id || "") === userId && String(item?.type || "") === "profile_photo")
+      .map((item) => ({
+        id: `restored_${item.id || Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
+        src: item.image || item.imageUrl || item.image_url || "",
+        title: item.title || item.caption || "Фото с рыбалки",
+        createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+        savedSizeKb: Number(item.savedSizeKb || item.image_size_kb || 0),
+        width: Number(item.width || item.image_width || 0),
+        height: Number(item.height || item.image_height || 0),
+        source: "supabase",
+        feedPostId: item.id || "",
+        feedImagePath: item.imagePath || item.image_path || "",
+        feedImageUrl: item.image || item.imageUrl || item.image_url || "",
+        feedSyncError: ""
+      }))
+      .filter((item) => item.src);
+
+    if (!recovered.length) return photos;
+    saveProfilePhotos(recovered);
+    return recovered;
+  } catch (_) {
+    return photos;
+  }
+}
+
 function updateKlevbyProfileView() {
   const data = readProfileData();
 
@@ -446,8 +501,9 @@ function updateKlevbyProfileView() {
     fallbackNode.textContent = name.trim().charAt(0).toUpperCase() || "Р";
   }
 
+  const profilePhotos = restoreProfilePhotosFromFeedCacheIfNeeded();
   const userPostsCount = countUserPosts(name);
-  const photosCount = readProfilePhotos().length;
+  const photosCount = profilePhotos.length;
 
   if (reportsNode) reportsNode.textContent = String(userPostsCount);
   if (tripsNode) tripsNode.textContent = String(userPostsCount);
