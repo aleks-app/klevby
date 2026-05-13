@@ -10,6 +10,22 @@
   const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
   const KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS = 90;
 
+  function getProfileUtils() {
+    return window.KlevbyProfileUtils || {};
+  }
+
+  function requireProfileUtilsMethod(name) {
+    const utils = getProfileUtils();
+
+    if (utils && typeof utils[name] === "function") {
+      return utils[name].bind(utils);
+    }
+
+    const error = new Error(`KlevbyProfileUtils.${name} is not available`);
+    console.error("[KlevbyProfileCore] profile-utils.js не готов или функция не найдена:", name, error);
+    throw error;
+  }
+
   function getDefaultProfileData() {
     return {
       name: "",
@@ -20,50 +36,55 @@
   }
 
   function escapeHtml(value) {
-    return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    return requireProfileUtilsMethod("escapeHtml")(value);
   }
 
   function formatTelegramLabel(value) {
-    const cleanValue = String(value || "").trim();
-
-    if (!cleanValue) return "";
-
-    if (cleanValue.startsWith("@")) return cleanValue;
-
-    const match = cleanValue.match(/t\.me\/([^/?#]+)/i);
-    if (match && match[1]) return `@${match[1]}`;
-
-    return cleanValue;
+    return requireProfileUtilsMethod("formatTelegramLabel")(value);
   }
 
   function isPublicUrl(value) {
-    return /^https?:\/\//i.test(String(value || "").trim());
+    return requireProfileUtilsMethod("isPublicUrl")(value);
   }
 
   function waitForFrame() {
-    return new Promise((resolve) => {
-      if (typeof window.requestAnimationFrame === "function") {
-        window.requestAnimationFrame(() => resolve());
-        return;
-      }
-
-      setTimeout(resolve, 0);
-    });
+    return requireProfileUtilsMethod("waitForFrame")();
   }
 
   function parseProfileAuthStorageValue(raw) {
-    if (!raw) return null;
+    return requireProfileUtilsMethod("parseProfileAuthStorageValue")(raw);
+  }
 
-    try {
-      return JSON.parse(raw);
-    } catch (_) {
-      return null;
-    }
+  function decodeJwtPayload(token) {
+    return requireProfileUtilsMethod("decodeJwtPayload")(token);
+  }
+
+  function getJwtExpiresAtMs(token) {
+    return requireProfileUtilsMethod("getJwtExpiresAtMs")(token);
+  }
+
+  function isProfileAccessTokenUsable(token, graceSeconds = KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS) {
+    return requireProfileUtilsMethod("isProfileAccessTokenUsable")(token, graceSeconds);
+  }
+
+  function encodeStoragePath(path) {
+    return requireProfileUtilsMethod("encodeStoragePath")(path);
+  }
+
+  function promiseWithTimeout(promise, timeoutMs, message = "Timeout") {
+    return requireProfileUtilsMethod("promiseWithTimeout")(promise, timeoutMs, message);
+  }
+
+  function fetchWithTimeout(url, options = {}, timeoutMs = KLEVB_PROFILE_REST_TIMEOUT_MS) {
+    return requireProfileUtilsMethod("fetchWithTimeout")(url, options, timeoutMs);
+  }
+
+  function blobToDataUrl(blob) {
+    return requireProfileUtilsMethod("blobToDataUrl")(blob);
+  }
+
+  function estimateDataUrlSizeKb(dataUrl) {
+    return requireProfileUtilsMethod("estimateDataUrlSizeKb")(dataUrl);
   }
 
   function getProfileStoredAuthData() {
@@ -129,53 +150,6 @@
     }
 
     return null;
-  }
-
-  function decodeJwtPayload(token) {
-    const value = String(token || "").trim();
-
-    if (!value || !value.includes(".")) {
-      return null;
-    }
-
-    try {
-      const payloadPart = value.split(".")[1] || "";
-      const normalized = payloadPart
-        .replace(/-/g, "+")
-        .replace(/_/g, "/")
-        .padEnd(Math.ceil(payloadPart.length / 4) * 4, "=");
-
-      return JSON.parse(atob(normalized));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function getJwtExpiresAtMs(token) {
-    const payload = decodeJwtPayload(token);
-    const exp = Number(payload?.exp || 0);
-
-    if (!exp) {
-      return 0;
-    }
-
-    return exp * 1000;
-  }
-
-  function isProfileAccessTokenUsable(token, graceSeconds = KLEVB_PROFILE_TOKEN_EXPIRY_GRACE_SECONDS) {
-    const value = String(token || "").trim();
-
-    if (!value) {
-      return false;
-    }
-
-    const expiresAtMs = getJwtExpiresAtMs(value);
-
-    if (!expiresAtMs) {
-      return true;
-    }
-
-    return expiresAtMs > Date.now() + (Number(graceSeconds || 0) * 1000);
   }
 
   function getProfileAccessTokenFromStoredAuth() {
@@ -510,41 +484,6 @@
     }
 
     return new Blob([bytes], { type: mime });
-  }
-
-  function encodeStoragePath(path) {
-    return String(path || "")
-      .split("/")
-      .map((part) => encodeURIComponent(part))
-      .join("/");
-  }
-
-  function promiseWithTimeout(promise, timeoutMs, message = "Timeout") {
-    let timer = null;
-
-    const timeout = new Promise((_, reject) => {
-      timer = setTimeout(() => {
-        reject(new Error(message));
-      }, timeoutMs);
-    });
-
-    return Promise.race([promise, timeout]).finally(() => {
-      if (timer) clearTimeout(timer);
-    });
-  }
-
-  async function fetchWithTimeout(url, options = {}, timeoutMs = KLEVB_PROFILE_REST_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      return await fetch(url, {
-        ...options,
-        signal: controller.signal
-      });
-    } finally {
-      clearTimeout(timer);
-    }
   }
 
   function getProfileRestAuthContext() {
@@ -1100,30 +1039,6 @@
     return avatarUrl;
   }
 
-  function blobToDataUrl(blob) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        resolve(String(reader.result || ""));
-      };
-
-      reader.onerror = () => {
-        reject(new Error("FileReader error"));
-      };
-
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  function estimateDataUrlSizeKb(dataUrl) {
-    const base64 = String(dataUrl || "").split(",")[1] || "";
-    const padding = (base64.match(/=+$/) || [""])[0].length;
-    const bytes = Math.max(0, Math.round((base64.length * 3) / 4) - padding);
-
-    return Math.round(bytes / 1024);
-  }
-
   function compressImageFile(file, options = {}) {
     const maxSide = Number(options.maxSide || 1080);
     const quality = Number(options.quality || 0.68);
@@ -1302,6 +1217,6 @@
   };
 
   console.log("Klevby profile core loaded", {
-    version: "20260512-profile-core-4"
+    version: "20260513-profile-utils-split-1"
   });
 })();
