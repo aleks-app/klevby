@@ -104,6 +104,10 @@ function getAppFilters() {
   return window.KlevbyAppFilters || {};
 }
 
+function getAppGlobalEvents() {
+  return window.KlevbyAppGlobalEvents || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -786,6 +790,35 @@ function handleGlobalScrollOrResize() {
   }
 }
 
+function handleAppEscapeKey(event) {
+  if (event.key === "Escape" && typeof window.closePostModal === "function") {
+    window.closePostModal();
+  }
+}
+
+function setupAppGlobalEvents() {
+  const globalEvents = getAppGlobalEvents();
+
+  if (typeof globalEvents.setupGlobalEvents === "function") {
+    return globalEvents.setupGlobalEvents({
+      onScrollOrResize: handleGlobalScrollOrResize,
+      onEscape: handleAppEscapeKey
+    });
+  }
+
+  if (window.__klevbyAppGlobalEventsFallbackBound) {
+    return false;
+  }
+
+  window.__klevbyAppGlobalEventsFallbackBound = true;
+
+  window.addEventListener("scroll", handleGlobalScrollOrResize, { passive: true });
+  window.addEventListener("resize", handleGlobalScrollOrResize);
+  document.addEventListener("keydown", handleAppEscapeKey);
+
+  return true;
+}
+
 function scheduleKlevbyAppResume(reason = "resume", options = {}) {
   clearTimeout(klevbyAppResumeTimer);
 
@@ -950,14 +983,7 @@ function setupKlevbyAppLifecycle() {
   });
 }
 
-window.addEventListener("scroll", handleGlobalScrollOrResize, { passive: true });
-window.addEventListener("resize", handleGlobalScrollOrResize);
-
-document.addEventListener("keydown", function (event) {
-  if (event.key === "Escape" && typeof window.closePostModal === "function") {
-    window.closePostModal();
-  }
-});
+setupAppGlobalEvents();
 
 document.addEventListener("DOMContentLoaded", async function () {
   patchProfileOpenForExtraSections();
@@ -1041,3 +1067,6 @@ window.goMobileCreate = goMobileCreate;
 window.goMobileWeather = goMobileWeather;
 window.goHomeTop = goHomeTop;
 window.resetFilters = resetFilters;
+window.handleGlobalScrollOrResize = handleGlobalScrollOrResize;
+window.handleAppEscapeKey = handleAppEscapeKey;
+window.setupAppGlobalEvents = setupAppGlobalEvents;
