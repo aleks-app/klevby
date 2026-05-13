@@ -141,6 +141,7 @@
     const commentsCount = getItemCommentsCount(item);
     const date = formatDate(item?.createdAt || item?.created_at);
     const avatar = getAvatar(item);
+    const authorUserId = String(item?.userId || item?.user_id || "").trim();
     const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
     const isSupabase = item?.source === "supabase";
     const likedState = getItemLikedState(item);
@@ -168,7 +169,7 @@
 
     const commentButton = isSupabase
       ? `<button class="small-btn gray profile-feed-comment-btn" type="button" data-feed-post-id="${safeId}" data-comment-count="${commentsCount}" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
-      : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
+      : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); if (typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(authorUserId, { userId: authorUserId, authorName: authorName, authorCity: authorCity, authorAvatarUrl: avatar, authorAvatar: avatar }); } else { openKlevbyProfileSafe(); }">Профиль</button>`;
 
     return `
       <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
@@ -178,7 +179,7 @@
           <button
             class="profile-feed-author"
             type="button"
-            onclick="event.stopPropagation(); openKlevbyProfileSafe()"
+            onclick="event.stopPropagation(); if (typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(authorUserId, { userId: authorUserId, authorName: authorName, authorCity: authorCity, authorAvatarUrl: avatar, authorAvatar: avatar }); } else { openKlevbyProfileSafe(); }"
             aria-label="Открыть профиль автора"
           >
             ${avatarHtml}
