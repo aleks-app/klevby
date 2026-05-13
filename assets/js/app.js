@@ -697,7 +697,9 @@ function goMobileFeed() {
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileFeed === "function") {
-    actions.goMobileFeed();
+    actions.goMobileFeed({
+      showSection
+    });
     return;
   }
 
@@ -708,7 +710,9 @@ function goMobileMap() {
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileMap === "function") {
-    actions.goMobileMap();
+    actions.goMobileMap({
+      showSection
+    });
     return;
   }
 
@@ -719,7 +723,10 @@ function goMobileCreate() {
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileCreate === "function") {
-    actions.goMobileCreate();
+    actions.goMobileCreate({
+      showCreatePostScreen,
+      showSection
+    });
     return;
   }
 
@@ -730,7 +737,9 @@ function goMobileWeather() {
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileWeather === "function") {
-    actions.goMobileWeather();
+    actions.goMobileWeather({
+      showSection
+    });
     return;
   }
 
@@ -751,7 +760,11 @@ function goHomeTop() {
   const actions = getAppMobileActions();
 
   if (typeof actions.goHomeTop === "function") {
-    actions.goHomeTop();
+    actions.goHomeTop({
+      getVisibleSectionName,
+      showSection,
+      setMode
+    });
     return;
   }
 
