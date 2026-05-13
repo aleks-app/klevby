@@ -861,12 +861,24 @@ function patchProfileShortcutActions() {
 }
 
 function handleGlobalScrollOrResize() {
+  const globalEvents = getAppGlobalEvents();
+
+  if (typeof globalEvents.handleGlobalScrollOrResize === "function") {
+    return globalEvents.handleGlobalScrollOrResize();
+  }
+
   if (typeof window.updateHomeFloatButton === "function") {
     window.updateHomeFloatButton();
   }
 }
 
 function handleAppEscapeKey(event) {
+  const globalEvents = getAppGlobalEvents();
+
+  if (typeof globalEvents.handleAppEscapeKey === "function") {
+    return globalEvents.handleAppEscapeKey(event);
+  }
+
   if (event.key === "Escape" && typeof window.closePostModal === "function") {
     window.closePostModal();
   }

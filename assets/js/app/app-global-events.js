@@ -1,13 +1,13 @@
 (function () {
   const KLEVB_APP_GLOBAL_EVENTS_BOUND_KEY = "__klevbyAppGlobalEventsBound";
 
-  function defaultScrollOrResizeHandler() {
+  function handleGlobalScrollOrResize() {
     if (typeof window.updateHomeFloatButton === "function") {
       window.updateHomeFloatButton();
     }
   }
 
-  function defaultEscapeHandler(event) {
+  function handleAppEscapeKey(event) {
     if (event.key === "Escape" && typeof window.closePostModal === "function") {
       window.closePostModal();
     }
@@ -22,11 +22,11 @@
 
     const onScrollOrResize = typeof options.onScrollOrResize === "function"
       ? options.onScrollOrResize
-      : defaultScrollOrResizeHandler;
+      : handleGlobalScrollOrResize;
 
     const onEscape = typeof options.onEscape === "function"
       ? options.onEscape
-      : defaultEscapeHandler;
+      : handleAppEscapeKey;
 
     window.addEventListener("scroll", () => {
       try {
@@ -57,8 +57,9 @@
 
   window.KlevbyAppGlobalEvents = {
     setupGlobalEvents,
-    handleGlobalScrollOrResize: defaultScrollOrResizeHandler,
-    handleEscapeKey: defaultEscapeHandler
+    handleGlobalScrollOrResize,
+    handleAppEscapeKey,
+    handleEscapeKey: handleAppEscapeKey
   };
 
   console.log("Klevby app global events loaded", window.KlevbyAppGlobalEvents);
