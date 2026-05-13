@@ -108,6 +108,10 @@ function getAppGlobalEvents() {
   return window.KlevbyAppGlobalEvents || {};
 }
 
+function getAppTripActions() {
+  return window.KlevbyAppTripActions || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -594,34 +598,81 @@ function showSection(section) {
   }
 }
 
-function setMode(mode) {
+function setAppViewMode(mode) {
   viewMode = mode === "mine" ? "mine" : "all";
   window.klevbyViewMode = viewMode;
+  return viewMode;
+}
 
+function setProfileReturnMode(enabled) {
+  const value = Boolean(enabled);
+
+  try {
+    if (value) {
+      sessionStorage.setItem("klevby_profile_return_mode", "1");
+    } else {
+      sessionStorage.removeItem("klevby_profile_return_mode");
+    }
+
+    window.__klevbyProfileReturnMode = value;
+  } catch (error) {
+    window.__klevbyProfileReturnMode = value;
+  }
+
+  return value;
+}
+
+function setMode(mode) {
+  const actions = getAppTripActions();
+
+  if (typeof actions.setMode === "function") {
+    return actions.setMode(mode, {
+      setViewMode: setAppViewMode,
+      showSection
+    });
+  }
+
+  setAppViewMode(mode);
   showSection("trips");
 
   if (typeof window.renderPosts === "function") {
     window.renderPosts();
   }
+
+  return viewMode;
 }
 
 function showCreatePostScreen(options = {}) {
+  const actions = getAppTripActions();
+
+  if (typeof actions.showCreatePostScreen === "function") {
+    return actions.showCreatePostScreen(options, {
+      setProfileReturnMode,
+      showSection
+    });
+  }
+
   const fromProfile = Boolean(options.fromProfile);
 
   if (fromProfile) {
-    try {
-      sessionStorage.setItem("klevby_profile_return_mode", "1");
-      window.__klevbyProfileReturnMode = true;
-    } catch (error) {
-      window.__klevbyProfileReturnMode = true;
-    }
+    setProfileReturnMode(true);
   }
 
   showSection("create");
+  return true;
 }
 
 function showTripsBoard(mode = "all") {
-  setMode(mode);
+  const actions = getAppTripActions();
+
+  if (typeof actions.showTripsBoard === "function") {
+    return actions.showTripsBoard(mode, {
+      setViewMode: setAppViewMode,
+      showSection
+    });
+  }
+
+  return setMode(mode);
 }
 
 function goMobileFeed() {
@@ -771,13 +822,7 @@ function patchProfileShortcutActions() {
   };
 
   window.openProfileTripsView = function patchedOpenProfileTripsView() {
-    try {
-      sessionStorage.setItem("klevby_profile_return_mode", "1");
-      window.__klevbyProfileReturnMode = true;
-    } catch (error) {
-      window.__klevbyProfileReturnMode = true;
-    }
-
+    setProfileReturnMode(true);
     setMode("mine");
   };
 
@@ -1070,3 +1115,5 @@ window.resetFilters = resetFilters;
 window.handleGlobalScrollOrResize = handleGlobalScrollOrResize;
 window.handleAppEscapeKey = handleAppEscapeKey;
 window.setupAppGlobalEvents = setupAppGlobalEvents;
+window.setAppViewMode = setAppViewMode;
+window.setProfileReturnMode = setProfileReturnMode;
