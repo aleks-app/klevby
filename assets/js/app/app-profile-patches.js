@@ -3,12 +3,25 @@
   let originalOpenProfile = null;
 
   function markProfileReturnMode() {
+    setProfileReturnMode(true);
+  }
+
+  function setProfileReturnMode(enabled) {
+    const value = Boolean(enabled);
+
     try {
-      sessionStorage.setItem("klevby_profile_return_mode", "1");
-      window.__klevbyProfileReturnMode = true;
+      if (value) {
+        sessionStorage.setItem("klevby_profile_return_mode", "1");
+      } else {
+        sessionStorage.removeItem("klevby_profile_return_mode");
+      }
+
+      window.__klevbyProfileReturnMode = value;
     } catch (error) {
-      window.__klevbyProfileReturnMode = true;
+      window.__klevbyProfileReturnMode = value;
     }
+
+    return value;
   }
 
   function hideAllAppSectionsExcept(activeId) {
@@ -121,6 +134,7 @@
   }
 
   window.KlevbyAppProfilePatches = {
+    setProfileReturnMode,
     patchProfileOpenForExtraSections,
     patchProfileShortcutActions,
     isProfileOpenPatched() {
