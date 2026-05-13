@@ -96,6 +96,10 @@ function getAppMobileActions() {
   return window.KlevbyAppMobileActions || {};
 }
 
+function getAppUiHelpers() {
+  return window.KlevbyAppUiHelpers || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -339,6 +343,13 @@ function initSupabase() {
 }
 
 function showStatus(message, isError = false) {
+  const helpers = getAppUiHelpers();
+
+  if (typeof helpers.showStatus === "function") {
+    helpers.showStatus(message, isError);
+    return;
+  }
+
   const status = document.getElementById("statusLine");
   if (!status) return;
 
@@ -347,6 +358,13 @@ function showStatus(message, isError = false) {
 }
 
 function showFormMessage(message, isError = false) {
+  const helpers = getAppUiHelpers();
+
+  if (typeof helpers.showFormMessage === "function") {
+    helpers.showFormMessage(message, isError);
+    return;
+  }
+
   const el = document.getElementById("formMessage");
   if (!el) return;
 
@@ -355,6 +373,13 @@ function showFormMessage(message, isError = false) {
 }
 
 function openTelegram() {
+  const helpers = getAppUiHelpers();
+
+  if (typeof helpers.openTelegram === "function") {
+    helpers.openTelegram(TELEGRAM_GROUP);
+    return;
+  }
+
   window.open(TELEGRAM_GROUP, "_blank");
 }
 
