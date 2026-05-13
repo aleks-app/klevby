@@ -171,7 +171,6 @@ function reloadPondsIfReady(options = {}) {
   }, delay);
 }
 
-
 let supabaseRecoveryInProgress = false;
 
 async function recoverSupabaseClient(options = {}) {
@@ -331,7 +330,17 @@ function openTelegram() {
   window.open(TELEGRAM_GROUP, "_blank");
 }
 
+function getAppNavigation() {
+  return window.KlevbyAppNavigation || {};
+}
+
 function getAppSections() {
+  const navigation = getAppNavigation();
+
+  if (typeof navigation.getAppSections === "function") {
+    return navigation.getAppSections();
+  }
+
   return [
     "homeSection",
     "tripsSection",
@@ -345,6 +354,13 @@ function getAppSections() {
 }
 
 function hideAllAppSectionsExcept(activeId) {
+  const navigation = getAppNavigation();
+
+  if (typeof navigation.hideAllAppSectionsExcept === "function") {
+    navigation.hideAllAppSectionsExcept(activeId);
+    return;
+  }
+
   getAppSections().forEach((id) => {
     const section = document.getElementById(id);
     if (!section) return;
@@ -354,6 +370,13 @@ function hideAllAppSectionsExcept(activeId) {
 }
 
 function clearProfileChromeIfNeeded(section) {
+  const navigation = getAppNavigation();
+
+  if (typeof navigation.clearProfileChromeIfNeeded === "function") {
+    navigation.clearProfileChromeIfNeeded(section);
+    return;
+  }
+
   if (section === "profile") return;
 
   try {
@@ -373,6 +396,13 @@ function clearProfileChromeIfNeeded(section) {
 }
 
 function setMobileTabVisual(index) {
+  const navigation = getAppNavigation();
+
+  if (typeof navigation.setMobileTabVisual === "function") {
+    navigation.setMobileTabVisual(index);
+    return;
+  }
+
   const buttons = Array.from(document.querySelectorAll(".mobile-tabbar .mobile-tab-btn"));
 
   buttons.forEach((button, buttonIndex) => {
@@ -381,6 +411,12 @@ function setMobileTabVisual(index) {
 }
 
 function getVisibleSectionName() {
+  const navigation = getAppNavigation();
+
+  if (typeof navigation.getVisibleSectionName === "function") {
+    return navigation.getVisibleSectionName();
+  }
+
   if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
   if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
   if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
