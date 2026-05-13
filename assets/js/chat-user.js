@@ -310,12 +310,12 @@
 
     try {
       const { data, error } = await client
-        .from("profiles")
-        .select("id,nickname,username,display_name,email")
+        .from("public_profiles")
+        .select("id,nickname,username,display_name,avatar_url")
         .in("id", uniqueIds);
 
       if (error) {
-        console.warn("Профили не загружены:", error);
+        console.warn("Публичные профили не загружены:", error);
         return;
       }
 
@@ -326,8 +326,7 @@
           profile.nickname ||
           profile.username ||
           profile.display_name ||
-          profile.email ||
-          ""
+          "Рыбак"
         );
 
         if (profile.id && name && isValidSupabaseUuid(profile.id)) {
@@ -335,7 +334,7 @@
         }
       });
     } catch (error) {
-      console.warn("Профили не загружены:", error);
+      console.warn("Публичные профили не загружены:", error);
     }
   }
 
