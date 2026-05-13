@@ -11,6 +11,7 @@ const KLEVB_PROFILE_AVATAR_MAX_SIDE = 520;
 const KLEVB_PROFILE_AVATAR_QUALITY = 0.78;
 const KLEVB_PROFILE_AVATAR_BUCKET = "profile-avatars";
 const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
+const KLEVB_PROFILE_FEED_SYNC_LOCK_TTL_MS = 2 * 60 * 1000;
 
 let klevbyProfileFeedSyncInProgress = false;
 let klevbyProfileFeedSyncTimer = null;
@@ -575,14 +576,68 @@ function updateProfilePhotoByLocalId(localId, updater) {
   return requireProfilePhotosMethod("updateProfilePhotoByLocalId")(localId, updater);
 }
 
+function clearProfileFeedSyncTimer() {
+  if (klevbyProfileFeedSyncTimer) {
+    clearTimeout(klevbyProfileFeedSyncTimer);
+    klevbyProfileFeedSyncTimer = null;
+  }
+}
+
+function getProfilePhotoFeedSyncState(photo) {
+  return String(photo?.feedSyncState || "").trim().toLowerCase();
+}
+
+function getProfilePhotoFeedSyncUpdatedAt(photo) {
+  const value = Number(photo?.feedSyncUpdatedAt || photo?.feedSyncStartedAt || 0);
+
+  return Number.isFinite(value) ? value : 0;
+}
+
+function isProfilePhotoFeedSyncLocked(photo) {
+  const state = getProfilePhotoFeedSyncState(photo);
+
+  if (state !== "uploading" && state !== "syncing") {
+    return false;
+  }
+
+  const updatedAt = getProfilePhotoFeedSyncUpdatedAt(photo);
+
+  if (!updatedAt) {
+    return true;
+  }
+
+  return Date.now() - updatedAt < KLEVB_PROFILE_FEED_SYNC_LOCK_TTL_MS;
+}
+
+function markProfilePhotoFeedSyncState(localId, state, extra = {}) {
+  const cleanId = String(localId || "").trim();
+
+  if (!cleanId) return;
+
+  updateProfilePhotoByLocalId(cleanId, (photo) => {
+    return {
+      ...photo,
+      ...extra,
+      feedSyncState: state,
+      feedSyncUpdatedAt: Date.now()
+    };
+  });
+}
+
 function scheduleProfileFeedSync(delay = 1200) {
-  clearTimeout(klevbyProfileFeedSyncTimer);
+  clearProfileFeedSyncTimer();
+
+  const safeDelay = klevbyProfilePhotoUploadInProgress
+    ? Math.max(Number(delay || 0), 3600)
+    : Number(delay || 1200);
 
   klevbyProfileFeedSyncTimer = setTimeout(() => {
+    klevbyProfileFeedSyncTimer = null;
+
     syncLocalProfilePhotosToSupabaseFeed(false).catch((error) => {
       console.warn("Klevby profile: автосинхронизация фото не сработала", error);
     });
-  }, delay);
+  }, safeDelay);
 }
 
 async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
@@ -609,12 +664,21 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
   const photos = readProfilePhotos();
 
   const pendingPhotos = photos.filter((photo) => {
-    return (
-      photo &&
-      photo.src &&
-      !photo.feedPostId &&
-      !photo.feedImageUrl
-    );
+    if (!photo || !photo.src || photo.feedPostId || photo.feedImageUrl) {
+      return false;
+    }
+
+    if (isProfilePhotoFeedSyncLocked(photo)) {
+      return false;
+    }
+
+    const state = getProfilePhotoFeedSyncState(photo);
+
+    if (state === "done") {
+      return false;
+    }
+
+    return true;
   });
 
   if (!pendingPhotos.length) return false;
@@ -626,6 +690,10 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
   try {
     for (const pendingPhoto of pendingPhotos) {
       try {
+        markProfilePhotoFeedSyncState(pendingPhoto.id, "syncing", {
+          feedSyncError: ""
+        });
+
         const feedItem = await window.klevbyCreateFeedPhotoPost({
           dataUrl: pendingPhoto.src,
           title: pendingPhoto.title || "Фото с рыбалки",
@@ -637,7 +705,12 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
         });
 
         updateProfilePhotoByLocalId(pendingPhoto.id, (photo) => {
-          return updateLocalPhotoWithFeedItem(photo, feedItem);
+          return {
+            ...updateLocalPhotoWithFeedItem(photo, feedItem),
+            feedSyncState: "done",
+            feedSyncError: "",
+            feedSyncUpdatedAt: Date.now()
+          };
         });
 
         changed = true;
@@ -650,7 +723,9 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
           return {
             ...photo,
             source: "local",
-            feedSyncError: String(error?.message || error || "Ошибка Supabase")
+            feedSyncState: "pending",
+            feedSyncError: String(error?.message || error || "Ошибка Supabase"),
+            feedSyncUpdatedAt: Date.now()
           };
         });
       }
@@ -705,7 +780,14 @@ async function handleProfilePhotoUpload(event) {
 
     const photos = readProfilePhotos();
 
-    localPhoto = makeLocalProfilePhoto(compressedPhoto, file, null);
+    localPhoto = {
+      ...makeLocalProfilePhoto(compressedPhoto, file, null),
+      feedSyncState: "uploading",
+      feedSyncError: "",
+      feedSyncStartedAt: Date.now(),
+      feedSyncUpdatedAt: Date.now()
+    };
+
     photos.unshift(localPhoto);
 
     saveProfilePhotos(photos);
@@ -723,8 +805,15 @@ async function handleProfilePhotoUpload(event) {
     try {
       feedItem = await uploadProfilePhotoToSupabaseFeed(compressedPhoto, file);
 
+      clearProfileFeedSyncTimer();
+
       updateProfilePhotoByLocalId(localPhoto.id, (photo) => {
-        return updateLocalPhotoWithFeedItem(photo, feedItem);
+        return {
+          ...updateLocalPhotoWithFeedItem(photo, feedItem),
+          feedSyncState: "done",
+          feedSyncError: "",
+          feedSyncUpdatedAt: Date.now()
+        };
       });
 
       updateKlevbyProfileView();
@@ -745,7 +834,9 @@ async function handleProfilePhotoUpload(event) {
         return {
           ...photo,
           source: "local",
-          feedSyncError: String(supabaseError?.message || supabaseError || "Ошибка Supabase")
+          feedSyncState: "pending",
+          feedSyncError: String(supabaseError?.message || supabaseError || "Ошибка Supabase"),
+          feedSyncUpdatedAt: Date.now()
         };
       });
 
@@ -761,6 +852,19 @@ async function handleProfilePhotoUpload(event) {
     }
   } catch (error) {
     console.warn("Klevby profile: фото не обработалось", error);
+
+    if (localPhoto?.id) {
+      updateProfilePhotoByLocalId(localPhoto.id, (photo) => {
+        return {
+          ...photo,
+          source: "local",
+          feedSyncState: "pending",
+          feedSyncError: String(error?.message || error || "Ошибка обработки фото"),
+          feedSyncUpdatedAt: Date.now()
+        };
+      });
+    }
+
     finishProfileUploadStatus("Не получилось обработать фото", "error", 2200);
     alert("Не получилось обработать фото. Попробуй другое изображение.");
     finished = true;
