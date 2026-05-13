@@ -92,6 +92,10 @@ function getAppProfilePatches() {
   return window.KlevbyAppProfilePatches || {};
 }
 
+function getAppMobileActions() {
+  return window.KlevbyAppMobileActions || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -588,18 +592,46 @@ function showTripsBoard(mode = "all") {
 }
 
 function goMobileFeed() {
+  const actions = getAppMobileActions();
+
+  if (typeof actions.goMobileFeed === "function") {
+    actions.goMobileFeed();
+    return;
+  }
+
   showSection("home");
 }
 
 function goMobileMap() {
+  const actions = getAppMobileActions();
+
+  if (typeof actions.goMobileMap === "function") {
+    actions.goMobileMap();
+    return;
+  }
+
   showSection("map");
 }
 
 function goMobileCreate() {
+  const actions = getAppMobileActions();
+
+  if (typeof actions.goMobileCreate === "function") {
+    actions.goMobileCreate();
+    return;
+  }
+
   showCreatePostScreen();
 }
 
 function goMobileWeather() {
+  const actions = getAppMobileActions();
+
+  if (typeof actions.goMobileWeather === "function") {
+    actions.goMobileWeather();
+    return;
+  }
+
   showSection("home");
 
   setTimeout(() => {
@@ -614,6 +646,13 @@ function goMobileWeather() {
 }
 
 function goHomeTop() {
+  const actions = getAppMobileActions();
+
+  if (typeof actions.goHomeTop === "function") {
+    actions.goHomeTop();
+    return;
+  }
+
   const visibleSection = getVisibleSectionName();
 
   if (visibleSection === "profile") {
