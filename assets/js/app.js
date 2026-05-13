@@ -38,9 +38,6 @@ let pondsReloadTimer = null;
 let pondsReloadInProgress = false;
 let lastPondsReloadAt = 0;
 
-let klevbyProfileOpenPatched = false;
-let klevbyOriginalOpenProfile = null;
-
 let klevbyAppResumeTimer = null;
 let klevbyAppResumeInProgress = false;
 let klevbyLastAppResumeAt = 0;
@@ -89,6 +86,10 @@ ensureAppSplashSafety();
 
 function getAppNavigation() {
   return window.KlevbyAppNavigation || {};
+}
+
+function getAppProfilePatches() {
+  return window.KlevbyAppProfilePatches || {};
 }
 
 function isAdmin() {
@@ -645,15 +646,24 @@ function resetFilters() {
 }
 
 function patchProfileOpenForExtraSections() {
-  if (klevbyProfileOpenPatched) return;
-  if (typeof window.openKlevbyProfile !== "function") return;
+  const patches = getAppProfilePatches();
 
-  klevbyOriginalOpenProfile = window.openKlevbyProfile;
+  if (typeof patches.patchProfileOpenForExtraSections === "function") {
+    return patches.patchProfileOpenForExtraSections();
+  }
+
+  if (patchProfileOpenForExtraSections.patched) return true;
+  if (typeof window.openKlevbyProfile !== "function") return false;
+
+  patchProfileOpenForExtraSections.originalOpenProfile = window.openKlevbyProfile;
 
   window.openKlevbyProfile = function patchedOpenKlevbyProfile() {
     hideAllAppSectionsExcept("profileSection");
 
-    const result = klevbyOriginalOpenProfile.apply(this, arguments);
+    const originalOpenProfile = patchProfileOpenForExtraSections.originalOpenProfile;
+    const result = typeof originalOpenProfile === "function"
+      ? originalOpenProfile.apply(this, arguments)
+      : undefined;
 
     const tripsSection = document.getElementById("tripsSection");
     const createSection = document.getElementById("createSection");
@@ -666,10 +676,17 @@ function patchProfileOpenForExtraSections() {
     return result;
   };
 
-  klevbyProfileOpenPatched = true;
+  patchProfileOpenForExtraSections.patched = true;
+  return true;
 }
 
 function patchProfileShortcutActions() {
+  const patches = getAppProfilePatches();
+
+  if (typeof patches.patchProfileShortcutActions === "function") {
+    return patches.patchProfileShortcutActions();
+  }
+
   window.openProfileCreateView = function patchedOpenProfileCreateView() {
     showCreatePostScreen({ fromProfile: true });
   };
@@ -684,6 +701,8 @@ function patchProfileShortcutActions() {
 
     setMode("mine");
   };
+
+  return true;
 }
 
 function handleGlobalScrollOrResize() {
@@ -932,6 +951,11 @@ window.setupKlevbyAppLifecycle = setupKlevbyAppLifecycle;
 window.showStatus = showStatus;
 window.showFormMessage = showFormMessage;
 window.openTelegram = openTelegram;
+window.getAppSections = getAppSections;
+window.hideAllAppSectionsExcept = hideAllAppSectionsExcept;
+window.clearProfileChromeIfNeeded = clearProfileChromeIfNeeded;
+window.setMobileTabVisual = setMobileTabVisual;
+window.getVisibleSectionName = getVisibleSectionName;
 window.showSection = showSection;
 window.setMode = setMode;
 window.showTripsBoard = showTripsBoard;
