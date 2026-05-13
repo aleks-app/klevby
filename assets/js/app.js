@@ -116,6 +116,10 @@ function getAppWindowExports() {
   return window.KlevbyAppWindowExports || {};
 }
 
+function getAppPondsBridge() {
+  return window.KlevbyAppPondsBridge || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -181,6 +185,14 @@ function syncGlobalAuthState(options = {}) {
 }
 
 function reloadPondsIfReady(options = {}) {
+  const bridge = getAppPondsBridge();
+
+  if (typeof bridge.reloadPondsIfReady === "function") {
+    return bridge.reloadPondsIfReady(options, {
+      syncGlobalAuthState
+    });
+  }
+
   const force = Boolean(options.force);
   const delay = Number(options.delay || 450);
 
@@ -217,6 +229,8 @@ function reloadPondsIfReady(options = {}) {
       pondsReloadInProgress = false;
     }
   }, delay);
+
+  return true;
 }
 
 let supabaseRecoveryInProgress = false;
