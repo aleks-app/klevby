@@ -46,6 +46,30 @@ let klevbyAppResumeInProgress = false;
 let klevbyLastAppResumeAt = 0;
 let klevbyAppHiddenAt = 0;
 
+const splashStartedAt = Date.now();
+
+function hideAppSplash() {
+  const splash = document.getElementById("appSplash");
+  if (!splash) return;
+
+  const minVisibleTime = 2500;
+  const elapsed = Date.now() - splashStartedAt;
+  const delay = Math.max(0, minVisibleTime - elapsed);
+
+  setTimeout(() => {
+    splash.classList.add("hide");
+
+    setTimeout(() => {
+      if (splash && splash.parentNode) {
+        splash.remove();
+      }
+    }, 800);
+  }, delay);
+}
+
+window.addEventListener("load", hideAppSplash);
+setTimeout(hideAppSplash, 5200);
+
 function getAppNavigation() {
   return window.KlevbyAppNavigation || {};
 }
