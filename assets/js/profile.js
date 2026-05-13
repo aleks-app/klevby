@@ -15,7 +15,6 @@ const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
 let klevbyProfileFeedSyncInProgress = false;
 let klevbyProfileFeedSyncTimer = null;
 let klevbyProfilePhotoUploadInProgress = false;
-let klevbyProfileUploadStatusTimer = null;
 
 function getProfileCore() {
   return window.KlevbyProfileCore || {};
@@ -799,162 +798,31 @@ function refreshProfileFeedSoon(delay = 220) {
 }
 
 function ensureProfileUploadStatus() {
-  let node = document.getElementById("profileUploadStatus");
-
-  if (node) return node;
-
-  if (!document.getElementById("profileUploadStatusStyles")) {
-    const style = document.createElement("style");
-    style.id = "profileUploadStatusStyles";
-    style.textContent = `
-      .profile-upload-status.hidden {
-        display: none !important;
-      }
-
-      .profile-upload-status {
-        position: fixed;
-        left: max(12px, env(safe-area-inset-left));
-        right: max(12px, env(safe-area-inset-right));
-        bottom: calc(92px + env(safe-area-inset-bottom));
-        z-index: 100000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-      }
-
-      .profile-upload-status-inner {
-        max-width: min(420px, 100%);
-        min-height: 48px;
-        padding: 12px 16px;
-        border-radius: 18px;
-        border: 1px solid rgba(244,178,74,0.26);
-        background:
-          radial-gradient(circle at 20% 0%, rgba(244,178,74,0.18), transparent 38%),
-          rgba(8, 13, 11, 0.94);
-        color: #fff8ea;
-        box-shadow:
-          0 18px 50px rgba(0,0,0,0.46),
-          inset 0 1px 0 rgba(255,255,255,0.08);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        font-size: 13px;
-        font-weight: 900;
-        line-height: 1.32;
-        text-align: center;
-      }
-
-      .profile-upload-status.loading .profile-upload-status-inner::before {
-        content: "⏳ ";
-      }
-
-      .profile-upload-status.success .profile-upload-status-inner {
-        border-color: rgba(87,230,178,0.36);
-      }
-
-      .profile-upload-status.warning .profile-upload-status-inner {
-        border-color: rgba(244,178,74,0.42);
-      }
-
-      .profile-upload-status.error .profile-upload-status-inner {
-        border-color: rgba(228,88,88,0.38);
-      }
-
-      .profile-photo-uploading button[onclick*="openProfilePhotoAction"],
-      .profile-photo-uploading .profile-photo-add-btn {
-        opacity: 0.68;
-        cursor: wait !important;
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
-
-  node = document.createElement("div");
-  node.id = "profileUploadStatus";
-  node.className = "profile-upload-status hidden";
-  node.setAttribute("role", "status");
-  node.setAttribute("aria-live", "polite");
-  node.innerHTML = `<div class="profile-upload-status-inner">Загрузка…</div>`;
-
-  document.body.appendChild(node);
-
-  return node;
+  return requireProfilePhotosMethod("ensureProfileUploadStatus")();
 }
 
 function showProfileUploadStatus(message, state = "loading") {
-  clearTimeout(klevbyProfileUploadStatusTimer);
-
-  const node = ensureProfileUploadStatus();
-  const inner = node.querySelector(".profile-upload-status-inner");
-
-  node.className = `profile-upload-status ${state || "loading"}`;
-
-  if (inner) {
-    inner.textContent = String(message || "Загрузка…");
-  }
+  return requireProfilePhotosMethod("showProfileUploadStatus")(message, state);
 }
 
 function hideProfileUploadStatus(delay = 0) {
-  clearTimeout(klevbyProfileUploadStatusTimer);
-
-  const hide = () => {
-    const node = document.getElementById("profileUploadStatus");
-    if (node) node.classList.add("hidden");
-  };
-
-  if (delay > 0) {
-    klevbyProfileUploadStatusTimer = setTimeout(hide, delay);
-    return;
-  }
-
-  hide();
+  return requireProfilePhotosMethod("hideProfileUploadStatus")(delay);
 }
 
 function setProfileUploadBusy(isBusy, message = "", state = "loading") {
   klevbyProfilePhotoUploadInProgress = Boolean(isBusy);
 
-  if (document.body) {
-    document.body.classList.toggle("profile-photo-uploading", klevbyProfilePhotoUploadInProgress);
-  }
-
-  setProfilePhotoButtonsDisabled(klevbyProfilePhotoUploadInProgress);
-
-  if (message) {
-    showProfileUploadStatus(message, state);
-  }
+  return requireProfilePhotosMethod("setProfileUploadBusy")(isBusy, message, state);
 }
 
 function finishProfileUploadStatus(message = "", state = "success", delay = 1200) {
   klevbyProfilePhotoUploadInProgress = false;
 
-  if (document.body) {
-    document.body.classList.remove("profile-photo-uploading");
-  }
-
-  setProfilePhotoButtonsDisabled(false);
-
-  if (message) {
-    showProfileUploadStatus(message, state);
-    hideProfileUploadStatus(delay);
-  } else {
-    hideProfileUploadStatus(delay);
-  }
+  return requireProfilePhotosMethod("finishProfileUploadStatus")(message, state, delay);
 }
 
 function setProfilePhotoButtonsDisabled(isDisabled) {
-  const input = document.getElementById("profilePhotoUploadInput");
-
-  if (input) {
-    input.disabled = Boolean(isDisabled);
-  }
-
-  const buttons = document.querySelectorAll('button[onclick*="openProfilePhotoAction"]');
-
-  buttons.forEach((button) => {
-    button.disabled = Boolean(isDisabled);
-    button.setAttribute("aria-busy", isDisabled ? "true" : "false");
-  });
+  return requireProfilePhotosMethod("setProfilePhotoButtonsDisabled")(isDisabled);
 }
 
 async function removeProfilePhoto(photoId) {
