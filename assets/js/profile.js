@@ -860,68 +860,11 @@ async function removeProfilePhoto(photoId) {
 }
 
 function cleanupOldProfileReportGrid(contentCard) {
-  if (!contentCard) return;
-
-  const oldStaticGrids = contentCard.querySelectorAll(".profile-report-grid:not(.profile-photo-gallery)");
-
-  oldStaticGrids.forEach((grid) => {
-    const hasOldDemoCards =
-      grid.querySelector(".profile-report-img-1") ||
-      grid.querySelector(".profile-report-img-2") ||
-      grid.querySelector(".profile-report-img-3");
-
-    if (hasOldDemoCards) {
-      grid.remove();
-    }
-  });
+  return requireProfilePhotosMethod("cleanupOldProfileReportGrid")(contentCard);
 }
 
 function renderProfilePhotos() {
-  const contentCard = document.querySelector(".profile-content-card");
-  if (!contentCard) return;
-
-  cleanupOldProfileReportGrid(contentCard);
-
-  const emptyState = contentCard.querySelector(".profile-empty-state");
-  const oldGallery = contentCard.querySelector(".profile-photo-gallery");
-
-  if (oldGallery) {
-    oldGallery.remove();
-  }
-
-  const photos = readProfilePhotos();
-
-  if (!photos.length) {
-    if (emptyState) emptyState.classList.remove("hidden");
-    return;
-  }
-
-  if (emptyState) emptyState.classList.add("hidden");
-
-  const gallery = document.createElement("div");
-  gallery.className = "profile-photo-gallery profile-report-grid";
-
-  gallery.innerHTML = photos.map((photo) => {
-    const safeId = escapeHtml(photo.id || photo.feedPostId || "");
-    const safeTitle = escapeHtml(photo.title || "Фото с рыбалки");
-    const safeSrc = escapeHtml(photo.feedImageUrl || photo.src || "");
-    const savedSize = Number(photo.savedSizeKb || 0);
-    const sizeLabel = savedSize ? `${savedSize} КБ` : "Фото";
-    const sourceLabel = photo.feedPostId ? "🌐 в ленте" : "📱 локально";
-
-    return `
-      <button class="profile-report-card profile-photo-card" type="button" onclick="openProfilePhotoViewer('${safeId}')" aria-label="Открыть фото">
-        <div class="profile-report-img" style="background-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.32)), url('${safeSrc}');"></div>
-        <p>${safeTitle}</p>
-        <div class="profile-report-meta">
-          <span>📸 ${escapeHtml(sizeLabel)}</span>
-          <span>${escapeHtml(sourceLabel)}</span>
-        </div>
-      </button>
-    `;
-  }).join("");
-
-  contentCard.appendChild(gallery);
+  return requireProfilePhotosMethod("renderProfilePhotos")();
 }
 
 function ensureProfilePhotoViewer() {
