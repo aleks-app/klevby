@@ -2,8 +2,10 @@
   const PROFILE_STORAGE_VERSION = "20260513-profile-storage-split-1";
 
   const KLEVB_PROFILE_STORAGE_KEY = "klevby_profile_settings";
+  const KLEVB_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
   const KLEVB_PROFILE_NAME_KEY = "klevby_profile_name";
   const KLEVB_PROFILE_PHOTOS_KEY = "klevby_profile_photos";
+
   const KLEVB_PROFILE_MAX_PHOTOS = 8;
 
   function getDefaultProfileData() {
@@ -15,31 +17,134 @@
     };
   }
 
-  function getFallbackNameFromInputs(options = {}) {
-    if (typeof options.getProfileNameFromInputs === "function") {
-      try {
-        return String(options.getProfileNameFromInputs() || "").trim();
-      } catch (_) {
-        return "";
-      }
-    }
-
-    return "";
+  function getCurrentProfileUser() {
+    return (
+      window.currentUser ||
+      window.klevbyCurrentUser ||
+      window.klevbyUser ||
+      (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
+      getProfileUserFromStoredAuth() ||
+      null
+    );
   }
 
-  function getFallbackNameFromCurrentUser(options = {}) {
-    if (typeof options.getProfileNameFromCurrentUser === "function") {
-      try {
-        return String(options.getProfileNameFromCurrentUser() || "").trim();
-      } catch (_) {
-        return "";
-      }
-    }
+  function parseProfileAuthStorageValue(raw) {
+    if (!raw) return null;
 
-    return "";
+    try {
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
   }
 
-  function readProfileData(options = {}) {
+  function getProfileStoredAuthData() {
+    try {
+      const preferredKeys = [
+        "sb-klevby-auth-token",
+        "supabase.auth.token"
+      ];
+
+      for (const key of preferredKeys) {
+        const raw = localStorage.getItem(key);
+        const parsed = parseProfileAuthStorageValue(raw);
+
+        if (parsed) {
+          return parsed;
+        }
+      }
+
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index) || "";
+
+        if (!key.includes("auth-token") && !key.startsWith("sb-")) {
+          continue;
+        }
+
+        const raw = localStorage.getItem(key);
+        const parsed = parseProfileAuthStorageValue(raw);
+
+        if (
+          parsed?.access_token ||
+          parsed?.currentSession?.access_token ||
+          parsed?.session?.access_token
+        ) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn("[KlevbyProfileStorage] Не удалось прочитать auth из localStorage.", error);
+    }
+
+    return null;
+  }
+
+  function getProfileSessionFromAuthData(authData) {
+    if (!authData || typeof authData !== "object") {
+      return null;
+    }
+
+    if (authData.currentSession?.access_token) {
+      return authData.currentSession;
+    }
+
+    if (authData.session?.access_token) {
+      return authData.session;
+    }
+
+    if (authData.data?.session?.access_token) {
+      return authData.data.session;
+    }
+
+    if (authData.access_token) {
+      return authData;
+    }
+
+    return null;
+  }
+
+  function getProfileUserFromStoredAuth() {
+    const authData = getProfileStoredAuthData();
+    const session = getProfileSessionFromAuthData(authData);
+
+    return (
+      session?.user ||
+      authData?.user ||
+      authData?.currentSession?.user ||
+      authData?.session?.user ||
+      authData?.data?.session?.user ||
+      null
+    );
+  }
+
+  function getProfileNameFromCurrentUser() {
+    try {
+      const user = getCurrentProfileUser();
+      const meta = user?.user_metadata || {};
+
+      return (
+        meta.username ||
+        meta.name ||
+        meta.full_name ||
+        user?.email?.split("@")?.[0] ||
+        ""
+      ).trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function getProfileNameFromInputs() {
+    const nameInput = document.getElementById("nameInput");
+    const usernameInput = document.getElementById("usernameInput");
+
+    const nameValue = nameInput && nameInput.value ? nameInput.value.trim() : "";
+    const usernameValue = usernameInput && usernameInput.value ? usernameInput.value.trim() : "";
+
+    return nameValue || usernameValue || "";
+  }
+
+  function readProfileData() {
     try {
       const raw = localStorage.getItem(KLEVB_PROFILE_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : {};
@@ -50,16 +155,16 @@
         name:
           parsed.name ||
           localStorage.getItem(KLEVB_PROFILE_NAME_KEY) ||
-          getFallbackNameFromInputs(options) ||
-          getFallbackNameFromCurrentUser(options) ||
+          getProfileNameFromInputs() ||
+          getProfileNameFromCurrentUser() ||
           ""
       };
     } catch (error) {
-      console.warn("Klevby profile storage: не удалось прочитать профиль", error);
+      console.warn("[KlevbyProfileStorage] Не удалось прочитать профиль.", error);
 
       return {
         ...getDefaultProfileData(),
-        name: getFallbackNameFromInputs(options) || getFallbackNameFromCurrentUser(options) || ""
+        name: getProfileNameFromInputs() || getProfileNameFromCurrentUser() || ""
       };
     }
   }
@@ -79,7 +184,7 @@
         localStorage.setItem(KLEVB_PROFILE_NAME_KEY, cleanData.name);
       }
     } catch (error) {
-      console.warn("Klevby profile storage: не удалось сохранить профиль", error);
+      console.warn("[KlevbyProfileStorage] Не удалось сохранить профиль.", error);
     }
 
     return cleanData;
@@ -92,7 +197,7 @@
 
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
-      console.warn("Klevby profile storage: не удалось прочитать фото", error);
+      console.warn("[KlevbyProfileStorage] Не удалось прочитать фото профиля.", error);
       return [];
     }
   }
@@ -105,15 +210,15 @@
     try {
       localStorage.setItem(KLEVB_PROFILE_PHOTOS_KEY, JSON.stringify(safePhotos));
     } catch (error) {
-      console.warn("Klevby profile storage: не удалось сохранить фото", error);
+      console.warn("[KlevbyProfileStorage] Не удалось сохранить фото профиля.", error);
       alert("Фото не сохранилось. Память браузера заполнена. Удали старые фото или выбери другое.");
     }
 
     return safePhotos;
   }
 
-  function getProfileFeedItems(options = {}) {
-    const data = readProfileData(options);
+  function getProfileFeedItems() {
+    const data = readProfileData();
     const photos = readProfilePhotos();
 
     return photos.map((photo) => {
@@ -123,7 +228,7 @@
         localId: photo.id,
         feedPostId: photo.feedPostId || "",
         feedImagePath: photo.feedImagePath || "",
-        authorName: data.name || getFallbackNameFromCurrentUser(options) || "Рыбак",
+        authorName: data.name || getProfileNameFromCurrentUser() || "Рыбак",
         authorCity: data.city || "",
         authorTelegram: data.telegram || "",
         image: photo.feedImageUrl || photo.src || "",
@@ -142,6 +247,7 @@
 
     constants: {
       KLEVB_PROFILE_STORAGE_KEY,
+      KLEVB_PROFILE_AVATAR_KEY,
       KLEVB_PROFILE_NAME_KEY,
       KLEVB_PROFILE_PHOTOS_KEY,
       KLEVB_PROFILE_MAX_PHOTOS
@@ -152,10 +258,18 @@
     saveProfileData,
     readProfilePhotos,
     saveProfilePhotos,
-    getProfileFeedItems
+    getProfileFeedItems,
+
+    getCurrentProfileUser,
+    getProfileNameFromCurrentUser,
+    getProfileNameFromInputs,
+    parseProfileAuthStorageValue,
+    getProfileStoredAuthData,
+    getProfileSessionFromAuthData,
+    getProfileUserFromStoredAuth
   };
 
-  console.log("Klevby profile storage loaded", {
+  console.log("Klevby profile storage module loaded", {
     version: PROFILE_STORAGE_VERSION
   });
 })();
