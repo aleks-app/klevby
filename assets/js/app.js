@@ -46,29 +46,46 @@ let klevbyAppResumeInProgress = false;
 let klevbyLastAppResumeAt = 0;
 let klevbyAppHiddenAt = 0;
 
-const splashStartedAt = Date.now();
+function ensureAppSplashSafety() {
+  if (
+    window.KlevbyAppSplash &&
+    typeof window.KlevbyAppSplash.hideAppSplash === "function"
+  ) {
+    return;
+  }
 
-function hideAppSplash() {
-  const splash = document.getElementById("appSplash");
-  if (!splash) return;
+  const fallbackSplashStartedAt = Date.now();
 
-  const minVisibleTime = 2500;
-  const elapsed = Date.now() - splashStartedAt;
-  const delay = Math.max(0, minVisibleTime - elapsed);
+  function fallbackHideAppSplash() {
+    const splash = document.getElementById("appSplash");
+    if (!splash) return;
 
-  setTimeout(() => {
-    splash.classList.add("hide");
+    const minVisibleTime = 2500;
+    const elapsed = Date.now() - fallbackSplashStartedAt;
+    const delay = Math.max(0, minVisibleTime - elapsed);
 
     setTimeout(() => {
-      if (splash && splash.parentNode) {
-        splash.remove();
-      }
-    }, 800);
-  }, delay);
+      if (!splash || !splash.parentNode) return;
+
+      splash.classList.add("hide");
+
+      setTimeout(() => {
+        if (splash && splash.parentNode) {
+          splash.remove();
+        }
+      }, 800);
+    }, delay);
+  }
+
+  if (typeof window.hideAppSplash !== "function") {
+    window.hideAppSplash = fallbackHideAppSplash;
+  }
+
+  window.addEventListener("load", fallbackHideAppSplash);
+  setTimeout(fallbackHideAppSplash, 5200);
 }
 
-window.addEventListener("load", hideAppSplash);
-setTimeout(hideAppSplash, 5200);
+ensureAppSplashSafety();
 
 function getAppNavigation() {
   return window.KlevbyAppNavigation || {};
