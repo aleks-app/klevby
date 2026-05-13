@@ -26,13 +26,24 @@
     throw error;
   }
 
+  function getProfileStorage() {
+    return window.KlevbyProfileStorage || {};
+  }
+
+  function requireProfileStorageMethod(name) {
+    const storage = getProfileStorage();
+
+    if (storage && typeof storage[name] === "function") {
+      return storage[name].bind(storage);
+    }
+
+    const error = new Error(`KlevbyProfileStorage.${name} is not available`);
+    console.error("[KlevbyProfileCore] profile-storage.js не готов или функция не найдена:", name, error);
+    throw error;
+  }
+
   function getDefaultProfileData() {
-    return {
-      name: "",
-      city: "",
-      telegram: "",
-      about: ""
-    };
+    return requireProfileStorageMethod("getDefaultProfileData")();
   }
 
   function escapeHtml(value) {
@@ -212,102 +223,31 @@
     return nameValue || usernameValue || "";
   }
 
+  function getProfileStorageOptions() {
+    return {
+      getProfileNameFromInputs,
+      getProfileNameFromCurrentUser
+    };
+  }
+
   function readProfileData() {
-    try {
-      const raw = localStorage.getItem(KLEVB_PROFILE_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-
-      return {
-        ...getDefaultProfileData(),
-        ...parsed,
-        name:
-          parsed.name ||
-          localStorage.getItem(KLEVB_PROFILE_NAME_KEY) ||
-          getProfileNameFromInputs() ||
-          getProfileNameFromCurrentUser() ||
-          ""
-      };
-    } catch (error) {
-      console.warn("Klevby profile core: не удалось прочитать профиль", error);
-
-      return {
-        ...getDefaultProfileData(),
-        name: getProfileNameFromInputs() || getProfileNameFromCurrentUser() || ""
-      };
-    }
+    return requireProfileStorageMethod("readProfileData")(getProfileStorageOptions());
   }
 
   function saveProfileData(data) {
-    const cleanData = {
-      name: String(data?.name || "").trim(),
-      city: String(data?.city || "").trim(),
-      telegram: String(data?.telegram || "").trim(),
-      about: String(data?.about || "").trim()
-    };
-
-    try {
-      localStorage.setItem(KLEVB_PROFILE_STORAGE_KEY, JSON.stringify(cleanData));
-
-      if (cleanData.name) {
-        localStorage.setItem(KLEVB_PROFILE_NAME_KEY, cleanData.name);
-      }
-    } catch (error) {
-      console.warn("Klevby profile core: не удалось сохранить профиль", error);
-    }
-
-    return cleanData;
+    return requireProfileStorageMethod("saveProfileData")(data);
   }
 
   function readProfilePhotos() {
-    try {
-      const raw = localStorage.getItem(KLEVB_PROFILE_PHOTOS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      console.warn("Klevby profile core: не удалось прочитать фото", error);
-      return [];
-    }
+    return requireProfileStorageMethod("readProfilePhotos")();
   }
 
   function saveProfilePhotos(photos) {
-    const safePhotos = Array.isArray(photos)
-      ? photos.slice(0, KLEVB_PROFILE_MAX_PHOTOS)
-      : [];
-
-    try {
-      localStorage.setItem(KLEVB_PROFILE_PHOTOS_KEY, JSON.stringify(safePhotos));
-    } catch (error) {
-      console.warn("Klevby profile core: не удалось сохранить фото", error);
-      alert("Фото не сохранилось. Память браузера заполнена. Удали старые фото или выбери другое.");
-    }
-
-    return safePhotos;
+    return requireProfileStorageMethod("saveProfilePhotos")(photos);
   }
 
   function getProfileFeedItems() {
-    const data = readProfileData();
-    const photos = readProfilePhotos();
-
-    return photos.map((photo) => {
-      return {
-        type: "profile_photo",
-        id: photo.feedPostId || photo.id,
-        localId: photo.id,
-        feedPostId: photo.feedPostId || "",
-        feedImagePath: photo.feedImagePath || "",
-        authorName: data.name || getProfileNameFromCurrentUser() || "Рыбак",
-        authorCity: data.city || "",
-        authorTelegram: data.telegram || "",
-        image: photo.feedImageUrl || photo.src || "",
-        title: photo.title || "Фото с рыбалки",
-        createdAt: photo.createdAt || "",
-        savedSizeKb: photo.savedSizeKb || 0,
-        width: photo.width || 0,
-        height: photo.height || 0,
-        source: photo.feedPostId ? "supabase" : (photo.source || "local")
-      };
-    });
+    return requireProfileStorageMethod("getProfileFeedItems")(getProfileStorageOptions());
   }
 
   function countUserPosts(profileName) {
@@ -1217,6 +1157,6 @@
   };
 
   console.log("Klevby profile core loaded", {
-    version: "20260513-profile-utils-split-1"
+    version: "20260513-profile-storage-split-1"
   });
 })();
