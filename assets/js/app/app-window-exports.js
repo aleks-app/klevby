@@ -13,8 +13,17 @@
     return true;
   }
 
+  function registerAppWindowExports(exportMapFactory) {
+    const exportsMap = typeof exportMapFactory === "function"
+      ? exportMapFactory()
+      : exportMapFactory;
+
+    return registerWindowExports(exportsMap);
+  }
+
   window.KlevbyAppWindowExports = {
-    registerWindowExports
+    registerWindowExports,
+    registerAppWindowExports
   };
 
   console.log("Klevby app window exports loaded", window.KlevbyAppWindowExports);

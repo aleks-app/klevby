@@ -1146,6 +1146,10 @@ function registerAppWindowExports() {
   const exportsMap = getAppWindowExportMap();
   const exporter = getAppWindowExports();
 
+  if (typeof exporter.registerAppWindowExports === "function") {
+    return exporter.registerAppWindowExports(getAppWindowExportMap);
+  }
+
   if (typeof exporter.registerWindowExports === "function") {
     return exporter.registerWindowExports(exportsMap);
   }
