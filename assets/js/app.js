@@ -100,6 +100,10 @@ function getAppUiHelpers() {
   return window.KlevbyAppUiHelpers || {};
 }
 
+function getAppFilters() {
+  return window.KlevbyAppFilters || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -694,6 +698,13 @@ function goHomeTop() {
 }
 
 function resetFilters() {
+  const filters = getAppFilters();
+
+  if (typeof filters.resetFilters === "function") {
+    filters.resetFilters();
+    return;
+  }
+
   const searchInput = document.getElementById("searchInput");
   const citySelect = document.getElementById("citySelect");
   const typeSelect = document.getElementById("typeSelect");
