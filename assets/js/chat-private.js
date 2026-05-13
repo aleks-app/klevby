@@ -779,6 +779,15 @@
       const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
       const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
       const accessToken = getPrivateAccessTokenQuick();
+      if (!accessToken) {
+        if (input) {
+          input.placeholder = "Войди, чтобы писать в личку";
+          input.disabled = true;
+        }
+        if (sendBtn) sendBtn.disabled = true;
+        showEmptyState("Войди в аккаунт, чтобы открыть личные сообщения.");
+        return;
+      }
       const endpoint =
         `${supabaseUrl}/rest/v1/private_messages?select=*` +
         `&or=(and(sender_id.eq.${encodeURIComponent(currentUserId)},receiver_id.eq.${encodeURIComponent(safePeerId)}),and(sender_id.eq.${encodeURIComponent(safePeerId)},receiver_id.eq.${encodeURIComponent(currentUserId)}))` +
@@ -791,7 +800,7 @@
           method: "GET",
           headers: {
             apikey: supabaseAnonKey,
-            Authorization: `Bearer ${accessToken || supabaseAnonKey}`
+            Authorization: `Bearer ${accessToken}`
           }
         });
         const durationMs = Date.now() - startedAt;
@@ -894,6 +903,15 @@
         return;
       }
 
+      const config = window.KLEVB_CONFIG || {};
+      const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
+      const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+      const accessToken = getPrivateAccessTokenQuick();
+      if (!accessToken) {
+        alert("Сессия истекла. Войди снова, чтобы отправить личное сообщение.");
+        return;
+      }
+
       if (sendBtn) sendBtn.disabled = true;
 
       const senderName = getCurrentChatName();
@@ -905,11 +923,6 @@
         sender_name: senderName,
         content: messageContent
       };
-
-      const config = window.KLEVB_CONFIG || {};
-      const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
-      const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
-      const accessToken = getPrivateAccessTokenQuick();
       const endpoint = `${supabaseUrl}/rest/v1/private_messages`;
       const startedAt = Date.now();
       console.info("[KlevbyPrivate] send REST start", { endpoint, peerId: selectedPeer.id });
@@ -918,7 +931,7 @@
         headers: {
           "Content-Type": "application/json",
           apikey: supabaseAnonKey,
-          Authorization: `Bearer ${accessToken || supabaseAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
           Prefer: "return=representation"
         },
         body: JSON.stringify(payload)
