@@ -48,6 +48,111 @@ let klevbyAppHiddenAt = 0;
 
 const splashStartedAt = Date.now();
 
+function getAppNavigationMethod(name) {
+  const navigation = window.KlevbyAppNavigation || null;
+
+  if (navigation && typeof navigation[name] === "function") {
+    return navigation[name].bind(navigation);
+  }
+
+  return null;
+}
+
+function getAppSections() {
+  const method = getAppNavigationMethod("getAppSections");
+
+  if (method) {
+    return method();
+  }
+
+  return [
+    "homeSection",
+    "tripsSection",
+    "createSection",
+    "marketSection",
+    "pondsSection",
+    "mapSection",
+    "authSection",
+    "profileSection"
+  ];
+}
+
+function hideAllAppSectionsExcept(activeId) {
+  const method = getAppNavigationMethod("hideAllAppSectionsExcept");
+
+  if (method) {
+    method(activeId);
+    return;
+  }
+
+  getAppSections().forEach((id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+
+    section.classList.toggle("hidden", id !== activeId);
+  });
+}
+
+function clearProfileChromeIfNeeded(section) {
+  const method = getAppNavigationMethod("clearProfileChromeIfNeeded");
+
+  if (method) {
+    method(section);
+    return;
+  }
+
+  if (section === "profile") return;
+
+  try {
+    if (typeof window.setProfileScreenChrome === "function") {
+      window.setProfileScreenChrome(false);
+    }
+
+    if (typeof window.restoreMainTabbar === "function") {
+      window.restoreMainTabbar();
+    }
+
+    sessionStorage.removeItem("klevby_profile_return_mode");
+    window.__klevbyProfileReturnMode = false;
+  } catch (error) {
+    window.__klevbyProfileReturnMode = false;
+  }
+}
+
+function setMobileTabVisual(index) {
+  const method = getAppNavigationMethod("setMobileTabVisual");
+
+  if (method) {
+    method(index);
+    return;
+  }
+
+  const buttons = Array.from(document.querySelectorAll(".mobile-tabbar .mobile-tab-btn"));
+
+  buttons.forEach((button, buttonIndex) => {
+    button.classList.toggle("active", Number.isInteger(index) && buttonIndex === index);
+  });
+}
+
+function getVisibleSectionName() {
+  const method = getAppNavigationMethod("getVisibleSectionName");
+
+  if (method) {
+    return method();
+  }
+
+  if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
+  if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
+  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
+  if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
+  if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
+  if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
+  if (!document.getElementById("authSection")?.classList.contains("hidden")) return "auth";
+  if (!document.getElementById("profileSection")?.classList.contains("hidden")) return "profile";
+
+  return "home";
+}
+
 function hideAppSplash() {
   const splash = document.getElementById("appSplash");
   if (!splash) return;
@@ -328,105 +433,6 @@ function showFormMessage(message, isError = false) {
 
 function openTelegram() {
   window.open(TELEGRAM_GROUP, "_blank");
-}
-
-function getAppNavigation() {
-  return window.KlevbyAppNavigation || {};
-}
-
-function getAppSections() {
-  const navigation = getAppNavigation();
-
-  if (typeof navigation.getAppSections === "function") {
-    return navigation.getAppSections();
-  }
-
-  return [
-    "homeSection",
-    "tripsSection",
-    "createSection",
-    "marketSection",
-    "pondsSection",
-    "mapSection",
-    "authSection",
-    "profileSection"
-  ];
-}
-
-function hideAllAppSectionsExcept(activeId) {
-  const navigation = getAppNavigation();
-
-  if (typeof navigation.hideAllAppSectionsExcept === "function") {
-    navigation.hideAllAppSectionsExcept(activeId);
-    return;
-  }
-
-  getAppSections().forEach((id) => {
-    const section = document.getElementById(id);
-    if (!section) return;
-
-    section.classList.toggle("hidden", id !== activeId);
-  });
-}
-
-function clearProfileChromeIfNeeded(section) {
-  const navigation = getAppNavigation();
-
-  if (typeof navigation.clearProfileChromeIfNeeded === "function") {
-    navigation.clearProfileChromeIfNeeded(section);
-    return;
-  }
-
-  if (section === "profile") return;
-
-  try {
-    if (typeof window.setProfileScreenChrome === "function") {
-      window.setProfileScreenChrome(false);
-    }
-
-    if (typeof window.restoreMainTabbar === "function") {
-      window.restoreMainTabbar();
-    }
-
-    sessionStorage.removeItem("klevby_profile_return_mode");
-    window.__klevbyProfileReturnMode = false;
-  } catch (error) {
-    window.__klevbyProfileReturnMode = false;
-  }
-}
-
-function setMobileTabVisual(index) {
-  const navigation = getAppNavigation();
-
-  if (typeof navigation.setMobileTabVisual === "function") {
-    navigation.setMobileTabVisual(index);
-    return;
-  }
-
-  const buttons = Array.from(document.querySelectorAll(".mobile-tabbar .mobile-tab-btn"));
-
-  buttons.forEach((button, buttonIndex) => {
-    button.classList.toggle("active", Number.isInteger(index) && buttonIndex === index);
-  });
-}
-
-function getVisibleSectionName() {
-  const navigation = getAppNavigation();
-
-  if (typeof navigation.getVisibleSectionName === "function") {
-    return navigation.getVisibleSectionName();
-  }
-
-  if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
-  if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
-  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
-  if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
-  if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
-  if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
-  if (!document.getElementById("authSection")?.classList.contains("hidden")) return "auth";
-  if (!document.getElementById("profileSection")?.classList.contains("hidden")) return "profile";
-
-  return "home";
 }
 
 function showSection(section) {
