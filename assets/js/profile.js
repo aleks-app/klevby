@@ -81,6 +81,22 @@ function requireProfileSettingsMethod(name) {
   throw error;
 }
 
+function getProfilePhotos() {
+  return window.KlevbyProfilePhotos || {};
+}
+
+function requireProfilePhotosMethod(name) {
+  const photos = getProfilePhotos();
+
+  if (photos && typeof photos[name] === "function") {
+    return photos[name].bind(photos);
+  }
+
+  const error = new Error(`KlevbyProfilePhotos.${name} is not available`);
+  console.error("[KlevbyProfile] profile-photos.js не готов или функция не найдена:", name, error);
+  throw error;
+}
+
 function getDefaultProfileData() {
   return requireProfileCoreMethod("getDefaultProfileData")();
 }
@@ -549,89 +565,15 @@ async function uploadProfilePhotoToSupabaseFeed(compressedPhoto, file) {
 }
 
 function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
-  const core = getProfileCore();
-
-  if (typeof core.makeLocalProfilePhoto === "function") {
-    return core.makeLocalProfilePhoto(compressedPhoto, file, feedItem);
-  }
-
-  const photosModule = window.KlevbyProfilePhotos || {};
-
-  if (typeof photosModule.makeLocalProfilePhoto === "function") {
-    return photosModule.makeLocalProfilePhoto(compressedPhoto, file, feedItem);
-  }
-
-  const uploadedUrl = feedItem?.imageUrl || feedItem?.image || "";
-
-  return {
-    id: `photo_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    src: uploadedUrl || compressedPhoto.dataUrl,
-    title: "Фото с рыбалки",
-    createdAt: new Date().toISOString(),
-    originalSizeKb: Math.round((file?.size || 0) / 1024),
-    savedSizeKb: compressedPhoto.sizeKb,
-    width: compressedPhoto.width,
-    height: compressedPhoto.height,
-    source: feedItem ? "supabase" : "local",
-    feedPostId: feedItem?.id || "",
-    feedImagePath: feedItem?.imagePath || "",
-    feedImageUrl: uploadedUrl,
-    feedSyncError: ""
-  };
+  return requireProfilePhotosMethod("makeLocalProfilePhoto")(compressedPhoto, file, feedItem);
 }
 
 function updateLocalPhotoWithFeedItem(photo, feedItem) {
-  const core = getProfileCore();
-
-  if (typeof core.updateLocalPhotoWithFeedItem === "function") {
-    return core.updateLocalPhotoWithFeedItem(photo, feedItem);
-  }
-
-  const photosModule = window.KlevbyProfilePhotos || {};
-
-  if (typeof photosModule.updateLocalPhotoWithFeedItem === "function") {
-    return photosModule.updateLocalPhotoWithFeedItem(photo, feedItem);
-  }
-
-  if (!photo || !feedItem) return photo;
-
-  const uploadedUrl = feedItem.imageUrl || feedItem.image || photo.feedImageUrl || "";
-
-  return {
-    ...photo,
-    src: uploadedUrl || photo.src,
-    source: "supabase",
-    feedPostId: feedItem.id || photo.feedPostId || "",
-    feedImagePath: feedItem.imagePath || photo.feedImagePath || "",
-    feedImageUrl: uploadedUrl || photo.feedImageUrl || "",
-    feedSyncError: ""
-  };
+  return requireProfilePhotosMethod("updateLocalPhotoWithFeedItem")(photo, feedItem);
 }
 
 function updateProfilePhotoByLocalId(localId, updater) {
-  const photosModule = window.KlevbyProfilePhotos || {};
-
-  if (typeof photosModule.updateProfilePhotoByLocalId === "function") {
-    return photosModule.updateProfilePhotoByLocalId(localId, updater);
-  }
-
-  const cleanId = String(localId || "");
-  const currentPhotos = readProfilePhotos();
-
-  const updatedPhotos = currentPhotos.map((photo) => {
-    if (String(photo.id) !== cleanId) {
-      return photo;
-    }
-
-    if (typeof updater === "function") {
-      return updater(photo);
-    }
-
-    return photo;
-  });
-
-  saveProfilePhotos(updatedPhotos);
-  return updatedPhotos;
+  return requireProfilePhotosMethod("updateProfilePhotoByLocalId")(localId, updater);
 }
 
 function scheduleProfileFeedSync(delay = 1200) {
