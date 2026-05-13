@@ -1,8 +1,10 @@
 (function () {
-  const PROFILE_PHOTOS_VERSION = "20260512-profile-photos-1";
+  const PROFILE_PHOTOS_VERSION = "20260513-profile-upload-status-split-1";
 
   const PROFILE_MAX_PHOTOS = 8;
   const PROFILE_PHOTOS_KEY = "klevby_profile_photos";
+
+  let profileUploadStatusTimer = null;
 
   function getCore() {
     return window.KlevbyProfileCore || {};
@@ -103,11 +105,172 @@
     return updatedPhotos;
   }
 
+  function ensureProfileUploadStatus() {
+    let node = document.getElementById("profileUploadStatus");
+
+    if (node) return node;
+
+    if (!document.getElementById("profileUploadStatusStyles")) {
+      const style = document.createElement("style");
+      style.id = "profileUploadStatusStyles";
+      style.textContent = `
+        .profile-upload-status.hidden {
+          display: none !important;
+        }
+
+        .profile-upload-status {
+          position: fixed;
+          left: max(12px, env(safe-area-inset-left));
+          right: max(12px, env(safe-area-inset-right));
+          bottom: calc(92px + env(safe-area-inset-bottom));
+          z-index: 100000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        }
+
+        .profile-upload-status-inner {
+          max-width: min(420px, 100%);
+          min-height: 48px;
+          padding: 12px 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(244,178,74,0.26);
+          background:
+            radial-gradient(circle at 20% 0%, rgba(244,178,74,0.18), transparent 38%),
+            rgba(8, 13, 11, 0.94);
+          color: #fff8ea;
+          box-shadow:
+            0 18px 50px rgba(0,0,0,0.46),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          font-size: 13px;
+          font-weight: 900;
+          line-height: 1.32;
+          text-align: center;
+        }
+
+        .profile-upload-status.loading .profile-upload-status-inner::before {
+          content: "⏳ ";
+        }
+
+        .profile-upload-status.success .profile-upload-status-inner {
+          border-color: rgba(87,230,178,0.36);
+        }
+
+        .profile-upload-status.warning .profile-upload-status-inner {
+          border-color: rgba(244,178,74,0.42);
+        }
+
+        .profile-upload-status.error .profile-upload-status-inner {
+          border-color: rgba(228,88,88,0.38);
+        }
+
+        .profile-photo-uploading button[onclick*="openProfilePhotoAction"],
+        .profile-photo-uploading .profile-photo-add-btn {
+          opacity: 0.68;
+          cursor: wait !important;
+        }
+      `;
+
+      document.head.appendChild(style);
+    }
+
+    node = document.createElement("div");
+    node.id = "profileUploadStatus";
+    node.className = "profile-upload-status hidden";
+    node.setAttribute("role", "status");
+    node.setAttribute("aria-live", "polite");
+    node.innerHTML = `<div class="profile-upload-status-inner">Загрузка…</div>`;
+
+    document.body.appendChild(node);
+
+    return node;
+  }
+
+  function showProfileUploadStatus(message, state = "loading") {
+    clearTimeout(profileUploadStatusTimer);
+
+    const node = ensureProfileUploadStatus();
+    const inner = node.querySelector(".profile-upload-status-inner");
+
+    node.className = `profile-upload-status ${state || "loading"}`;
+
+    if (inner) {
+      inner.textContent = String(message || "Загрузка…");
+    }
+  }
+
+  function hideProfileUploadStatus(delay = 0) {
+    clearTimeout(profileUploadStatusTimer);
+
+    const hide = () => {
+      const node = document.getElementById("profileUploadStatus");
+      if (node) node.classList.add("hidden");
+    };
+
+    if (delay > 0) {
+      profileUploadStatusTimer = setTimeout(hide, delay);
+      return;
+    }
+
+    hide();
+  }
+
+  function setProfilePhotoButtonsDisabled(isDisabled) {
+    const input = document.getElementById("profilePhotoUploadInput");
+
+    if (input) {
+      input.disabled = Boolean(isDisabled);
+    }
+
+    const buttons = document.querySelectorAll('button[onclick*="openProfilePhotoAction"]');
+
+    buttons.forEach((button) => {
+      button.disabled = Boolean(isDisabled);
+      button.setAttribute("aria-busy", isDisabled ? "true" : "false");
+    });
+  }
+
+  function setProfileUploadBusy(isBusy, message = "", state = "loading") {
+    if (document.body) {
+      document.body.classList.toggle("profile-photo-uploading", Boolean(isBusy));
+    }
+
+    setProfilePhotoButtonsDisabled(Boolean(isBusy));
+
+    if (message) {
+      showProfileUploadStatus(message, state);
+    }
+  }
+
+  function finishProfileUploadStatus(message = "", state = "success", delay = 1200) {
+    if (document.body) {
+      document.body.classList.remove("profile-photo-uploading");
+    }
+
+    setProfilePhotoButtonsDisabled(false);
+
+    if (message) {
+      showProfileUploadStatus(message, state);
+      hideProfileUploadStatus(delay);
+    } else {
+      hideProfileUploadStatus(delay);
+    }
+  }
+
   window.KlevbyProfilePhotos = {
     version: PROFILE_PHOTOS_VERSION,
     makeLocalProfilePhoto,
     updateLocalPhotoWithFeedItem,
-    updateProfilePhotoByLocalId
+    updateProfilePhotoByLocalId,
+    ensureProfileUploadStatus,
+    showProfileUploadStatus,
+    hideProfileUploadStatus,
+    setProfileUploadBusy,
+    finishProfileUploadStatus,
+    setProfilePhotoButtonsDisabled
   };
 
   console.log("Klevby profile photos module loaded", {
