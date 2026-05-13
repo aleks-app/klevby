@@ -744,7 +744,7 @@
     return /^https?:\/\//i.test(String(value || "").trim());
   }
 
-  async function loadAuthorAvatarUrlFromProfiles(userId) {
+  async function loadAuthorAvatarUrlFromPublicProfiles(userId) {
     const cleanUserId = String(userId || "").trim();
 
     if (!cleanUserId) return "";
@@ -755,10 +755,11 @@
     params.set("limit", "1");
 
     try {
-      const data = await restTableRequestDirect("profiles", {
+      const data = await restTableRequestDirect("public_profiles", {
         method: "GET",
         query: params.toString(),
-        requireAuth: true,
+        requireAuth: false,
+        attachAuth: false,
         timeoutMs: 3500
       });
 
@@ -767,7 +768,7 @@
 
       return isPublicUrl(avatarUrl) ? avatarUrl : "";
     } catch (error) {
-      console.debug("Klevby feed: avatar_url из profiles не подтянулся для поста", error);
+      console.debug("Klevby feed: avatar_url из public_profiles не подтянулся для поста", error);
       return "";
     }
   }
@@ -785,7 +786,7 @@
       return directUrl;
     }
 
-    return loadAuthorAvatarUrlFromProfiles(user?.id || "");
+    return loadAuthorAvatarUrlFromPublicProfiles(user?.id || "");
   }
 
   async function recoverSupabaseClient(reason = "", source = "feed") {
