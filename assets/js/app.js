@@ -112,6 +112,10 @@ function getAppTripActions() {
   return window.KlevbyAppTripActions || {};
 }
 
+function getAppWindowExports() {
+  return window.KlevbyAppWindowExports || {};
+}
+
 function isAdmin() {
   return Boolean(
     currentUser &&
@@ -1086,34 +1090,57 @@ document.addEventListener("DOMContentLoaded", async function () {
 patchProfileOpenForExtraSections();
 patchProfileShortcutActions();
 
-window.isAdmin = isAdmin;
-window.syncGlobalAuthState = syncGlobalAuthState;
-window.reloadPondsIfReady = reloadPondsIfReady;
-window.initSupabase = initSupabase;
-window.scheduleKlevbyAppResume = scheduleKlevbyAppResume;
-window.handleKlevbyAppResume = handleKlevbyAppResume;
-window.refreshCurrentScreenAfterResume = refreshCurrentScreenAfterResume;
-window.setupKlevbyAppLifecycle = setupKlevbyAppLifecycle;
-window.showStatus = showStatus;
-window.showFormMessage = showFormMessage;
-window.openTelegram = openTelegram;
-window.getAppSections = getAppSections;
-window.hideAllAppSectionsExcept = hideAllAppSectionsExcept;
-window.clearProfileChromeIfNeeded = clearProfileChromeIfNeeded;
-window.setMobileTabVisual = setMobileTabVisual;
-window.getVisibleSectionName = getVisibleSectionName;
-window.showSection = showSection;
-window.setMode = setMode;
-window.showTripsBoard = showTripsBoard;
-window.showCreatePostScreen = showCreatePostScreen;
-window.goMobileFeed = goMobileFeed;
-window.goMobileMap = goMobileMap;
-window.goMobileCreate = goMobileCreate;
-window.goMobileWeather = goMobileWeather;
-window.goHomeTop = goHomeTop;
-window.resetFilters = resetFilters;
-window.handleGlobalScrollOrResize = handleGlobalScrollOrResize;
-window.handleAppEscapeKey = handleAppEscapeKey;
-window.setupAppGlobalEvents = setupAppGlobalEvents;
-window.setAppViewMode = setAppViewMode;
-window.setProfileReturnMode = setProfileReturnMode;
+function getAppWindowExportMap() {
+  return {
+    isAdmin,
+    syncGlobalAuthState,
+    reloadPondsIfReady,
+    initSupabase,
+    scheduleKlevbyAppResume,
+    handleKlevbyAppResume,
+    refreshCurrentScreenAfterResume,
+    setupKlevbyAppLifecycle,
+    showStatus,
+    showFormMessage,
+    openTelegram,
+    getAppSections,
+    hideAllAppSectionsExcept,
+    clearProfileChromeIfNeeded,
+    setMobileTabVisual,
+    getVisibleSectionName,
+    showSection,
+    setMode,
+    showTripsBoard,
+    showCreatePostScreen,
+    goMobileFeed,
+    goMobileMap,
+    goMobileCreate,
+    goMobileWeather,
+    goHomeTop,
+    resetFilters,
+    handleGlobalScrollOrResize,
+    handleAppEscapeKey,
+    setupAppGlobalEvents,
+    setAppViewMode,
+    setProfileReturnMode,
+    registerAppWindowExports,
+    getAppWindowExportMap
+  };
+}
+
+function registerAppWindowExports() {
+  const exportsMap = getAppWindowExportMap();
+  const exporter = getAppWindowExports();
+
+  if (typeof exporter.registerWindowExports === "function") {
+    return exporter.registerWindowExports(exportsMap);
+  }
+
+  Object.keys(exportsMap).forEach((key) => {
+    window[key] = exportsMap[key];
+  });
+
+  return true;
+}
+
+registerAppWindowExports();
