@@ -1,5 +1,5 @@
 (function () {
-  const PROFILE_PHOTOS_VERSION = "20260513-profile-viewer-split-1";
+  const PROFILE_PHOTOS_VERSION = "20260513-profile-feed-events-split-1";
 
   const PROFILE_MAX_PHOTOS = 8;
   const PROFILE_PHOTOS_KEY = "klevby_profile_photos";
@@ -564,6 +564,28 @@
     document.body.classList.remove("post-modal-open");
   }
 
+  function dispatchProfileFeedEvent(action, item = null, error = null) {
+    window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
+      detail: {
+        action,
+        item,
+        error: error ? String(error?.message || error) : ""
+      }
+    }));
+  }
+
+  function refreshProfileFeedSoon(delay = 220) {
+    setTimeout(() => {
+      try {
+        if (typeof window.renderProfileFeed === "function") {
+          window.renderProfileFeed();
+        }
+      } catch (error) {
+        console.warn("Klevby profile: лента не обновилась после фото", error);
+      }
+    }, delay);
+  }
+
   window.KlevbyProfilePhotos = {
     version: PROFILE_PHOTOS_VERSION,
     makeLocalProfilePhoto,
@@ -579,7 +601,9 @@
     renderProfilePhotos,
     ensureProfilePhotoViewer,
     openProfilePhotoViewer,
-    closeProfilePhotoViewer
+    closeProfilePhotoViewer,
+    dispatchProfileFeedEvent,
+    refreshProfileFeedSoon
   };
 
   console.log("Klevby profile photos module loaded", {
