@@ -1,5 +1,5 @@
 (function () {
-  const PROFILE_PHOTOS_VERSION = "20260513-profile-upload-status-split-1";
+  const PROFILE_PHOTOS_VERSION = "20260513-profile-gallery-render-split-1";
 
   const PROFILE_MAX_PHOTOS = 8;
   const PROFILE_PHOTOS_KEY = "klevby_profile_photos";
@@ -47,6 +47,21 @@
     }
 
     return safePhotos;
+  }
+
+  function escapeHtml(value) {
+    const core = getCore();
+
+    if (typeof core.escapeHtml === "function") {
+      return core.escapeHtml(value);
+    }
+
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
   function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
@@ -260,6 +275,71 @@
     }
   }
 
+  function cleanupOldProfileReportGrid(contentCard) {
+    if (!contentCard) return;
+
+    const oldStaticGrids = contentCard.querySelectorAll(".profile-report-grid:not(.profile-photo-gallery)");
+
+    oldStaticGrids.forEach((grid) => {
+      const hasOldDemoCards =
+        grid.querySelector(".profile-report-img-1") ||
+        grid.querySelector(".profile-report-img-2") ||
+        grid.querySelector(".profile-report-img-3");
+
+      if (hasOldDemoCards) {
+        grid.remove();
+      }
+    });
+  }
+
+  function renderProfilePhotos() {
+    const contentCard = document.querySelector(".profile-content-card");
+    if (!contentCard) return;
+
+    cleanupOldProfileReportGrid(contentCard);
+
+    const emptyState = contentCard.querySelector(".profile-empty-state");
+    const oldGallery = contentCard.querySelector(".profile-photo-gallery");
+
+    if (oldGallery) {
+      oldGallery.remove();
+    }
+
+    const photos = readProfilePhotos();
+
+    if (!photos.length) {
+      if (emptyState) emptyState.classList.remove("hidden");
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add("hidden");
+
+    const gallery = document.createElement("div");
+    gallery.className = "profile-photo-gallery profile-report-grid";
+
+    gallery.innerHTML = photos.map((photo) => {
+      const safeId = escapeHtml(photo.id || photo.feedPostId || "");
+      const safeTitle = escapeHtml(photo.title || "Фото с рыбалки");
+      const safeSrc = escapeHtml(photo.feedImageUrl || photo.src || "");
+      const savedSize = Number(photo.savedSizeKb || 0);
+      const sizeLabel = savedSize ? `${savedSize} КБ` : "Фото";
+      const sourceLabel = photo.feedPostId ? "🌐 в ленте" : "📱 локально";
+
+      return `
+        <button class="profile-report-card profile-photo-card" type="button" onclick="openProfilePhotoViewer('${safeId}')" aria-label="Открыть фото">
+          <div class="profile-report-img" style="background-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.32)), url('${safeSrc}');"></div>
+          <p>${safeTitle}</p>
+          <div class="profile-report-meta">
+            <span>📸 ${escapeHtml(sizeLabel)}</span>
+            <span>${escapeHtml(sourceLabel)}</span>
+          </div>
+        </button>
+      `;
+    }).join("");
+
+    contentCard.appendChild(gallery);
+  }
+
   window.KlevbyProfilePhotos = {
     version: PROFILE_PHOTOS_VERSION,
     makeLocalProfilePhoto,
@@ -270,7 +350,9 @@
     hideProfileUploadStatus,
     setProfileUploadBusy,
     finishProfileUploadStatus,
-    setProfilePhotoButtonsDisabled
+    setProfilePhotoButtonsDisabled,
+    cleanupOldProfileReportGrid,
+    renderProfilePhotos
   };
 
   console.log("Klevby profile photos module loaded", {
