@@ -623,6 +623,12 @@ function setAppViewMode(mode) {
 }
 
 function setProfileReturnMode(enabled) {
+  const patches = getAppProfilePatches();
+
+  if (typeof patches.setProfileReturnMode === "function") {
+    return patches.setProfileReturnMode(enabled);
+  }
+
   const value = Boolean(enabled);
 
   try {
