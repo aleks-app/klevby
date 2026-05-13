@@ -223,15 +223,8 @@
     return nameValue || usernameValue || "";
   }
 
-  function getProfileStorageOptions() {
-    return {
-      getProfileNameFromInputs,
-      getProfileNameFromCurrentUser
-    };
-  }
-
   function readProfileData() {
-    return requireProfileStorageMethod("readProfileData")(getProfileStorageOptions());
+    return requireProfileStorageMethod("readProfileData")();
   }
 
   function saveProfileData(data) {
@@ -247,7 +240,7 @@
   }
 
   function getProfileFeedItems() {
-    return requireProfileStorageMethod("getProfileFeedItems")(getProfileStorageOptions());
+    return requireProfileStorageMethod("getProfileFeedItems")();
   }
 
   function countUserPosts(profileName) {
