@@ -776,25 +776,11 @@ async function handleProfilePhotoUpload(event) {
 }
 
 function dispatchProfileFeedEvent(action, item = null, error = null) {
-  window.dispatchEvent(new CustomEvent("klevby-feed-updated", {
-    detail: {
-      action,
-      item,
-      error: error ? String(error?.message || error) : ""
-    }
-  }));
+  return requireProfilePhotosMethod("dispatchProfileFeedEvent")(action, item, error);
 }
 
 function refreshProfileFeedSoon(delay = 220) {
-  setTimeout(() => {
-    try {
-      if (typeof window.renderProfileFeed === "function") {
-        window.renderProfileFeed();
-      }
-    } catch (error) {
-      console.warn("Klevby profile: лента не обновилась после фото", error);
-    }
-  }, delay);
+  return requireProfilePhotosMethod("refreshProfileFeedSoon")(delay);
 }
 
 function ensureProfileUploadStatus() {
