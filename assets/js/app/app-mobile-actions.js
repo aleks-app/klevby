@@ -1,20 +1,34 @@
 (function () {
-  function showSection(section) {
+  function showSection(section, dependencies = {}) {
+    if (typeof dependencies.showSection === "function") {
+      dependencies.showSection(section);
+      return;
+    }
+
     if (typeof window.showSection === "function") {
       window.showSection(section);
     }
   }
 
-  function showCreatePostScreen(options = {}) {
+  function showCreatePostScreen(options = {}, dependencies = {}) {
+    if (typeof dependencies.showCreatePostScreen === "function") {
+      dependencies.showCreatePostScreen(options);
+      return;
+    }
+
     if (typeof window.showCreatePostScreen === "function") {
       window.showCreatePostScreen(options);
       return;
     }
 
-    showSection("create");
+    showSection("create", dependencies);
   }
 
-  function getVisibleSectionName() {
+  function getVisibleSectionName(dependencies = {}) {
+    if (typeof dependencies.getVisibleSectionName === "function") {
+      return dependencies.getVisibleSectionName();
+    }
+
     if (typeof window.getVisibleSectionName === "function") {
       return window.getVisibleSectionName();
     }
@@ -31,29 +45,34 @@
     return "home";
   }
 
-  function setMode(mode) {
+  function setMode(mode, dependencies = {}) {
+    if (typeof dependencies.setMode === "function") {
+      dependencies.setMode(mode);
+      return;
+    }
+
     if (typeof window.setMode === "function") {
       window.setMode(mode);
       return;
     }
 
-    showSection("trips");
+    showSection("trips", dependencies);
   }
 
-  function goMobileFeed() {
-    showSection("home");
+  function goMobileFeed(dependencies = {}) {
+    showSection("home", dependencies);
   }
 
-  function goMobileMap() {
-    showSection("map");
+  function goMobileMap(dependencies = {}) {
+    showSection("map", dependencies);
   }
 
-  function goMobileCreate() {
-    showCreatePostScreen();
+  function goMobileCreate(dependencies = {}) {
+    showCreatePostScreen({}, dependencies);
   }
 
-  function goMobileWeather() {
-    showSection("home");
+  function goMobileWeather(dependencies = {}) {
+    showSection("home", dependencies);
 
     setTimeout(() => {
       const panel = document.getElementById("forecastPanel");
@@ -67,20 +86,20 @@
     }, 120);
   }
 
-  function goHomeTop() {
-    const visibleSection = getVisibleSectionName();
+  function goHomeTop(dependencies = {}) {
+    const visibleSection = getVisibleSectionName(dependencies);
 
     if (visibleSection === "profile") {
-      showSection("home");
+      showSection("home", dependencies);
       return;
     }
 
     if (visibleSection === "create") {
-      setMode("all");
+      setMode("all", dependencies);
       return;
     }
 
-    showSection("home");
+    showSection("home", dependencies);
   }
 
   window.KlevbyAppMobileActions = {
