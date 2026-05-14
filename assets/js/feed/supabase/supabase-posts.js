@@ -5,6 +5,15 @@
   const Normalize = window.KlevbyFeedSupabaseNormalize || {};
   const Counts = window.KlevbyFeedSupabaseCounts || {};
 
+  let feedPostsLoadSequence = 0;
+  let lastSuccessfulFeedFetchAt = 0;
+  let lastSuccessfulFeedFetchSequence = 0;
+  let lastSuccessfulFeedFetchCount = 0;
+  let lastSuccessfulFeedLoadAt = 0;
+  let lastSuccessfulFeedLoadSequence = 0;
+  let lastSuccessfulFeedLoadCount = 0;
+  let lastSuccessfulFeedItems = [];
+
   function getPostSelectColumns(includeAvatar = true) {
     const columns = [
       "id",
@@ -32,6 +41,53 @@
     }
 
     return columns.join(",");
+  }
+
+  function markSuccessfulFeedFetch(loadSequence, rawItems = []) {
+    lastSuccessfulFeedFetchAt = Date.now();
+    lastSuccessfulFeedFetchSequence = loadSequence;
+    lastSuccessfulFeedFetchCount = Array.isArray(rawItems) ? rawItems.length : 0;
+  }
+
+  function markSuccessfulFeedLoad(loadSequence, items = []) {
+    lastSuccessfulFeedLoadAt = Date.now();
+    lastSuccessfulFeedLoadSequence = loadSequence;
+    lastSuccessfulFeedLoadCount = Array.isArray(items) ? items.length : 0;
+    lastSuccessfulFeedItems = Array.isArray(items) ? items.slice() : [];
+  }
+
+  function hasNewerSuccessfulFeedActivity(loadSequence, startedAt) {
+    if (loadSequence === feedPostsLoadSequence) {
+      return false;
+    }
+
+    return (
+      lastSuccessfulFeedLoadAt >= startedAt ||
+      lastSuccessfulFeedFetchAt >= startedAt
+    );
+  }
+
+  function buildStaleFeedLoadResult(error, loadSequence, startedAt) {
+    console.debug("Klevby feed: stale feed load timeout ignored after newer successful load", {
+      loadSequence,
+      latestSequence: feedPostsLoadSequence,
+      startedAt,
+      lastSuccessfulFeedFetchAt,
+      lastSuccessfulFeedFetchSequence,
+      lastSuccessfulFeedFetchCount,
+      lastSuccessfulFeedLoadAt,
+      lastSuccessfulFeedLoadSequence,
+      lastSuccessfulFeedLoadCount,
+      error: String(error?.message || error || "")
+    });
+
+    return {
+      ok: true,
+      items: lastSuccessfulFeedItems.slice(),
+      error: null,
+      source: "stale_timeout_ignored",
+      stale: true
+    };
   }
 
   function isPostsRestFallbackError(error) {
@@ -660,6 +716,8 @@
       };
     }
 
+    const loadSequence = ++feedPostsLoadSequence;
+    const loadStartedAt = Date.now();
     const limit = Math.min(Math.max(Number(options.limit || 40), 1), 80);
 
     try {
@@ -678,6 +736,10 @@
       }
 
       if (result.error) {
+        if (hasNewerSuccessfulFeedActivity(loadSequence, loadStartedAt)) {
+          return buildStaleFeedLoadResult(result.error, loadSequence, loadStartedAt);
+        }
+
         console.error("Klevby feed: ошибка загрузки feed_posts", result.error);
 
         return {
@@ -685,6 +747,10 @@
           items: [],
           error: result.error
         };
+      }
+
+      if (Array.isArray(result.data)) {
+        markSuccessfulFeedFetch(loadSequence, result.data);
       }
 
       const normalizedItems = Array.isArray(result.data)
@@ -699,6 +765,8 @@
 
       const items = await Counts.applyRealCommentCounts(db, likedItems);
 
+      markSuccessfulFeedLoad(loadSequence, items);
+
       return {
         ok: true,
         items,
@@ -706,6 +774,10 @@
         source: result.source || "unknown"
       };
     } catch (error) {
+      if (hasNewerSuccessfulFeedActivity(loadSequence, loadStartedAt)) {
+        return buildStaleFeedLoadResult(error, loadSequence, loadStartedAt);
+      }
+
       console.error("Klevby feed: ошибка загрузки Supabase-ленты", error);
 
       return {
