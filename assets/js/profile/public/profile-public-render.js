@@ -26,10 +26,11 @@
             <div class="public-profile-stats" data-klevby-public-stats></div>
             <div class="public-profile-tabs" aria-label="Разделы профиля">
               <button type="button" class="public-profile-tab is-active">Фото</button>
-              <button type="button" class="public-profile-tab" disabled>Отчёты</button>
-              <button type="button" class="public-profile-tab" disabled>Выезды</button>
-              <button type="button" class="public-profile-tab" disabled>О себе</button>
+              <button type="button" class="public-profile-tab" data-klevby-public-placeholder-tab data-label="Отчёты">Отчёты</button>
+              <button type="button" class="public-profile-tab" data-klevby-public-placeholder-tab data-label="Выезды">Выезды</button>
+              <button type="button" class="public-profile-tab" data-klevby-public-placeholder-tab data-label="О себе">О себе</button>
             </div>
+            <div class="public-profile-tab-note" data-klevby-public-tab-note hidden></div>
           </div>
         </div>
 
@@ -47,7 +48,37 @@
       </div>`;
 
     document.body.appendChild(root);
+    bindPlaceholderTabs(root);
     return root;
+  }
+
+
+  let tabNoteTimeout = null;
+
+  function bindPlaceholderTabs(root) {
+    const tabs = root.querySelectorAll("[data-klevby-public-placeholder-tab]");
+    const note = root.querySelector("[data-klevby-public-tab-note]");
+    if (!tabs.length || !note) return;
+
+    const showNote = () => {
+      note.textContent = "Раздел скоро появится.";
+      note.hidden = false;
+      note.classList.remove("is-visible");
+      requestAnimationFrame(() => note.classList.add("is-visible"));
+
+      if (tabNoteTimeout) clearTimeout(tabNoteTimeout);
+      tabNoteTimeout = setTimeout(() => {
+        note.hidden = true;
+        note.classList.remove("is-visible");
+      }, 3000);
+    };
+
+    tabs.forEach((tab) => {
+      tab.onclick = (event) => {
+        event.preventDefault();
+        showNote();
+      };
+    });
   }
 
   function renderStats(root, photoCount) {
