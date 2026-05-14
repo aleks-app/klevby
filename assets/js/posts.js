@@ -3,6 +3,7 @@ let postsLoadRetryTimer = null;
 
 const POSTS_LOAD_RETRY_DELAY_MS = 900;
 const POSTS_MAX_RETRIES = 3;
+const POSTS_LOAD_TIMEOUT_MS = 9000;
 
 function getOwnerId() {
   const user =
@@ -158,6 +159,10 @@ function isAuthLockError(error) {
     message.includes("lock") &&
     message.includes("auth-token")
   );
+}
+
+function isPostsTimeoutError(error) {
+  return Boolean(error && error.name === "KlevbyPostsTimeoutError");
 }
 
 function showStatusSafe(message, isError = false) {
@@ -328,6 +333,22 @@ function schedulePostsLoad(delay = POSTS_LOAD_RETRY_DELAY_MS) {
   }, delay);
 }
 
+function withPostsTimeout(promise, timeoutMs = POSTS_LOAD_TIMEOUT_MS) {
+  let timeoutId = null;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error("Загрузка объявлений заняла слишком много времени.");
+      error.name = "KlevbyPostsTimeoutError";
+      reject(error);
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
 async function queryPostsSafe(db, retry = 0) {
   try {
     let result = await db
@@ -396,8 +417,24 @@ async function loadPosts(options = {}) {
     let result;
 
     try {
-      result = await queryPostsSafe(db, retry);
+      result = await withPostsTimeout(queryPostsSafe(db, retry));
     } catch (error) {
+      if (isPostsTimeoutError(error) && retry < POSTS_MAX_RETRIES) {
+        console.warn("Klevby posts: загрузка объявлений зависла, повторяем:", error);
+        showStatusSafe("Загрузка объявлений заняла слишком много времени. Повторяем...");
+
+        if (postsSection && !existingPosts.length) {
+          postsSection.innerHTML = `
+            <div class="info-line">
+              Загрузка объявлений заняла слишком много времени. Повторяем...
+            </div>
+          `;
+        }
+
+        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+        return;
+      }
+
       if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
         console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
         showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
