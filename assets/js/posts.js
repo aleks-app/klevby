@@ -18,6 +18,10 @@ function getPostsModalSafe() {
   return window.KlevbyPostsModal || {};
 }
 
+function getPostsFormSafe() {
+  return window.KlevbyPostsForm || {};
+}
+
 function getOwnerId() {
   const state = getPostsStateSafe();
 
@@ -575,6 +579,12 @@ function writePostAuthor() {
 }
 
 async function ensureUserForPostAction() {
+  const form = getPostsFormSafe();
+
+  if (typeof form.ensureUserForPostAction === "function") {
+    return form.ensureUserForPostAction();
+  }
+
   let user = getCurrentUserSafe();
 
   if (user && user.id) {
@@ -599,185 +609,43 @@ async function ensureUserForPostAction() {
 }
 
 async function savePost() {
-  const restoredUser = await ensureUserForPostAction();
+  const form = getPostsFormSafe();
 
-  const name = document.getElementById("nameInput")?.value.trim() || "";
-  const city = document.getElementById("cityInput")?.value.trim() || "";
-  const destination = document.getElementById("destinationInput")?.value.trim() || "";
-  const tripTime = document.getElementById("tripTimeInput")?.value.trim() || "";
-  const fishingType = document.getElementById("fishingTypeInput")?.value.trim() || "";
-  const transport = document.getElementById("transportInput")?.value.trim() || "";
-  const seats = document.getElementById("seatsInput")?.value.trim() || "";
-  const text = document.getElementById("textInput")?.value.trim() || "";
-  const telegram = cleanTelegram(document.getElementById("telegramInput")?.value || "");
-
-  if (!restoredUser) {
-    if (typeof window.showSection === "function") {
-      window.showSection("auth");
-    }
-
-    alert("Сначала создай профиль или войди. Так объявления будут защищены от удаления чужими людьми.");
-    return;
+  if (typeof form.savePost === "function") {
+    return form.savePost();
   }
 
-  if (!name || !city || !destination || !tripTime || !text) {
-    showFormMessageSafe("Заполни Nickname, город, куда едешь, когда и описание.", true);
-    return;
-  }
+  console.warn("Klevby posts: posts-form module недоступен, сохранение объявления отменено.");
+  showFormMessageSafe("Модуль формы ещё не готов. Обнови страницу.", true);
 
-  const db = getSupabaseClientSafe();
-
-  if (!db) {
-    showFormMessageSafe("Supabase ещё не готов. Обнови страницу.", true);
-    return;
-  }
-
-  saveAuthorLocal(name, telegram);
-
-  const payload = {
-    name,
-    city,
-    destination,
-    trip_time: tripTime,
-    transport,
-    seats,
-    text,
-    telegram,
-    owner_id: restoredUser.id
-  };
-
-  if (fishingType) {
-    payload.fishing_type = fishingType;
-  }
-
-  let result;
-  const activeEditingId = getCurrentEditingId();
-
-  if (activeEditingId) {
-    result = await db
-      .from("posts")
-      .update(payload)
-      .eq("id", activeEditingId);
-  } else {
-    result = await db
-      .from("posts")
-      .insert([{ ...payload, crew_full: false }]);
-  }
-
-  if (result.error && String(result.error.message || "").includes("fishing_type")) {
-    console.warn("В posts нет fishing_type. Сохраняю без этого поля:", result.error);
-
-    delete payload.fishing_type;
-
-    if (activeEditingId) {
-      result = await db
-        .from("posts")
-        .update(payload)
-        .eq("id", activeEditingId);
-    } else {
-      result = await db
-        .from("posts")
-        .insert([{ ...payload, crew_full: false }]);
-    }
-  }
-
-  if (result.error) {
-    showFormMessageSafe("Не получилось сохранить объявление: " + (result.error.message || "ошибка Supabase"), true);
-    console.error("Ошибка сохранения posts:", result.error);
-    return;
-  }
-
-  const wasEditing = Boolean(activeEditingId);
-
-  clearForm();
-
-  if (typeof window.fillAuthorLocal === "function") {
-    window.fillAuthorLocal();
-  }
-
-  setCurrentEditingId(null);
-
-  const formTitle = document.getElementById("formTitle");
-  const cancelEditBtn = document.getElementById("cancelEditBtn");
-
-  if (formTitle) {
-    formTitle.innerText = "Создать выезд";
-  }
-
-  if (cancelEditBtn) {
-    cancelEditBtn.classList.add("hidden");
-  }
-
-  showFormMessageSafe(wasEditing ? "Выезд обновлён." : "Выезд создан.");
-
-  setCurrentViewMode("all");
-  await loadPosts({ force: true });
-
-  if (typeof window.klevbyReloadMap === "function") {
-    window.klevbyReloadMap();
-  }
-
-  if (typeof window.setMode === "function") {
-    window.setMode("all");
-  } else if (typeof window.showSection === "function") {
-    window.showSection("trips");
-  }
+  return null;
 }
 
 function editPost(id) {
-  const post = getPostsArray().find(p => String(p.id) === String(id));
-  if (!post) return;
+  const form = getPostsFormSafe();
 
-  setCurrentEditingId(id);
+  if (typeof form.editPost === "function") {
+    return form.editPost(id);
+  }
 
-  const values = {
-    nameInput: post.name || "",
-    cityInput: post.city || "",
-    destinationInput: post.destination || "",
-    tripTimeInput: post.trip_time || "",
-    fishingTypeInput: getPostFishingType(post),
-    transportInput: post.transport || "",
-    seatsInput: post.seats || "",
-    textInput: post.text || "",
-    telegramInput: post.telegram || ""
-  };
-
-  Object.keys(values).forEach((idKey) => {
-    const el = document.getElementById(idKey);
-    if (el) {
-      el.value = values[idKey];
-    }
+  console.warn("Klevby posts: posts-form module недоступен, редактирование объявления отменено.", {
+    id
   });
 
-  const formTitle = document.getElementById("formTitle");
-  const cancelEditBtn = document.getElementById("cancelEditBtn");
+  showFormMessageSafe("Модуль формы ещё не готов. Обнови страницу.", true);
 
-  if (formTitle) {
-    formTitle.innerText = "Редактировать выезд";
-  }
-
-  if (cancelEditBtn) {
-    cancelEditBtn.classList.remove("hidden");
-  }
-
-  if (typeof window.showCreatePostScreen === "function") {
-    window.showCreatePostScreen();
-  } else if (typeof window.showSection === "function") {
-    window.showSection("create");
-  }
-
-  if (typeof window.updateHomeFloatButton === "function") {
-    setTimeout(window.updateHomeFloatButton, 120);
-  }
+  return null;
 }
 
 function cancelEdit() {
+  const form = getPostsFormSafe();
+
+  if (typeof form.cancelEdit === "function") {
+    return form.cancelEdit();
+  }
+
   setCurrentEditingId(null);
   clearForm();
-
-  if (typeof window.fillAuthorLocal === "function") {
-    window.fillAuthorLocal();
-  }
 
   const formTitle = document.getElementById("formTitle");
   const cancelEditBtn = document.getElementById("cancelEditBtn");
@@ -791,9 +659,17 @@ function cancelEdit() {
   }
 
   showFormMessageSafe("");
+
+  return null;
 }
 
 function clearForm() {
+  const form = getPostsFormSafe();
+
+  if (typeof form.clearForm === "function") {
+    return form.clearForm();
+  }
+
   const ids = [
     "nameInput",
     "cityInput",
@@ -808,10 +684,13 @@ function clearForm() {
 
   ids.forEach((id) => {
     const el = document.getElementById(id);
+
     if (el) {
       el.value = "";
     }
   });
+
+  return null;
 }
 
 async function toggleCrewFull(id, value) {
@@ -888,6 +767,7 @@ window.closePostModal = closePostModal;
 window.handlePostModalBackdrop = handlePostModalBackdrop;
 window.writePostAuthor = writePostAuthor;
 window.openTelegramSafe = openTelegramSafe;
+window.ensureUserForPostAction = ensureUserForPostAction;
 window.savePost = savePost;
 window.editPost = editPost;
 window.cancelEdit = cancelEdit;
@@ -896,5 +776,5 @@ window.toggleCrewFull = toggleCrewFull;
 window.deletePost = deletePost;
 
 console.log("Klevby posts bridge loaded", {
-  version: "20260514-posts-modal-split-1"
+  version: "20260514-posts-form-split-1"
 });
