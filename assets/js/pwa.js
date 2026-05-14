@@ -142,36 +142,71 @@ function initInstallPrompt() {
 }
 
 async function forceAppUpdate() {
+  const softReload = () => {
+    window.location.reload();
+  };
+
+  if (!("serviceWorker" in navigator)) {
+    softReload();
+    return;
+  }
+
+  let reloaded = false;
+  let fallbackReloadTimer = null;
+
+  const reloadOnce = () => {
+    if (reloaded) return;
+    reloaded = true;
+    softReload();
+  };
+
+  const onControllerChange = function () {
+    navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+
+    if (fallbackReloadTimer) {
+      clearTimeout(fallbackReloadTimer);
+      fallbackReloadTimer = null;
+    }
+
+    reloadOnce();
+  };
+
+  navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+  let hadWaitingWorker = false;
+
   try {
-    if ("caches" in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((name) => caches.delete(name)));
-    }
+    const registrations = await navigator.serviceWorker.getRegistrations();
 
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(
+      registrations.map(async (registration) => {
+        try {
+          await registration.update();
 
-      await Promise.all(
-        registrations.map(async (registration) => {
-          try {
-            await registration.update();
-
-            if (registration.waiting) {
-              registration.waiting.postMessage({ type: "SKIP_WAITING" });
-            }
-          } catch (error) {
-            console.warn("Не удалось обновить Service Worker:", error);
+          if (registration.waiting) {
+            hadWaitingWorker = true;
+            registration.waiting.postMessage({ type: "SKIP_WAITING" });
           }
-        })
-      );
-    }
+        } catch (error) {
+          console.warn("Не удалось обновить Service Worker:", error);
+        }
+      })
+    );
   } catch (error) {
     console.warn("Ошибка обновления приложения:", error);
   }
 
-  const url = new URL(window.location.href);
-  url.searchParams.set("update", Date.now().toString());
-  window.location.replace(url.toString());
+  if (hadWaitingWorker) {
+    fallbackReloadTimer = setTimeout(() => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      reloadOnce();
+    }, 2200);
+
+    return;
+  }
+
+  navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+  reloadOnce();
 }
 
 async function registerPwaServiceWorker() {
