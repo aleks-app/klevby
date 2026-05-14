@@ -1,13 +1,13 @@
-const POSTS_LOAD_RETRY_DELAY_MS = 900;
-const POSTS_MAX_RETRIES = 3;
-const POSTS_LOAD_TIMEOUT_MS = 9000;
-
 function getPostsStateSafe() {
   return window.KlevbyPostsState || {};
 }
 
 function getPostsUtilsSafe() {
   return window.KlevbyPostsUtils || {};
+}
+
+function getPostsApiSafe() {
+  return window.KlevbyPostsApi || {};
 }
 
 function getOwnerId() {
@@ -60,10 +60,6 @@ function getPostsArray() {
     return state.getPostsArray();
   }
 
-  if (typeof posts !== "undefined" && Array.isArray(posts)) {
-    return posts;
-  }
-
   if (Array.isArray(window.posts)) {
     return window.posts;
   }
@@ -84,11 +80,6 @@ function setPostsArray(value) {
   }
 
   const safePosts = Array.isArray(value) ? value : [];
-
-  if (typeof posts !== "undefined") {
-    posts = safePosts;
-  }
-
   window.posts = safePosts;
   window.klevbyPosts = safePosts;
 }
@@ -215,88 +206,35 @@ function setPostModalCloseTimer(value) {
   window.klevbyPostModalCloseTimer = value;
 }
 
-function getPostsLoadPromise() {
-  const state = getPostsStateSafe();
+function getSupabaseClientSafe() {
+  const api = getPostsApiSafe();
 
-  if (typeof state.getPostsLoadPromise === "function") {
-    return state.getPostsLoadPromise();
+  if (typeof api.getSupabaseClientSafe === "function") {
+    return api.getSupabaseClientSafe();
   }
 
-  return null;
+  if (typeof supabaseClient !== "undefined" && supabaseClient) {
+    return supabaseClient;
+  }
+
+  return (
+    window.supabaseClient ||
+    window.klevbySupabase ||
+    (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
+    null
+  );
 }
 
-function setPostsLoadPromise(value) {
-  const state = getPostsStateSafe();
-
-  if (typeof state.setPostsLoadPromise === "function") {
-    state.setPostsLoadPromise(value);
-  }
-}
-
-function getPostsLoadRetryTimer() {
-  const state = getPostsStateSafe();
-
-  if (typeof state.getPostsLoadRetryTimer === "function") {
-    return state.getPostsLoadRetryTimer();
+function isAdminSafe() {
+  if (typeof isAdmin === "function") {
+    return isAdmin();
   }
 
-  return null;
-}
-
-function setPostsLoadRetryTimer(value) {
-  const state = getPostsStateSafe();
-
-  if (typeof state.setPostsLoadRetryTimer === "function") {
-    state.setPostsLoadRetryTimer(value);
-  }
-}
-
-function getPostsPendingForceReload() {
-  const state = getPostsStateSafe();
-
-  if (typeof state.getPostsPendingForceReload === "function") {
-    return state.getPostsPendingForceReload();
+  if (typeof window.isAdmin === "function") {
+    return window.isAdmin();
   }
 
-  return false;
-}
-
-function setPostsPendingForceReload(value) {
-  const state = getPostsStateSafe();
-
-  if (typeof state.setPostsPendingForceReload === "function") {
-    state.setPostsPendingForceReload(value);
-  }
-}
-
-function isAuthLockError(error) {
-  const utils = getPostsUtilsSafe();
-
-  if (typeof utils.isAuthLockError === "function") {
-    return utils.isAuthLockError(error);
-  }
-
-  return false;
-}
-
-function isPostsTimeoutError(error) {
-  const utils = getPostsUtilsSafe();
-
-  if (typeof utils.isPostsTimeoutError === "function") {
-    return utils.isPostsTimeoutError(error);
-  }
-
-  return Boolean(error && error.name === "KlevbyPostsTimeoutError");
-}
-
-function isPostsSchemaFallbackError(error) {
-  const utils = getPostsUtilsSafe();
-
-  if (typeof utils.isPostsSchemaFallbackError === "function") {
-    return utils.isPostsSchemaFallbackError(error);
-  }
-
-  return false;
+  return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
 }
 
 function showStatusSafe(message, isError = false) {
@@ -332,6 +270,16 @@ function showFormMessageSafe(message, isError = false) {
     return;
   }
 
+  if (typeof showFormMessage === "function") {
+    showFormMessage(message, isError);
+    return;
+  }
+
+  if (typeof window.showFormMessage === "function") {
+    window.showFormMessage(message, isError);
+    return;
+  }
+
   const el = document.getElementById("formMessage");
   if (!el) return;
 
@@ -347,6 +295,16 @@ function openTelegramSafe() {
     return;
   }
 
+  if (typeof openTelegram === "function") {
+    openTelegram();
+    return;
+  }
+
+  if (typeof window.openTelegram === "function") {
+    window.openTelegram();
+    return;
+  }
+
   const config = window.KLEVB_CONFIG || {};
   const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
   window.open(link, "_blank");
@@ -359,7 +317,17 @@ function cleanTelegram(value) {
     return utils.cleanTelegram(value);
   }
 
-  return String(value || "").trim().replace(/^@/, "");
+  let v = String(value || "").trim();
+
+  v = v.replace(/^@/, "");
+  v = v.replace(/^https?:\/\/t\.me\//i, "");
+  v = v.replace(/^https?:\/\/telegram\.me\//i, "");
+  v = v.replace(/^t\.me\//i, "");
+  v = v.split("?")[0];
+  v = v.split("/")[0];
+  v = v.replace(/[^a-zA-Z0-9_]/g, "");
+
+  return v;
 }
 
 function normalizeText(value) {
@@ -379,7 +347,23 @@ function normalizeSelectFilterValue(elementId) {
     return utils.normalizeSelectFilterValue(elementId);
   }
 
-  return normalizeText(document.getElementById(elementId)?.value);
+  const value = normalizeText(document.getElementById(elementId)?.value);
+
+  if (!value) return "";
+
+  if (
+    value === "выберите город" ||
+    value === "все города" ||
+    value === "город" ||
+    value === "способ ловли" ||
+    value === "выберите способ ловли" ||
+    value === "тип ловли" ||
+    value === "все способы"
+  ) {
+    return "";
+  }
+
+  return value;
 }
 
 function escapeHtml(text) {
@@ -424,6 +408,14 @@ function getFishingTypeClass(type) {
     return utils.getFishingTypeClass(type);
   }
 
+  const t = normalizeText(type);
+
+  if (t.includes("спин")) return "type-spinning";
+  if (t.includes("фидер")) return "type-feeder";
+  if (t.includes("поплав")) return "type-float";
+  if (t.includes("карп")) return "type-carp";
+  if (t.includes("зим")) return "type-winter";
+
   return "";
 }
 
@@ -449,414 +441,28 @@ function saveAuthorLocal(name, telegram) {
   localStorage.setItem("klevby_author_telegram", telegram || "");
 }
 
-function withPostsTimeout(promise, timeoutMs = POSTS_LOAD_TIMEOUT_MS) {
-  const utils = getPostsUtilsSafe();
-
-  if (typeof utils.withPostsTimeout === "function") {
-    return utils.withPostsTimeout(promise, timeoutMs);
-  }
-
-  return promise;
-}
-
-function getSupabaseClientSafe() {
-  if (typeof supabaseClient !== "undefined" && supabaseClient) {
-    return supabaseClient;
-  }
-
-  return (
-    window.supabaseClient ||
-    window.klevbySupabase ||
-    (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
-    null
-  );
-}
-
-function getConfigSafe() {
-  return window.KLEVB_CONFIG || window.klevbyConfig || {};
-}
-
-function getSupabaseUrlSafe() {
-  const config = getConfigSafe();
-
-  return String(
-    config.SUPABASE_URL ||
-    config.supabaseUrl ||
-    window.KLEVB_CONFIG?.SUPABASE_URL ||
-    ""
-  ).replace(/\/+$/, "");
-}
-
-function getSupabaseAnonKeySafe() {
-  const config = getConfigSafe();
-
-  return String(
-    config.SUPABASE_ANON_KEY ||
-    config.supabaseAnonKey ||
-    window.KLEVB_CONFIG?.SUPABASE_ANON_KEY ||
-    ""
-  );
-}
-
-function isAdminSafe() {
-  if (typeof isAdmin === "function") {
-    return isAdmin();
-  }
-
-  if (typeof window.isAdmin === "function") {
-    return window.isAdmin();
-  }
-
-  return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
-}
-
-function getPostsSelectQuery(includeFishingType = false) {
-  const columns = [
-    "id",
-    "created_at",
-    "name",
-    "city",
-    "destination",
-    "trip_time",
-    "transport",
-    "seats",
-    "text",
-    "telegram",
-    "owner_id",
-    "crew_full"
-  ];
-
-  if (includeFishingType) {
-    columns.push("fishing_type");
-  }
-
-  return columns.join(",");
-}
-
-function buildPostsRestQuery(includeFishingType = true) {
-  const params = new URLSearchParams();
-
-  params.set("select", getPostsSelectQuery(includeFishingType));
-  params.set("order", "created_at.desc");
-
-  return params.toString();
-}
-
-function schedulePostsLoad(delay = POSTS_LOAD_RETRY_DELAY_MS) {
-  clearTimeout(getPostsLoadRetryTimer());
-
-  const timer = setTimeout(() => {
-    loadPosts({ force: true }).catch((error) => {
-      console.warn("Klevby posts: отложенная загрузка не удалась:", error);
-    });
-  }, delay);
-
-  setPostsLoadRetryTimer(timer);
-}
-
-async function queryPostsViaRest(includeFishingType = true) {
-  const supabaseUrl = getSupabaseUrlSafe();
-  const anonKey = getSupabaseAnonKeySafe();
-
-  if (!supabaseUrl || !anonKey) {
-    throw new Error("Supabase config недоступен для REST-загрузки posts.");
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), POSTS_LOAD_TIMEOUT_MS);
-
-  try {
-    const url = `${supabaseUrl}/rest/v1/posts?${buildPostsRestQuery(includeFishingType)}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      signal: controller.signal,
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`
-      }
-    });
-
-    const text = await response.text();
-
-    if (!response.ok) {
-      let payload = null;
-
-      try {
-        payload = text ? JSON.parse(text) : null;
-      } catch (error) {
-        payload = null;
-      }
-
-      const error = new Error(
-        payload?.message ||
-        payload?.error ||
-        text ||
-        `${response.status} ${response.statusText}`
-      );
-
-      error.status = response.status;
-      error.statusText = response.statusText;
-      error.details = payload?.details || "";
-      error.hint = payload?.hint || "";
-      error.payload = payload;
-
-      throw error;
-    }
-
-    if (!text) return [];
-
-    const data = JSON.parse(text);
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      throw new Error("REST-загрузка posts не ответила.");
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function queryPostsRestSafe() {
-  try {
-    const data = await queryPostsViaRest(true);
-
-    return {
-      data,
-      error: null,
-      source: "rest"
-    };
-  } catch (error) {
-    if (!isPostsSchemaFallbackError(error)) {
-      throw error;
-    }
-
-    console.debug("Klevby posts: REST select с fishing_type не сработал, пробую без fishing_type", error);
-
-    const data = await queryPostsViaRest(false);
-
-    return {
-      data,
-      error: null,
-      source: "rest_no_fishing_type"
-    };
-  }
-}
-
-async function queryPostsSdkSafe(db, retry = 0) {
-  if (!db) {
-    throw new Error("Supabase SDK client недоступен для загрузки posts.");
-  }
-
-  try {
-    let result = await db
-      .from("posts")
-      .select(getPostsSelectQuery(true))
-      .order("created_at", { ascending: false });
-
-    if (result.error && String(result.error.message || "").includes("fishing_type")) {
-      result = await db
-        .from("posts")
-        .select(getPostsSelectQuery(false))
-        .order("created_at", { ascending: false });
-    }
-
-    return {
-      ...(result || {}),
-      source: "sdk"
-    };
-  } catch (error) {
-    if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
-      console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
-
-      await new Promise((resolve) => {
-        setTimeout(resolve, POSTS_LOAD_RETRY_DELAY_MS);
-      });
-
-      return queryPostsSdkSafe(db, retry + 1);
-    }
-
-    throw error;
-  }
-}
-
-async function queryPostsSafe(db, retry = 0) {
-  let restError = null;
-
-  try {
-    const restResult = await queryPostsRestSafe();
-
-    console.info("Klevby posts: объявления загружены через REST-first", {
-      count: Array.isArray(restResult.data) ? restResult.data.length : 0,
-      source: restResult.source || "rest"
-    });
-
-    return restResult;
-  } catch (error) {
-    restError = error;
-
-    console.warn("Klevby posts: REST-first загрузка не сработала, пробую SDK fallback", {
-      error: String(error?.message || error)
-    });
-  }
-
-  if (!db) {
-    throw restError || new Error("Supabase недоступен для загрузки posts.");
-  }
-
-  const sdkResult = await queryPostsSdkSafe(db, retry);
-
-  console.info("Klevby posts: объявления загружены через SDK fallback", {
-    count: Array.isArray(sdkResult.data) ? sdkResult.data.length : 0,
-    source: sdkResult.source || "sdk"
-  });
-
-  return sdkResult;
-}
-
 async function loadPosts(options = {}) {
-  const force = Boolean(options.force);
-  const retry = Number(options.retry || 0);
+  const api = getPostsApiSafe();
+
+  if (typeof api.loadPosts === "function") {
+    return api.loadPosts(options);
+  }
+
+  console.warn("Klevby posts: posts-api module недоступен, загрузка объявлений пропущена.");
+
+  showStatusSafe("Модуль загрузки объявлений ещё не готов. Обнови страницу.", true);
 
   const postsSection = document.getElementById("postsSection");
-  const existingPosts = getPostsArray();
-  const activePostsLoadPromise = getPostsLoadPromise();
 
-  if (activePostsLoadPromise) {
-    if (force) {
-      setPostsPendingForceReload(true);
-    }
-
-    return activePostsLoadPromise;
+  if (postsSection && !getPostsArray().length) {
+    postsSection.innerHTML = `
+      <div class="info-line error-line">
+        Модуль загрузки объявлений ещё не готов. Обнови страницу.
+      </div>
+    `;
   }
 
-  setPostsPendingForceReload(false);
-
-  const nextPostsLoadPromise = (async function () {
-    showStatusSafe("Загрузка объявлений...");
-
-    if (postsSection && !existingPosts.length) {
-      postsSection.innerHTML = `
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-      `;
-    }
-
-    const db = getSupabaseClientSafe();
-    const canUseRest = Boolean(getSupabaseUrlSafe() && getSupabaseAnonKeySafe());
-
-    if (!db && !canUseRest) {
-      showStatusSafe("Supabase ещё не готов. Повторяем загрузку объявлений...");
-
-      if (postsSection && !existingPosts.length) {
-        postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
-      }
-
-      schedulePostsLoad(900);
-      return;
-    }
-
-    let result;
-
-    try {
-      result = await withPostsTimeout(queryPostsSafe(db, retry), POSTS_LOAD_TIMEOUT_MS);
-    } catch (error) {
-      if (isPostsTimeoutError(error) && retry < POSTS_MAX_RETRIES) {
-        console.warn("Klevby posts: загрузка объявлений зависла, повторяем:", error);
-        showStatusSafe("Загрузка объявлений заняла слишком много времени. Повторяем...");
-
-        if (postsSection && !existingPosts.length) {
-          postsSection.innerHTML = `
-            <div class="info-line">
-              Загрузка объявлений заняла слишком много времени. Повторяем...
-            </div>
-          `;
-        }
-
-        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
-        return;
-      }
-
-      if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
-        console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
-        showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
-        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
-        return;
-      }
-
-      console.error("Ошибка загрузки posts:", error);
-
-      const message = error?.message
-        ? "Не удалось загрузить объявления: " + error.message
-        : "Не удалось загрузить объявления. Проверь таблицу posts и RLS.";
-
-      showStatusSafe(message, true);
-
-      if (postsSection && !existingPosts.length) {
-        postsSection.innerHTML = `
-          <div class="info-line error-line">
-            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-          </div>
-        `;
-      }
-
-      return;
-    }
-
-    if (result.error) {
-      if (isAuthLockError(result.error) && retry < POSTS_MAX_RETRIES) {
-        console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", result.error);
-        showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
-        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
-        return;
-      }
-
-      console.error("Ошибка загрузки posts:", result.error);
-
-      const message = result.error.message
-        ? "Не удалось загрузить объявления: " + result.error.message
-        : "Не удалось загрузить объявления. Проверь таблицу posts и RLS.";
-
-      showStatusSafe(message, true);
-
-      if (postsSection && !existingPosts.length) {
-        postsSection.innerHTML = `
-          <div class="info-line error-line">
-            Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
-          </div>
-        `;
-      }
-
-      return;
-    }
-
-    const loadedPosts = Array.isArray(result.data) ? result.data : [];
-
-    console.info("Klevby posts: render loaded posts", {
-      count: loadedPosts.length,
-      source: result.source || "unknown"
-    });
-
-    setPostsArray(loadedPosts);
-    renderPosts();
-  })();
-
-  setPostsLoadPromise(nextPostsLoadPromise);
-
-  try {
-    return await nextPostsLoadPromise;
-  } finally {
-    setPostsLoadPromise(null);
-
-    if (getPostsPendingForceReload()) {
-      setPostsPendingForceReload(false);
-      schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
-    }
-  }
+  return null;
 }
 
 function renderPosts() {
@@ -871,7 +477,12 @@ function renderPosts() {
   const ownerId = getOwnerId();
   const mode = getCurrentViewMode();
 
-  if (!allPosts.length && (getPostsLoadPromise() || getPostsPendingForceReload())) {
+  const state = getPostsStateSafe();
+  const hasActiveLoad =
+    (typeof state.getPostsLoadPromise === "function" && state.getPostsLoadPromise()) ||
+    (typeof state.getPostsPendingForceReload === "function" && state.getPostsPendingForceReload());
+
+  if (!allPosts.length && hasActiveLoad) {
     showStatusSafe("Загрузка объявлений...");
 
     list.innerHTML = `
@@ -1496,3 +1107,7 @@ window.cancelEdit = cancelEdit;
 window.clearForm = clearForm;
 window.toggleCrewFull = toggleCrewFull;
 window.deletePost = deletePost;
+
+console.log("Klevby posts bridge loaded", {
+  version: "20260514-posts-api-split-1"
+});
