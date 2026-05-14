@@ -1,5 +1,6 @@
 .public-profile-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, .78); }
 .public-profile-overlay.hidden { display: none; }
+.public-profile-viewer-open { overflow: hidden; }
 .public-profile-screen { max-width: 720px; margin: 0 auto; height: 100%; background: #0f1114; color: #fff; overflow: auto; }
 .public-profile-hero {
   background:
@@ -62,6 +63,46 @@
 .public-profile-gallery-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .public-profile-photo { padding: 0; border: 0; background: #121820; border-radius: 12px; overflow: hidden; aspect-ratio: 1 / 1; }
 .public-profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+.public-profile-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(4, 8, 14, .95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.public-profile-viewer-overlay.hidden { display: none; }
+.public-profile-viewer-panel {
+  width: 100%;
+  max-width: 960px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.public-profile-viewer-close {
+  align-self: flex-start;
+  min-height: 44px;
+  min-width: 108px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(174, 219, 255, .28);
+  background: rgba(10, 25, 40, .9);
+  color: #d8eeff;
+  font-weight: 700;
+  font-size: 16px;
+}
+.public-profile-viewer-image {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100vh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  border-radius: 12px;
+  object-fit: contain;
+  background: rgba(3, 8, 14, .92);
+}
 .public-profile-empty, .public-profile-placeholder {
   opacity: .9;
   padding: 14px;
