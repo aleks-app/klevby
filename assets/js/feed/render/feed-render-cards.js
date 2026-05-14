@@ -170,6 +170,22 @@
       ? `<button class="small-btn gray profile-feed-comment-btn" type="button" data-feed-post-id="${safeId}" data-comment-count="${commentsCount}" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
+    const authorUserIdRaw = item?.userId || item?.user_id || item?.ownerId || item?.owner_id || "";
+    const authorUserId = String(authorUserIdRaw || "").trim();
+    const fallbackData = {
+      authorName: item?.authorName || item?.author_name || "",
+      authorCity: item?.authorCity || item?.author_city || "",
+      authorAvatarUrl: item?.authorAvatarUrl || item?.author_avatar_url || item?.avatarUrl || item?.avatar_url || "",
+      avatarUrl: item?.authorAvatarUrl || item?.author_avatar_url || item?.avatarUrl || item?.avatar_url || "",
+      image: item?.image || item?.imageUrl || item?.image_url || "",
+      imageUrl: item?.image || item?.imageUrl || item?.image_url || ""
+    };
+    const authorFallbackJson = escapeAttr(JSON.stringify(fallbackData));
+    const authorUserIdAttr = escapeAttr(authorUserId);
+    const authorClickAction = authorUserId
+      ? `(function(){ const userId = '${authorUserIdAttr}'; const me = String(window.currentUserId || window.klevbyUserId || window.viewerUserId || window.authUserId || window.userId || '').trim(); if (me && userId && me === userId) { openKlevbyProfileSafe(); return; } if (userId && typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(userId, JSON.parse('${authorFallbackJson}')); return; } openKlevbyProfileSafe(); })()`
+      : "openKlevbyProfileSafe()";
+
     return `
       <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
         <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}</div>
@@ -178,7 +194,7 @@
           <button
             class="profile-feed-author"
             type="button"
-            onclick="event.stopPropagation(); openKlevbyProfileSafe()"
+            onclick="event.stopPropagation(); ${authorClickAction}"
             aria-label="Открыть профиль автора"
           >
             ${avatarHtml}

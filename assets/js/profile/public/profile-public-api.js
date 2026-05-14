@@ -17,8 +17,8 @@
 
       const items = feedState.getLastItems() || [];
       return items
-        .filter((item) => String(item?.user_id || item?.userId || item?.author_id || "") === String(userId))
-        .map((item) => item?.photo || item?.image || item?.image_url || item?.photo_url || null)
+        .filter((item) => String(item?.userId || item?.user_id || item?.ownerId || item?.owner_id || "") === String(userId))
+        .map((item) => item?.image || item?.imageUrl || item?.image_url || item?.imagePath || item?.image_path || null)
         .filter(Boolean);
     } catch (_) {
       return [];
@@ -27,10 +27,10 @@
 
   async function getPublicProfile(userId, fallbackData) {
     const fallbackProfile = {
-      user_id: userId,
-      name: fallbackData?.authorName || "Рыбак",
+      id: userId,
+      display_name: fallbackData?.authorName || "Рыбак",
       city: fallbackData?.authorCity || "",
-      avatar_url: fallbackData?.authorAvatar || ""
+      avatar_url: fallbackData?.avatarUrl || fallbackData?.authorAvatarUrl || ""
     };
 
     try {
@@ -39,15 +39,25 @@
 
       const request = client
         .from("public_profiles")
-        .select("user_id,name,city,avatar_url")
-        .eq("user_id", userId)
+        .select("id,nickname,username,display_name,avatar_url")
+        .eq("id", userId)
         .maybeSingle();
 
       const result = await withTimeout(request, DEFAULT_TIMEOUT_MS);
-      if (result?.error || !result?.data) return fallbackProfile;
+      if (result?.error || !result?.data) {
+        console.warn("[public-profile] public_profiles fallback");
+        return fallbackProfile;
+      }
 
-      return { ...fallbackProfile, ...result.data };
+      const row = result.data || {};
+      return {
+        id: row.id || userId,
+        display_name: row.display_name || row.nickname || row.username || fallbackData?.authorName || "Рыбак",
+        avatar_url: row.avatar_url || fallbackData?.avatarUrl || fallbackData?.authorAvatarUrl || "",
+        city: fallbackData?.authorCity || ""
+      };
     } catch (_) {
+      console.warn("[public-profile] public_profiles timeout fallback");
       return fallbackProfile;
     }
   }
@@ -61,20 +71,24 @@
 
       const request = client
         .from("feed_posts")
-        .select("photo,image,image_url,photo_url,created_at")
+        .select("id,user_id,caption,image_url,image_path,created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(40);
 
       const result = await withTimeout(request, DEFAULT_TIMEOUT_MS);
-      if (result?.error || !Array.isArray(result?.data)) return fallbackPhotos;
+      if (result?.error || !Array.isArray(result?.data)) {
+        console.warn("[public-profile] feed_posts fallback");
+        return fallbackPhotos;
+      }
 
       const photos = result.data
-        .map((row) => row?.photo || row?.image || row?.image_url || row?.photo_url || null)
+        .map((row) => row?.image_url || row?.image_path || null)
         .filter(Boolean);
 
       return photos.length ? photos : fallbackPhotos;
     } catch (_) {
+      console.warn("[public-profile] feed_posts timeout fallback");
       return fallbackPhotos;
     }
   }
