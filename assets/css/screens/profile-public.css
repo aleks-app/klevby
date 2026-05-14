@@ -4,9 +4,14 @@
 .public-profile-screen { max-width: 720px; margin: 0 auto; height: 100%; background: #0f1114; color: #fff; overflow: auto; }
 .public-profile-hero {
   background:
+    linear-gradient(180deg, rgba(8, 14, 22, .72) 0%, rgba(10, 16, 24, .82) 58%, rgba(15, 17, 20, .94) 100%),
     radial-gradient(circle at 80% -10%, rgba(98, 162, 214, .28), transparent 44%),
     radial-gradient(circle at 20% 5%, rgba(18, 78, 124, .45), transparent 42%),
+    url("../../img/public-profile-hero.jpg"),
     linear-gradient(180deg, #132333 0%, #101820 62%, #0f1114 100%);
+  background-size: auto, auto, auto, cover, auto;
+  background-position: center, 80% -10%, 20% 5%, center, center;
+  background-repeat: no-repeat;
   border-bottom: 1px solid rgba(255, 255, 255, .08);
 }
 .public-profile-header {
@@ -112,6 +117,24 @@
 
 @media (min-width: 560px) {
   .public-profile-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 430px) {
+  .public-profile-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .public-profile-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    width: 100%;
+    padding: 10px 12px;
+    text-align: center;
+  }
 }
 
 @media (min-width: 769px) {
