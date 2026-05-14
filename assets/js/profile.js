@@ -1066,6 +1066,18 @@ function openProfileCreateView() {
   }, 100);
 }
 
+function openKlevbyPublicProfile(userId, fallbackData = {}) {
+  if (window.KlevbyPublicProfile && typeof window.KlevbyPublicProfile.open === "function") {
+    return window.KlevbyPublicProfile.open(userId, fallbackData);
+  }
+
+  if (typeof window.openKlevbyPublicProfile === "function" && window.openKlevbyPublicProfile !== openKlevbyPublicProfile) {
+    return window.openKlevbyPublicProfile(userId, fallbackData);
+  }
+
+  return null;
+}
+
 window.addEventListener("klevby-profile-photos-updated", () => {
   updateKlevbyProfileView();
 });
@@ -1097,7 +1109,8 @@ window.KlevbyProfile = {
   setProfileReturnMode,
   updateProfileHomeFloatButton,
   patchHomeFloatButton,
-  showHomeSectionFallback
+  showHomeSectionFallback,
+  openKlevbyPublicProfile
 };
 
 console.log("Klevby profile bridge loaded");
