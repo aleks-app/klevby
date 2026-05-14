@@ -6,6 +6,10 @@ function getPostsStateSafe() {
   return window.KlevbyPostsState || {};
 }
 
+function getPostsUtilsSafe() {
+  return window.KlevbyPostsUtils || {};
+}
+
 function getOwnerId() {
   const state = getPostsStateSafe();
 
@@ -265,6 +269,196 @@ function setPostsPendingForceReload(value) {
   }
 }
 
+function isAuthLockError(error) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.isAuthLockError === "function") {
+    return utils.isAuthLockError(error);
+  }
+
+  return false;
+}
+
+function isPostsTimeoutError(error) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.isPostsTimeoutError === "function") {
+    return utils.isPostsTimeoutError(error);
+  }
+
+  return Boolean(error && error.name === "KlevbyPostsTimeoutError");
+}
+
+function isPostsSchemaFallbackError(error) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.isPostsSchemaFallbackError === "function") {
+    return utils.isPostsSchemaFallbackError(error);
+  }
+
+  return false;
+}
+
+function showStatusSafe(message, isError = false) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.showStatusSafe === "function") {
+    utils.showStatusSafe(message, isError);
+    return;
+  }
+
+  if (typeof showStatus === "function") {
+    showStatus(message, isError);
+    return;
+  }
+
+  if (typeof window.showStatus === "function") {
+    window.showStatus(message, isError);
+    return;
+  }
+
+  const status = document.getElementById("statusLine");
+  if (!status) return;
+
+  status.textContent = message;
+  status.classList.toggle("error-line", Boolean(isError));
+}
+
+function showFormMessageSafe(message, isError = false) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.showFormMessageSafe === "function") {
+    utils.showFormMessageSafe(message, isError);
+    return;
+  }
+
+  const el = document.getElementById("formMessage");
+  if (!el) return;
+
+  el.textContent = message;
+  el.style.color = isError ? "#ffd2d2" : "rgba(245,245,245,0.66)";
+}
+
+function openTelegramSafe() {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.openTelegramSafe === "function") {
+    utils.openTelegramSafe();
+    return;
+  }
+
+  const config = window.KLEVB_CONFIG || {};
+  const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
+  window.open(link, "_blank");
+}
+
+function cleanTelegram(value) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.cleanTelegram === "function") {
+    return utils.cleanTelegram(value);
+  }
+
+  return String(value || "").trim().replace(/^@/, "");
+}
+
+function normalizeText(value) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.normalizeText === "function") {
+    return utils.normalizeText(value);
+  }
+
+  return String(value || "").toLowerCase().trim();
+}
+
+function normalizeSelectFilterValue(elementId) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.normalizeSelectFilterValue === "function") {
+    return utils.normalizeSelectFilterValue(elementId);
+  }
+
+  return normalizeText(document.getElementById(elementId)?.value);
+}
+
+function escapeHtml(text) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.escapeHtml === "function") {
+    return utils.escapeHtml(text);
+  }
+
+  return String(text || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function escapeAttr(text) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.escapeAttr === "function") {
+    return utils.escapeAttr(text);
+  }
+
+  return escapeHtml(text).replaceAll("`", "&#096;");
+}
+
+function getPostFishingType(post) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.getPostFishingType === "function") {
+    return utils.getPostFishingType(post);
+  }
+
+  return post?.fishing_type || post?.type || post?.category || "";
+}
+
+function getFishingTypeClass(type) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.getFishingTypeClass === "function") {
+    return utils.getFishingTypeClass(type);
+  }
+
+  return "";
+}
+
+function getCardImage(post) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.getCardImage === "function") {
+    return utils.getCardImage(post);
+  }
+
+  return "assets/img/klevby-icon-512.png";
+}
+
+function saveAuthorLocal(name, telegram) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.saveAuthorLocal === "function") {
+    utils.saveAuthorLocal(name, telegram);
+    return;
+  }
+
+  localStorage.setItem("klevby_author_name", name || "");
+  localStorage.setItem("klevby_author_telegram", telegram || "");
+}
+
+function withPostsTimeout(promise, timeoutMs = POSTS_LOAD_TIMEOUT_MS) {
+  const utils = getPostsUtilsSafe();
+
+  if (typeof utils.withPostsTimeout === "function") {
+    return utils.withPostsTimeout(promise, timeoutMs);
+  }
+
+  return promise;
+}
+
 function getSupabaseClientSafe() {
   if (typeof supabaseClient !== "undefined" && supabaseClient) {
     return supabaseClient;
@@ -316,188 +510,6 @@ function isAdminSafe() {
   return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
 }
 
-function isAuthLockError(error) {
-  const message = String(error?.message || error || "").toLowerCase();
-
-  return (
-    message.includes("lock") &&
-    message.includes("auth-token")
-  );
-}
-
-function isPostsTimeoutError(error) {
-  return Boolean(error && error.name === "KlevbyPostsTimeoutError");
-}
-
-function isPostsSchemaFallbackError(error) {
-  const message = String(error?.message || error || "").toLowerCase();
-  const details = String(error?.details || "").toLowerCase();
-  const hint = String(error?.hint || "").toLowerCase();
-  const payload = `${message} ${details} ${hint}`;
-
-  return (
-    payload.includes("fishing_type") ||
-    payload.includes("schema cache") ||
-    payload.includes("could not find") ||
-    payload.includes("column")
-  );
-}
-
-function showStatusSafe(message, isError = false) {
-  if (typeof showStatus === "function") {
-    showStatus(message, isError);
-    return;
-  }
-
-  if (typeof window.showStatus === "function") {
-    window.showStatus(message, isError);
-    return;
-  }
-
-  const status = document.getElementById("statusLine");
-  if (!status) return;
-
-  status.textContent = message;
-  status.classList.toggle("error-line", Boolean(isError));
-}
-
-function showFormMessageSafe(message, isError = false) {
-  if (typeof showFormMessage === "function") {
-    showFormMessage(message, isError);
-    return;
-  }
-
-  if (typeof window.showFormMessage === "function") {
-    window.showFormMessage(message, isError);
-    return;
-  }
-
-  const el = document.getElementById("formMessage");
-  if (!el) return;
-
-  el.textContent = message;
-  el.style.color = isError ? "#ffd2d2" : "rgba(245,245,245,0.66)";
-}
-
-function openTelegramSafe() {
-  if (typeof openTelegram === "function") {
-    openTelegram();
-    return;
-  }
-
-  if (typeof window.openTelegram === "function") {
-    window.openTelegram();
-    return;
-  }
-
-  const config = window.KLEVB_CONFIG || {};
-  const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
-  window.open(link, "_blank");
-}
-
-function cleanTelegram(value) {
-  let v = String(value || "").trim();
-
-  v = v.replace(/^@/, "");
-  v = v.replace(/^https?:\/\/t\.me\//i, "");
-  v = v.replace(/^https?:\/\/telegram\.me\//i, "");
-  v = v.replace(/^t\.me\//i, "");
-  v = v.split("?")[0];
-  v = v.split("/")[0];
-  v = v.replace(/[^a-zA-Z0-9_]/g, "");
-
-  return v;
-}
-
-function normalizeText(value) {
-  return String(value || "").toLowerCase().trim();
-}
-
-function normalizeSelectFilterValue(elementId) {
-  const value = normalizeText(document.getElementById(elementId)?.value);
-
-  if (!value) return "";
-
-  if (
-    value === "выберите город" ||
-    value === "все города" ||
-    value === "город" ||
-    value === "способ ловли" ||
-    value === "выберите способ ловли" ||
-    value === "тип ловли" ||
-    value === "все способы"
-  ) {
-    return "";
-  }
-
-  return value;
-}
-
-function escapeHtml(text) {
-  return String(text || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function escapeAttr(text) {
-  return escapeHtml(text).replaceAll("`", "&#096;");
-}
-
-function getPostFishingType(post) {
-  return post?.fishing_type || post?.type || post?.category || "";
-}
-
-function getFishingTypeClass(type) {
-  const t = normalizeText(type);
-
-  if (t.includes("спин")) return "type-spinning";
-  if (t.includes("фидер")) return "type-feeder";
-  if (t.includes("поплав")) return "type-float";
-  if (t.includes("карп")) return "type-carp";
-  if (t.includes("зим")) return "type-winter";
-
-  return "";
-}
-
-function getCardImagesSafe() {
-  const config = window.KLEVB_CONFIG || {};
-  const images = Array.isArray(config.CARD_IMAGES) ? config.CARD_IMAGES.filter(Boolean) : [];
-
-  if (images.length) {
-    return images;
-  }
-
-  return [
-    "assets/img/narach-bg.webp",
-    "assets/img/klevby-icon-512.png"
-  ];
-}
-
-function getCardImage(post) {
-  const images = getCardImagesSafe();
-
-  if (!images.length) {
-    return "assets/img/klevby-icon-512.png";
-  }
-
-  const key = String(post?.id || post?.created_at || post?.name || "klevby");
-  let sum = 0;
-
-  for (let i = 0; i < key.length; i++) {
-    sum += key.charCodeAt(i);
-  }
-
-  return images[Math.abs(sum) % images.length];
-}
-
-function saveAuthorLocal(name, telegram) {
-  localStorage.setItem("klevby_author_name", name || "");
-  localStorage.setItem("klevby_author_telegram", telegram || "");
-}
-
 function getPostsSelectQuery(includeFishingType = false) {
   const columns = [
     "id",
@@ -540,22 +552,6 @@ function schedulePostsLoad(delay = POSTS_LOAD_RETRY_DELAY_MS) {
   }, delay);
 
   setPostsLoadRetryTimer(timer);
-}
-
-function withPostsTimeout(promise, timeoutMs = POSTS_LOAD_TIMEOUT_MS) {
-  let timeoutId = null;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      const error = new Error("Загрузка объявлений заняла слишком много времени.");
-      error.name = "KlevbyPostsTimeoutError";
-      reject(error);
-    }, timeoutMs);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
 }
 
 async function queryPostsViaRest(includeFishingType = true) {
@@ -767,7 +763,7 @@ async function loadPosts(options = {}) {
     let result;
 
     try {
-      result = await withPostsTimeout(queryPostsSafe(db, retry));
+      result = await withPostsTimeout(queryPostsSafe(db, retry), POSTS_LOAD_TIMEOUT_MS);
     } catch (error) {
       if (isPostsTimeoutError(error) && retry < POSTS_MAX_RETRIES) {
         console.warn("Klevby posts: загрузка объявлений зависла, повторяем:", error);
