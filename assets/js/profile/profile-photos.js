@@ -3,8 +3,12 @@
 
   const PROFILE_MAX_PHOTOS = 8;
   const PROFILE_PHOTOS_KEY = "klevby_profile_photos";
+  const PROFILE_FEED_TABLE = "feed_posts";
 
   let profileUploadStatusTimer = null;
+  let profileRemotePhotos = [];
+  let profileRemoteLoadedForUserId = "";
+  let profileRemoteLoadInFlight = null;
 
   function getCore() {
     return window.KlevbyProfileCore || {};
@@ -47,6 +51,99 @@
     }
 
     return safePhotos;
+  }
+
+  function getCurrentUserId() {
+    const profile = window.KlevbyProfile || {};
+    const user =
+      (typeof profile.getCurrentProfileUser === "function" ? profile.getCurrentProfileUser() : null) ||
+      window.currentUser ||
+      window.klevbyCurrentUser ||
+      window.klevbyUser ||
+      null;
+
+    return String(user?.id || "").trim();
+  }
+
+  function mapFeedPostToProfilePhoto(post) {
+    const imageUrl = String(post?.image_url || post?.imageUrl || "").trim();
+    const imagePath = String(post?.image_path || post?.imagePath || "").trim();
+    if (!imageUrl && !imagePath) return null;
+
+    const id = String(post?.id || "").trim();
+    if (!id) return null;
+
+    return {
+      id: `feed_${id}`,
+      src: imageUrl,
+      title: String(post?.caption || "Фото с рыбалки").trim() || "Фото с рыбалки",
+      createdAt: post?.created_at || post?.createdAt || "",
+      savedSizeKb: Number(post?.image_size_kb || post?.savedSizeKb || 0),
+      width: Number(post?.image_width || post?.width || 0),
+      height: Number(post?.image_height || post?.height || 0),
+      source: "supabase",
+      feedPostId: id,
+      feedImagePath: imagePath,
+      feedImageUrl: imageUrl
+    };
+  }
+
+  function dedupeProfilePhotos(photos) {
+    const seen = new Set();
+    return photos.filter((photo) => {
+      const dedupeKey = String(photo?.feedPostId || photo?.id || "").trim();
+      if (!dedupeKey || seen.has(dedupeKey)) return false;
+      seen.add(dedupeKey);
+      return true;
+    });
+  }
+
+  async function loadRemoteProfilePhotosByUserId() {
+    const userId = getCurrentUserId();
+    if (!userId) return [];
+    if (profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
+    if (profileRemoteLoadInFlight) return profileRemoteLoadInFlight;
+
+    const client =
+      window.supabaseClient ||
+      window.klevbySupabase ||
+      (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null);
+
+    if (!client || typeof client.from !== "function") return [];
+
+    profileRemoteLoadInFlight = (async () => {
+      try {
+        const { data, error } = await client
+          .from(PROFILE_FEED_TABLE)
+          .select("id,user_id,caption,image_url,image_path,image_width,image_height,image_size_kb,created_at,updated_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(80);
+
+        if (error) throw error;
+
+        const mapped = Array.isArray(data)
+          ? data.map(mapFeedPostToProfilePhoto).filter(Boolean)
+          : [];
+
+        profileRemotePhotos = dedupeProfilePhotos(mapped);
+        profileRemoteLoadedForUserId = userId;
+      } catch (error) {
+        console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", error);
+      } finally {
+        profileRemoteLoadInFlight = null;
+      }
+
+      return profileRemotePhotos;
+    })();
+
+    return profileRemoteLoadInFlight;
+  }
+
+  function getProfilePhotosForDisplay() {
+    const localPhotos = readProfilePhotos();
+    if (!profileRemotePhotos.length) return localPhotos;
+    return dedupeProfilePhotos([...profileRemotePhotos, ...localPhotos]);
   }
 
   function escapeHtml(value) {
@@ -305,7 +402,7 @@
       oldGallery.remove();
     }
 
-    const photos = readProfilePhotos();
+    const photos = getProfilePhotosForDisplay();
 
     if (!photos.length) {
       if (emptyState) emptyState.classList.remove("hidden");
@@ -338,6 +435,17 @@
     }).join("");
 
     contentCard.appendChild(gallery);
+  }
+
+  async function ensureProfilePhotosLoaded() {
+    const beforeCount = getProfilePhotosForDisplay().length;
+    await loadRemoteProfilePhotosByUserId();
+    const afterCount = getProfilePhotosForDisplay().length;
+
+    if (afterCount !== beforeCount) {
+      renderProfilePhotos();
+      window.dispatchEvent(new CustomEvent("klevby-profile-photos-updated"));
+    }
   }
 
   function ensureProfilePhotoViewer() {
@@ -599,6 +707,8 @@
     setProfilePhotoButtonsDisabled,
     cleanupOldProfileReportGrid,
     renderProfilePhotos,
+    getProfilePhotosForDisplay,
+    ensureProfilePhotosLoaded,
     ensureProfilePhotoViewer,
     openProfilePhotoViewer,
     closeProfilePhotoViewer,
