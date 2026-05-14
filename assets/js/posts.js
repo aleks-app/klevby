@@ -476,6 +476,22 @@ function renderPosts() {
   const ownerId = getOwnerId();
   const mode = getCurrentViewMode();
 
+  if (!allPosts.length && postsLoadPromise) {
+    showStatusSafe("Загрузка объявлений...");
+
+    list.innerHTML = `
+      <div class="info-line">
+        Загружаем объявления о выездах…
+      </div>
+    `;
+
+    if (typeof window.updateHomeFloatButton === "function") {
+      setTimeout(window.updateHomeFloatButton, 80);
+    }
+
+    return;
+  }
+
   let filtered = [...allPosts];
 
   if (mode === "mine") {
