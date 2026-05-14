@@ -53,25 +53,68 @@
     return safePhotos;
   }
 
-  function getCurrentUserId() {
+  function getCurrentProfileUserId() {
     const profile = window.KlevbyProfile || {};
-    const user =
+    const fromProfileGetters =
       (typeof profile.getCurrentProfileUser === "function" ? profile.getCurrentProfileUser() : null) ||
+      (typeof profile.getCurrentUser === "function" ? profile.getCurrentUser() : null) ||
+      (typeof profile.getUser === "function" ? profile.getUser() : null) ||
+      null;
+
+    const user =
+      fromProfileGetters ||
       window.currentUser ||
       window.klevbyCurrentUser ||
       window.klevbyUser ||
       null;
 
-    return String(user?.id || "").trim();
+    return String(user?.id || user?.user_id || user?.userId || "").trim();
   }
 
-  function mapFeedPostToProfilePhoto(post) {
+  function getPhotoOwnerId(item) {
+    if (!item || typeof item !== "object") return "";
+
+    const ownerId =
+      item.user_id ||
+      item.userId ||
+      item.owner_id ||
+      item.ownerId ||
+      item.author_id ||
+      item.authorId ||
+      item.profile_id ||
+      item.profileId ||
+      item.feedUserId ||
+      item.feed_user_id ||
+      "";
+
+    return String(ownerId || "").trim();
+  }
+
+  function isOwnProfilePhoto(item, options = {}) {
+    const currentUserId = String(options.currentUserId || getCurrentProfileUserId() || "").trim();
+    const ownerId = getPhotoOwnerId(item);
+    const isLocalLegacy = !ownerId && String(item?.source || "").trim() === "local";
+
+    if (!currentUserId) {
+      return isLocalLegacy;
+    }
+
+    if (ownerId) {
+      return String(ownerId) === String(currentUserId);
+    }
+
+    return isLocalLegacy;
+  }
+
+  function mapFeedPostToProfilePhoto(post, source = "feed_posts", fallbackUserId = "") {
     const imageUrl = String(post?.image_url || post?.imageUrl || "").trim();
     const imagePath = String(post?.image_path || post?.imagePath || "").trim();
     if (!imageUrl && !imagePath) return null;
 
     const id = String(post?.id || "").trim();
     if (!id) return null;
+
+    const ownerId = getPhotoOwnerId(post) || String(fallbackUserId || "").trim();
 
     return {
       id: `feed_${id}`,
@@ -81,7 +124,9 @@
       savedSizeKb: Number(post?.image_size_kb || post?.savedSizeKb || 0),
       width: Number(post?.image_width || post?.width || 0),
       height: Number(post?.image_height || post?.height || 0),
-      source: "supabase",
+      source,
+      userId: ownerId,
+      feedUserId: ownerId,
       feedPostId: id,
       feedImagePath: imagePath,
       feedImageUrl: imageUrl
@@ -99,7 +144,7 @@
   }
 
   async function loadRemoteProfilePhotosByUserId() {
-    const userId = getCurrentUserId();
+    const userId = getCurrentProfileUserId();
     if (!userId) return [];
     if (profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
     if (profileRemoteLoadInFlight) return profileRemoteLoadInFlight;
@@ -117,11 +162,10 @@
           limit: 120
         });
         const items = Array.isArray(result?.items) ? result.items : [];
-        const onlyCurrentUserItems = items.filter((item) => {
-          const itemUserId = String(item?.userId || item?.user_id || "").trim();
-          return itemUserId && itemUserId === userId;
-        });
-        const mapped = onlyCurrentUserItems.map(mapFeedPostToProfilePhoto).filter(Boolean);
+        const onlyCurrentUserItems = items.filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }));
+        const mapped = onlyCurrentUserItems
+          .map((item) => mapFeedPostToProfilePhoto(item, "feed_fallback", userId))
+          .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }));
         return dedupeProfilePhotos(mapped);
       } catch (error) {
         console.warn("[KlevbyProfilePhotos] Feed API fallback не сработал.", error);
@@ -147,7 +191,9 @@
         if (error) throw error;
 
         const mapped = Array.isArray(data)
-          ? data.map(mapFeedPostToProfilePhoto).filter(Boolean)
+          ? data
+            .map((item) => mapFeedPostToProfilePhoto(item, "feed_posts", userId))
+            .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }))
           : [];
 
         profileRemotePhotos = dedupeProfilePhotos(mapped);
@@ -171,9 +217,36 @@
   }
 
   function getProfilePhotosForDisplay() {
+    const currentUserId = getCurrentProfileUserId();
     const localPhotos = readProfilePhotos();
-    if (!profileRemotePhotos.length) return localPhotos;
-    return dedupeProfilePhotos([...profileRemotePhotos, ...localPhotos]);
+    const ownRemotePhotos = profileRemotePhotos.filter((item) => isOwnProfilePhoto(item, { currentUserId }));
+
+    const localPhotosWithOwner = localPhotos.filter((item) => {
+      const ownerId = getPhotoOwnerId(item);
+      if (!ownerId) return false;
+      return isOwnProfilePhoto(item, { currentUserId });
+    });
+
+    const legacyLocalPhotos = localPhotos.filter((item) => {
+      const ownerId = getPhotoOwnerId(item);
+      if (ownerId) return false;
+      return String(item?.source || "").trim() === "local";
+    });
+
+    const mergedPhotos = ownRemotePhotos.length
+      ? [...ownRemotePhotos, ...localPhotosWithOwner]
+      : [...localPhotosWithOwner, ...legacyLocalPhotos];
+
+    return dedupeProfilePhotos(
+      mergedPhotos.filter((item) => {
+        if (isOwnProfilePhoto(item, { currentUserId })) return true;
+        const ownerId = getPhotoOwnerId(item);
+        if (ownerId) {
+          console.warn("[KlevbyProfilePhotos] Отфильтрована чужая запись фото профиля.");
+        }
+        return false;
+      })
+    );
   }
 
   function escapeHtml(value) {
@@ -193,6 +266,7 @@
 
   function makeLocalProfilePhoto(compressedPhoto, file, feedItem = null) {
     const uploadedUrl = feedItem?.imageUrl || feedItem?.image || "";
+    const ownerId = getPhotoOwnerId(feedItem) || getCurrentProfileUserId();
 
     return {
       id: `photo_${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -204,6 +278,8 @@
       width: compressedPhoto.width,
       height: compressedPhoto.height,
       source: feedItem ? "supabase" : "local",
+      userId: ownerId,
+      feedUserId: ownerId,
       feedPostId: feedItem?.id || "",
       feedImagePath: feedItem?.imagePath || "",
       feedImageUrl: uploadedUrl,
@@ -215,11 +291,14 @@
     if (!photo || !feedItem) return photo;
 
     const uploadedUrl = feedItem.imageUrl || feedItem.image || photo.feedImageUrl || "";
+    const ownerId = getPhotoOwnerId(feedItem) || getPhotoOwnerId(photo) || getCurrentProfileUserId();
 
     return {
       ...photo,
       src: uploadedUrl || photo.src,
       source: "supabase",
+      userId: ownerId,
+      feedUserId: ownerId,
       feedPostId: feedItem.id || photo.feedPostId || "",
       feedImagePath: feedItem.imagePath || photo.feedImagePath || "",
       feedImageUrl: uploadedUrl || photo.feedImageUrl || "",
