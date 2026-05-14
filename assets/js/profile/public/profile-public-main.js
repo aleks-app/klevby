@@ -39,7 +39,7 @@
     state.photos = Array.isArray(photos) ? photos : [];
     state.isLoading = false;
 
-    render.renderProfile(profile);
+    render.renderProfile(profile, state.photos);
     gallery.renderGallery(render.getGalleryContainer(), state.photos);
   }
 
