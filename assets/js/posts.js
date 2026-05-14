@@ -1,12 +1,18 @@
-let postsLoadPromise = null;
-let postsLoadRetryTimer = null;
-let postsPendingForceReload = false;
-
 const POSTS_LOAD_RETRY_DELAY_MS = 900;
 const POSTS_MAX_RETRIES = 3;
 const POSTS_LOAD_TIMEOUT_MS = 9000;
 
+function getPostsStateSafe() {
+  return window.KlevbyPostsState || {};
+}
+
 function getOwnerId() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getOwnerId === "function") {
+    return state.getOwnerId();
+  }
+
   const user =
     (typeof currentUser !== "undefined" && currentUser)
       ? currentUser
@@ -16,6 +22,12 @@ function getOwnerId() {
 }
 
 function getCurrentUserSafe() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getCurrentUserSafe === "function") {
+    return state.getCurrentUserSafe();
+  }
+
   if (typeof currentUser !== "undefined" && currentUser) {
     return currentUser;
   }
@@ -24,6 +36,12 @@ function getCurrentUserSafe() {
 }
 
 function getCurrentAuthReady() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getCurrentAuthReady === "function") {
+    return state.getCurrentAuthReady();
+  }
+
   if (typeof authReady !== "undefined") {
     return authReady;
   }
@@ -32,6 +50,12 @@ function getCurrentAuthReady() {
 }
 
 function getPostsArray() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getPostsArray === "function") {
+    return state.getPostsArray();
+  }
+
   if (typeof posts !== "undefined" && Array.isArray(posts)) {
     return posts;
   }
@@ -48,6 +72,13 @@ function getPostsArray() {
 }
 
 function setPostsArray(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setPostsArray === "function") {
+    state.setPostsArray(value);
+    return;
+  }
+
   const safePosts = Array.isArray(value) ? value : [];
 
   if (typeof posts !== "undefined") {
@@ -59,6 +90,12 @@ function setPostsArray(value) {
 }
 
 function getCurrentViewMode() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getCurrentViewMode === "function") {
+    return state.getCurrentViewMode();
+  }
+
   if (window.klevbyViewMode) {
     return window.klevbyViewMode;
   }
@@ -71,6 +108,13 @@ function getCurrentViewMode() {
 }
 
 function setCurrentViewMode(mode) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setCurrentViewMode === "function") {
+    state.setCurrentViewMode(mode);
+    return;
+  }
+
   const safeMode = mode === "mine" ? "mine" : "all";
 
   if (typeof viewMode !== "undefined") {
@@ -81,6 +125,12 @@ function setCurrentViewMode(mode) {
 }
 
 function getCurrentEditingId() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getCurrentEditingId === "function") {
+    return state.getCurrentEditingId();
+  }
+
   if (typeof editingId !== "undefined") {
     return editingId;
   }
@@ -89,6 +139,13 @@ function getCurrentEditingId() {
 }
 
 function setCurrentEditingId(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setCurrentEditingId === "function") {
+    state.setCurrentEditingId(value);
+    return;
+  }
+
   if (typeof editingId !== "undefined") {
     editingId = value;
   }
@@ -97,6 +154,12 @@ function setCurrentEditingId(value) {
 }
 
 function getActiveModalPost() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getActiveModalPost === "function") {
+    return state.getActiveModalPost();
+  }
+
   if (typeof activeModalPost !== "undefined") {
     return activeModalPost;
   }
@@ -105,6 +168,13 @@ function getActiveModalPost() {
 }
 
 function setActiveModalPost(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setActiveModalPost === "function") {
+    state.setActiveModalPost(value);
+    return;
+  }
+
   if (typeof activeModalPost !== "undefined") {
     activeModalPost = value;
   }
@@ -113,6 +183,12 @@ function setActiveModalPost(value) {
 }
 
 function getPostModalCloseTimer() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getPostModalCloseTimer === "function") {
+    return state.getPostModalCloseTimer();
+  }
+
   if (typeof postModalCloseTimer !== "undefined") {
     return postModalCloseTimer;
   }
@@ -121,11 +197,72 @@ function getPostModalCloseTimer() {
 }
 
 function setPostModalCloseTimer(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setPostModalCloseTimer === "function") {
+    state.setPostModalCloseTimer(value);
+    return;
+  }
+
   if (typeof postModalCloseTimer !== "undefined") {
     postModalCloseTimer = value;
   }
 
   window.klevbyPostModalCloseTimer = value;
+}
+
+function getPostsLoadPromise() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getPostsLoadPromise === "function") {
+    return state.getPostsLoadPromise();
+  }
+
+  return null;
+}
+
+function setPostsLoadPromise(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setPostsLoadPromise === "function") {
+    state.setPostsLoadPromise(value);
+  }
+}
+
+function getPostsLoadRetryTimer() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getPostsLoadRetryTimer === "function") {
+    return state.getPostsLoadRetryTimer();
+  }
+
+  return null;
+}
+
+function setPostsLoadRetryTimer(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setPostsLoadRetryTimer === "function") {
+    state.setPostsLoadRetryTimer(value);
+  }
+}
+
+function getPostsPendingForceReload() {
+  const state = getPostsStateSafe();
+
+  if (typeof state.getPostsPendingForceReload === "function") {
+    return state.getPostsPendingForceReload();
+  }
+
+  return false;
+}
+
+function setPostsPendingForceReload(value) {
+  const state = getPostsStateSafe();
+
+  if (typeof state.setPostsPendingForceReload === "function") {
+    state.setPostsPendingForceReload(value);
+  }
 }
 
 function getSupabaseClientSafe() {
@@ -394,13 +531,15 @@ function buildPostsRestQuery(includeFishingType = true) {
 }
 
 function schedulePostsLoad(delay = POSTS_LOAD_RETRY_DELAY_MS) {
-  clearTimeout(postsLoadRetryTimer);
+  clearTimeout(getPostsLoadRetryTimer());
 
-  postsLoadRetryTimer = setTimeout(() => {
+  const timer = setTimeout(() => {
     loadPosts({ force: true }).catch((error) => {
       console.warn("Klevby posts: отложенная загрузка не удалась:", error);
     });
   }, delay);
+
+  setPostsLoadRetryTimer(timer);
 }
 
 function withPostsTimeout(promise, timeoutMs = POSTS_LOAD_TIMEOUT_MS) {
@@ -588,18 +727,19 @@ async function loadPosts(options = {}) {
 
   const postsSection = document.getElementById("postsSection");
   const existingPosts = getPostsArray();
+  const activePostsLoadPromise = getPostsLoadPromise();
 
-  if (postsLoadPromise) {
+  if (activePostsLoadPromise) {
     if (force) {
-      postsPendingForceReload = true;
+      setPostsPendingForceReload(true);
     }
 
-    return postsLoadPromise;
+    return activePostsLoadPromise;
   }
 
-  postsPendingForceReload = false;
+  setPostsPendingForceReload(false);
 
-  postsLoadPromise = (async function () {
+  const nextPostsLoadPromise = (async function () {
     showStatusSafe("Загрузка объявлений...");
 
     if (postsSection && !existingPosts.length) {
@@ -709,13 +849,15 @@ async function loadPosts(options = {}) {
     renderPosts();
   })();
 
-  try {
-    return await postsLoadPromise;
-  } finally {
-    postsLoadPromise = null;
+  setPostsLoadPromise(nextPostsLoadPromise);
 
-    if (postsPendingForceReload) {
-      postsPendingForceReload = false;
+  try {
+    return await nextPostsLoadPromise;
+  } finally {
+    setPostsLoadPromise(null);
+
+    if (getPostsPendingForceReload()) {
+      setPostsPendingForceReload(false);
       schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
     }
   }
@@ -733,7 +875,7 @@ function renderPosts() {
   const ownerId = getOwnerId();
   const mode = getCurrentViewMode();
 
-  if (!allPosts.length && (postsLoadPromise || postsPendingForceReload)) {
+  if (!allPosts.length && (getPostsLoadPromise() || getPostsPendingForceReload())) {
     showStatusSafe("Загрузка объявлений...");
 
     list.innerHTML = `
