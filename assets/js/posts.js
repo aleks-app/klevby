@@ -141,6 +141,32 @@ function getSupabaseClientSafe() {
   );
 }
 
+function getConfigSafe() {
+  return window.KLEVB_CONFIG || window.klevbyConfig || {};
+}
+
+function getSupabaseUrlSafe() {
+  const config = getConfigSafe();
+
+  return String(
+    config.SUPABASE_URL ||
+    config.supabaseUrl ||
+    window.KLEVB_CONFIG?.SUPABASE_URL ||
+    ""
+  ).replace(/\/+$/, "");
+}
+
+function getSupabaseAnonKeySafe() {
+  const config = getConfigSafe();
+
+  return String(
+    config.SUPABASE_ANON_KEY ||
+    config.supabaseAnonKey ||
+    window.KLEVB_CONFIG?.SUPABASE_ANON_KEY ||
+    ""
+  );
+}
+
 function isAdminSafe() {
   if (typeof isAdmin === "function") {
     return isAdmin();
@@ -164,6 +190,20 @@ function isAuthLockError(error) {
 
 function isPostsTimeoutError(error) {
   return Boolean(error && error.name === "KlevbyPostsTimeoutError");
+}
+
+function isPostsSchemaFallbackError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  const details = String(error?.details || "").toLowerCase();
+  const hint = String(error?.hint || "").toLowerCase();
+  const payload = `${message} ${details} ${hint}`;
+
+  return (
+    payload.includes("fishing_type") ||
+    payload.includes("schema cache") ||
+    payload.includes("could not find") ||
+    payload.includes("column")
+  );
 }
 
 function showStatusSafe(message, isError = false) {
@@ -234,6 +274,26 @@ function cleanTelegram(value) {
 
 function normalizeText(value) {
   return String(value || "").toLowerCase().trim();
+}
+
+function normalizeSelectFilterValue(elementId) {
+  const value = normalizeText(document.getElementById(elementId)?.value);
+
+  if (!value) return "";
+
+  if (
+    value === "выберите город" ||
+    value === "все города" ||
+    value === "город" ||
+    value === "способ ловли" ||
+    value === "выберите способ ловли" ||
+    value === "тип ловли" ||
+    value === "все способы"
+  ) {
+    return "";
+  }
+
+  return value;
 }
 
 function escapeHtml(text) {
@@ -324,6 +384,15 @@ function getPostsSelectQuery(includeFishingType = false) {
   return columns.join(",");
 }
 
+function buildPostsRestQuery(includeFishingType = true) {
+  const params = new URLSearchParams();
+
+  params.set("select", getPostsSelectQuery(includeFishingType));
+  params.set("order", "created_at.desc");
+
+  return params.toString();
+}
+
 function schedulePostsLoad(delay = POSTS_LOAD_RETRY_DELAY_MS) {
   clearTimeout(postsLoadRetryTimer);
 
@@ -350,7 +419,103 @@ function withPostsTimeout(promise, timeoutMs = POSTS_LOAD_TIMEOUT_MS) {
   });
 }
 
-async function queryPostsSafe(db, retry = 0) {
+async function queryPostsViaRest(includeFishingType = true) {
+  const supabaseUrl = getSupabaseUrlSafe();
+  const anonKey = getSupabaseAnonKeySafe();
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error("Supabase config недоступен для REST-загрузки posts.");
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), POSTS_LOAD_TIMEOUT_MS);
+
+  try {
+    const url = `${supabaseUrl}/rest/v1/posts?${buildPostsRestQuery(includeFishingType)}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`
+      }
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      let payload = null;
+
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch (error) {
+        payload = null;
+      }
+
+      const error = new Error(
+        payload?.message ||
+        payload?.error ||
+        text ||
+        `${response.status} ${response.statusText}`
+      );
+
+      error.status = response.status;
+      error.statusText = response.statusText;
+      error.details = payload?.details || "";
+      error.hint = payload?.hint || "";
+      error.payload = payload;
+
+      throw error;
+    }
+
+    if (!text) return [];
+
+    const data = JSON.parse(text);
+
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("REST-загрузка posts не ответила.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function queryPostsRestSafe() {
+  try {
+    const data = await queryPostsViaRest(true);
+
+    return {
+      data,
+      error: null,
+      source: "rest"
+    };
+  } catch (error) {
+    if (!isPostsSchemaFallbackError(error)) {
+      throw error;
+    }
+
+    console.debug("Klevby posts: REST select с fishing_type не сработал, пробую без fishing_type", error);
+
+    const data = await queryPostsViaRest(false);
+
+    return {
+      data,
+      error: null,
+      source: "rest_no_fishing_type"
+    };
+  }
+}
+
+async function queryPostsSdkSafe(db, retry = 0) {
+  if (!db) {
+    throw new Error("Supabase SDK client недоступен для загрузки posts.");
+  }
+
   try {
     let result = await db
       .from("posts")
@@ -364,7 +529,10 @@ async function queryPostsSafe(db, retry = 0) {
         .order("created_at", { ascending: false });
     }
 
-    return result;
+    return {
+      ...(result || {}),
+      source: "sdk"
+    };
   } catch (error) {
     if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
       console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
@@ -373,11 +541,45 @@ async function queryPostsSafe(db, retry = 0) {
         setTimeout(resolve, POSTS_LOAD_RETRY_DELAY_MS);
       });
 
-      return queryPostsSafe(db, retry + 1);
+      return queryPostsSdkSafe(db, retry + 1);
     }
 
     throw error;
   }
+}
+
+async function queryPostsSafe(db, retry = 0) {
+  let restError = null;
+
+  try {
+    const restResult = await queryPostsRestSafe();
+
+    console.info("Klevby posts: объявления загружены через REST-first", {
+      count: Array.isArray(restResult.data) ? restResult.data.length : 0,
+      source: restResult.source || "rest"
+    });
+
+    return restResult;
+  } catch (error) {
+    restError = error;
+
+    console.warn("Klevby posts: REST-first загрузка не сработала, пробую SDK fallback", {
+      error: String(error?.message || error)
+    });
+  }
+
+  if (!db) {
+    throw restError || new Error("Supabase недоступен для загрузки posts.");
+  }
+
+  const sdkResult = await queryPostsSdkSafe(db, retry);
+
+  console.info("Klevby posts: объявления загружены через SDK fallback", {
+    count: Array.isArray(sdkResult.data) ? sdkResult.data.length : 0,
+    source: sdkResult.source || "sdk"
+  });
+
+  return sdkResult;
 }
 
 async function loadPosts(options = {}) {
@@ -409,8 +611,9 @@ async function loadPosts(options = {}) {
     }
 
     const db = getSupabaseClientSafe();
+    const canUseRest = Boolean(getSupabaseUrlSafe() && getSupabaseAnonKeySafe());
 
-    if (!db) {
+    if (!db && !canUseRest) {
       showStatusSafe("Supabase ещё не готов. Повторяем загрузку объявлений...");
 
       if (postsSection && !existingPosts.length) {
@@ -497,6 +700,11 @@ async function loadPosts(options = {}) {
 
     const loadedPosts = Array.isArray(result.data) ? result.data : [];
 
+    console.info("Klevby posts: render loaded posts", {
+      count: loadedPosts.length,
+      source: result.source || "unknown"
+    });
+
     setPostsArray(loadedPosts);
     renderPosts();
   })();
@@ -519,8 +727,8 @@ function renderPosts() {
 
   const allPosts = getPostsArray();
   const search = normalizeText(document.getElementById("searchInput")?.value);
-  const selectedCity = normalizeText(document.getElementById("citySelect")?.value);
-  const selectedType = normalizeText(document.getElementById("typeSelect")?.value);
+  const selectedCity = normalizeSelectFilterValue("citySelect");
+  const selectedType = normalizeSelectFilterValue("typeSelect");
   const telegramOnly = document.getElementById("telegramOnly")?.checked;
   const ownerId = getOwnerId();
   const mode = getCurrentViewMode();
@@ -579,6 +787,15 @@ function renderPosts() {
     const emptyText = allPosts.length
       ? "По фильтрам ничего не найдено."
       : "Пока объявлений о выездах нет.";
+
+    console.info("Klevby posts: empty render state", {
+      allCount: allPosts.length,
+      mode,
+      search,
+      selectedCity,
+      selectedType,
+      telegramOnly: Boolean(telegramOnly)
+    });
 
     list.innerHTML = `
       <div class="info-line">
