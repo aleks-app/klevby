@@ -10,6 +10,10 @@
   let klevbyFeedMainRawRenderProfileFeed = null;
   let klevbyFeedMainRawRefreshFeedIfHomeVisible = null;
   let klevbyFeedMainRenderGuardInstalled = false;
+  let klevbyFeedMainCoalescedRefreshTimer = null;
+  let klevbyFeedMainCoalescedRefreshReason = "";
+  let klevbyFeedMainCoalescedRefreshForce = false;
+  let klevbyFeedMainCoalescedRefreshDueAt = 0;
   let klevbyFeedMainLastRefreshStartedAt = 0;
   let klevbyFeedMainLastRefreshFinishedAt = 0;
   let klevbyFeedMainLastSuccessfulRenderAt = 0;
@@ -27,6 +31,7 @@
   const KLEVB_FEED_MAIN_LIKE_QUIET_MS = 2600;
   const KLEVB_FEED_MAIN_INTERACTION_DEFER_MS = 1800;
   const KLEVB_FEED_MAIN_PENDING_AFTER_MS = 1100;
+  const KLEVB_FEED_MAIN_COALESCE_MS = 280;
 
   const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
     0,
@@ -461,11 +466,20 @@
     }
 
     if (!isFreshRefreshAllowed(force)) {
+      if (isResumeRefreshReason(cleanReason) || cleanReason.includes("main_burst")) {
+        scheduleMainFeedRefresh(cleanReason + "_recently_refreshed", KLEVB_FEED_MAIN_PENDING_AFTER_MS, {
+          force: false
+        });
+      }
+
       return false;
     }
 
     if (klevbyFeedMainRefreshInProgress) {
       if (isStartupRefreshReason(cleanReason) || isResumeRefreshReason(cleanReason)) {
+        console.debug("Klevby feed main: duplicate refresh skipped", {
+          reason: cleanReason
+        });
         return false;
       }
 
@@ -520,12 +534,48 @@
 
   function scheduleMainFeedRefresh(reason = "scheduled", delay = 300, options = {}) {
     const safeDelay = Math.max(0, Number(delay || 0));
+    const cleanReason = String(reason || "scheduled");
+    const force = Boolean(options.force);
+    const nextDueAt = Date.now() + Math.max(safeDelay, KLEVB_FEED_MAIN_COALESCE_MS);
 
-    setTimeout(() => {
-      forceRenderFeed(reason, {
-        force: Boolean(options.force)
+    const runCoalescedRefresh = () => {
+      const mergedReason = klevbyFeedMainCoalescedRefreshReason || cleanReason;
+      const mergedForce = klevbyFeedMainCoalescedRefreshForce;
+
+      klevbyFeedMainCoalescedRefreshTimer = null;
+      klevbyFeedMainCoalescedRefreshReason = "";
+      klevbyFeedMainCoalescedRefreshForce = false;
+      klevbyFeedMainCoalescedRefreshDueAt = 0;
+
+      forceRenderFeed(mergedReason, {
+        force: mergedForce
       });
-    }, safeDelay);
+    };
+
+    if (klevbyFeedMainCoalescedRefreshTimer) {
+      klevbyFeedMainCoalescedRefreshForce = klevbyFeedMainCoalescedRefreshForce || force;
+
+      if (klevbyFeedMainCoalescedRefreshReason) {
+        if (!klevbyFeedMainCoalescedRefreshReason.includes(cleanReason)) {
+          klevbyFeedMainCoalescedRefreshReason += `+${cleanReason}`;
+        }
+      } else {
+        klevbyFeedMainCoalescedRefreshReason = cleanReason;
+      }
+
+      if (nextDueAt >= Number(klevbyFeedMainCoalescedRefreshDueAt || 0)) {
+        return;
+      }
+
+      clearTimeout(klevbyFeedMainCoalescedRefreshTimer);
+      klevbyFeedMainCoalescedRefreshTimer = null;
+    } else {
+      klevbyFeedMainCoalescedRefreshReason = cleanReason;
+      klevbyFeedMainCoalescedRefreshForce = force;
+    }
+
+    klevbyFeedMainCoalescedRefreshDueAt = nextDueAt;
+    klevbyFeedMainCoalescedRefreshTimer = setTimeout(runCoalescedRefresh, Math.max(0, nextDueAt - Date.now()));
   }
 
   function clearMainResumeTimers() {
