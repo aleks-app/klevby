@@ -22,6 +22,10 @@ function getPostsFormSafe() {
   return window.KlevbyPostsForm || {};
 }
 
+function getPostsActionsSafe() {
+  return window.KlevbyPostsActions || {};
+}
+
 function getOwnerId() {
   const state = getPostsStateSafe();
 
@@ -694,6 +698,12 @@ function clearForm() {
 }
 
 async function toggleCrewFull(id, value) {
+  const actions = getPostsActionsSafe();
+
+  if (typeof actions.toggleCrewFull === "function") {
+    return actions.toggleCrewFull(id, value);
+  }
+
   const db = getSupabaseClientSafe();
 
   if (!db) {
@@ -716,6 +726,12 @@ async function toggleCrewFull(id, value) {
 }
 
 async function deletePost(id) {
+  const actions = getPostsActionsSafe();
+
+  if (typeof actions.deletePost === "function") {
+    return actions.deletePost(id);
+  }
+
   if (!confirm("Удалить объявление? Это действие нельзя отменить.")) return;
 
   const db = getSupabaseClientSafe();
@@ -776,5 +792,5 @@ window.toggleCrewFull = toggleCrewFull;
 window.deletePost = deletePost;
 
 console.log("Klevby posts bridge loaded", {
-  version: "20260514-posts-form-split-1"
+  version: "20260515-posts-actions-split-1"
 });
