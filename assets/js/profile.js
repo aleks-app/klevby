@@ -463,7 +463,7 @@ function updateKlevbyProfileView() {
   }
 
   const userPostsCount = countUserPosts(name);
-  const photosCount = readProfilePhotos().length;
+  const photosCount = getProfilePhotosForDisplay().length;
 
   if (reportsNode) reportsNode.textContent = String(userPostsCount);
   if (tripsNode) tripsNode.textContent = String(userPostsCount);
@@ -472,6 +472,7 @@ function updateKlevbyProfileView() {
 
   restoreLocalProfileAvatar();
   renderProfilePhotos();
+  ensureProfilePhotosLoaded();
 }
 
 function countUserPosts(profileName) {
@@ -957,6 +958,26 @@ function renderProfilePhotos() {
   return requireProfilePhotosMethod("renderProfilePhotos")();
 }
 
+function getProfilePhotosForDisplay() {
+  const photosModule = getProfilePhotos();
+
+  if (photosModule && typeof photosModule.getProfilePhotosForDisplay === "function") {
+    return photosModule.getProfilePhotosForDisplay();
+  }
+
+  return readProfilePhotos();
+}
+
+function ensureProfilePhotosLoaded() {
+  const photosModule = getProfilePhotos();
+
+  if (photosModule && typeof photosModule.ensureProfilePhotosLoaded === "function") {
+    photosModule.ensureProfilePhotosLoaded().catch((error) => {
+      console.warn("Klevby profile: Supabase фото профиля не загрузились, используем fallback.", error);
+    });
+  }
+}
+
 function ensureProfilePhotoViewer() {
   return requireProfilePhotosMethod("ensureProfilePhotoViewer")();
 }
@@ -1045,6 +1066,10 @@ function openProfileCreateView() {
   }, 100);
 }
 
+window.addEventListener("klevby-profile-photos-updated", () => {
+  updateKlevbyProfileView();
+});
+
 window.KlevbyProfile = {
   openKlevbyProfile,
   openProfileSettingsModal,
@@ -1060,6 +1085,7 @@ window.KlevbyProfile = {
   openProfileTripsView,
   openProfileCreateView,
   getProfileFeedItems,
+  getCurrentProfileUser,
   readProfileData,
   saveProfileData,
   readProfilePhotos,
