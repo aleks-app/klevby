@@ -365,6 +365,12 @@ function showHomeSectionFallback() {
   return requireProfileUiMethod("showHomeSectionFallback")();
 }
 
+
+function openKlevbyPublicProfile(userId, fallbackData) {
+  if (!window.KlevbyPublicProfile || typeof window.KlevbyPublicProfile.open !== "function") return;
+  return window.KlevbyPublicProfile.open(userId, fallbackData || {});
+}
+
 function openKlevbyProfile() {
   setProfileReturnMode(false);
   setProfileScreenChrome(true);
@@ -1097,7 +1103,8 @@ window.KlevbyProfile = {
   setProfileReturnMode,
   updateProfileHomeFloatButton,
   patchHomeFloatButton,
-  showHomeSectionFallback
+  showHomeSectionFallback,
+  openKlevbyPublicProfile
 };
 
 console.log("Klevby profile bridge loaded");
