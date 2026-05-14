@@ -9,6 +9,7 @@ const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
 const KLEVB_APP_RESUME_DEBOUNCE_MS = 650;
 const KLEVB_APP_RESUME_MIN_INTERVAL_MS = 1400;
 const KLEVB_APP_RESUME_BURST_DELAYS = [350, 1600, 4200];
+const KLEVB_APP_BOOT_RESUME_GRACE_MS = 2500;
 
 window.__klevbyCentralResumeRouter = true;
 
@@ -42,6 +43,8 @@ let klevbyAppResumeTimer = null;
 let klevbyAppResumeInProgress = false;
 let klevbyLastAppResumeAt = 0;
 let klevbyAppHiddenAt = 0;
+let klevbyAppBootCompleted = false;
+let klevbyAppBootCompletedAt = 0;
 
 function ensureAppSplashSafety() {
   if (
@@ -913,12 +916,39 @@ function setupAppGlobalEvents() {
   return true;
 }
 
+function isKlevbyAppBootResumeAllowed(reason = "resume") {
+  const cleanReason = String(reason || "resume");
+
+  if (cleanReason === "online") {
+    return true;
+  }
+
+  if (!klevbyAppBootCompleted) {
+    return false;
+  }
+
+  if (
+    klevbyAppBootCompletedAt &&
+    Date.now() - klevbyAppBootCompletedAt < KLEVB_APP_BOOT_RESUME_GRACE_MS
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function scheduleKlevbyAppResume(reason = "resume", options = {}) {
+  if (!isKlevbyAppBootResumeAllowed(reason)) {
+    return false;
+  }
+
   clearTimeout(klevbyAppResumeTimer);
 
   klevbyAppResumeTimer = setTimeout(() => {
     handleKlevbyAppResume(reason, options);
   }, KLEVB_APP_RESUME_DEBOUNCE_MS);
+
+  return true;
 }
 
 async function handleKlevbyAppResume(reason = "resume", options = {}) {
@@ -1080,55 +1110,60 @@ function setupKlevbyAppLifecycle() {
 setupAppGlobalEvents();
 
 document.addEventListener("DOMContentLoaded", async function () {
-  patchProfileOpenForExtraSections();
-  patchProfileShortcutActions();
-  setupKlevbyAppLifecycle();
+  try {
+    patchProfileOpenForExtraSections();
+    patchProfileShortcutActions();
+    setupKlevbyAppLifecycle();
 
-  const ok = initSupabase();
-  if (!ok) return;
+    const ok = initSupabase();
+    if (!ok) return;
 
-  if (typeof window.setAuthMode === "function") {
-    window.setAuthMode("register");
-  }
-
-  if (typeof window.fillAuthorLocal === "function") {
-    window.fillAuthorLocal();
-  }
-
-  if (typeof window.updateBiteForecast === "function") {
-    window.updateBiteForecast(752);
-  }
-
-  if (typeof window.fetchWeather === "function") {
-    window.fetchWeather();
-    setInterval(window.fetchWeather, 1800000);
-  }
-
-  if (typeof window.initInstallPrompt === "function") {
-    window.initInstallPrompt();
-  }
-
-  if (typeof window.registerPwaServiceWorker === "function") {
-    window.registerPwaServiceWorker();
-  }
-
-  if (typeof window.initAuth === "function") {
-    await window.initAuth();
-  } else {
-    authReady = true;
-    syncGlobalAuthState({ notify: true, forceNotify: true });
-
-    if (typeof window.loadPosts === "function") {
-      await window.loadPosts({ force: true });
+    if (typeof window.setAuthMode === "function") {
+      window.setAuthMode("register");
     }
-  }
 
-  if (typeof window.renderProfileFeed === "function") {
-    window.renderProfileFeed();
-  }
+    if (typeof window.fillAuthorLocal === "function") {
+      window.fillAuthorLocal();
+    }
 
-  if (typeof window.updateHomeFloatButton === "function") {
-    window.updateHomeFloatButton();
+    if (typeof window.updateBiteForecast === "function") {
+      window.updateBiteForecast(752);
+    }
+
+    if (typeof window.fetchWeather === "function") {
+      window.fetchWeather();
+      setInterval(window.fetchWeather, 1800000);
+    }
+
+    if (typeof window.initInstallPrompt === "function") {
+      window.initInstallPrompt();
+    }
+
+    if (typeof window.registerPwaServiceWorker === "function") {
+      window.registerPwaServiceWorker();
+    }
+
+    if (typeof window.initAuth === "function") {
+      await window.initAuth();
+    } else {
+      authReady = true;
+      syncGlobalAuthState({ notify: true, forceNotify: true });
+
+      if (typeof window.loadPosts === "function") {
+        await window.loadPosts({ force: true });
+      }
+    }
+
+    if (typeof window.renderProfileFeed === "function") {
+      window.renderProfileFeed();
+    }
+
+    if (typeof window.updateHomeFloatButton === "function") {
+      window.updateHomeFloatButton();
+    }
+  } finally {
+    klevbyAppBootCompleted = true;
+    klevbyAppBootCompletedAt = Date.now();
   }
 });
 
