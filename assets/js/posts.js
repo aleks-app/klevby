@@ -1,5 +1,6 @@
 let postsLoadPromise = null;
 let postsLoadRetryTimer = null;
+let postsPendingForceReload = false;
 
 const POSTS_LOAD_RETRY_DELAY_MS = 900;
 const POSTS_MAX_RETRIES = 3;
@@ -386,9 +387,15 @@ async function loadPosts(options = {}) {
   const postsSection = document.getElementById("postsSection");
   const existingPosts = getPostsArray();
 
-  if (!force && postsLoadPromise) {
+  if (postsLoadPromise) {
+    if (force) {
+      postsPendingForceReload = true;
+    }
+
     return postsLoadPromise;
   }
+
+  postsPendingForceReload = false;
 
   postsLoadPromise = (async function () {
     showStatusSafe("Загрузка объявлений...");
@@ -498,6 +505,11 @@ async function loadPosts(options = {}) {
     return await postsLoadPromise;
   } finally {
     postsLoadPromise = null;
+
+    if (postsPendingForceReload) {
+      postsPendingForceReload = false;
+      schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+    }
   }
 }
 
@@ -513,7 +525,7 @@ function renderPosts() {
   const ownerId = getOwnerId();
   const mode = getCurrentViewMode();
 
-  if (!allPosts.length && postsLoadPromise) {
+  if (!allPosts.length && (postsLoadPromise || postsPendingForceReload)) {
     showStatusSafe("Загрузка объявлений...");
 
     list.innerHTML = `
