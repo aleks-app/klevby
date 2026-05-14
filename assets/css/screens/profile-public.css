@@ -1,0 +1,13 @@
+.public-profile-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.75); }
+.public-profile-overlay.hidden { display: none; }
+.public-profile-screen { max-width: 720px; margin: 0 auto; height: 100%; background: #0f1114; color:#fff; overflow:auto; }
+.public-profile-header { display:flex; align-items:center; gap:12px; padding:16px; border-bottom:1px solid rgba(255,255,255,.12); }
+.public-profile-back { background:none; color:#9fd3ff; border:0; font-weight:700; }
+.public-profile-body { padding:16px; }
+.public-profile-user { display:flex; gap:12px; align-items:center; margin-bottom:16px; }
+.public-profile-avatar { width:64px; height:64px; border-radius:50%; background:#1d2530; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.public-profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.public-profile-gallery-grid { display:grid; gap:8px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.public-profile-photo { padding:0; border:0; background:#121820; border-radius:8px; overflow:hidden; aspect-ratio:1/1; }
+.public-profile-photo img { width:100%; height:100%; object-fit:cover; }
+.public-profile-empty { opacity:.8; padding:20px 0; }
