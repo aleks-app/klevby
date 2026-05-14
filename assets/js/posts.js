@@ -10,6 +10,10 @@ function getPostsApiSafe() {
   return window.KlevbyPostsApi || {};
 }
 
+function getPostsRenderSafe() {
+  return window.KlevbyPostsRender || {};
+}
+
 function getOwnerId() {
   const state = getPostsStateSafe();
 
@@ -466,230 +470,37 @@ async function loadPosts(options = {}) {
 }
 
 function renderPosts() {
+  const render = getPostsRenderSafe();
+
+  if (typeof render.renderPosts === "function") {
+    return render.renderPosts();
+  }
+
+  console.warn("Klevby posts: posts-render module недоступен.");
+
   const list = document.getElementById("postsSection");
-  if (!list) return;
 
-  const allPosts = getPostsArray();
-  const search = normalizeText(document.getElementById("searchInput")?.value);
-  const selectedCity = normalizeSelectFilterValue("citySelect");
-  const selectedType = normalizeSelectFilterValue("typeSelect");
-  const telegramOnly = document.getElementById("telegramOnly")?.checked;
-  const ownerId = getOwnerId();
-  const mode = getCurrentViewMode();
-
-  const state = getPostsStateSafe();
-  const hasActiveLoad =
-    (typeof state.getPostsLoadPromise === "function" && state.getPostsLoadPromise()) ||
-    (typeof state.getPostsPendingForceReload === "function" && state.getPostsPendingForceReload());
-
-  if (!allPosts.length && hasActiveLoad) {
-    showStatusSafe("Загрузка объявлений...");
-
-    list.innerHTML = `
-      <div class="info-line">
-        Загружаем объявления о выездах…
-      </div>
-    `;
-
-    if (typeof window.updateHomeFloatButton === "function") {
-      setTimeout(window.updateHomeFloatButton, 80);
-    }
-
-    return;
-  }
-
-  let filtered = [...allPosts];
-
-  if (mode === "mine") {
-    filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
-    showStatusSafe("Сейчас показаны: мои выезды.");
-  } else {
-    showStatusSafe("Сейчас показаны: все объявления о выездах.");
-  }
-
-  if (search) {
-    filtered = filtered.filter(post =>
-      normalizeText(post.name).includes(search) ||
-      normalizeText(post.city).includes(search) ||
-      normalizeText(post.destination).includes(search) ||
-      normalizeText(post.trip_time).includes(search) ||
-      normalizeText(post.transport).includes(search) ||
-      normalizeText(post.seats).includes(search) ||
-      normalizeText(post.text).includes(search) ||
-      normalizeText(getPostFishingType(post)).includes(search)
-    );
-  }
-
-  if (selectedCity) {
-    filtered = filtered.filter(post => normalizeText(post.city).includes(selectedCity));
-  }
-
-  if (selectedType) {
-    filtered = filtered.filter(post => normalizeText(getPostFishingType(post)).includes(selectedType));
-  }
-
-  if (telegramOnly) {
-    filtered = filtered.filter(post => cleanTelegram(post.telegram));
-  }
-
-  if (!filtered.length) {
-    const emptyText = allPosts.length
-      ? "По фильтрам ничего не найдено."
-      : "Пока объявлений о выездах нет.";
-
-    console.info("Klevby posts: empty render state", {
-      allCount: allPosts.length,
-      mode,
-      search,
-      selectedCity,
-      selectedType,
-      telegramOnly: Boolean(telegramOnly)
-    });
-
-    list.innerHTML = `
-      <div class="info-line">
-        ${emptyText}
-        <div style="margin-top:12px;">
-          <button class="small-btn green" type="button" onclick="showSection('create')">Создать выезд</button>
-        </div>
-      </div>
-    `;
-
-    if (typeof window.updateHomeFloatButton === "function") {
-      setTimeout(window.updateHomeFloatButton, 80);
-    }
-
-    return;
-  }
-
-  const cards = filtered
-    .map((post) => {
-      try {
-        return cardHtml(post);
-      } catch (error) {
-        console.error("Ошибка отрисовки карточки объявления:", post, error);
-        return "";
-      }
-    })
-    .filter(Boolean)
-    .join("");
-
-  if (!cards) {
+  if (list && !getPostsArray().length) {
     list.innerHTML = `
       <div class="info-line error-line">
-        Объявления загрузились, но карточки не отрисовались. Смотри Console.
+        Модуль отображения объявлений ещё не готов. Обнови страницу.
       </div>
     `;
-    return;
   }
 
-  list.innerHTML = cards;
-
-  if (typeof window.updateHomeFloatButton === "function") {
-    setTimeout(window.updateHomeFloatButton, 80);
-  }
+  return null;
 }
 
 function cardHtml(post) {
-  const id = post?.id;
-  const tg = cleanTelegram(post?.telegram);
-  const ownerId = getOwnerId();
-  const canManage = isAdminSafe() || (ownerId && post?.owner_id === ownerId);
-  const isFull = Boolean(post?.crew_full);
-  const image = getCardImage(post);
-  const fishingType = getPostFishingType(post);
-  const fishingTypeClass = getFishingTypeClass(fishingType);
+  const render = getPostsRenderSafe();
 
-  const name = post?.name || "Рыбак";
-  const city = post?.city || "";
-  const destination = post?.destination || "";
-  const tripTime = post?.trip_time || "";
-  const transport = post?.transport || "";
-  const seats = post?.seats || "";
-  const titleDestination = destination || city || "рыбалку";
+  if (typeof render.cardHtml === "function") {
+    return render.cardHtml(post);
+  }
 
-  const safeId = escapeAttr(id);
+  console.warn("Klevby posts: cardHtml fallback вызван без posts-render module.", post);
 
-  const tgButton = isFull
-    ? `<button class="small-btn disabled" disabled onclick="event.stopPropagation()">Экипаж набран</button>`
-    : tg
-      ? `<button class="small-btn green" onclick="event.stopPropagation(); window.open('https://t.me/${escapeAttr(tg)}','_blank')">Написать автору</button>`
-      : `<button class="small-btn green" onclick="event.stopPropagation(); openTelegramSafe()">Написать в общий чат</button>`;
-
-  const fullBtn = canManage
-    ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${safeId}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
-    : "";
-
-  const editBtn = canManage
-    ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${safeId}')">Редактировать</button>`
-    : "";
-
-  const deleteBtn = canManage
-    ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${safeId}')">Удалить</button>`
-    : "";
-
-  const date = post?.created_at
-    ? new Date(post.created_at).toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit"
-      })
-    : "";
-
-  return `
-    <div class="card trip-card ${isFull ? "full" : ""}" onclick="openPostModal('${safeId}')">
-      <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
-
-      <div class="card-body">
-        <div class="trip-title">
-          <span class="trip-name">${escapeHtml(name)}</span>
-          <span> едет на </span>
-          <span class="trip-destination">${escapeHtml(titleDestination)}</span>
-        </div>
-
-        <div class="trip-facts">
-          <div class="trip-fact">
-            <div class="trip-fact-label">Когда</div>
-            <div class="trip-fact-value">${escapeHtml(tripTime || date || "Не указано")}</div>
-          </div>
-
-          <div class="trip-fact">
-            <div class="trip-fact-label">Тип</div>
-            <div class="trip-fact-value">${escapeHtml(fishingType || "Не указано")}</div>
-          </div>
-
-          <div class="trip-fact">
-            <div class="trip-fact-label">Транспорт</div>
-            <div class="trip-fact-value">${escapeHtml(transport || "Не указано")}</div>
-          </div>
-
-          <div class="trip-fact">
-            <div class="trip-fact-label">Места</div>
-            <div class="trip-fact-value">${escapeHtml(seats || (isFull ? "Экипаж набран" : "Уточнить"))}</div>
-          </div>
-        </div>
-
-        <p class="trip-description">${escapeHtml(post?.text || "")}</p>
-
-        <div class="tags">
-          <span class="tag">🎣 выезд</span>
-          ${city ? `<span class="tag">📍 ${escapeHtml(city)}</span>` : ""}
-          ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
-          ${isFull ? '<span class="tag full">экипаж набран</span>' : ''}
-          ${tg ? '<span class="tag">Telegram</span>' : ''}
-          ${ownerId && post?.owner_id === ownerId ? '<span class="tag">моё</span>' : ''}
-        </div>
-
-        <div class="actions">
-          ${tgButton}
-          ${fullBtn}
-          ${editBtn}
-          ${deleteBtn}
-        </div>
-      </div>
-    </div>
-  `;
+  return "";
 }
 
 function openPostModal(id) {
@@ -1042,7 +853,7 @@ async function toggleCrewFull(id, value) {
     .eq("id", id);
 
   if (error) {
-    alert("Не получилось изменить статус. Проверь поле crew_full и RLS.");
+    alert("Не получилось изменить статус. Провь поле crew_full и RLS.");
     console.error("Ошибка crew_full:", error);
     return;
   }
@@ -1109,5 +920,5 @@ window.toggleCrewFull = toggleCrewFull;
 window.deletePost = deletePost;
 
 console.log("Klevby posts bridge loaded", {
-  version: "20260514-posts-api-split-1"
+  version: "20260514-posts-render-split-1"
 });
