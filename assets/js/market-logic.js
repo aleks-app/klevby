@@ -9,6 +9,7 @@
   let marketLastUserRefreshAt = 0;
   let marketLoadPromise = null;
   let marketLoadTimer = null;
+  let marketPendingForceReload = false;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -460,9 +461,15 @@
       return;
     }
 
-    if (!force && marketLoadPromise) {
+    if (marketLoadPromise) {
+      if (force) {
+        marketPendingForceReload = true;
+      }
+
       return marketLoadPromise;
     }
+
+    marketPendingForceReload = false;
 
     marketLoadPromise = (async function () {
       showMarketStatus("Загрузка барахолки...");
@@ -543,6 +550,11 @@
       return await marketLoadPromise;
     } finally {
       marketLoadPromise = null;
+
+      if (marketPendingForceReload) {
+        marketPendingForceReload = false;
+        scheduleMarketLoad(MARKET_LOAD_RETRY_DELAY_MS, true);
+      }
     }
   }
 
