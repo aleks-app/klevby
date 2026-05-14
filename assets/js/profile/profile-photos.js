@@ -732,7 +732,11 @@
 
   function openProfilePhotoViewer(photoId) {
     const cleanId = String(photoId || "");
-    const photo = readProfilePhotos().find((item) => {
+    const displayPhotos = getProfilePhotosForDisplay();
+    const photoFromDisplay = displayPhotos.find((item) => {
+      return String(item.id) === cleanId || String(item.feedPostId || "") === cleanId;
+    });
+    const photo = photoFromDisplay || readProfilePhotos().find((item) => {
       return String(item.id) === cleanId || String(item.feedPostId || "") === cleanId;
     });
 
