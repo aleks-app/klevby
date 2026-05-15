@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260515-posts-render-clean-actions-telegram-1";
+  const POSTS_RENDER_VERSION = "20260515-posts-render-clean-actions-open-modal-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   function getState() {
@@ -215,6 +215,25 @@
     window.open(getTelegramGroupUrl(), "_blank", "noopener");
   }
 
+  function openPostModalSafe(id) {
+    if (window.KlevbyPostsModal && typeof window.KlevbyPostsModal.openPostModal === "function") {
+      window.KlevbyPostsModal.openPostModal(id);
+      return;
+    }
+
+    if (typeof window.openPostModal === "function") {
+      window.openPostModal(id);
+      return;
+    }
+
+    console.warn("Klevby posts render: post modal module недоступен", {
+      id,
+      hasKlevbyPostsModal: Boolean(window.KlevbyPostsModal),
+      openPostModalType: typeof window.KlevbyPostsModal?.openPostModal,
+      globalOpenPostModalType: typeof window.openPostModal
+    });
+  }
+
   function ensurePostsRenderStyles() {
     if (document.getElementById("klevby-posts-render-actions-style")) {
       return;
@@ -223,14 +242,27 @@
     const style = document.createElement("style");
     style.id = "klevby-posts-render-actions-style";
     style.textContent = `
-      #postsSection .actions {
+      #postsSection .trip-card {
+        display: flex !important;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      #postsSection .trip-card .card-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+      }
+
+      #postsSection .trip-card .actions {
         display: grid !important;
         grid-template-columns: 1fr;
         gap: 8px;
-        margin-top: 12px;
+        margin-top: auto;
+        padding-top: 12px;
       }
 
-      #postsSection .actions:empty {
+      #postsSection .trip-card .actions:empty {
         display: none !important;
       }
 
@@ -284,26 +316,19 @@
         display: none;
       }
 
-      #postsSection .trip-card.can-manage .trip-telegram-btn {
-        grid-column: 1 / -1;
-      }
-
       @media (min-width: 768px) {
-        #postsSection .trip-card.can-manage .actions {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        #postsSection .trip-card:not(.can-manage) .actions {
+        #postsSection .trip-card .actions {
           max-width: 230px;
         }
       }
 
       @media (max-width: 767px) {
-        #postsSection .actions {
+        #postsSection .trip-card .actions {
           display: grid !important;
           grid-template-columns: 1fr;
           gap: 8px;
-          margin-top: 12px;
+          margin-top: auto;
+          padding-top: 12px;
         }
 
         #postsSection .trip-card .actions .small-btn {
@@ -503,14 +528,6 @@
         </button>
       `;
 
-    const editBtn = canManage
-      ? `<button class="small-btn yellow owner-action" type="button" onclick="event.stopPropagation(); editPost('${safeId}')">Редактировать</button>`
-      : "";
-
-    const deleteBtn = canManage
-      ? `<button class="small-btn red owner-action" type="button" onclick="event.stopPropagation(); deletePost('${safeId}')">Удалить</button>`
-      : "";
-
     const date = post?.created_at
       ? new Date(post.created_at).toLocaleString("ru-RU", {
           day: "2-digit",
@@ -521,7 +538,13 @@
       : "";
 
     return `
-      <div class="card trip-card ${canManage ? "can-manage" : ""}" onclick="openPostModal('${safeId}')">
+      <div
+        class="card trip-card ${canManage ? "can-manage" : ""}"
+        role="button"
+        tabindex="0"
+        onclick="window.KlevbyPostsRender.openPostModalSafe('${safeId}')"
+        onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); window.KlevbyPostsRender.openPostModalSafe('${safeId}'); }"
+      >
         <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
         <div class="card-body">
@@ -565,8 +588,6 @@
 
           <div class="actions">
             ${tgButton}
-            ${editBtn}
-            ${deleteBtn}
           </div>
         </div>
       </div>
@@ -576,7 +597,8 @@
   window.KlevbyPostsRender = {
     renderPosts,
     cardHtml,
-    openTelegramSafe
+    openTelegramSafe,
+    openPostModalSafe
   };
 
   ensurePostsRenderStyles();
