@@ -82,6 +82,37 @@
     justify-content: flex-end !important;
   }
 
+  #homeSection .hero h1 {
+    font-size: 34px !important;
+    line-height: 1.03 !important;
+    font-weight: 950 !important;
+    letter-spacing: -0.055em !important;
+    text-shadow: 0 14px 34px rgba(0, 0, 0, 0.50) !important;
+  }
+
+  #homeSection .hero p {
+    color: rgba(255, 248, 234, 0.70) !important;
+    font-size: 15px !important;
+    line-height: 1.42 !important;
+    font-weight: 650 !important;
+    text-shadow: 0 10px 24px rgba(0, 0, 0, 0.42) !important;
+  }
+
+  #homeSection #forecastPanel .forecast-head h2,
+  #homeSection .mobile-weather-city::before,
+  #homeSection #profileFeedSection.grid::before,
+  #homeSection #profileFeedSection.social-feed-grid::before {
+    font-weight: 950 !important;
+    letter-spacing: -0.045em !important;
+    text-shadow: 0 12px 30px rgba(0, 0, 0, 0.42) !important;
+  }
+
+  #homeSection #forecastPanel .forecast-head p,
+  #homeSection #forecastPanel #weatherStatus {
+    color: rgba(244, 251, 247, 0.66) !important;
+    font-weight: 650 !important;
+  }
+
   #homeSection .trust-bar {
     gap: 12px !important;
   }
