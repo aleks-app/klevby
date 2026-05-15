@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_MODAL_VERSION = "20260515-posts-modal-owner-icons-1";
+  const POSTS_MODAL_VERSION = "20260515-posts-modal-owner-icons-align-2";
 
   function getState() {
     return window.KlevbyPostsState || {};
@@ -178,21 +178,30 @@
         position: absolute !important;
         top: 18px !important;
         right: 18px !important;
-        z-index: 20 !important;
+        left: auto !important;
+        bottom: auto !important;
+        z-index: 30 !important;
         width: 46px !important;
         height: 46px !important;
+        min-width: 46px !important;
         min-height: 46px !important;
+        max-width: 46px !important;
+        max-height: 46px !important;
+        margin: 0 !important;
         padding: 0 !important;
         border-radius: 50% !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        background: rgba(18, 28, 26, 0.72) !important;
+        box-sizing: border-box !important;
+        background: rgba(18, 28, 26, 0.74) !important;
         border: 1px solid rgba(255,255,255,0.18) !important;
         color: #ffffff !important;
-        font-size: 28px !important;
+        font-size: 30px !important;
         line-height: 1 !important;
         font-weight: 900 !important;
+        transform: none !important;
+        translate: none !important;
         box-shadow: 0 14px 34px rgba(0,0,0,0.38) !important;
         backdrop-filter: blur(14px) !important;
         -webkit-backdrop-filter: blur(14px) !important;
@@ -202,28 +211,36 @@
         position: absolute;
         top: 18px;
         left: 18px;
-        z-index: 20;
+        z-index: 30;
         display: flex;
         align-items: center;
         gap: 10px;
         pointer-events: auto;
+        margin: 0;
+        padding: 0;
       }
 
       .post-modal-owner-icon-btn {
-        width: 44px;
-        height: 44px;
-        min-height: 44px;
+        width: 46px;
+        height: 46px;
+        min-width: 46px;
+        min-height: 46px;
+        max-width: 46px;
+        max-height: 46px;
+        margin: 0;
         padding: 0;
         border-radius: 50%;
         border: 1px solid rgba(255,255,255,0.18);
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        box-sizing: border-box;
         color: #ffffff;
         font-size: 20px;
         line-height: 1;
         font-weight: 900;
         cursor: pointer;
+        transform: none;
         box-shadow: 0 14px 34px rgba(0,0,0,0.36);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
@@ -232,20 +249,20 @@
       .post-modal-owner-edit {
         background:
           radial-gradient(circle at 30% 10%, rgba(255,255,255,0.18), transparent 42%),
-          rgba(244,178,74,0.88);
+          rgba(244,178,74,0.90);
         color: #1d1203;
       }
 
       .post-modal-owner-delete {
         background:
           radial-gradient(circle at 30% 10%, rgba(255,255,255,0.18), transparent 42%),
-          rgba(219, 74, 80, 0.90);
+          rgba(219, 74, 80, 0.92);
         color: #ffffff;
       }
 
       .post-modal-owner-icon-btn:active,
       .post-modal-close:active {
-        transform: scale(0.96);
+        transform: scale(0.96) !important;
       }
 
       @media (max-width: 767px) {
@@ -254,8 +271,11 @@
           right: 16px !important;
           width: 44px !important;
           height: 44px !important;
+          min-width: 44px !important;
           min-height: 44px !important;
-          font-size: 27px !important;
+          max-width: 44px !important;
+          max-height: 44px !important;
+          font-size: 29px !important;
         }
 
         .post-modal-owner-tools {
@@ -265,9 +285,12 @@
         }
 
         .post-modal-owner-icon-btn {
-          width: 42px;
-          height: 42px;
-          min-height: 42px;
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+          min-height: 44px;
+          max-width: 44px;
+          max-height: 44px;
           font-size: 19px;
         }
       }
@@ -278,18 +301,26 @@
           right: 14px !important;
           width: 42px !important;
           height: 42px !important;
+          min-width: 42px !important;
           min-height: 42px !important;
+          max-width: 42px !important;
+          max-height: 42px !important;
+          font-size: 28px !important;
         }
 
         .post-modal-owner-tools {
           top: 14px;
           left: 14px;
+          gap: 8px;
         }
 
         .post-modal-owner-icon-btn {
-          width: 40px;
-          height: 40px;
-          min-height: 40px;
+          width: 42px;
+          height: 42px;
+          min-width: 42px;
+          min-height: 42px;
+          max-width: 42px;
+          max-height: 42px;
           font-size: 18px;
         }
       }
