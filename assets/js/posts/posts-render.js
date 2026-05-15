@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260515-posts-render-mobile-filter-collapse-1";
+  const POSTS_RENDER_VERSION = "20260515-posts-render-mobile-filter-telegram-fix-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   let mobileFilterExpanded = false;
@@ -790,10 +790,40 @@
         }
 
         #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters .check {
-          display: flex !important;
+          box-sizing: border-box !important;
+          display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;
-          gap: 10px !important;
+          gap: 12px !important;
+          padding: 0 16px !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          text-align: center !important;
+          color: rgba(244, 251, 247, 0.78) !important;
+          font-size: 15px !important;
+          font-weight: 900 !important;
+          line-height: 1 !important;
+          white-space: nowrap !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters .check input[type="checkbox"] {
+          appearance: auto !important;
+          -webkit-appearance: checkbox !important;
+          box-sizing: border-box !important;
+          position: static !important;
+          display: inline-block !important;
+          width: 20px !important;
+          height: 20px !important;
+          min-width: 20px !important;
+          max-width: 20px !important;
+          min-height: 20px !important;
+          max-height: 20px !important;
+          flex: 0 0 20px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 4px !important;
+          transform: none !important;
+          accent-color: #ffaf2d;
         }
 
         @keyframes klevbyMobileFilterOpen {
