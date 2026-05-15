@@ -36,6 +36,10 @@
     return user ? user.id : null;
   }
 
+  function isOwnPost(post, ownerId = getOwnerId()) {
+    return Boolean(ownerId && post?.owner_id && String(post.owner_id) === String(ownerId));
+  }
+
   function getCurrentViewMode() {
     const state = getState();
 
@@ -53,14 +57,6 @@
       (typeof state.getPostsLoadPromise === "function" && state.getPostsLoadPromise()) ||
       (typeof state.getPostsPendingForceReload === "function" && state.getPostsPendingForceReload())
     );
-  }
-
-  function isAdminSafe() {
-    if (typeof window.isAdmin === "function") {
-      return window.isAdmin();
-    }
-
-    return Boolean(window.klevbyIsCurrentUserAdmin || window.isKlevbyAdmin);
   }
 
   function showStatusSafe(message, isError = false) {
@@ -251,7 +247,7 @@
     let filtered = [...allPosts];
 
     if (mode === "mine") {
-      filtered = filtered.filter(post => ownerId && post.owner_id === ownerId);
+      filtered = filtered.filter((post) => isOwnPost(post, ownerId));
       showStatusSafe("Сейчас показаны: мои выезды.");
     } else {
       showStatusSafe("Сейчас показаны: все объявления о выездах.");
@@ -344,7 +340,7 @@
     const id = post?.id;
     const tg = cleanTelegram(post?.telegram);
     const ownerId = getOwnerId();
-    const canManage = isAdminSafe() || (ownerId && post?.owner_id === ownerId);
+    const canManage = isOwnPost(post, ownerId);
     const isFull = Boolean(post?.crew_full);
     const image = getCardImage(post);
     const fishingType = getPostFishingType(post);
@@ -428,7 +424,7 @@
             ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
             ${isFull ? '<span class="tag full">экипаж набран</span>' : ''}
             ${tg ? '<span class="tag">Telegram</span>' : ''}
-            ${ownerId && post?.owner_id === ownerId ? '<span class="tag">моё</span>' : ''}
+            ${isOwnPost(post, ownerId) ? '<span class="tag">моё</span>' : ''}
           </div>
 
           <div class="actions">
@@ -448,6 +444,6 @@
   };
 
   console.log("Klevby posts render loaded", {
-    version: "20260514-posts-render-split-1"
+    version: "20260515-posts-render-owner-actions-1"
   });
 })();
