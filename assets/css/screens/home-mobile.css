@@ -40,8 +40,10 @@
   }
 
   #homeSection #forecastPanel.forecast-panel {
+    --klevby-home-weather-cell-height: 74px;
+
     margin-top: 18px !important;
-    margin-bottom: 22px !important;
+    margin-bottom: 18px !important;
     padding: 15px 14px 13px !important;
     border-radius: 25px !important;
     background:
@@ -100,7 +102,7 @@
   }
 
   #homeSection #forecastPanel .forecast-item {
-    min-height: 74px !important;
+    min-height: var(--klevby-home-weather-cell-height) !important;
     padding: 9px 4px 8px !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -150,21 +152,47 @@
   }
 
   #homeSection #forecastPanel .bite-line {
-    display: block !important;
-    margin-top: 9px !important;
-    padding: 8px 10px !important;
-    border-radius: 16px !important;
-    background: rgba(255, 175, 45, 0.085) !important;
-    border: 1px solid rgba(255, 184, 70, 0.16) !important;
-    color: rgba(255, 232, 184, 0.92) !important;
-    font-size: 12px !important;
-    line-height: 1.28 !important;
-    font-weight: 800 !important;
+    width: 25% !important;
+    height: var(--klevby-home-weather-cell-height) !important;
+    min-height: var(--klevby-home-weather-cell-height) !important;
+    margin: calc(0px - var(--klevby-home-weather-cell-height)) 0 0 auto !important;
+    padding: 8px 4px 7px !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
     box-shadow: none !important;
+    color: rgba(255, 238, 205, 0.92) !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    position: relative !important;
+    z-index: 2 !important;
+    overflow: hidden !important;
   }
 
   #homeSection #forecastPanel .bite-line::before {
-    content: "🐟 ";
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 15px;
+    bottom: 15px;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  #homeSection #forecastPanel .bite-line::after {
+    content: "🐟\AПрогноз клёва:\AСредний";
+    white-space: pre-line;
+    color: rgba(255, 238, 205, 0.92);
+    font-size: 10px;
+    line-height: 1.12;
+    font-weight: 850;
+    letter-spacing: -0.02em;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.32);
   }
 
   #homeSection #profileFeedSection.social-feed-grid {
@@ -174,6 +202,8 @@
 
 @media (max-width: 390px) {
   #homeSection #forecastPanel.forecast-panel {
+    --klevby-home-weather-cell-height: 70px;
+
     padding: 14px 12px 12px !important;
     border-radius: 23px !important;
   }
@@ -187,7 +217,6 @@
   }
 
   #homeSection #forecastPanel .forecast-item {
-    min-height: 70px !important;
     padding: 8px 3px 7px !important;
   }
 
@@ -207,7 +236,11 @@
   }
 
   #homeSection #forecastPanel .bite-line {
-    font-size: 11.5px !important;
-    padding: 7px 9px !important;
+    padding: 7px 3px 6px !important;
+  }
+
+  #homeSection #forecastPanel .bite-line::after {
+    font-size: 9.4px;
+    line-height: 1.1;
   }
 }
