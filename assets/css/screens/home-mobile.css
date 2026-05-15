@@ -96,35 +96,55 @@
     gap: 0 !important;
     border-radius: 20px !important;
     overflow: hidden !important;
-    background: rgba(255, 255, 255, 0.04) !important;
+    background:
+      linear-gradient(
+        to right,
+        transparent 0,
+        transparent calc(75% - 0.5px),
+        rgba(255, 255, 255, 0.055) calc(75% - 0.5px),
+        rgba(255, 255, 255, 0.055) calc(75% + 0.5px),
+        transparent calc(75% + 0.5px)
+      ),
+      rgba(255, 255, 255, 0.04) !important;
     border: 1px solid rgba(255, 255, 255, 0.065) !important;
     box-shadow: none !important;
     position: relative !important;
   }
 
   #homeSection #forecastPanel .forecast-grid::before {
+    all: unset;
     content: "🐟";
     position: absolute;
     left: 87.5%;
-    top: 9px;
-    width: 30px;
-    height: 30px;
+    top: 8px;
+    width: 34px;
+    height: 34px;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 30px;
     line-height: 1;
     z-index: 3;
     pointer-events: none;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
     text-shadow: 0 4px 12px rgba(0, 0, 0, 0.38);
   }
 
   #homeSection #forecastPanel .forecast-grid::after {
+    all: unset;
     content: "Клёв\AСредний";
     white-space: pre-line;
-    min-height: var(--klevby-home-weather-cell-height);
-    padding: 38px 4px 7px;
+    position: absolute;
+    left: 75%;
+    right: 0;
+    top: 39px;
+    bottom: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: rgba(255, 238, 205, 0.94);
     font-size: 14px;
     line-height: 1.03;
@@ -132,13 +152,10 @@
     letter-spacing: -0.025em;
     text-align: center;
     text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
+    z-index: 3;
+    pointer-events: none;
     background: transparent !important;
     border: 0 !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.055) !important;
     box-shadow: none !important;
   }
 
@@ -147,9 +164,21 @@
     padding: 9px 4px 8px !important;
     border-radius: 0 !important;
     background: transparent !important;
+    background-image: none !important;
     border: 0 !important;
     box-shadow: none !important;
     position: relative !important;
+  }
+
+  #homeSection #forecastPanel .forecast-item:nth-child(n + 4) {
+    background: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #homeSection #forecastPanel .forecast-item:nth-child(n + 4) > * {
+    display: none !important;
   }
 
   #homeSection #forecastPanel .forecast-item + .forecast-item::before {
@@ -160,6 +189,11 @@
     bottom: 15px;
     width: 1px;
     background: rgba(255, 255, 255, 0.055);
+  }
+
+  #homeSection #forecastPanel .forecast-item:nth-child(n + 4)::before {
+    content: none !important;
+    display: none !important;
   }
 
   #homeSection #forecastPanel .forecast-icon {
@@ -218,14 +252,15 @@
   }
 
   #homeSection #forecastPanel .forecast-grid::before {
-    top: 8px;
-    width: 28px;
-    height: 28px;
-    font-size: 21px;
+    top: 7px;
+    width: 32px;
+    height: 32px;
+    font-size: 29px;
   }
 
   #homeSection #forecastPanel .forecast-grid::after {
-    padding: 35px 3px 6px;
+    top: 37px;
+    bottom: 6px;
     font-size: 13px;
     line-height: 1.02;
   }
