@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260515-posts-render-card-click-bind-1";
+  const POSTS_RENDER_VERSION = "20260515-posts-render-trip-date-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   function getState() {
@@ -213,6 +213,93 @@
     }
 
     window.open(getTelegramGroupUrl(), "_blank", "noopener");
+  }
+
+  function normalizeTripDate(value) {
+    const raw = String(value || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return raw;
+    }
+
+    return "";
+  }
+
+  function getTodayLocalIso() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function isPostExpired(post, todayIso = getTodayLocalIso()) {
+    const tripDate = normalizeTripDate(post?.trip_date);
+
+    if (!tripDate) {
+      return false;
+    }
+
+    return tripDate < todayIso;
+  }
+
+  function getCreatedAtTime(post) {
+    const time = post?.created_at ? new Date(post.created_at).getTime() : 0;
+
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function sortActivePosts(posts, todayIso = getTodayLocalIso()) {
+    return [...posts].sort((a, b) => {
+      const aTripDate = normalizeTripDate(a?.trip_date);
+      const bTripDate = normalizeTripDate(b?.trip_date);
+
+      const aHasActiveDate = Boolean(aTripDate && aTripDate >= todayIso);
+      const bHasActiveDate = Boolean(bTripDate && bTripDate >= todayIso);
+
+      if (aHasActiveDate && bHasActiveDate) {
+        if (aTripDate !== bTripDate) {
+          return aTripDate.localeCompare(bTripDate);
+        }
+
+        return getCreatedAtTime(b) - getCreatedAtTime(a);
+      }
+
+      if (aHasActiveDate) {
+        return -1;
+      }
+
+      if (bHasActiveDate) {
+        return 1;
+      }
+
+      return getCreatedAtTime(b) - getCreatedAtTime(a);
+    });
+  }
+
+  function formatTripDate(value) {
+    const tripDate = normalizeTripDate(value);
+
+    if (!tripDate) {
+      return "";
+    }
+
+    const parts = tripDate.split("-");
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+
+    if (!year || !month || !day) {
+      return tripDate;
+    }
+
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "short"
+    });
   }
 
   function tryOpenPostModal(id) {
@@ -429,6 +516,7 @@
     const telegramOnly = document.getElementById("telegramOnly")?.checked;
     const ownerId = getOwnerId();
     const mode = getCurrentViewMode();
+    const todayIso = getTodayLocalIso();
 
     if (!allPosts.length && hasActivePostsLoad()) {
       showStatusSafe("Загрузка объявлений...");
@@ -446,13 +534,24 @@
       return;
     }
 
-    let filtered = [...allPosts];
+    const activePosts = allPosts.filter((post) => !isPostExpired(post, todayIso));
+    const expiredCount = Math.max(0, allPosts.length - activePosts.length);
+
+    let filtered = sortActivePosts(activePosts, todayIso);
 
     if (mode === "mine") {
       filtered = filtered.filter((post) => isOwnPost(post, ownerId));
-      showStatusSafe("Сейчас показаны: мои выезды.");
+      showStatusSafe(
+        expiredCount
+          ? `Сейчас показаны: мои актуальные выезды. Старые выезды скрыты: ${expiredCount}.`
+          : "Сейчас показаны: мои актуальные выезды."
+      );
     } else {
-      showStatusSafe("Сейчас показаны: все объявления о выездах.");
+      showStatusSafe(
+        expiredCount
+          ? `Сейчас показаны: актуальные выезды. Старые выезды скрыты: ${expiredCount}.`
+          : "Сейчас показаны: все актуальные объявления о выездах."
+      );
     }
 
     if (search) {
@@ -461,6 +560,8 @@
         normalizeText(post.city).includes(search) ||
         normalizeText(post.destination).includes(search) ||
         normalizeText(post.trip_time).includes(search) ||
+        normalizeText(post.trip_date).includes(search) ||
+        normalizeText(formatTripDate(post.trip_date)).includes(search) ||
         normalizeText(post.transport).includes(search) ||
         normalizeText(post.seats).includes(search) ||
         normalizeText(post.text).includes(search) ||
@@ -481,12 +582,18 @@
     }
 
     if (!filtered.length) {
-      const emptyText = allPosts.length
-        ? "По фильтрам ничего не найдено."
-        : "Пока объявлений о выездах нет.";
+      let emptyText = "Пока актуальных объявлений о выездах нет.";
+
+      if (activePosts.length && allPosts.length) {
+        emptyText = "По фильтрам ничего не найдено.";
+      } else if (allPosts.length && expiredCount === allPosts.length) {
+        emptyText = "Все выезды уже прошли. Новые актуальные объявления появятся здесь.";
+      }
 
       console.info("Klevby posts: empty render state", {
         allCount: allPosts.length,
+        activeCount: activePosts.length,
+        expiredCount,
         mode,
         search,
         selectedCity,
@@ -566,6 +673,7 @@
     const city = post?.city || "";
     const destination = post?.destination || "";
     const tripTime = post?.trip_time || "";
+    const tripDateText = formatTripDate(post?.trip_date);
     const transport = post?.transport || "";
     const seats = post?.seats || "";
     const titleDestination = destination || city || "рыбалку";
@@ -625,7 +733,7 @@
           <div class="trip-facts">
             <div class="trip-fact">
               <div class="trip-fact-label">Когда</div>
-              <div class="trip-fact-value">${escapeHtml(tripTime || date || "Не указано")}</div>
+              <div class="trip-fact-value">${escapeHtml(tripTime || tripDateText || date || "Не указано")}</div>
             </div>
 
             <div class="trip-fact">
@@ -649,6 +757,7 @@
           <div class="tags">
             <span class="tag">🎣 выезд</span>
             ${city ? `<span class="tag">📍 ${escapeHtml(city)}</span>` : ""}
+            ${tripDateText ? `<span class="tag">🗓️ ${escapeHtml(tripDateText)}</span>` : ""}
             ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
             ${tg ? '<span class="tag">Telegram</span>' : ''}
             ${canManage ? '<span class="tag">моё</span>' : ''}
@@ -666,7 +775,9 @@
     renderPosts,
     cardHtml,
     openTelegramSafe,
-    openPostModalSafe
+    openPostModalSafe,
+    isPostExpired,
+    sortActivePosts
   };
 
   ensurePostsRenderStyles();
