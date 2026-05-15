@@ -388,7 +388,7 @@
       : "";
 
     return `
-      <div class="card trip-card ${isFull ? "full" : ""}" onclick="openPostModal('${safeId}')">
+      <div class="card trip-card ${isFull ? "full" : ""} ${canManage ? "can-manage" : ""}" onclick="openPostModal('${safeId}')">
         <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
         <div class="card-body">
