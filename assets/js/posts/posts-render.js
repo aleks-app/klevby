@@ -1,4 +1,7 @@
 (function () {
+  const POSTS_RENDER_VERSION = "20260515-posts-render-clean-actions-telegram-1";
+  const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
+
   function getState() {
     return window.KlevbyPostsState || {};
   }
@@ -198,25 +201,131 @@
     return "assets/img/klevby-icon-512.png";
   }
 
+  function getTelegramGroupUrl() {
+    const config = window.KLEVB_CONFIG || {};
+    return config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
+  }
+
   function openTelegramSafe() {
-    const utils = getUtils();
-
-    if (typeof utils.openTelegramSafe === "function") {
-      utils.openTelegramSafe();
-      return;
-    }
-
     if (typeof window.openTelegram === "function") {
       window.openTelegram();
       return;
     }
 
-    const config = window.KLEVB_CONFIG || {};
-    const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
-    window.open(link, "_blank");
+    window.open(getTelegramGroupUrl(), "_blank", "noopener");
+  }
+
+  function ensurePostsRenderStyles() {
+    if (document.getElementById("klevby-posts-render-actions-style")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "klevby-posts-render-actions-style";
+    style.textContent = `
+      #postsSection .actions {
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      #postsSection .actions:empty {
+        display: none !important;
+      }
+
+      #postsSection .trip-card .actions .small-btn {
+        width: 100%;
+        min-height: 38px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        white-space: normal;
+        line-height: 1.1;
+      }
+
+      #postsSection .trip-card .trip-telegram-btn {
+        font-weight: 900;
+        letter-spacing: 0.01em;
+      }
+
+      #postsSection .trip-telegram-icon {
+        width: 21px;
+        height: 21px;
+        border-radius: 999px;
+        overflow: hidden;
+        flex: 0 0 21px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #229ed9;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.22);
+      }
+
+      #postsSection .trip-telegram-icon img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        mix-blend-mode: multiply;
+      }
+
+      #postsSection .trip-telegram-icon.is-missing::before {
+        content: "TG";
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+      }
+
+      #postsSection .trip-telegram-icon.is-missing img {
+        display: none;
+      }
+
+      #postsSection .trip-card.can-manage .trip-telegram-btn {
+        grid-column: 1 / -1;
+      }
+
+      @media (min-width: 768px) {
+        #postsSection .trip-card.can-manage .actions {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #postsSection .trip-card:not(.can-manage) .actions {
+          max-width: 230px;
+        }
+      }
+
+      @media (max-width: 767px) {
+        #postsSection .actions {
+          display: grid !important;
+          grid-template-columns: 1fr;
+          gap: 8px;
+          margin-top: 12px;
+        }
+
+        #postsSection .trip-card .actions .small-btn {
+          min-height: 42px;
+          border-radius: 15px;
+          font-size: 11px;
+        }
+
+        #postsSection .trip-telegram-icon {
+          width: 22px;
+          height: 22px;
+          flex-basis: 22px;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
   }
 
   function renderPosts() {
+    ensurePostsRenderStyles();
+
     const list = document.getElementById("postsSection");
     if (!list) return;
 
@@ -336,12 +445,25 @@
     }
   }
 
+  function getTelegramIconHtml() {
+    return `
+      <span class="trip-telegram-icon" aria-hidden="true">
+        <img
+          src="${escapeAttr(TELEGRAM_ICON_SRC)}"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onerror="this.parentElement.classList.add('is-missing'); this.remove();"
+        >
+      </span>
+    `;
+  }
+
   function cardHtml(post) {
     const id = post?.id;
     const tg = cleanTelegram(post?.telegram);
     const ownerId = getOwnerId();
     const canManage = isOwnPost(post, ownerId);
-    const isFull = Boolean(post?.crew_full);
     const image = getCardImage(post);
     const fishingType = getPostFishingType(post);
     const fishingTypeClass = getFishingTypeClass(fishingType);
@@ -355,23 +477,38 @@
     const titleDestination = destination || city || "рыбалку";
 
     const safeId = escapeAttr(id);
+    const telegramIcon = getTelegramIconHtml();
 
-    const tgButton = isFull
-      ? `<button class="small-btn disabled" disabled onclick="event.stopPropagation()">Экипаж набран</button>`
-      : tg
-        ? `<button class="small-btn green" onclick="event.stopPropagation(); window.open('https://t.me/${escapeAttr(tg)}','_blank')">Написать автору</button>`
-        : `<button class="small-btn green" onclick="event.stopPropagation(); openTelegramSafe()">Написать в общий чат</button>`;
-
-    const fullBtn = canManage
-      ? `<button class="small-btn ${isFull ? "gray" : "blue"}" onclick="event.stopPropagation(); toggleCrewFull('${safeId}', ${isFull ? "false" : "true"})">${isFull ? "Снова ищу" : "Экипаж набран"}</button>`
-      : "";
+    const tgButton = tg
+      ? `
+        <button
+          class="small-btn green trip-telegram-btn"
+          type="button"
+          title="Написать автору в Telegram"
+          onclick="event.stopPropagation(); window.open('https://t.me/${escapeAttr(tg)}','_blank','noopener')"
+        >
+          ${telegramIcon}
+          <span>Написать</span>
+        </button>
+      `
+      : `
+        <button
+          class="small-btn green trip-telegram-btn"
+          type="button"
+          title="Открыть Telegram-чат Klevby"
+          onclick="event.stopPropagation(); window.KlevbyPostsRender.openTelegramSafe()"
+        >
+          ${telegramIcon}
+          <span>Telegram</span>
+        </button>
+      `;
 
     const editBtn = canManage
-      ? `<button class="small-btn yellow" onclick="event.stopPropagation(); editPost('${safeId}')">Редактировать</button>`
+      ? `<button class="small-btn yellow owner-action" type="button" onclick="event.stopPropagation(); editPost('${safeId}')">Редактировать</button>`
       : "";
 
     const deleteBtn = canManage
-      ? `<button class="small-btn red" onclick="event.stopPropagation(); deletePost('${safeId}')">Удалить</button>`
+      ? `<button class="small-btn red owner-action" type="button" onclick="event.stopPropagation(); deletePost('${safeId}')">Удалить</button>`
       : "";
 
     const date = post?.created_at
@@ -384,7 +521,7 @@
       : "";
 
     return `
-      <div class="card trip-card ${isFull ? "full" : ""} ${canManage ? "can-manage" : ""}" onclick="openPostModal('${safeId}')">
+      <div class="card trip-card ${canManage ? "can-manage" : ""}" onclick="openPostModal('${safeId}')">
         <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
         <div class="card-body">
@@ -412,7 +549,7 @@
 
             <div class="trip-fact">
               <div class="trip-fact-label">Места</div>
-              <div class="trip-fact-value">${escapeHtml(seats || (isFull ? "Экипаж набран" : "Уточнить"))}</div>
+              <div class="trip-fact-value">${escapeHtml(seats || "Уточнить")}</div>
             </div>
           </div>
 
@@ -422,14 +559,12 @@
             <span class="tag">🎣 выезд</span>
             ${city ? `<span class="tag">📍 ${escapeHtml(city)}</span>` : ""}
             ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
-            ${isFull ? '<span class="tag full">экипаж набран</span>' : ''}
             ${tg ? '<span class="tag">Telegram</span>' : ''}
-            ${isOwnPost(post, ownerId) ? '<span class="tag">моё</span>' : ''}
+            ${canManage ? '<span class="tag">моё</span>' : ''}
           </div>
 
           <div class="actions">
             ${tgButton}
-            ${fullBtn}
             ${editBtn}
             ${deleteBtn}
           </div>
@@ -440,10 +575,13 @@
 
   window.KlevbyPostsRender = {
     renderPosts,
-    cardHtml
+    cardHtml,
+    openTelegramSafe
   };
 
+  ensurePostsRenderStyles();
+
   console.log("Klevby posts render loaded", {
-    version: "20260515-posts-render-owner-actions-1"
+    version: POSTS_RENDER_VERSION
   });
 })();
