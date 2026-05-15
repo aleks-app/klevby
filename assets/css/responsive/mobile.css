@@ -110,79 +110,16 @@
     align-items: center;
     padding: 7px 8px max(7px, env(safe-area-inset-bottom));
     background:
-      radial-gradient(circle at 50% 0%, rgba(255, 191, 89, 0.18), transparent 44%),
-      linear-gradient(145deg, rgba(32, 44, 38, 0.94), rgba(12, 18, 16, 0.92));
-    border: 1px solid rgba(255, 191, 89, 0.18);
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.13), transparent 42%),
+      rgba(12, 18, 16, 0.88);
+    border: 1px solid rgba(244,178,74,0.16);
     border-radius: 30px 30px 25px 25px;
     box-shadow:
-      0 -8px 34px rgba(0,0,0,0.50),
-      0 0 34px rgba(244,178,74,0.10),
-      inset 0 1px 0 rgba(255,255,255,0.08);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-  }
-
-  .mobile-tabbar button,
-  .mobile-tabbar a {
-    min-width: 0;
-    min-height: 54px;
-    border-radius: 20px;
-    color: rgba(255, 248, 234, 0.76);
-    font-size: 22px;
-    line-height: 1;
-    transition:
-      transform 0.18s ease,
-      color 0.18s ease,
-      background 0.18s ease,
-      box-shadow 0.18s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .mobile-tabbar button:active,
-  .mobile-tabbar a:active {
-    transform: scale(0.96);
-  }
-
-  .mobile-tabbar svg {
-    width: 24px;
-    height: 24px;
-    stroke-width: 2.25;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .mobile-tabbar button.active,
-  .mobile-tabbar a.active,
-  .mobile-tabbar button[aria-current="page"],
-  .mobile-tabbar a[aria-current="page"] {
-    color: #fff8ea;
-    background:
-      radial-gradient(circle at 50% 0%, rgba(255, 191, 89, 0.20), transparent 58%),
-      rgba(255, 255, 255, 0.07);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 8px 18px rgba(0, 0, 0, 0.24);
-  }
-
-  .mobile-tabbar button:nth-child(3),
-  .mobile-tabbar a:nth-child(3) {
-    min-height: 58px;
-    transform: translateY(-5px);
-    color: #fff8ea;
-    background:
-      radial-gradient(circle at 50% 12%, rgba(255, 219, 139, 0.38), transparent 48%),
-      linear-gradient(145deg, rgba(255, 184, 72, 0.96), rgba(197, 116, 30, 0.94));
-    border: 1px solid rgba(255, 225, 154, 0.48);
-    box-shadow:
-      0 0 0 1px rgba(255, 226, 164, 0.18),
-      0 0 24px rgba(255, 174, 43, 0.34),
-      0 12px 28px rgba(0, 0, 0, 0.38),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  }
-
-  .mobile-tabbar button:nth-child(3):active,
-  .mobile-tabbar a:nth-child(3):active {
-    transform: translateY(-5px) scale(0.96);
+      0 -8px 34px rgba(0,0,0,0.48),
+      0 0 34px rgba(244,178,74,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.07);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .hero {
