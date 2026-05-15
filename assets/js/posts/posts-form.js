@@ -1,5 +1,7 @@
 (function () {
-  const POSTS_FORM_VERSION = "20260515-posts-form-resume-save-1";
+  const POSTS_FORM_VERSION = "20260515-posts-form-save-timeout-2";
+  const POSTS_SAVE_TIMEOUT_MS = 12000;
+  const POSTS_RELOAD_AFTER_SAVE_DELAY_MS = 180;
 
   let savePostInProgress = false;
 
@@ -27,6 +29,72 @@
     } catch (error) {
       // ignore debug errors
     }
+  }
+
+  function buildTimeoutError(label, timeoutMs) {
+    const error = new Error(`${label} не ответил за ${timeoutMs} мс.`);
+    error.name = "KlevbyPostsSaveTimeoutError";
+    error.isKlevbySaveTimeout = true;
+    return error;
+  }
+
+  async function runSupabaseMutationWithTimeout(query, label) {
+    const controller =
+      typeof AbortController !== "undefined"
+        ? new AbortController()
+        : null;
+
+    let executableQuery = query;
+
+    if (
+      controller &&
+      executableQuery &&
+      typeof executableQuery.abortSignal === "function"
+    ) {
+      executableQuery = executableQuery.abortSignal(controller.signal);
+    }
+
+    let timeoutId = null;
+
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        if (controller) {
+          try {
+            controller.abort();
+          } catch (error) {
+            // ignore abort errors
+          }
+        }
+
+        reject(buildTimeoutError(label, POSTS_SAVE_TIMEOUT_MS));
+      }, POSTS_SAVE_TIMEOUT_MS);
+    });
+
+    try {
+      return await Promise.race([executableQuery, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  function reloadPostsAfterSave() {
+    setTimeout(() => {
+      loadPosts({ force: true }).catch((error) => {
+        console.warn("Klevby posts form: background posts reload failed after save", {
+          message: error?.message || String(error || "")
+        });
+      });
+
+      if (typeof window.klevbyReloadMap === "function") {
+        try {
+          window.klevbyReloadMap();
+        } catch (error) {
+          console.warn("Klevby posts form: map reload failed after save", {
+            message: error?.message || String(error || "")
+          });
+        }
+      }
+    }, POSTS_RELOAD_AFTER_SAVE_DELAY_MS);
   }
 
   function getCurrentUserSafe() {
@@ -548,14 +616,20 @@
       });
 
       if (activeEditingId) {
-        result = await db
-          .from("posts")
-          .update(payload)
-          .eq("id", activeEditingId);
+        result = await runSupabaseMutationWithTimeout(
+          db
+            .from("posts")
+            .update(payload)
+            .eq("id", activeEditingId),
+          "Обновление выезда"
+        );
       } else {
-        result = await db
-          .from("posts")
-          .insert([{ ...payload, crew_full: false }]);
+        result = await runSupabaseMutationWithTimeout(
+          db
+            .from("posts")
+            .insert([{ ...payload, crew_full: false }]),
+          "Создание выезда"
+        );
       }
 
       if (result.error && String(result.error.message || "").includes("fishing_type")) {
@@ -568,14 +642,20 @@
         });
 
         if (activeEditingId) {
-          result = await db
-            .from("posts")
-            .update(payload)
-            .eq("id", activeEditingId);
+          result = await runSupabaseMutationWithTimeout(
+            db
+              .from("posts")
+              .update(payload)
+              .eq("id", activeEditingId),
+            "Обновление выезда без fishing_type"
+          );
         } else {
-          result = await db
-            .from("posts")
-            .insert([{ ...payload, crew_full: false }]);
+          result = await runSupabaseMutationWithTimeout(
+            db
+              .from("posts")
+              .insert([{ ...payload, crew_full: false }]),
+            "Создание выезда без fishing_type"
+          );
         }
       }
 
@@ -616,11 +696,6 @@
       showFormMessageSafe(wasEditing ? "Выезд обновлён." : "Выезд создан.");
 
       setCurrentViewMode("all");
-      await loadPosts({ force: true });
-
-      if (typeof window.klevbyReloadMap === "function") {
-        window.klevbyReloadMap();
-      }
 
       if (typeof window.setMode === "function") {
         window.setMode("all");
@@ -628,16 +703,25 @@
         window.showSection("trips");
       }
 
+      reloadPostsAfterSave();
+
       debugSaveStep("savePost finished successfully");
 
       return result;
     } catch (error) {
       console.error("Klevby posts form: savePost crashed", error);
 
-      showFormMessageSafe(
-        "Не получилось сохранить объявление. Проверь Console или попробуй обновить приложение.",
-        true
-      );
+      if (error?.isKlevbySaveTimeout || error?.name === "KlevbyPostsSaveTimeoutError" || error?.name === "AbortError") {
+        showFormMessageSafe(
+          "Сохранение зависло и было остановлено. Проверь интернет и нажми сохранить ещё раз.",
+          true
+        );
+      } else {
+        showFormMessageSafe(
+          "Не получилось сохранить объявление. Проверь Console или попробуй обновить приложение.",
+          true
+        );
+      }
 
       return null;
     } finally {
