@@ -1,6 +1,129 @@
 (function () {
   const DEFAULT_POSTS_LOAD_TIMEOUT_MS = 9000;
 
+  const TRIP_CARD_IMAGES = [
+    "assets/img/trips/narach.jpg",
+    "assets/img/trips/minsk-sea.jpg",
+    "assets/img/trips/quarry.jpg",
+    "assets/img/trips/river.jpg",
+    "assets/img/trips/forest-lake.jpg",
+    "assets/img/trips/pond.jpg",
+    "assets/img/trips/fishing-sunset.jpg",
+    "assets/img/trips/default-lake.webp"
+  ];
+
+  const TRIP_CARD_DEFAULT_IMAGE = "assets/img/trips/default-lake.webp";
+
+  const TRIP_IMAGE_RULES = [
+    {
+      image: "assets/img/trips/narach.jpg",
+      keywords: [
+        "нароч",
+        "нарач",
+        "narach",
+        "naroch"
+      ]
+    },
+    {
+      image: "assets/img/trips/minsk-sea.jpg",
+      keywords: [
+        "минское море",
+        "минск море",
+        "заслав",
+        "заславское",
+        "заславское водохранилище",
+        "море"
+      ]
+    },
+    {
+      image: "assets/img/trips/quarry.jpg",
+      keywords: [
+        "карьер",
+        "карьеры",
+        "солен",
+        "соленый",
+        "солёный",
+        "солёное",
+        "соленое",
+        "солнечный",
+        "меловой",
+        "меловые",
+        "мел"
+      ]
+    },
+    {
+      image: "assets/img/trips/river.jpg",
+      keywords: [
+        "река",
+        "неман",
+        "березина",
+        "березин",
+        "припять",
+        "припят",
+        "днепр",
+        "свислочь",
+        "свислоч",
+        "вилия",
+        "сож",
+        "друть",
+        "двина",
+        "западная двина",
+        "ручей"
+      ]
+    },
+    {
+      image: "assets/img/trips/pond.jpg",
+      keywords: [
+        "пруд",
+        "пруды",
+        "платник",
+        "платный",
+        "платная",
+        "водоем",
+        "водоём",
+        "став",
+        "карп",
+        "карповый",
+        "карпфишинг",
+        "коммерческий"
+      ]
+    },
+    {
+      image: "assets/img/trips/forest-lake.jpg",
+      keywords: [
+        "лес",
+        "лесное",
+        "лесной",
+        "озеро",
+        "озера",
+        "озёра",
+        "озер",
+        "дикое",
+        "дикий",
+        "болото",
+        "болот",
+        "залив",
+        "тихое место",
+        "туман"
+      ]
+    },
+    {
+      image: "assets/img/trips/fishing-sunset.jpg",
+      keywords: [
+        "закат",
+        "рассвет",
+        "вечер",
+        "вечером",
+        "утро",
+        "утром",
+        "заря",
+        "ночь",
+        "ночная",
+        "ночью"
+      ]
+    }
+  ];
+
   function isAuthLockError(error) {
     const message = String(error?.message || error || "").toLowerCase();
 
@@ -95,7 +218,10 @@
   }
 
   function normalizeText(value) {
-    return String(value || "").toLowerCase().trim();
+    return String(value || "")
+      .toLowerCase()
+      .replaceAll("ё", "е")
+      .trim();
   }
 
   function normalizeSelectFilterValue(elementId) {
@@ -148,34 +274,87 @@
   }
 
   function getCardImagesSafe() {
-    const config = window.KLEVB_CONFIG || {};
-    const images = Array.isArray(config.CARD_IMAGES) ? config.CARD_IMAGES.filter(Boolean) : [];
-
-    if (images.length) {
-      return images;
-    }
-
-    return [
-      "assets/img/narach-bg.webp",
-      "assets/img/klevby-icon-512.png"
-    ];
+    return TRIP_CARD_IMAGES.slice();
   }
 
-  function getCardImage(post) {
-    const images = getCardImagesSafe();
+  function getPostImageSearchText(post) {
+    return normalizeText([
+      post?.destination,
+      post?.city,
+      post?.trip_time,
+      post?.transport,
+      post?.seats,
+      post?.text,
+      post?.name,
+      getPostFishingType(post)
+    ].filter(Boolean).join(" "));
+  }
 
-    if (!images.length) {
-      return "assets/img/klevby-icon-512.png";
+  function getCustomPostImage(post) {
+    const value =
+      post?.card_image ||
+      post?.image_url ||
+      post?.photo_url ||
+      post?.cover_url ||
+      post?.image ||
+      "";
+
+    const src = String(value || "").trim();
+
+    if (
+      src.startsWith("http://") ||
+      src.startsWith("https://") ||
+      src.startsWith("assets/") ||
+      src.startsWith("./assets/") ||
+      src.startsWith("/")
+    ) {
+      return src;
     }
 
-    const key = String(post?.id || post?.created_at || post?.name || "klevby");
+    return "";
+  }
+
+  function getDeterministicImage(post, images) {
+    const safeImages = Array.isArray(images) && images.length ? images : [TRIP_CARD_DEFAULT_IMAGE];
+    const key = String(
+      post?.id ||
+      post?.created_at ||
+      post?.destination ||
+      post?.city ||
+      post?.name ||
+      post?.text ||
+      "klevby"
+    );
+
     let sum = 0;
 
     for (let i = 0; i < key.length; i++) {
-      sum += key.charCodeAt(i);
+      sum += key.charCodeAt(i) * (i + 1);
     }
 
-    return images[Math.abs(sum) % images.length];
+    return safeImages[Math.abs(sum) % safeImages.length] || TRIP_CARD_DEFAULT_IMAGE;
+  }
+
+  function getCardImage(post) {
+    const customImage = getCustomPostImage(post);
+
+    if (customImage) {
+      return customImage;
+    }
+
+    const searchText = getPostImageSearchText(post);
+
+    for (const rule of TRIP_IMAGE_RULES) {
+      const matched = rule.keywords.some((keyword) => {
+        return searchText.includes(normalizeText(keyword));
+      });
+
+      if (matched) {
+        return rule.image;
+      }
+    }
+
+    return getDeterministicImage(post, TRIP_CARD_IMAGES);
   }
 
   function saveAuthorLocal(name, telegram) {
@@ -199,6 +378,56 @@
     });
   }
 
+  function ensureTripImageBlendStyles() {
+    if (document.getElementById("klevby-trip-image-blend-style")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "klevby-trip-image-blend-style";
+    style.textContent = `
+      #postsSection .trip-card,
+      #profileFeedSection .trip-card {
+        overflow: hidden;
+      }
+
+      #postsSection .card-img,
+      #profileFeedSection .card-img,
+      .post-modal-image {
+        position: relative;
+        overflow: hidden;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+      }
+
+      #postsSection .card-img::after,
+      #profileFeedSection .card-img::after,
+      .post-modal-image::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 50% 20%, rgba(255,255,255,0.10), transparent 34%),
+          linear-gradient(180deg, rgba(2,4,3,0.05) 0%, rgba(2,4,3,0.12) 52%, rgba(2,4,3,0.48) 100%);
+        box-shadow:
+          inset 0 0 42px rgba(2,4,3,0.34),
+          inset 0 -36px 42px rgba(2,4,3,0.44);
+      }
+
+      #postsSection .card-img {
+        filter: saturate(1.06) contrast(1.02);
+      }
+
+      .post-modal-image {
+        filter: saturate(1.05) contrast(1.02);
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
   window.KlevbyPostsUtils = {
     isAuthLockError,
     isPostsTimeoutError,
@@ -216,7 +445,8 @@
     getCardImagesSafe,
     getCardImage,
     saveAuthorLocal,
-    withPostsTimeout
+    withPostsTimeout,
+    ensureTripImageBlendStyles
   };
 
   window.cleanTelegram = cleanTelegram;
@@ -228,4 +458,10 @@
   window.getCardImage = getCardImage;
   window.saveAuthorLocal = saveAuthorLocal;
   window.openTelegramSafe = openTelegramSafe;
+
+  ensureTripImageBlendStyles();
+
+  console.log("Klevby posts utils loaded", {
+    version: "20260515-trip-card-images-1"
+  });
 })();
