@@ -323,7 +323,7 @@ function openTelegramSafe() {
 
   const config = window.KLEVB_CONFIG || {};
   const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
-  window.open(link, "_blank");
+  window.open(link, "_blank", "noopener");
 }
 
 function cleanTelegram(value) {
@@ -515,6 +515,87 @@ function cardHtml(post) {
   return "";
 }
 
+function openPostModalFallback(id) {
+  const post = getPostsArray().find((item) => String(item.id) === String(id));
+  if (!post) {
+    console.warn("Klevby posts: объявление для модалки не найдено.", { id });
+    return null;
+  }
+
+  setActiveModalPost(post);
+
+  const modal = document.getElementById("postModal");
+  const imageEl = document.getElementById("postModalImage");
+  const titleEl = document.getElementById("postModalTitle");
+  const metaEl = document.getElementById("postModalMeta");
+  const textEl = document.getElementById("postModalText");
+  const writeBtn = document.getElementById("postModalWriteBtn");
+
+  if (!modal || !imageEl || !titleEl || !metaEl || !textEl || !writeBtn) {
+    console.warn("Klevby posts: DOM модалки объявления не найден.", {
+      hasModal: Boolean(modal),
+      hasImage: Boolean(imageEl),
+      hasTitle: Boolean(titleEl),
+      hasMeta: Boolean(metaEl),
+      hasText: Boolean(textEl),
+      hasWriteBtn: Boolean(writeBtn)
+    });
+
+    return null;
+  }
+
+  const image = getCardImage(post);
+  const tg = cleanTelegram(post.telegram);
+  const date = post.created_at
+    ? new Date(post.created_at).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "long",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    : "";
+
+  const fishingType = getPostFishingType(post);
+  const destination = post.destination || post.city || "рыбалку";
+  const ownerId = getOwnerId();
+  const canManage = Boolean(ownerId && post?.owner_id && String(post.owner_id) === String(ownerId));
+
+  imageEl.style.backgroundImage = `url("${String(image || "").replaceAll('"', "%22")}")`;
+  titleEl.textContent = `${post.name || "Рыбак"} едет на ${destination}`;
+  textEl.textContent = post.text || "Описание не указано.";
+
+  metaEl.innerHTML = `
+    ${post.city ? `<span class="post-modal-pill">📍 Откуда: ${escapeHtml(post.city)}</span>` : ""}
+    ${post.destination ? `<span class="post-modal-pill">🗺️ Куда: ${escapeHtml(post.destination)}</span>` : ""}
+    ${post.trip_time ? `<span class="post-modal-pill">🕒 Когда: ${escapeHtml(post.trip_time)}</span>` : ""}
+    ${fishingType ? `<span class="post-modal-pill">🎣 ${escapeHtml(fishingType)}</span>` : ""}
+    ${post.transport ? `<span class="post-modal-pill">🚗 ${escapeHtml(post.transport)}</span>` : ""}
+    ${post.seats ? `<span class="post-modal-pill">👥 ${escapeHtml(post.seats)}</span>` : ""}
+    ${date ? `<span class="post-modal-pill">Создано: ${escapeHtml(date)}</span>` : ""}
+    ${tg ? `<span class="post-modal-pill">Telegram</span>` : ""}
+    ${canManage ? `<span class="post-modal-pill">Моё объявление</span>` : ""}
+  `;
+
+  writeBtn.textContent = tg ? "Написать" : "Telegram";
+  writeBtn.disabled = false;
+
+  const timer = getPostModalCloseTimer();
+
+  if (timer) {
+    clearTimeout(timer);
+    setPostModalCloseTimer(null);
+  }
+
+  modal.classList.remove("hidden");
+
+  requestAnimationFrame(() => {
+    modal.classList.add("open");
+    document.body.classList.add("post-modal-open");
+  });
+
+  return post;
+}
+
 function openPostModal(id) {
   const modalModule = getPostsModalSafe();
 
@@ -522,9 +603,33 @@ function openPostModal(id) {
     return modalModule.openPostModal(id);
   }
 
-  console.warn("Klevby posts: posts-modal module недоступен, модалка объявления не открыта.", {
+  console.warn("Klevby posts: posts-modal module недоступен, открываю модалку через bridge fallback.", {
     id
   });
+
+  return openPostModalFallback(id);
+}
+
+function closePostModalFallback() {
+  const modal = document.getElementById("postModal");
+  if (!modal) return null;
+
+  modal.classList.remove("open");
+  document.body.classList.remove("post-modal-open");
+
+  const oldTimer = getPostModalCloseTimer();
+
+  if (oldTimer) {
+    clearTimeout(oldTimer);
+  }
+
+  const timer = setTimeout(() => {
+    modal.classList.add("hidden");
+    setActiveModalPost(null);
+    setPostModalCloseTimer(null);
+  }, 360);
+
+  setPostModalCloseTimer(timer);
 
   return null;
 }
@@ -536,15 +641,7 @@ function closePostModal() {
     return modalModule.closePostModal();
   }
 
-  const modal = document.getElementById("postModal");
-  if (!modal) return null;
-
-  modal.classList.add("hidden");
-  modal.classList.remove("open");
-  document.body.classList.remove("post-modal-open");
-  setActiveModalPost(null);
-
-  return null;
+  return closePostModalFallback();
 }
 
 function handlePostModalBackdrop(event) {
@@ -555,7 +652,7 @@ function handlePostModalBackdrop(event) {
   }
 
   if (event?.target && event.target.id === "postModal") {
-    closePostModal();
+    closePostModalFallback();
   }
 
   return null;
@@ -574,7 +671,7 @@ function writePostAuthor() {
   const tg = cleanTelegram(post.telegram);
 
   if (tg) {
-    window.open(`https://t.me/${tg}`, "_blank");
+    window.open(`https://t.me/${tg}`, "_blank", "noopener");
   } else {
     openTelegramSafe();
   }
@@ -792,5 +889,5 @@ window.toggleCrewFull = toggleCrewFull;
 window.deletePost = deletePost;
 
 console.log("Klevby posts bridge loaded", {
-  version: "20260515-posts-actions-split-1"
+  version: "20260515-posts-bridge-modal-fallback-1"
 });
