@@ -697,6 +697,13 @@
     display: none;
   }
 
+  #postsSection .trip-card.can-manage .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+    margin-top: 10px;
+  }
+
   #postsSection .actions .small-btn {
     width: 100%;
     min-height: 34px;
