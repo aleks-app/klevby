@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260515-posts-render-clean-actions-open-modal-1";
+  const POSTS_RENDER_VERSION = "20260515-posts-render-card-click-bind-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   function getState() {
@@ -215,37 +215,107 @@
     window.open(getTelegramGroupUrl(), "_blank", "noopener");
   }
 
-  function openPostModalSafe(id) {
+  function tryOpenPostModal(id) {
     if (window.KlevbyPostsModal && typeof window.KlevbyPostsModal.openPostModal === "function") {
       window.KlevbyPostsModal.openPostModal(id);
-      return;
+      return true;
     }
 
     if (typeof window.openPostModal === "function") {
       window.openPostModal(id);
+      return true;
+    }
+
+    return false;
+  }
+
+  function openPostModalSafe(id) {
+    const safeId = String(id || "").trim();
+
+    if (!safeId) {
+      console.warn("Klevby posts render: пустой id карточки, модалка не открыта.");
       return;
     }
 
-    console.warn("Klevby posts render: post modal module недоступен", {
-      id,
-      hasKlevbyPostsModal: Boolean(window.KlevbyPostsModal),
-      openPostModalType: typeof window.KlevbyPostsModal?.openPostModal,
-      globalOpenPostModalType: typeof window.openPostModal
+    if (tryOpenPostModal(safeId)) {
+      return;
+    }
+
+    setTimeout(() => {
+      if (tryOpenPostModal(safeId)) {
+        return;
+      }
+
+      console.warn("Klevby posts render: post modal module недоступен", {
+        id: safeId,
+        hasKlevbyPostsModal: Boolean(window.KlevbyPostsModal),
+        openPostModalType: typeof window.KlevbyPostsModal?.openPostModal,
+        globalOpenPostModalType: typeof window.openPostModal
+      });
+    }, 120);
+  }
+
+  function shouldIgnoreCardClick(event) {
+    return Boolean(
+      event.target.closest("button") ||
+      event.target.closest("a") ||
+      event.target.closest("input") ||
+      event.target.closest("select") ||
+      event.target.closest("textarea") ||
+      event.target.closest("[data-no-card-open]")
+    );
+  }
+
+  function bindPostCardOpenHandlers(container) {
+    if (!container) return;
+
+    const cards = Array.from(container.querySelectorAll(".trip-card[data-post-id]"));
+
+    cards.forEach((card) => {
+      if (card.dataset.klevbyOpenBound === "1") {
+        return;
+      }
+
+      card.dataset.klevbyOpenBound = "1";
+
+      card.addEventListener("click", (event) => {
+        if (shouldIgnoreCardClick(event)) {
+          return;
+        }
+
+        openPostModalSafe(card.dataset.postId);
+      });
+
+      card.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+
+        if (shouldIgnoreCardClick(event)) {
+          return;
+        }
+
+        event.preventDefault();
+        openPostModalSafe(card.dataset.postId);
+      });
     });
   }
 
   function ensurePostsRenderStyles() {
-    if (document.getElementById("klevby-posts-render-actions-style")) {
-      return;
+    let style = document.getElementById("klevby-posts-render-actions-style");
+
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "klevby-posts-render-actions-style";
+      document.head.appendChild(style);
     }
 
-    const style = document.createElement("style");
-    style.id = "klevby-posts-render-actions-style";
     style.textContent = `
       #postsSection .trip-card {
         display: flex !important;
         flex-direction: column;
         height: 100%;
+        cursor: pointer;
       }
 
       #postsSection .trip-card .card-body {
@@ -344,8 +414,6 @@
         }
       }
     `;
-
-    document.head.appendChild(style);
   }
 
   function renderPosts() {
@@ -464,6 +532,7 @@
     }
 
     list.innerHTML = cards;
+    bindPostCardOpenHandlers(list);
 
     if (typeof window.updateHomeFloatButton === "function") {
       setTimeout(window.updateHomeFloatButton, 80);
@@ -540,10 +609,9 @@
     return `
       <div
         class="card trip-card ${canManage ? "can-manage" : ""}"
+        data-post-id="${safeId}"
         role="button"
         tabindex="0"
-        onclick="window.KlevbyPostsRender.openPostModalSafe('${safeId}')"
-        onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); window.KlevbyPostsRender.openPostModalSafe('${safeId}'); }"
       >
         <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
@@ -586,7 +654,7 @@
             ${canManage ? '<span class="tag">моё</span>' : ''}
           </div>
 
-          <div class="actions">
+          <div class="actions" data-no-card-open="1">
             ${tgButton}
           </div>
         </div>
