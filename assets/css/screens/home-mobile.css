@@ -326,12 +326,51 @@
     display: block !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author {
-    margin-bottom: 12px !important;
+  #homeSection #profileFeedSection .profile-feed-body {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "author tags"
+      "actions actions" !important;
+    align-items: center !important;
+    gap: 14px 12px !important;
+    padding: 18px 26px 22px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-body {
-    padding-top: 16px !important;
+  #homeSection #profileFeedSection .profile-feed-author {
+    grid-area: author !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    align-self: center !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-tags {
+    grid-area: tags !important;
+    margin: 0 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 8px !important;
+    max-width: 46vw !important;
+    flex-wrap: wrap !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-tags .tag {
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-actions {
+    grid-area: actions !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-description {
+    display: none !important;
   }
 
   #homeSection #profileFeedSection.social-feed-grid {
@@ -402,5 +441,21 @@
 
   #homeSection #profileFeedSection .profile-feed-image > .profile-feed-image-img {
     object-position: center 38% !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-body {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "author"
+      "tags"
+      "actions" !important;
+    gap: 10px !important;
+    padding: 16px 22px 20px !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-tags {
+    justify-self: start !important;
+    justify-content: flex-start !important;
+    max-width: 100% !important;
   }
 }
