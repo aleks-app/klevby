@@ -1,5 +1,10 @@
 (function () {
   const POSTS_FORM_VERSION = "20260514-posts-form-split-1";
+  let savePostInProgress = false;
+
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   function getState() {
     return window.KlevbyPostsState || {};
@@ -244,9 +249,16 @@
   }
 
   async function ensureUserForPostAction() {
+    console.debug("Klevby posts form: ensure user start", {
+      authReady: getCurrentAuthReady()
+    });
+
     let user = getCurrentUserSafe();
 
     if (user && user.id) {
+      console.debug("Klevby posts form: ensure user end", {
+        userIdPresent: true
+      });
       return user;
     }
 
@@ -257,6 +269,9 @@
     user = getCurrentUserSafe();
 
     if (user && user.id) {
+      console.debug("Klevby posts form: ensure user end", {
+        userIdPresent: true
+      });
       return user;
     }
 
@@ -264,10 +279,40 @@
       await window.restoreAuthState("post_action_retry", false);
     }
 
-    return getCurrentUserSafe();
+    const retryDelays = [150, 200, 250];
+
+    for (let index = 0; index < retryDelays.length; index += 1) {
+      await delay(retryDelays[index]);
+      user = getCurrentUserSafe();
+
+      if (user && user.id) {
+        console.debug("Klevby posts form: ensure user end", {
+          userIdPresent: true,
+          retryAttempt: index + 1
+        });
+        return user;
+      }
+    }
+
+    const finalUser = getCurrentUserSafe();
+
+    console.debug("Klevby posts form: ensure user end", {
+      userIdPresent: Boolean(finalUser && finalUser.id)
+    });
+
+    return finalUser;
   }
 
   async function savePost() {
+    if (savePostInProgress) {
+      console.warn("Klevby posts form: save already in progress, duplicate click ignored.");
+      return;
+    }
+
+    savePostInProgress = true;
+    console.debug("Klevby posts form: savePost entered");
+
+    try {
     const restoredUser = await ensureUserForPostAction();
 
     const name = document.getElementById("nameInput")?.value.trim() || "";
@@ -280,7 +325,26 @@
     const text = document.getElementById("textInput")?.value.trim() || "";
     const telegram = cleanTelegram(document.getElementById("telegramInput")?.value || "");
 
+    console.debug("Klevby posts form: form values collected", {
+      hasName: Boolean(name),
+      hasCity: Boolean(city),
+      hasDestination: Boolean(destination),
+      hasTripTime: Boolean(tripTime),
+      hasText: Boolean(text),
+      hasTelegram: Boolean(telegram)
+    });
+
     if (!restoredUser) {
+      showFormMessageSafe("Авторизация ещё восстанавливается. Подожди пару секунд и нажми сохранить ещё раз.", true);
+      console.warn("Klevby posts form: user missing after retries", {
+        authReady: getCurrentAuthReady(),
+        hasCurrentUser: Boolean(getCurrentUserSafe()),
+        hasCurrentUserId: Boolean(getCurrentUserSafe()?.id),
+        hasSupabaseClient: Boolean(getSupabaseClientSafe()),
+        hasSupabaseSessionAccessor:
+          Boolean(getSupabaseClientSafe()?.auth && typeof getSupabaseClientSafe().auth.getSession === "function")
+      });
+
       if (typeof window.showSection === "function") {
         window.showSection("auth");
       }
@@ -290,9 +354,12 @@
     }
 
     if (!name || !city || !destination || !tripTime || !text) {
+      console.debug("Klevby posts form: validation failed");
       showFormMessageSafe("Заполни Nickname, город, куда едешь, когда и описание.", true);
       return;
     }
+
+    console.debug("Klevby posts form: validation passed");
 
     const db = getSupabaseClientSafe();
 
@@ -319,8 +386,18 @@
       payload.fishing_type = fishingType;
     }
 
+    console.debug("Klevby posts form: payload ready", {
+      hasFishingType: Boolean(payload.fishing_type),
+      editing: Boolean(getCurrentEditingId()),
+      ownerIdPresent: Boolean(payload.owner_id)
+    });
+
     let result;
     const activeEditingId = getCurrentEditingId();
+
+    console.debug("Klevby posts form: insert/update start", {
+      mode: activeEditingId ? "update" : "insert"
+    });
 
     if (activeEditingId) {
       result = await db
@@ -351,10 +428,15 @@
     }
 
     if (result.error) {
+      console.debug("Klevby posts form: insert/update error", {
+        message: result.error.message || "unknown"
+      });
       showFormMessageSafe("Не получилось сохранить объявление: " + (result.error.message || "ошибка Supabase"), true);
       console.error("Ошибка сохранения posts:", result.error);
       return;
     }
+
+    console.debug("Klevby posts form: insert/update success");
 
     const wasEditing = Boolean(activeEditingId);
 
@@ -390,6 +472,10 @@
       window.setMode("all");
     } else if (typeof window.showSection === "function") {
       window.showSection("trips");
+    }
+    } finally {
+      savePostInProgress = false;
+      console.debug("Klevby posts form: saving lock reset");
     }
   }
 

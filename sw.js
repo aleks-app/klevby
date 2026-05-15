@@ -1,4 +1,4 @@
-const CACHE_NAME = "klevby-cache-v10-fast-refresh-2026-05-07";
+const CACHE_NAME = "klevby-cache-v11-posts-split-2026-05-15";
 
 const APP_FILES = [
   "/",
@@ -29,6 +29,13 @@ const APP_FILES = [
   "/assets/js/weather.js",
   "/assets/js/auth.js",
   "/assets/js/posts.js",
+  "/assets/js/posts/posts-state.js",
+  "/assets/js/posts/posts-utils.js",
+  "/assets/js/posts/posts-api.js",
+  "/assets/js/posts/posts-render.js",
+  "/assets/js/posts/posts-modal.js",
+  "/assets/js/posts/posts-form.js",
+  "/assets/js/posts/posts-actions.js",
   "/assets/js/ui.js",
   "/assets/js/app.js",
 
