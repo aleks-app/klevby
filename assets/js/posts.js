@@ -613,14 +613,41 @@ async function ensureUserForPostAction() {
 }
 
 async function savePost() {
-  const form = getPostsFormSafe();
+  const getPostsBridgeDiagnostics = () => {
+    const scripts = Array.from(document.querySelectorAll("script[src]"));
+    const pickSrc = (pattern) => scripts.find((node) => String(node.src || "").includes(pattern))?.src || null;
+
+    return {
+      hasKlevbyPostsForm: Boolean(window.KlevbyPostsForm),
+      savePostType: typeof window.KlevbyPostsForm?.savePost,
+      postsBridgeSrc: pickSrc("/assets/js/posts.js"),
+      postsFormSrc: pickSrc("/assets/js/posts/posts-form.js")
+    };
+  };
+
+  let form = getPostsFormSafe();
 
   if (typeof form.savePost === "function") {
     return form.savePost();
   }
 
-  console.warn("Klevby posts: posts-form module недоступен, сохранение объявления отменено.");
-  showFormMessageSafe("Модуль формы ещё не готов. Обнови страницу.", true);
+  await new Promise((resolve) => {
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => setTimeout(resolve, 140));
+      return;
+    }
+
+    setTimeout(resolve, 140);
+  });
+
+  form = getPostsFormSafe();
+
+  if (typeof form.savePost === "function") {
+    return form.savePost();
+  }
+
+  console.warn("Klevby posts: posts-form module недоступен после retry, сохранение объявления отменено.", getPostsBridgeDiagnostics());
+  showFormMessageSafe("Модуль создания выезда ещё обновляется. Обнови приложение и попробуй снова.", true);
 
   return null;
 }
