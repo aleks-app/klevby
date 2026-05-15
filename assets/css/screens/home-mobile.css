@@ -3,6 +3,10 @@
    Desktop, posts, chat, market, ponds, map and profile are not touched.
 */
 
+#homeSection #forecastPanel .forecast-bite-item {
+  display: none;
+}
+
 @media (max-width: 767px) {
   #homeSection .trust-bar {
     gap: 12px !important;
@@ -96,67 +100,16 @@
     gap: 0 !important;
     border-radius: 20px !important;
     overflow: hidden !important;
-    background:
-      linear-gradient(
-        to right,
-        transparent 0,
-        transparent calc(75% - 0.5px),
-        rgba(255, 255, 255, 0.055) calc(75% - 0.5px),
-        rgba(255, 255, 255, 0.055) calc(75% + 0.5px),
-        transparent calc(75% + 0.5px)
-      ),
-      rgba(255, 255, 255, 0.04) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
     border: 1px solid rgba(255, 255, 255, 0.065) !important;
     box-shadow: none !important;
     position: relative !important;
   }
 
-  #homeSection #forecastPanel .forecast-grid::before {
-    all: unset;
-    content: "🐟";
-    position: absolute;
-    left: 87.5%;
-    top: 8px;
-    width: 34px;
-    height: 34px;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 30px;
-    line-height: 1;
-    z-index: 3;
-    pointer-events: none;
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.38);
-  }
-
+  #homeSection #forecastPanel .forecast-grid::before,
   #homeSection #forecastPanel .forecast-grid::after {
-    all: unset;
-    content: "Клёв\AСредний";
-    white-space: pre-line;
-    position: absolute;
-    left: 75%;
-    right: 0;
-    top: 39px;
-    bottom: 7px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255, 238, 205, 0.94);
-    font-size: 14px;
-    line-height: 1.03;
-    font-weight: 900;
-    letter-spacing: -0.025em;
-    text-align: center;
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
-    z-index: 3;
-    pointer-events: none;
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
+    content: none !important;
+    display: none !important;
   }
 
   #homeSection #forecastPanel .forecast-item {
@@ -168,17 +121,26 @@
     border: 0 !important;
     box-shadow: none !important;
     position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
-  #homeSection #forecastPanel .forecast-item:nth-child(n + 4) {
-    background: transparent !important;
-    background-image: none !important;
-    border: 0 !important;
-    box-shadow: none !important;
-  }
-
-  #homeSection #forecastPanel .forecast-item:nth-child(n + 4) > * {
+  #homeSection #forecastPanel .forecast-moon-item {
     display: none !important;
+  }
+
+  #homeSection #forecastPanel .forecast-bite-item {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  #homeSection #forecastPanel .forecast-bite-item > * {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
   #homeSection #forecastPanel .forecast-item + .forecast-item::before {
@@ -191,12 +153,13 @@
     background: rgba(255, 255, 255, 0.055);
   }
 
-  #homeSection #forecastPanel .forecast-item:nth-child(n + 4)::before {
+  #homeSection #forecastPanel .forecast-moon-item::before {
     content: none !important;
     display: none !important;
   }
 
   #homeSection #forecastPanel .forecast-icon {
+    order: 1;
     width: 30px !important;
     height: 30px !important;
     min-width: 30px !important;
@@ -207,22 +170,29 @@
     align-items: center !important;
     justify-content: center !important;
     font-size: 17px !important;
+    line-height: 1 !important;
     box-shadow:
       0 0 0 1px rgba(255, 255, 255, 0.07),
       0 7px 14px rgba(0, 0, 0, 0.14) !important;
   }
 
-  #homeSection #forecastPanel .forecast-label {
-    font-size: 9.5px !important;
-    line-height: 1.1 !important;
-    opacity: 0.58 !important;
-    white-space: nowrap !important;
+  #homeSection #forecastPanel .forecast-bite-item .forecast-icon {
+    font-size: 22px !important;
   }
 
   #homeSection #forecastPanel .forecast-value {
+    order: 2;
     font-size: 14px !important;
     line-height: 1.05 !important;
     font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  #homeSection #forecastPanel .forecast-label {
+    order: 3;
+    font-size: 9.5px !important;
+    line-height: 1.1 !important;
+    opacity: 0.58 !important;
     white-space: nowrap !important;
   }
 
@@ -251,20 +221,6 @@
     border-radius: 18px !important;
   }
 
-  #homeSection #forecastPanel .forecast-grid::before {
-    top: 7px;
-    width: 32px;
-    height: 32px;
-    font-size: 29px;
-  }
-
-  #homeSection #forecastPanel .forecast-grid::after {
-    top: 37px;
-    bottom: 6px;
-    font-size: 13px;
-    line-height: 1.02;
-  }
-
   #homeSection #forecastPanel .forecast-item {
     padding: 8px 3px 7px !important;
   }
@@ -274,6 +230,10 @@
     height: 28px !important;
     min-width: 28px !important;
     font-size: 16px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-bite-item .forecast-icon {
+    font-size: 21px !important;
   }
 
   #homeSection #forecastPanel .forecast-label {
