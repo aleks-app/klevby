@@ -130,6 +130,7 @@
 
     return (
       payload.includes("fishing_type") ||
+      payload.includes("trip_date") ||
       payload.includes("schema cache") ||
       payload.includes("could not find") ||
       payload.includes("column")
@@ -212,21 +213,28 @@
     );
   }
 
-  function getPostsSelectQuery(includeFishingType = false) {
+  function getPostsSelectQuery(includeFishingType = false, includeTripDate = true) {
     const columns = [
       "id",
       "created_at",
       "name",
       "city",
       "destination",
-      "trip_time",
+      "trip_time"
+    ];
+
+    if (includeTripDate) {
+      columns.push("trip_date");
+    }
+
+    columns.push(
       "transport",
       "seats",
       "text",
       "telegram",
       "owner_id",
       "crew_full"
-    ];
+    );
 
     if (includeFishingType) {
       columns.push("fishing_type");
@@ -235,10 +243,10 @@
     return columns.join(",");
   }
 
-  function buildPostsRestQuery(includeFishingType = true) {
+  function buildPostsRestQuery(includeFishingType = true, includeTripDate = true) {
     const params = new URLSearchParams();
 
-    params.set("select", getPostsSelectQuery(includeFishingType));
+    params.set("select", getPostsSelectQuery(includeFishingType, includeTripDate));
     params.set("order", "created_at.desc");
 
     return params.toString();
@@ -256,7 +264,7 @@
     setPostsLoadRetryTimer(timer);
   }
 
-  async function queryPostsViaRest(includeFishingType = true) {
+  async function queryPostsViaRest(includeFishingType = true, includeTripDate = true) {
     const supabaseUrl = getSupabaseUrlSafe();
     const anonKey = getSupabaseAnonKeySafe();
 
@@ -268,7 +276,7 @@
     const timer = setTimeout(() => controller.abort(), POSTS_LOAD_TIMEOUT_MS);
 
     try {
-      const url = `${supabaseUrl}/rest/v1/posts?${buildPostsRestQuery(includeFishingType)}`;
+      const url = `${supabaseUrl}/rest/v1/posts?${buildPostsRestQuery(includeFishingType, includeTripDate)}`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -324,7 +332,7 @@
 
   async function queryPostsRestSafe() {
     try {
-      const data = await queryPostsViaRest(true);
+      const data = await queryPostsViaRest(true, true);
 
       return {
         data,
@@ -336,15 +344,52 @@
         throw error;
       }
 
-      console.debug("Klevby posts: REST select с fishing_type не сработал, пробую без fishing_type", error);
+      console.debug("Klevby posts: REST select с расширенными полями не сработал, пробую безопасные fallback-варианты", error);
 
-      const data = await queryPostsViaRest(false);
+      const fallbackAttempts = [
+        {
+          includeFishingType: false,
+          includeTripDate: true,
+          source: "rest_no_fishing_type"
+        },
+        {
+          includeFishingType: true,
+          includeTripDate: false,
+          source: "rest_no_trip_date"
+        },
+        {
+          includeFishingType: false,
+          includeTripDate: false,
+          source: "rest_basic"
+        }
+      ];
 
-      return {
-        data,
-        error: null,
-        source: "rest_no_fishing_type"
-      };
+      let lastError = error;
+
+      for (const attempt of fallbackAttempts) {
+        try {
+          const data = await queryPostsViaRest(attempt.includeFishingType, attempt.includeTripDate);
+
+          return {
+            data,
+            error: null,
+            source: attempt.source
+          };
+        } catch (fallbackError) {
+          lastError = fallbackError;
+
+          if (!isPostsSchemaFallbackError(fallbackError)) {
+            throw fallbackError;
+          }
+
+          console.debug("Klevby posts: REST fallback не сработал, пробую следующий", {
+            source: attempt.source,
+            error: String(fallbackError?.message || fallbackError)
+          });
+        }
+      }
+
+      throw lastError;
     }
   }
 
@@ -354,21 +399,62 @@
     }
 
     try {
-      let result = await db
-        .from("posts")
-        .select(getPostsSelectQuery(true))
-        .order("created_at", { ascending: false });
+      const attempts = [
+        {
+          includeFishingType: true,
+          includeTripDate: true,
+          source: "sdk"
+        },
+        {
+          includeFishingType: false,
+          includeTripDate: true,
+          source: "sdk_no_fishing_type"
+        },
+        {
+          includeFishingType: true,
+          includeTripDate: false,
+          source: "sdk_no_trip_date"
+        },
+        {
+          includeFishingType: false,
+          includeTripDate: false,
+          source: "sdk_basic"
+        }
+      ];
 
-      if (result.error && String(result.error.message || "").includes("fishing_type")) {
-        result = await db
+      let lastResult = null;
+
+      for (const attempt of attempts) {
+        const result = await db
           .from("posts")
-          .select(getPostsSelectQuery(false))
+          .select(getPostsSelectQuery(attempt.includeFishingType, attempt.includeTripDate))
           .order("created_at", { ascending: false });
+
+        if (!result.error) {
+          return {
+            ...(result || {}),
+            source: attempt.source
+          };
+        }
+
+        lastResult = result;
+
+        if (!isPostsSchemaFallbackError(result.error)) {
+          return {
+            ...(result || {}),
+            source: attempt.source
+          };
+        }
+
+        console.debug("Klevby posts: SDK select fallback", {
+          source: attempt.source,
+          error: String(result.error?.message || result.error)
+        });
       }
 
       return {
-        ...(result || {}),
-        source: "sdk"
+        ...(lastResult || {}),
+        source: "sdk_failed"
       };
     } catch (error) {
       if (isAuthLockError(error) && retry < POSTS_MAX_RETRIES) {
@@ -580,6 +666,6 @@
   };
 
   console.log("Klevby posts api loaded", {
-    version: "20260514-posts-api-split-1"
+    version: "20260515-posts-api-trip-date-1"
   });
 })();
