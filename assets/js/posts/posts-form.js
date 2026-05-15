@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_FORM_VERSION = "20260515-posts-form-save-timeout-2";
+  const POSTS_FORM_VERSION = "20260515-posts-form-rest-save-1";
   const POSTS_SAVE_TIMEOUT_MS = 12000;
   const POSTS_RELOAD_AFTER_SAVE_DELAY_MS = 180;
 
@@ -38,21 +38,11 @@
     return error;
   }
 
-  async function runSupabaseMutationWithTimeout(query, label) {
+  async function runWithTimeout(promiseFactory, label, timeoutMs = POSTS_SAVE_TIMEOUT_MS) {
     const controller =
       typeof AbortController !== "undefined"
         ? new AbortController()
         : null;
-
-    let executableQuery = query;
-
-    if (
-      controller &&
-      executableQuery &&
-      typeof executableQuery.abortSignal === "function"
-    ) {
-      executableQuery = executableQuery.abortSignal(controller.signal);
-    }
 
     let timeoutId = null;
 
@@ -66,35 +56,18 @@
           }
         }
 
-        reject(buildTimeoutError(label, POSTS_SAVE_TIMEOUT_MS));
-      }, POSTS_SAVE_TIMEOUT_MS);
+        reject(buildTimeoutError(label, timeoutMs));
+      }, timeoutMs);
     });
 
     try {
-      return await Promise.race([executableQuery, timeoutPromise]);
+      return await Promise.race([
+        promiseFactory(controller ? controller.signal : null),
+        timeoutPromise
+      ]);
     } finally {
       clearTimeout(timeoutId);
     }
-  }
-
-  function reloadPostsAfterSave() {
-    setTimeout(() => {
-      loadPosts({ force: true }).catch((error) => {
-        console.warn("Klevby posts form: background posts reload failed after save", {
-          message: error?.message || String(error || "")
-        });
-      });
-
-      if (typeof window.klevbyReloadMap === "function") {
-        try {
-          window.klevbyReloadMap();
-        } catch (error) {
-          console.warn("Klevby posts form: map reload failed after save", {
-            message: error?.message || String(error || "")
-          });
-        }
-      }
-    }, POSTS_RELOAD_AFTER_SAVE_DELAY_MS);
   }
 
   function getCurrentUserSafe() {
@@ -153,6 +126,60 @@
     }
 
     return [];
+  }
+
+  function setPostsArray(value) {
+    const state = getState();
+
+    if (typeof state.setPostsArray === "function") {
+      state.setPostsArray(Array.isArray(value) ? value : []);
+      return;
+    }
+
+    const safePosts = Array.isArray(value) ? value : [];
+
+    window.posts = safePosts;
+    window.klevbyPosts = safePosts;
+  }
+
+  function upsertPostInLocalState(savedPost, activeEditingId = null) {
+    if (!savedPost || !savedPost.id) {
+      return;
+    }
+
+    const currentPosts = getPostsArray();
+    let nextPosts = [];
+
+    if (activeEditingId) {
+      let replaced = false;
+
+      nextPosts = currentPosts.map((post) => {
+        if (String(post.id) === String(activeEditingId)) {
+          replaced = true;
+          return {
+            ...post,
+            ...savedPost
+          };
+        }
+
+        return post;
+      });
+
+      if (!replaced) {
+        nextPosts = [savedPost, ...nextPosts];
+      }
+    } else {
+      nextPosts = [
+        savedPost,
+        ...currentPosts.filter((post) => String(post.id) !== String(savedPost.id))
+      ];
+    }
+
+    setPostsArray(nextPosts);
+
+    if (typeof window.renderPosts === "function") {
+      window.renderPosts();
+    }
   }
 
   function getCurrentEditingId() {
@@ -215,6 +242,54 @@
     window.klevbyViewMode = safeMode;
   }
 
+  function getConfigSafe() {
+    return window.KLEVB_CONFIG || window.klevbyConfig || {};
+  }
+
+  function getSupabaseUrlSafe() {
+    const api = getApi();
+
+    if (typeof api.getSupabaseUrlSafe === "function") {
+      return String(api.getSupabaseUrlSafe() || "").replace(/\/+$/, "");
+    }
+
+    const config = getConfigSafe();
+
+    return String(
+      config.SUPABASE_URL ||
+      config.supabaseUrl ||
+      window.KLEVB_CONFIG?.SUPABASE_URL ||
+      ""
+    ).replace(/\/+$/, "");
+  }
+
+  function getSupabaseAnonKeySafe() {
+    const api = getApi();
+
+    if (typeof api.getSupabaseAnonKeySafe === "function") {
+      return String(api.getSupabaseAnonKeySafe() || "");
+    }
+
+    const config = getConfigSafe();
+
+    return String(
+      config.SUPABASE_ANON_KEY ||
+      config.supabaseAnonKey ||
+      window.KLEVB_CONFIG?.SUPABASE_ANON_KEY ||
+      ""
+    );
+  }
+
+  function getSupabaseStorageKeySafe() {
+    const config = getConfigSafe();
+
+    return String(
+      config.SUPABASE_STORAGE_KEY ||
+      window.KLEVB_CONFIG?.SUPABASE_STORAGE_KEY ||
+      "sb-klevby-auth-token"
+    );
+  }
+
   function getSupabaseClientSafe() {
     const api = getApi();
 
@@ -236,6 +311,125 @@
       (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
       null
     );
+  }
+
+  function findAccessTokenDeep(value, depth = 0) {
+    if (!value || depth > 6) {
+      return "";
+    }
+
+    if (typeof value === "string") {
+      return "";
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = findAccessTokenDeep(item, depth + 1);
+        if (found) {
+          return found;
+        }
+      }
+
+      return "";
+    }
+
+    if (typeof value === "object") {
+      if (typeof value.access_token === "string" && value.access_token.length > 20) {
+        return value.access_token;
+      }
+
+      for (const key of Object.keys(value)) {
+        const found = findAccessTokenDeep(value[key], depth + 1);
+        if (found) {
+          return found;
+        }
+      }
+    }
+
+    return "";
+  }
+
+  function getAccessTokenFromLocalStorage() {
+    const keys = [
+      getSupabaseStorageKeySafe(),
+      "sb-klevby-auth-token"
+    ];
+
+    try {
+      for (const key of keys) {
+        if (!key) continue;
+
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        try {
+          const parsed = JSON.parse(raw);
+          const found = findAccessTokenDeep(parsed);
+          if (found) {
+            return found;
+          }
+        } catch (error) {
+          // ignore parse errors
+        }
+      }
+
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+
+        const lowerKey = String(key).toLowerCase();
+
+        if (!lowerKey.includes("auth-token") && !lowerKey.includes("supabase") && !lowerKey.startsWith("sb-")) {
+          continue;
+        }
+
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        try {
+          const parsed = JSON.parse(raw);
+          const found = findAccessTokenDeep(parsed);
+          if (found) {
+            return found;
+          }
+        } catch (error) {
+          // ignore parse errors
+        }
+      }
+    } catch (error) {
+      console.warn("Klevby posts form: cannot read auth token from localStorage", {
+        message: error?.message || String(error || "")
+      });
+    }
+
+    return "";
+  }
+
+  async function getAccessTokenSafe() {
+    const db = getSupabaseClientSafe();
+
+    if (db?.auth && typeof db.auth.getSession === "function") {
+      try {
+        const sessionResult = await runWithTimeout(
+          () => db.auth.getSession(),
+          "Проверка авторизации",
+          3500
+        );
+
+        const token = sessionResult?.data?.session?.access_token || "";
+
+        if (token) {
+          return token;
+        }
+      } catch (error) {
+        console.warn("Klevby posts form: getSession token read failed, fallback to localStorage", {
+          name: error?.name || null,
+          message: error?.message || String(error || "")
+        });
+      }
+    }
+
+    return getAccessTokenFromLocalStorage();
   }
 
   function cleanTelegram(value) {
@@ -327,6 +521,26 @@
     return null;
   }
 
+  function reloadPostsAfterSave() {
+    setTimeout(() => {
+      loadPosts({ force: true }).catch((error) => {
+        console.warn("Klevby posts form: background posts reload failed after save", {
+          message: error?.message || String(error || "")
+        });
+      });
+
+      if (typeof window.klevbyReloadMap === "function") {
+        try {
+          window.klevbyReloadMap();
+        } catch (error) {
+          console.warn("Klevby posts form: map reload failed after save", {
+            message: error?.message || String(error || "")
+          });
+        }
+      }
+    }, POSTS_RELOAD_AFTER_SAVE_DELAY_MS);
+  }
+
   function getSaveButtonSafe() {
     return (
       document.querySelector('button[onclick="savePost()"]') ||
@@ -360,7 +574,8 @@
       sessionTokenPresent: false,
       sessionError: null,
       getUserPresent: false,
-      getUserError: null
+      getUserError: null,
+      localStorageTokenPresent: Boolean(getAccessTokenFromLocalStorage())
     };
 
     if (!db?.auth) {
@@ -368,7 +583,11 @@
     }
 
     try {
-      const sessionResult = await db.auth.getSession();
+      const sessionResult = await runWithTimeout(
+        () => db.auth.getSession(),
+        "Диагностика сессии",
+        3500
+      );
 
       diagnostics.sessionUserPresent = Boolean(sessionResult?.data?.session?.user?.id);
       diagnostics.sessionTokenPresent = Boolean(sessionResult?.data?.session?.access_token);
@@ -378,7 +597,11 @@
     }
 
     try {
-      const userResult = await db.auth.getUser();
+      const userResult = await runWithTimeout(
+        () => db.auth.getUser(),
+        "Диагностика пользователя",
+        3500
+      );
 
       diagnostics.getUserPresent = Boolean(userResult?.data?.user?.id);
       diagnostics.getUserError = userResult?.error?.message || null;
@@ -395,10 +618,15 @@
     }
 
     try {
-      return await window.restoreAuthState(reason, false);
+      return await runWithTimeout(
+        () => window.restoreAuthState(reason, false),
+        "Восстановление авторизации",
+        4500
+      );
     } catch (error) {
       console.warn("Klevby posts form: restoreAuthState failed", {
         reason,
+        name: error?.name || null,
         message: error?.message || String(error || "")
       });
 
@@ -489,7 +717,8 @@
       currentUserExists: diagnostics.currentUserExists,
       currentUserIdPresent: diagnostics.currentUserIdPresent,
       sessionUserPresent: diagnostics.sessionUserPresent,
-      sessionTokenPresent: diagnostics.sessionTokenPresent
+      sessionTokenPresent: diagnostics.sessionTokenPresent,
+      localStorageTokenPresent: diagnostics.localStorageTokenPresent
     });
 
     return null;
@@ -507,6 +736,135 @@
       text: document.getElementById("textInput")?.value.trim() || "",
       telegram: cleanTelegram(document.getElementById("telegramInput")?.value || "")
     };
+  }
+
+  async function parseRestResponse(response) {
+    const text = await response.text();
+
+    if (!text) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return text;
+    }
+  }
+
+  function buildRestError(response, payload) {
+    const message =
+      payload?.message ||
+      payload?.error ||
+      response.statusText ||
+      `HTTP ${response.status}`;
+
+    const error = new Error(message);
+
+    error.status = response.status;
+    error.statusText = response.statusText;
+    error.code = payload?.code || null;
+    error.details = payload?.details || "";
+    error.hint = payload?.hint || "";
+    error.payload = payload;
+
+    return error;
+  }
+
+  async function savePostViaRest(payload, activeEditingId = null) {
+    const supabaseUrl = getSupabaseUrlSafe();
+    const anonKey = getSupabaseAnonKeySafe();
+    const accessToken = await getAccessTokenSafe();
+
+    if (!supabaseUrl || !anonKey) {
+      throw new Error("Supabase config недоступен для сохранения posts.");
+    }
+
+    if (!accessToken) {
+      const error = new Error("Нет access token для сохранения объявления.");
+      error.code = "KLEVB_AUTH_TOKEN_MISSING";
+      throw error;
+    }
+
+    const isUpdate = Boolean(activeEditingId);
+    const url = isUpdate
+      ? `${supabaseUrl}/rest/v1/posts?id=eq.${encodeURIComponent(String(activeEditingId))}`
+      : `${supabaseUrl}/rest/v1/posts`;
+
+    const method = isUpdate ? "PATCH" : "POST";
+    const body = isUpdate ? payload : [{ ...payload, crew_full: false }];
+
+    debugSaveStep(isUpdate ? "REST update start" : "REST insert start", {
+      activeEditingId: activeEditingId || null,
+      hasFishingType: Boolean(payload.fishing_type),
+      tokenPresent: Boolean(accessToken)
+    });
+
+    return runWithTimeout(
+      async (signal) => {
+        const response = await fetch(url, {
+          method,
+          signal: signal || undefined,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Prefer: "return=representation"
+          },
+          body: JSON.stringify(body)
+        });
+
+        const parsed = await parseRestResponse(response);
+
+        if (!response.ok) {
+          throw buildRestError(response, parsed);
+        }
+
+        return {
+          data: Array.isArray(parsed) ? parsed : parsed ? [parsed] : [],
+          error: null,
+          source: "rest"
+        };
+      },
+      isUpdate ? "REST-обновление выезда" : "REST-создание выезда"
+    );
+  }
+
+  async function savePostViaRestWithSchemaFallback(payload, activeEditingId = null) {
+    try {
+      return await savePostViaRest(payload, activeEditingId);
+    } catch (error) {
+      const message = String(error?.message || "").toLowerCase();
+      const details = String(error?.details || "").toLowerCase();
+      const hint = String(error?.hint || "").toLowerCase();
+      const joined = `${message} ${details} ${hint}`;
+
+      if (
+        payload.fishing_type &&
+        (
+          joined.includes("fishing_type") ||
+          joined.includes("schema cache") ||
+          joined.includes("could not find") ||
+          joined.includes("column")
+        )
+      ) {
+        console.warn("В posts нет fishing_type. Сохраняю через REST без этого поля:", {
+          message: error?.message || String(error || ""),
+          code: error?.code || null
+        });
+
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.fishing_type;
+
+        debugSaveStep(activeEditingId ? "REST update retry without fishing_type" : "REST insert retry without fishing_type", {
+          activeEditingId: activeEditingId || null
+        });
+
+        return savePostViaRest(fallbackPayload, activeEditingId);
+      }
+
+      throw error;
+    }
   }
 
   async function savePost() {
@@ -549,7 +907,7 @@
 
         console.warn("Klevby posts form: cannot save because user is missing", diagnostics);
 
-        if (diagnostics.sessionTokenPresent || diagnostics.sessionUserPresent) {
+        if (diagnostics.sessionTokenPresent || diagnostics.sessionUserPresent || diagnostics.localStorageTokenPresent) {
           showFormMessageSafe("Авторизация ещё восстанавливается. Подожди пару секунд и нажми сохранить ещё раз.", true);
           return null;
         }
@@ -577,14 +935,6 @@
 
       debugSaveStep("validation passed");
 
-      const db = getSupabaseClientSafe();
-
-      if (!db) {
-        debugSaveStep("db missing");
-        showFormMessageSafe("Supabase ещё не готов. Обнови страницу.", true);
-        return null;
-      }
-
       saveAuthorLocal(values.name, values.telegram);
 
       const payload = {
@@ -608,60 +958,13 @@
         ownerIdPresent: Boolean(payload.owner_id)
       });
 
-      let result;
       const activeEditingId = getCurrentEditingId();
 
-      debugSaveStep(activeEditingId ? "update start" : "insert start", {
-        activeEditingId: activeEditingId || null
-      });
-
-      if (activeEditingId) {
-        result = await runSupabaseMutationWithTimeout(
-          db
-            .from("posts")
-            .update(payload)
-            .eq("id", activeEditingId),
-          "Обновление выезда"
-        );
-      } else {
-        result = await runSupabaseMutationWithTimeout(
-          db
-            .from("posts")
-            .insert([{ ...payload, crew_full: false }]),
-          "Создание выезда"
-        );
-      }
-
-      if (result.error && String(result.error.message || "").includes("fishing_type")) {
-        console.warn("В posts нет fishing_type. Сохраняю без этого поля:", result.error);
-
-        delete payload.fishing_type;
-
-        debugSaveStep(activeEditingId ? "update retry without fishing_type" : "insert retry without fishing_type", {
-          activeEditingId: activeEditingId || null
-        });
-
-        if (activeEditingId) {
-          result = await runSupabaseMutationWithTimeout(
-            db
-              .from("posts")
-              .update(payload)
-              .eq("id", activeEditingId),
-            "Обновление выезда без fishing_type"
-          );
-        } else {
-          result = await runSupabaseMutationWithTimeout(
-            db
-              .from("posts")
-              .insert([{ ...payload, crew_full: false }]),
-            "Создание выезда без fishing_type"
-          );
-        }
-      }
+      const result = await savePostViaRestWithSchemaFallback(payload, activeEditingId);
 
       if (result.error) {
-        debugSaveStep(activeEditingId ? "update error" : "insert error", {
-          message: result.error.message || "unknown Supabase error",
+        debugSaveStep(activeEditingId ? "REST update error" : "REST insert error", {
+          message: result.error.message || "unknown REST error",
           code: result.error.code || null
         });
 
@@ -670,9 +973,16 @@
         return null;
       }
 
-      debugSaveStep(activeEditingId ? "update success" : "insert success");
+      debugSaveStep(activeEditingId ? "REST update success" : "REST insert success", {
+        rows: Array.isArray(result.data) ? result.data.length : 0
+      });
 
       const wasEditing = Boolean(activeEditingId);
+      const savedPost = Array.isArray(result.data) ? result.data[0] : null;
+
+      if (savedPost) {
+        upsertPostInLocalState(savedPost, activeEditingId);
+      }
 
       clearForm();
 
@@ -711,14 +1021,24 @@
     } catch (error) {
       console.error("Klevby posts form: savePost crashed", error);
 
-      if (error?.isKlevbySaveTimeout || error?.name === "KlevbyPostsSaveTimeoutError" || error?.name === "AbortError") {
+      if (error?.code === "KLEVB_AUTH_TOKEN_MISSING") {
         showFormMessageSafe(
-          "Сохранение зависло и было остановлено. Проверь интернет и нажми сохранить ещё раз.",
+          "Авторизация не готова для сохранения. Обнови приложение и войди снова.",
+          true
+        );
+      } else if (error?.status === 401 || error?.status === 403) {
+        showFormMessageSafe(
+          "Supabase не разрешил сохранить выезд. Проверь вход в аккаунт и RLS.",
+          true
+        );
+      } else if (error?.isKlevbySaveTimeout || error?.name === "KlevbyPostsSaveTimeoutError" || error?.name === "AbortError") {
+        showFormMessageSafe(
+          "Сохранение зависло и было остановлено. Провь интернет и нажми сохранить ещё раз.",
           true
         );
       } else {
         showFormMessageSafe(
-          "Не получилось сохранить объявление. Проверь Console или попробуй обновить приложение.",
+          "Не получилось сохранить объявление: " + (error?.message || "неизвестная ошибка"),
           true
         );
       }
