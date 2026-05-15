@@ -309,22 +309,20 @@
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-card .card-img,
-  #homeSection #profileFeedSection .card-img {
-    height: 380px !important;
-    min-height: 380px !important;
-    max-height: 68vh !important;
+  #homeSection #profileFeedSection .profile-feed-image {
+    height: clamp(360px, 62vh, 460px) !important;
+    min-height: 360px !important;
+    max-height: none !important;
     background-size: cover !important;
-    background-position: center center !important;
+    background-position: center 38% !important;
     border-radius: 24px 24px 0 0 !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-card .card-img img,
-  #homeSection #profileFeedSection .card-img img {
+  #homeSection #profileFeedSection .profile-feed-image > .profile-feed-image-img {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
-    object-position: center center !important;
+    object-position: center 38% !important;
     display: block !important;
   }
 
@@ -395,10 +393,14 @@
     font-size: 13px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-card .card-img,
-  #homeSection #profileFeedSection .card-img {
-    height: 360px !important;
-    min-height: 360px !important;
-    max-height: 68vh !important;
+  #homeSection #profileFeedSection .profile-feed-image {
+    height: clamp(350px, 60vh, 430px) !important;
+    min-height: 350px !important;
+    max-height: none !important;
+    background-position: center 38% !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-image > .profile-feed-image-img {
+    object-position: center 38% !important;
   }
 }
