@@ -305,6 +305,18 @@
     display: none !important;
   }
 
+  #homeSection #profileFeedSection .profile-feed-title {
+    display: none !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-author {
+    margin-bottom: 12px !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-body {
+    padding-top: 16px !important;
+  }
+
   #homeSection #profileFeedSection.social-feed-grid {
     margin-top: 2px !important;
   }
