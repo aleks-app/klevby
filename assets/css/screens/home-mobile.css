@@ -9,26 +9,42 @@
 
 @media (max-width: 767px) {
   #homeSection .hero {
-    min-height: 258px !important;
-    border-radius: 34px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 50% !important;
+    margin-right: 0 !important;
+    margin-top: calc(-1 * (env(safe-area-inset-top) + 86px)) !important;
+    margin-bottom: 18px !important;
+    transform: translateX(-50%) !important;
+    min-height: 372px !important;
+    padding: calc(env(safe-area-inset-top) + 124px) 26px 24px !important;
+    border-radius: 0 0 38px 38px !important;
     overflow: hidden !important;
     background-color: #07100d !important;
     background:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.03) 0%, rgba(2, 4, 3, 0.08) 34%, rgba(2, 4, 3, 0.58) 100%),
-      linear-gradient(90deg, rgba(2, 4, 3, 0.38) 0%, rgba(2, 4, 3, 0.06) 100%),
-      url("../../img/home-hero-sunset.jpg") center 46% / auto 150% no-repeat !important;
-    border: 1px solid rgba(255, 191, 89, 0.20) !important;
+      linear-gradient(180deg, rgba(2, 4, 3, 0.04) 0%, rgba(2, 4, 3, 0.10) 34%, rgba(2, 4, 3, 0.66) 100%),
+      linear-gradient(90deg, rgba(2, 4, 3, 0.42) 0%, rgba(2, 4, 3, 0.07) 100%),
+      url("../../img/home-hero-sunset.jpg") center 45% / auto 176% no-repeat !important;
+    border-top: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(255, 191, 89, 0.26) !important;
     box-shadow:
-      0 16px 42px rgba(0, 0, 0, 0.42),
-      0 0 28px rgba(244, 178, 74, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+      0 18px 46px rgba(0, 0, 0, 0.46),
+      0 0 30px rgba(244, 178, 74, 0.09) !important;
   }
 
   #homeSection .hero::after {
     border-radius: inherit !important;
     background:
       radial-gradient(circle at 72% 34%, rgba(255, 196, 88, 0.10), transparent 30%),
-      linear-gradient(180deg, transparent 58%, rgba(2, 4, 3, 0.48)) !important;
+      linear-gradient(180deg, transparent 54%, rgba(2, 4, 3, 0.54)) !important;
+  }
+
+  #homeSection .hero-copy {
+    min-height: 228px !important;
+    padding: 0 !important;
+    justify-content: flex-end !important;
   }
 
   #homeSection .trust-bar {
@@ -230,12 +246,18 @@
 
 @media (max-width: 390px) {
   #homeSection .hero {
-    min-height: 248px !important;
-    border-radius: 32px !important;
+    margin-top: calc(-1 * (env(safe-area-inset-top) + 84px)) !important;
+    min-height: 362px !important;
+    padding: calc(env(safe-area-inset-top) + 120px) 22px 23px !important;
+    border-radius: 0 0 36px 36px !important;
     background:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.03) 0%, rgba(2, 4, 3, 0.09) 34%, rgba(2, 4, 3, 0.60) 100%),
-      linear-gradient(90deg, rgba(2, 4, 3, 0.40) 0%, rgba(2, 4, 3, 0.06) 100%),
-      url("../../img/home-hero-sunset.jpg") center 46% / auto 156% no-repeat !important;
+      linear-gradient(180deg, rgba(2, 4, 3, 0.04) 0%, rgba(2, 4, 3, 0.11) 34%, rgba(2, 4, 3, 0.68) 100%),
+      linear-gradient(90deg, rgba(2, 4, 3, 0.44) 0%, rgba(2, 4, 3, 0.07) 100%),
+      url("../../img/home-hero-sunset.jpg") center 45% / auto 184% no-repeat !important;
+  }
+
+  #homeSection .hero-copy {
+    min-height: 219px !important;
   }
 
   #homeSection #forecastPanel.forecast-panel {
