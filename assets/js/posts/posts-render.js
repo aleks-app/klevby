@@ -1,6 +1,9 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260515-posts-render-trip-date-1";
+  const POSTS_RENDER_VERSION = "20260515-posts-render-mobile-filter-collapse-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
+
+  let mobileFilterExpanded = false;
+  let lastMobileFilterSummary = "Все актуальные объявления";
 
   function getState() {
     return window.KlevbyPostsState || {};
@@ -302,6 +305,174 @@
     });
   }
 
+  function isMobileFilterViewport() {
+    try {
+      return window.matchMedia("(max-width: 767px)").matches;
+    } catch (error) {
+      return window.innerWidth <= 767;
+    }
+  }
+
+  function getActiveFilterCount(context = {}) {
+    let count = 0;
+
+    if (context.search) count += 1;
+    if (context.selectedCity) count += 1;
+    if (context.selectedType) count += 1;
+    if (context.telegramOnly) count += 1;
+
+    return count;
+  }
+
+  function getMobileFilterSummary(context = {}) {
+    const activeCount = getActiveFilterCount(context);
+    const mode = context.mode || "all";
+    const expiredCount = Number(context.expiredCount || 0);
+
+    if (activeCount) {
+      return `Фильтр включён: ${activeCount}`;
+    }
+
+    if (mode === "mine") {
+      return expiredCount
+        ? `Мои актуальные · архив скрыт: ${expiredCount}`
+        : "Мои актуальные выезды";
+    }
+
+    return expiredCount
+      ? `Актуальные · архив скрыт: ${expiredCount}`
+      : "Все актуальные объявления";
+  }
+
+  function setMobileFilterExpanded(value) {
+    mobileFilterExpanded = Boolean(value);
+
+    const card = document.querySelector("#tripsSection .filter-card");
+    if (!card) return;
+
+    card.classList.toggle("is-mobile-filter-expanded", mobileFilterExpanded);
+    card.classList.toggle("is-mobile-filter-collapsed", !mobileFilterExpanded);
+    card.setAttribute("data-mobile-expanded", mobileFilterExpanded ? "true" : "false");
+
+    const title = card.querySelector(".filter-title");
+    if (title) {
+      title.setAttribute("aria-expanded", mobileFilterExpanded ? "true" : "false");
+    }
+
+    const toggle = card.querySelector(".klevby-mobile-filter-toggle");
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", mobileFilterExpanded ? "true" : "false");
+      toggle.textContent = mobileFilterExpanded ? "Скрыть" : "Фильтр";
+    }
+  }
+
+  function updateMobileFilterSummary(context = {}) {
+    const card = document.querySelector("#tripsSection .filter-card");
+    if (!card) return;
+
+    lastMobileFilterSummary = getMobileFilterSummary(context);
+
+    const summary = card.querySelector(".klevby-mobile-filter-summary");
+    if (summary) {
+      summary.textContent = lastMobileFilterSummary;
+    }
+
+    const badge = card.querySelector(".klevby-mobile-filter-badge");
+    if (badge) {
+      const count = getActiveFilterCount(context);
+      badge.textContent = count ? String(count) : "";
+      badge.classList.toggle("hidden", !count);
+    }
+  }
+
+  function setupMobileFilterShell() {
+    const card = document.querySelector("#tripsSection .filter-card");
+    if (!card) return;
+
+    const title = card.querySelector(".filter-title");
+    const filters = card.querySelector(".filters");
+
+    if (!title || !filters) return;
+
+    card.classList.add("klevby-mobile-filter-card");
+
+    let mobileMeta = title.querySelector(".klevby-mobile-filter-meta");
+
+    if (!mobileMeta) {
+      mobileMeta = document.createElement("div");
+      mobileMeta.className = "klevby-mobile-filter-meta";
+      mobileMeta.innerHTML = `
+        <span class="klevby-mobile-filter-summary">${escapeHtml(lastMobileFilterSummary)}</span>
+        <span class="klevby-mobile-filter-badge hidden"></span>
+      `;
+      title.appendChild(mobileMeta);
+    }
+
+    let toggle = title.querySelector(".klevby-mobile-filter-toggle");
+
+    if (!toggle) {
+      toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "klevby-mobile-filter-toggle";
+      toggle.setAttribute("aria-label", "Открыть или закрыть фильтр объявлений");
+      toggle.textContent = mobileFilterExpanded ? "Скрыть" : "Фильтр";
+      title.appendChild(toggle);
+    }
+
+    if (title.dataset.klevbyMobileFilterBound !== "1") {
+      title.dataset.klevbyMobileFilterBound = "1";
+      title.setAttribute("role", "button");
+      title.setAttribute("tabindex", "0");
+
+      title.addEventListener("click", (event) => {
+        if (!isMobileFilterViewport()) {
+          return;
+        }
+
+        if (
+          event.target.closest("input") ||
+          event.target.closest("select") ||
+          event.target.closest("textarea") ||
+          event.target.closest("label")
+        ) {
+          return;
+        }
+
+        setMobileFilterExpanded(!mobileFilterExpanded);
+      });
+
+      title.addEventListener("keydown", (event) => {
+        if (!isMobileFilterViewport()) {
+          return;
+        }
+
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+
+        event.preventDefault();
+        setMobileFilterExpanded(!mobileFilterExpanded);
+      });
+    }
+
+    if (toggle.dataset.klevbyMobileFilterBound !== "1") {
+      toggle.dataset.klevbyMobileFilterBound = "1";
+
+      toggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!isMobileFilterViewport()) {
+          return;
+        }
+
+        setMobileFilterExpanded(!mobileFilterExpanded);
+      });
+    }
+
+    setMobileFilterExpanded(mobileFilterExpanded);
+  }
+
   function tryOpenPostModal(id) {
     if (window.KlevbyPostsModal && typeof window.KlevbyPostsModal.openPostModal === "function") {
       window.KlevbyPostsModal.openPostModal(id);
@@ -473,6 +644,12 @@
         display: none;
       }
 
+      .klevby-mobile-filter-meta,
+      .klevby-mobile-filter-toggle,
+      .klevby-mobile-filter-badge {
+        display: none;
+      }
+
       @media (min-width: 768px) {
         #postsSection .trip-card .actions {
           max-width: 230px;
@@ -480,6 +657,157 @@
       }
 
       @media (max-width: 767px) {
+        #tripsSection #statusLine {
+          display: none !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card {
+          padding: 0 !important;
+          margin-top: 14px !important;
+          margin-bottom: 18px !important;
+          border-radius: 24px !important;
+          overflow: hidden !important;
+          background:
+            radial-gradient(circle at 18% 0%, rgba(255, 175, 45, 0.12), transparent 34%),
+            rgba(9, 22, 17, 0.78) !important;
+          border: 1px solid rgba(255, 182, 63, 0.22) !important;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.22) !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .filter-title {
+          width: 100%;
+          min-height: 68px;
+          padding: 15px 16px !important;
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          cursor: pointer;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .filter-title h3 {
+          margin: 0 !important;
+          font-size: 18px !important;
+          line-height: 1.1 !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .filter-title > span:not(.klevby-mobile-filter-badge) {
+          display: none !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-meta {
+          display: flex !important;
+          min-width: 0;
+          align-items: center;
+          gap: 8px;
+          grid-column: 1 / 2;
+          color: rgba(244, 251, 247, 0.66);
+          font-size: 12px;
+          line-height: 1.25;
+          font-weight: 800;
+          margin-top: -3px;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-summary {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          min-width: 20px;
+          border-radius: 999px;
+          background: #ffaf2d;
+          color: #120b02;
+          font-size: 11px;
+          font-weight: 950;
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.16);
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-badge.hidden {
+          display: none !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-toggle {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          grid-column: 2 / 3;
+          grid-row: 1 / 3;
+          min-width: 88px;
+          min-height: 42px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 182, 63, 0.30);
+          background: rgba(255, 175, 45, 0.16);
+          color: #ffd890;
+          font-size: 13px;
+          font-weight: 950;
+          cursor: pointer;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-toggle::after {
+          content: "▾";
+          display: inline-block;
+          margin-left: 7px;
+          font-size: 12px;
+          transition: transform 0.18s ease;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .klevby-mobile-filter-toggle::after {
+          transform: rotate(180deg);
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card:not(.is-mobile-filter-expanded) .filters {
+          display: none !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters {
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 10px !important;
+          padding: 0 16px 16px !important;
+          margin: 0 !important;
+          animation: klevbyMobileFilterOpen 0.18s ease both;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters input,
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters select,
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters .check,
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters .filter-reset {
+          width: 100% !important;
+          min-height: 52px !important;
+          border-radius: 18px !important;
+        }
+
+        #tripsSection .filter-card.klevby-mobile-filter-card.is-mobile-filter-expanded .filters .check {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 10px !important;
+        }
+
+        @keyframes klevbyMobileFilterOpen {
+          from {
+            opacity: 0;
+            transform: translateY(-5px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         #postsSection .trip-card .actions {
           display: grid !important;
           grid-template-columns: 1fr;
@@ -505,6 +833,7 @@
 
   function renderPosts() {
     ensurePostsRenderStyles();
+    setupMobileFilterShell();
 
     const list = document.getElementById("postsSection");
     if (!list) return;
@@ -520,6 +849,15 @@
 
     if (!allPosts.length && hasActivePostsLoad()) {
       showStatusSafe("Загрузка объявлений...");
+
+      updateMobileFilterSummary({
+        mode,
+        search,
+        selectedCity,
+        selectedType,
+        telegramOnly: Boolean(telegramOnly),
+        expiredCount: 0
+      });
 
       list.innerHTML = `
         <div class="info-line">
@@ -538,6 +876,15 @@
     const expiredCount = Math.max(0, allPosts.length - activePosts.length);
 
     let filtered = sortActivePosts(activePosts, todayIso);
+
+    updateMobileFilterSummary({
+      mode,
+      search,
+      selectedCity,
+      selectedType,
+      telegramOnly: Boolean(telegramOnly),
+      expiredCount
+    });
 
     if (mode === "mine") {
       filtered = filtered.filter((post) => isOwnPost(post, ownerId));
@@ -777,7 +1124,8 @@
     openTelegramSafe,
     openPostModalSafe,
     isPostExpired,
-    sortActivePosts
+    sortActivePosts,
+    setMobileFilterExpanded
   };
 
   ensurePostsRenderStyles();
