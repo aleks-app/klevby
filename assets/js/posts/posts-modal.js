@@ -1,5 +1,6 @@
 (function () {
-  const POSTS_MODAL_VERSION = "20260515-posts-modal-owner-actions-1";
+  const POSTS_RENDER_VERSION = "20260515-posts-render-clean-card-actions-2";
+  const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   function getState() {
     return window.KlevbyPostsState || {};
@@ -16,13 +17,8 @@
       return state.getPostsArray();
     }
 
-    if (Array.isArray(window.posts)) {
-      return window.posts;
-    }
-
-    if (Array.isArray(window.klevbyPosts)) {
-      return window.klevbyPosts;
-    }
+    if (Array.isArray(window.posts)) return window.posts;
+    if (Array.isArray(window.klevbyPosts)) return window.klevbyPosts;
 
     return [];
   }
@@ -47,46 +43,43 @@
     return Boolean(ownerId && post?.owner_id && String(post.owner_id) === String(ownerId));
   }
 
-  function setActiveModalPost(value) {
+  function getCurrentViewMode() {
     const state = getState();
 
-    if (typeof state.setActiveModalPost === "function") {
-      state.setActiveModalPost(value);
+    if (typeof state.getCurrentViewMode === "function") {
+      return state.getCurrentViewMode();
+    }
+
+    return window.klevbyViewMode || "all";
+  }
+
+  function hasActivePostsLoad() {
+    const state = getState();
+
+    return Boolean(
+      (typeof state.getPostsLoadPromise === "function" && state.getPostsLoadPromise()) ||
+      (typeof state.getPostsPendingForceReload === "function" && state.getPostsPendingForceReload())
+    );
+  }
+
+  function showStatusSafe(message, isError = false) {
+    const utils = getUtils();
+
+    if (typeof utils.showStatusSafe === "function") {
+      utils.showStatusSafe(message, isError);
       return;
     }
 
-    window.klevbyActiveModalPost = value;
-  }
-
-  function getActiveModalPost() {
-    const state = getState();
-
-    if (typeof state.getActiveModalPost === "function") {
-      return state.getActiveModalPost();
-    }
-
-    return window.klevbyActiveModalPost || null;
-  }
-
-  function getPostModalCloseTimer() {
-    const state = getState();
-
-    if (typeof state.getPostModalCloseTimer === "function") {
-      return state.getPostModalCloseTimer();
-    }
-
-    return window.klevbyPostModalCloseTimer || null;
-  }
-
-  function setPostModalCloseTimer(value) {
-    const state = getState();
-
-    if (typeof state.setPostModalCloseTimer === "function") {
-      state.setPostModalCloseTimer(value);
+    if (typeof window.showStatus === "function") {
+      window.showStatus(message, isError);
       return;
     }
 
-    window.klevbyPostModalCloseTimer = value;
+    const status = document.getElementById("statusLine");
+    if (!status) return;
+
+    status.textContent = message;
+    status.classList.toggle("error-line", Boolean(isError));
   }
 
   function cleanTelegram(value) {
@@ -109,19 +102,65 @@
     return v;
   }
 
-  function escapeHtml(value) {
+  function normalizeText(value) {
+    const utils = getUtils();
+
+    if (typeof utils.normalizeText === "function") {
+      return utils.normalizeText(value);
+    }
+
+    return String(value || "").toLowerCase().trim();
+  }
+
+  function normalizeSelectFilterValue(elementId) {
+    const utils = getUtils();
+
+    if (typeof utils.normalizeSelectFilterValue === "function") {
+      return utils.normalizeSelectFilterValue(elementId);
+    }
+
+    const value = normalizeText(document.getElementById(elementId)?.value);
+
+    if (!value) return "";
+
+    if (
+      value === "выберите город" ||
+      value === "все города" ||
+      value === "город" ||
+      value === "способ ловли" ||
+      value === "выберите способ ловли" ||
+      value === "тип ловли" ||
+      value === "все способы"
+    ) {
+      return "";
+    }
+
+    return value;
+  }
+
+  function escapeHtml(text) {
     const utils = getUtils();
 
     if (typeof utils.escapeHtml === "function") {
-      return utils.escapeHtml(value);
+      return utils.escapeHtml(text);
     }
 
-    return String(value || "")
+    return String(text || "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(text) {
+    const utils = getUtils();
+
+    if (typeof utils.escapeAttr === "function") {
+      return utils.escapeAttr(text);
+    }
+
+    return escapeHtml(text).replaceAll("`", "&#096;");
   }
 
   function getPostFishingType(post) {
@@ -134,6 +173,24 @@
     return post?.fishing_type || post?.type || post?.category || "";
   }
 
+  function getFishingTypeClass(type) {
+    const utils = getUtils();
+
+    if (typeof utils.getFishingTypeClass === "function") {
+      return utils.getFishingTypeClass(type);
+    }
+
+    const t = normalizeText(type);
+
+    if (t.includes("спин")) return "type-spinning";
+    if (t.includes("фидер")) return "type-feeder";
+    if (t.includes("поплав")) return "type-float";
+    if (t.includes("карп")) return "type-carp";
+    if (t.includes("зим")) return "type-winter";
+
+    return "";
+  }
+
   function getCardImage(post) {
     const utils = getUtils();
 
@@ -144,61 +201,192 @@
     return "assets/img/klevby-icon-512.png";
   }
 
+  function getTelegramGroupUrl() {
+    const config = window.KLEVB_CONFIG || {};
+    return config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
+  }
+
   function openTelegramSafe() {
-    const utils = getUtils();
-
-    if (typeof utils.openTelegramSafe === "function") {
-      utils.openTelegramSafe();
-      return;
-    }
-
     if (typeof window.openTelegram === "function") {
       window.openTelegram();
       return;
     }
 
-    const config = window.KLEVB_CONFIG || {};
-    const link = config.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
-    window.open(link, "_blank", "noopener");
+    window.open(getTelegramGroupUrl(), "_blank", "noopener");
   }
 
-  function ensurePostModalOwnerStyles() {
-    if (document.getElementById("klevby-posts-modal-owner-actions-style")) {
+  function ensurePostsRenderStyles() {
+    if (document.getElementById("klevby-posts-render-actions-style")) {
       return;
     }
 
     const style = document.createElement("style");
-    style.id = "klevby-posts-modal-owner-actions-style";
+    style.id = "klevby-posts-render-actions-style";
     style.textContent = `
-      #postModalOwnerActions {
-        width: 100%;
-        display: none;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 10px;
+      #postsSection.grid {
+        align-items: stretch;
       }
 
-      #postModalOwnerActions.visible {
-        display: grid;
+      #postsSection .trip-card {
+        height: 100%;
+        display: flex !important;
+        flex-direction: column;
       }
 
-      #postModalOwnerActions .small-btn {
+      #postsSection .trip-card .card-body {
+        flex: 1;
+        display: flex !important;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      #postsSection .trip-card .trip-title {
+        flex: 0 0 auto;
+      }
+
+      #postsSection .trip-card .trip-facts {
+        flex: 0 0 auto;
+      }
+
+      #postsSection .trip-card .trip-description {
+        min-height: 34px;
+        margin-bottom: 0;
+      }
+
+      #postsSection .trip-card .tags {
+        flex: 0 0 auto;
+      }
+
+      #postsSection .actions {
         width: 100%;
-        min-height: 44px;
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: auto !important;
+        padding-top: 12px;
+      }
+
+      #postsSection .actions:empty {
+        display: none !important;
+      }
+
+      #postsSection .trip-card .actions .small-btn {
+        width: 100%;
+        min-height: 42px;
         border-radius: 15px;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        white-space: normal;
+        line-height: 1.1;
+      }
+
+      #postsSection .trip-card .owner-action {
+        display: none !important;
+      }
+
+      #postsSection .trip-card .trip-telegram-btn {
+        font-weight: 900;
+        letter-spacing: 0.01em;
+      }
+
+      #postsSection .trip-telegram-icon {
+        width: 23px;
+        height: 23px;
+        border-radius: 999px;
+        overflow: hidden;
+        flex: 0 0 23px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        background: #229ed9;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.22);
+      }
+
+      #postsSection .trip-telegram-icon img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        mix-blend-mode: multiply;
+      }
+
+      #postsSection .trip-telegram-icon.is-missing::before {
+        content: "TG";
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+      }
+
+      #postsSection .trip-telegram-icon.is-missing img {
+        display: none;
+      }
+
+      @media (min-width: 901px) {
+        #postsSection .trip-card .actions {
+          max-width: 250px;
+        }
+
+        #postsSection .trip-card.can-manage .actions {
+          max-width: 250px;
+        }
+      }
+
+      @media (max-width: 900px) {
+        #postsSection .trip-card {
+          min-height: 335px !important;
+        }
+
+        #postsSection .trip-card .trip-description {
+          min-height: 34px;
+        }
+
+        #postsSection .trip-card .actions {
+          display: grid !important;
+          grid-template-columns: 1fr;
+          gap: 8px;
+          margin-top: auto !important;
+          padding-top: 12px;
+        }
+
+        #postsSection .trip-card .actions .small-btn {
+          min-height: 42px;
+          border-radius: 15px;
+          font-size: 12px;
+        }
       }
 
       @media (max-width: 520px) {
-        #postModalOwnerActions {
-          grid-template-columns: 1fr;
-          gap: 9px;
+        #postsSection .trip-card {
+          min-height: 330px !important;
         }
 
-        #postModalOwnerActions .small-btn {
-          min-height: 46px;
+        #postsSection .trip-card .trip-description {
+          min-height: 33px;
+        }
+      }
+
+      @media (max-width: 380px) {
+        #postsSection .trip-card {
+          min-height: 315px !important;
+        }
+
+        #postsSection .trip-card .trip-description {
+          min-height: 31px;
+        }
+
+        #postsSection .trip-card .actions .small-btn {
+          min-height: 40px;
+          border-radius: 14px;
+          font-size: 11.5px;
+        }
+
+        #postsSection .trip-telegram-icon {
+          width: 22px;
+          height: 22px;
+          flex-basis: 22px;
         }
       }
     `;
@@ -206,192 +394,255 @@
     document.head.appendChild(style);
   }
 
-  function getOrCreateOwnerActions(writeBtn) {
-    let actions = document.getElementById("postModalOwnerActions");
+  function renderPosts() {
+    ensurePostsRenderStyles();
 
-    if (actions) {
-      return actions;
-    }
+    const list = document.getElementById("postsSection");
+    if (!list) return;
 
-    actions = document.createElement("div");
-    actions.id = "postModalOwnerActions";
-    actions.className = "post-modal-owner-actions";
+    const allPosts = getPostsArray();
+    const search = normalizeText(document.getElementById("searchInput")?.value);
+    const selectedCity = normalizeSelectFilterValue("citySelect");
+    const selectedType = normalizeSelectFilterValue("typeSelect");
+    const telegramOnly = document.getElementById("telegramOnly")?.checked;
+    const ownerId = getOwnerId();
+    const mode = getCurrentViewMode();
 
-    if (writeBtn && writeBtn.parentElement) {
-      writeBtn.insertAdjacentElement("afterend", actions);
-    }
+    if (!allPosts.length && hasActivePostsLoad()) {
+      showStatusSafe("Загрузка объявлений...");
 
-    return actions;
-  }
+      list.innerHTML = `
+        <div class="info-line">
+          Загружаем объявления о выездах…
+        </div>
+      `;
 
-  function renderOwnerActions(post, writeBtn) {
-    const ownerActions = getOrCreateOwnerActions(writeBtn);
-    if (!ownerActions) return;
+      if (typeof window.updateHomeFloatButton === "function") {
+        setTimeout(window.updateHomeFloatButton, 80);
+      }
 
-    if (!isOwnPost(post)) {
-      ownerActions.classList.remove("visible");
-      ownerActions.innerHTML = "";
       return;
     }
 
-    ownerActions.innerHTML = `
-      <button
-        class="small-btn yellow"
-        type="button"
-        onclick="event.stopPropagation(); window.KlevbyPostsModal.editActivePostFromModal();"
-      >
-        Редактировать
-      </button>
+    let filtered = [...allPosts];
 
-      <button
-        class="small-btn red"
-        type="button"
-        onclick="event.stopPropagation(); window.KlevbyPostsModal.deleteActivePostFromModal();"
-      >
-        Удалить
-      </button>
-    `;
+    if (mode === "mine") {
+      filtered = filtered.filter((post) => isOwnPost(post, ownerId));
+      showStatusSafe("Сейчас показаны: мои выезды.");
+    } else {
+      showStatusSafe("Сейчас показаны: все объявления о выездах.");
+    }
 
-    ownerActions.classList.add("visible");
+    if (search) {
+      filtered = filtered.filter(post =>
+        normalizeText(post.name).includes(search) ||
+        normalizeText(post.city).includes(search) ||
+        normalizeText(post.destination).includes(search) ||
+        normalizeText(post.trip_time).includes(search) ||
+        normalizeText(post.transport).includes(search) ||
+        normalizeText(post.seats).includes(search) ||
+        normalizeText(post.text).includes(search) ||
+        normalizeText(getPostFishingType(post)).includes(search)
+      );
+    }
+
+    if (selectedCity) {
+      filtered = filtered.filter(post => normalizeText(post.city).includes(selectedCity));
+    }
+
+    if (selectedType) {
+      filtered = filtered.filter(post => normalizeText(getPostFishingType(post)).includes(selectedType));
+    }
+
+    if (telegramOnly) {
+      filtered = filtered.filter(post => cleanTelegram(post.telegram));
+    }
+
+    if (!filtered.length) {
+      const emptyText = allPosts.length
+        ? "По фильтрам ничего не найдено."
+        : "Пока объявлений о выездах нет.";
+
+      console.info("Klevby posts: empty render state", {
+        allCount: allPosts.length,
+        mode,
+        search,
+        selectedCity,
+        selectedType,
+        telegramOnly: Boolean(telegramOnly)
+      });
+
+      list.innerHTML = `
+        <div class="info-line">
+          ${emptyText}
+          <div style="margin-top:12px;">
+            <button class="small-btn green" type="button" onclick="showSection('create')">Создать выезд</button>
+          </div>
+        </div>
+      `;
+
+      if (typeof window.updateHomeFloatButton === "function") {
+        setTimeout(window.updateHomeFloatButton, 80);
+      }
+
+      return;
+    }
+
+    const cards = filtered
+      .map((post) => {
+        try {
+          return cardHtml(post);
+        } catch (error) {
+          console.error("Ошибка отрисовки карточки объявления:", post, error);
+          return "";
+        }
+      })
+      .filter(Boolean)
+      .join("");
+
+    if (!cards) {
+      list.innerHTML = `
+        <div class="info-line error-line">
+          Объявления загрузились, но карточки не отрисовались. Смотри Console.
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = cards;
+
+    if (typeof window.updateHomeFloatButton === "function") {
+      setTimeout(window.updateHomeFloatButton, 80);
+    }
   }
 
-  function openPostModal(id) {
-    ensurePostModalOwnerStyles();
+  function getTelegramIconHtml() {
+    return `
+      <span class="trip-telegram-icon" aria-hidden="true">
+        <img
+          src="${escapeAttr(TELEGRAM_ICON_SRC)}"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onerror="this.parentElement.classList.add('is-missing'); this.remove();"
+        >
+      </span>
+    `;
+  }
 
-    const post = getPostsArray().find((item) => String(item.id) === String(id));
-    if (!post) return;
-
-    setActiveModalPost(post);
-
-    const modal = document.getElementById("postModal");
-    const imageEl = document.getElementById("postModalImage");
-    const titleEl = document.getElementById("postModalTitle");
-    const metaEl = document.getElementById("postModalMeta");
-    const textEl = document.getElementById("postModalText");
-    const writeBtn = document.getElementById("postModalWriteBtn");
-
-    if (!modal || !imageEl || !titleEl || !metaEl || !textEl || !writeBtn) return;
-
+  function cardHtml(post) {
+    const id = post?.id;
+    const tg = cleanTelegram(post?.telegram);
+    const ownerId = getOwnerId();
+    const canManage = isOwnPost(post, ownerId);
     const image = getCardImage(post);
-    const tg = cleanTelegram(post.telegram);
-    const date = post.created_at
+    const fishingType = getPostFishingType(post);
+    const fishingTypeClass = getFishingTypeClass(fishingType);
+
+    const name = post?.name || "Рыбак";
+    const city = post?.city || "";
+    const destination = post?.destination || "";
+    const tripTime = post?.trip_time || "";
+    const transport = post?.transport || "";
+    const seats = post?.seats || "";
+    const titleDestination = destination || city || "рыбалку";
+
+    const safeId = escapeAttr(id);
+    const telegramIcon = getTelegramIconHtml();
+
+    const tgButton = tg
+      ? `
+        <button
+          class="small-btn green trip-telegram-btn"
+          type="button"
+          title="Написать автору в Telegram"
+          onclick="event.stopPropagation(); window.open('https://t.me/${escapeAttr(tg)}','_blank','noopener')"
+        >
+          ${telegramIcon}
+          <span>Написать</span>
+        </button>
+      `
+      : `
+        <button
+          class="small-btn green trip-telegram-btn"
+          type="button"
+          title="Открыть Telegram-чат Klevby"
+          onclick="event.stopPropagation(); window.KlevbyPostsRender.openTelegramSafe()"
+        >
+          ${telegramIcon}
+          <span>Telegram</span>
+        </button>
+      `;
+
+    const date = post?.created_at
       ? new Date(post.created_at).toLocaleString("ru-RU", {
           day: "2-digit",
-          month: "long",
+          month: "short",
           hour: "2-digit",
           minute: "2-digit"
         })
       : "";
 
-    const fishingType = getPostFishingType(post);
-    const destination = post.destination || post.city || "рыбалку";
+    return `
+      <div class="card trip-card ${canManage ? "can-manage" : ""}" onclick="openPostModal('${safeId}')">
+        <div class="card-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.35)), url('${escapeAttr(image)}')"></div>
 
-    imageEl.style.backgroundImage = `url('${image}')`;
-    titleEl.textContent = `${post.name || "Рыбак"} едет на ${destination}`;
-    textEl.textContent = post.text || "Описание не указано.";
+        <div class="card-body">
+          <div class="trip-title">
+            <span class="trip-name">${escapeHtml(name)}</span>
+            <span> едет на </span>
+            <span class="trip-destination">${escapeHtml(titleDestination)}</span>
+          </div>
 
-    metaEl.innerHTML = `
-      ${post.city ? `<span class="post-modal-pill">📍 Откуда: ${escapeHtml(post.city)}</span>` : ""}
-      ${post.destination ? `<span class="post-modal-pill">🗺️ Куда: ${escapeHtml(post.destination)}</span>` : ""}
-      ${post.trip_time ? `<span class="post-modal-pill">🕒 Когда: ${escapeHtml(post.trip_time)}</span>` : ""}
-      ${fishingType ? `<span class="post-modal-pill">🎣 ${escapeHtml(fishingType)}</span>` : ""}
-      ${post.transport ? `<span class="post-modal-pill">🚗 ${escapeHtml(post.transport)}</span>` : ""}
-      ${post.seats ? `<span class="post-modal-pill">👥 ${escapeHtml(post.seats)}</span>` : ""}
-      ${date ? `<span class="post-modal-pill">Создано: ${escapeHtml(date)}</span>` : ""}
-      ${tg ? `<span class="post-modal-pill">Telegram</span>` : ""}
-      ${isOwnPost(post) ? `<span class="post-modal-pill">Моё объявление</span>` : ""}
+          <div class="trip-facts">
+            <div class="trip-fact">
+              <div class="trip-fact-label">Когда</div>
+              <div class="trip-fact-value">${escapeHtml(tripTime || date || "Не указано")}</div>
+            </div>
+
+            <div class="trip-fact">
+              <div class="trip-fact-label">Тип</div>
+              <div class="trip-fact-value">${escapeHtml(fishingType || "Не указано")}</div>
+            </div>
+
+            <div class="trip-fact">
+              <div class="trip-fact-label">Транспорт</div>
+              <div class="trip-fact-value">${escapeHtml(transport || "Не указано")}</div>
+            </div>
+
+            <div class="trip-fact">
+              <div class="trip-fact-label">Места</div>
+              <div class="trip-fact-value">${escapeHtml(seats || "Уточнить")}</div>
+            </div>
+          </div>
+
+          <p class="trip-description">${escapeHtml(post?.text || "")}</p>
+
+          <div class="tags">
+            <span class="tag">🎣 выезд</span>
+            ${city ? `<span class="tag">📍 ${escapeHtml(city)}</span>` : ""}
+            ${fishingType ? `<span class="tag fishing-type ${fishingTypeClass}">${escapeHtml(fishingType)}</span>` : ""}
+            ${tg ? '<span class="tag">Telegram</span>' : ''}
+            ${canManage ? '<span class="tag">моё</span>' : ''}
+          </div>
+
+          <div class="actions">
+            ${tgButton}
+          </div>
+        </div>
+      </div>
     `;
-
-    writeBtn.textContent = tg ? "Написать" : "Telegram";
-    writeBtn.disabled = false;
-
-    renderOwnerActions(post, writeBtn);
-
-    clearTimeout(getPostModalCloseTimer());
-    modal.classList.remove("hidden");
-
-    requestAnimationFrame(() => {
-      modal.classList.add("open");
-      document.body.classList.add("post-modal-open");
-    });
   }
 
-  function closePostModal() {
-    const modal = document.getElementById("postModal");
-    if (!modal) return;
-
-    modal.classList.remove("open");
-    document.body.classList.remove("post-modal-open");
-
-    const timer = setTimeout(() => {
-      modal.classList.add("hidden");
-      setActiveModalPost(null);
-    }, 360);
-
-    setPostModalCloseTimer(timer);
-  }
-
-  function handlePostModalBackdrop(event) {
-    if (event.target && event.target.id === "postModal") {
-      closePostModal();
-    }
-  }
-
-  function writePostAuthor() {
-    const post = getActiveModalPost();
-    if (!post) return;
-
-    const tg = cleanTelegram(post.telegram);
-
-    if (tg) {
-      window.open(`https://t.me/${tg}`, "_blank", "noopener");
-    } else {
-      openTelegramSafe();
-    }
-  }
-
-  function editActivePostFromModal() {
-    const post = getActiveModalPost();
-    if (!post?.id) return;
-
-    const postId = post.id;
-
-    closePostModal();
-
-    setTimeout(() => {
-      if (typeof window.editPost === "function") {
-        window.editPost(postId);
-      }
-    }, 120);
-  }
-
-  function deleteActivePostFromModal() {
-    const post = getActiveModalPost();
-    if (!post?.id) return;
-
-    const postId = post.id;
-
-    closePostModal();
-
-    setTimeout(() => {
-      if (typeof window.deletePost === "function") {
-        window.deletePost(postId);
-      }
-    }, 120);
-  }
-
-  window.KlevbyPostsModal = {
-    openPostModal,
-    closePostModal,
-    handlePostModalBackdrop,
-    writePostAuthor,
-    editActivePostFromModal,
-    deleteActivePostFromModal
+  window.KlevbyPostsRender = {
+    renderPosts,
+    cardHtml,
+    openTelegramSafe
   };
 
-  ensurePostModalOwnerStyles();
+  ensurePostsRenderStyles();
 
-  console.log("Klevby posts modal loaded", {
-    version: POSTS_MODAL_VERSION
+  console.log("Klevby posts render loaded", {
+    version: POSTS_RENDER_VERSION
   });
 })();
