@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_FORM_VERSION = "20260515-posts-form-rest-save-1";
+  const POSTS_FORM_VERSION = "20260515-posts-form-trip-date-1";
   const POSTS_SAVE_TIMEOUT_MS = 12000;
   const POSTS_RELOAD_AFTER_SAVE_DELAY_MS = 180;
 
@@ -724,12 +724,23 @@
     return null;
   }
 
+  function normalizeTripDateValue(value) {
+    const raw = String(value || "").trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return raw;
+    }
+
+    return "";
+  }
+
   function collectFormValues() {
     return {
       name: document.getElementById("nameInput")?.value.trim() || "",
       city: document.getElementById("cityInput")?.value.trim() || "",
       destination: document.getElementById("destinationInput")?.value.trim() || "",
       tripTime: document.getElementById("tripTimeInput")?.value.trim() || "",
+      tripDate: normalizeTripDateValue(document.getElementById("tripDateInput")?.value || ""),
       fishingType: document.getElementById("fishingTypeInput")?.value.trim() || "",
       transport: document.getElementById("transportInput")?.value.trim() || "",
       seats: document.getElementById("seatsInput")?.value.trim() || "",
@@ -771,6 +782,21 @@
     return error;
   }
 
+  function isSchemaFallbackError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    const hint = String(error?.hint || "").toLowerCase();
+    const payload = `${message} ${details} ${hint}`;
+
+    return (
+      payload.includes("fishing_type") ||
+      payload.includes("trip_date") ||
+      payload.includes("schema cache") ||
+      payload.includes("could not find") ||
+      payload.includes("column")
+    );
+  }
+
   async function savePostViaRest(payload, activeEditingId = null) {
     const supabaseUrl = getSupabaseUrlSafe();
     const anonKey = getSupabaseAnonKeySafe();
@@ -797,6 +823,8 @@
     debugSaveStep(isUpdate ? "REST update start" : "REST insert start", {
       activeEditingId: activeEditingId || null,
       hasFishingType: Boolean(payload.fishing_type),
+      hasTripDate: Object.prototype.hasOwnProperty.call(payload, "trip_date"),
+      tripDate: payload.trip_date || null,
       tokenPresent: Boolean(accessToken)
     });
 
@@ -831,40 +859,80 @@
   }
 
   async function savePostViaRestWithSchemaFallback(payload, activeEditingId = null) {
-    try {
-      return await savePostViaRest(payload, activeEditingId);
-    } catch (error) {
-      const message = String(error?.message || "").toLowerCase();
-      const details = String(error?.details || "").toLowerCase();
-      const hint = String(error?.hint || "").toLowerCase();
-      const joined = `${message} ${details} ${hint}`;
-
-      if (
-        payload.fishing_type &&
-        (
-          joined.includes("fishing_type") ||
-          joined.includes("schema cache") ||
-          joined.includes("could not find") ||
-          joined.includes("column")
-        )
-      ) {
-        console.warn("В posts нет fishing_type. Сохраняю через REST без этого поля:", {
-          message: error?.message || String(error || ""),
-          code: error?.code || null
-        });
-
-        const fallbackPayload = { ...payload };
-        delete fallbackPayload.fishing_type;
-
-        debugSaveStep(activeEditingId ? "REST update retry without fishing_type" : "REST insert retry without fishing_type", {
-          activeEditingId: activeEditingId || null
-        });
-
-        return savePostViaRest(fallbackPayload, activeEditingId);
+    const attempts = [
+      {
+        payload,
+        label: "full"
       }
+    ];
 
-      throw error;
+    if (Object.prototype.hasOwnProperty.call(payload, "fishing_type")) {
+      const withoutFishingType = { ...payload };
+      delete withoutFishingType.fishing_type;
+
+      attempts.push({
+        payload: withoutFishingType,
+        label: "without_fishing_type"
+      });
     }
+
+    if (Object.prototype.hasOwnProperty.call(payload, "trip_date")) {
+      const withoutTripDate = { ...payload };
+      delete withoutTripDate.trip_date;
+
+      attempts.push({
+        payload: withoutTripDate,
+        label: "without_trip_date"
+      });
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(payload, "fishing_type") ||
+      Object.prototype.hasOwnProperty.call(payload, "trip_date")
+    ) {
+      const basicPayload = { ...payload };
+      delete basicPayload.fishing_type;
+      delete basicPayload.trip_date;
+
+      attempts.push({
+        payload: basicPayload,
+        label: "without_optional_fields"
+      });
+    }
+
+    let lastError = null;
+
+    for (let i = 0; i < attempts.length; i += 1) {
+      const attempt = attempts[i];
+
+      try {
+        if (i > 0) {
+          console.warn("Klevby posts form: REST save retry without optional schema fields", {
+            attempt: attempt.label,
+            activeEditingId: activeEditingId || null
+          });
+
+          debugSaveStep(activeEditingId ? "REST update schema fallback retry" : "REST insert schema fallback retry", {
+            attempt: attempt.label,
+            activeEditingId: activeEditingId || null
+          });
+        }
+
+        return await savePostViaRest(attempt.payload, activeEditingId);
+      } catch (error) {
+        lastError = error;
+
+        if (!isSchemaFallbackError(error)) {
+          throw error;
+        }
+
+        if (i === attempts.length - 1) {
+          break;
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   async function savePost() {
@@ -895,6 +963,7 @@
         cityLength: values.city.length,
         destinationLength: values.destination.length,
         tripTimeLength: values.tripTime.length,
+        tripDatePresent: Boolean(values.tripDate),
         textLength: values.text.length,
         fishingTypeLength: values.fishingType.length,
         transportLength: values.transport.length,
@@ -942,6 +1011,7 @@
         city: values.city,
         destination: values.destination,
         trip_time: values.tripTime,
+        trip_date: values.tripDate || null,
         transport: values.transport,
         seats: values.seats,
         text: values.text,
@@ -955,6 +1025,8 @@
 
       debugSaveStep("payload ready", {
         hasFishingType: Boolean(payload.fishing_type),
+        hasTripDate: Object.prototype.hasOwnProperty.call(payload, "trip_date"),
+        tripDate: payload.trip_date || null,
         ownerIdPresent: Boolean(payload.owner_id)
       });
 
@@ -1033,7 +1105,7 @@
         );
       } else if (error?.isKlevbySaveTimeout || error?.name === "KlevbyPostsSaveTimeoutError" || error?.name === "AbortError") {
         showFormMessageSafe(
-          "Сохранение зависло и было остановлено. Провь интернет и нажми сохранить ещё раз.",
+          "Сохранение зависло и было остановлено. Проверь интернет и нажми сохранить ещё раз.",
           true
         );
       } else {
@@ -1063,6 +1135,7 @@
       cityInput: post.city || "",
       destinationInput: post.destination || "",
       tripTimeInput: post.trip_time || "",
+      tripDateInput: normalizeTripDateValue(post.trip_date || ""),
       fishingTypeInput: getPostFishingType(post),
       transportInput: post.transport || "",
       seatsInput: post.seats || "",
@@ -1128,6 +1201,7 @@
       "cityInput",
       "destinationInput",
       "tripTimeInput",
+      "tripDateInput",
       "fishingTypeInput",
       "transportInput",
       "seatsInput",
