@@ -8,6 +8,19 @@
 }
 
 @media (max-width: 767px) {
+  #homeSection .hero {
+    background:
+      linear-gradient(180deg, rgba(2, 4, 3, 0.02) 0%, rgba(2, 4, 3, 0.10) 30%, rgba(2, 4, 3, 0.62) 100%),
+      linear-gradient(90deg, rgba(2, 4, 3, 0.46) 0%, rgba(2, 4, 3, 0.08) 100%),
+      url("../../img/home-hero-sunset.jpg") center / cover no-repeat !important;
+  }
+
+  #homeSection .hero::after {
+    background:
+      radial-gradient(circle at 72% 32%, rgba(255, 196, 88, 0.14), transparent 28%),
+      linear-gradient(180deg, transparent 56%, rgba(2, 4, 3, 0.52)) !important;
+  }
+
   #homeSection .trust-bar {
     gap: 12px !important;
   }
