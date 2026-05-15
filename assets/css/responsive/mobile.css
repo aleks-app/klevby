@@ -694,10 +694,7 @@
   }
 
   #postsSection .actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 7px;
-    margin-top: 10px;
+    display: none;
   }
 
   #postsSection .actions .small-btn {
