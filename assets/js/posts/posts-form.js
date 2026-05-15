@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_FORM_VERSION = "20260515-posts-form-trip-date-1";
+  const POSTS_FORM_VERSION = "20260515-posts-form-trip-date-required-1";
   const POSTS_SAVE_TIMEOUT_MS = 12000;
   const POSTS_RELOAD_AFTER_SAVE_DELAY_MS = 180;
 
@@ -734,7 +734,45 @@
     return "";
   }
 
+  function focusTripDateInput() {
+    const input = document.getElementById("tripDateInput");
+
+    if (!input) return;
+
+    try {
+      input.focus({ preventScroll: false });
+    } catch (error) {
+      input.focus();
+    }
+
+    input.classList.add("input-error-pulse");
+
+    setTimeout(() => {
+      input.classList.remove("input-error-pulse");
+    }, 900);
+  }
+
+  function ensureTripDateRequiredUi() {
+    const tripDateInput = document.getElementById("tripDateInput");
+    const tripTimeInput = document.getElementById("tripTimeInput");
+
+    if (tripDateInput) {
+      tripDateInput.required = true;
+      tripDateInput.setAttribute("aria-required", "true");
+      tripDateInput.setAttribute("title", "Дата выезда обязательна");
+      tripDateInput.setAttribute("autocomplete", "off");
+    }
+
+    if (tripTimeInput) {
+      tripTimeInput.required = false;
+      tripTimeInput.placeholder = "Время/детали: утром, вечером, после работы...";
+      tripTimeInput.setAttribute("title", "Необязательно: время или детали выезда");
+    }
+  }
+
   function collectFormValues() {
+    ensureTripDateRequiredUi();
+
     return {
       name: document.getElementById("nameInput")?.value.trim() || "",
       city: document.getElementById("cityInput")?.value.trim() || "",
@@ -782,7 +820,7 @@
     return error;
   }
 
-  function isSchemaFallbackError(error) {
+  function isFishingTypeSchemaFallbackError(error) {
     const message = String(error?.message || error || "").toLowerCase();
     const details = String(error?.details || "").toLowerCase();
     const hint = String(error?.hint || "").toLowerCase();
@@ -790,7 +828,6 @@
 
     return (
       payload.includes("fishing_type") ||
-      payload.includes("trip_date") ||
       payload.includes("schema cache") ||
       payload.includes("could not find") ||
       payload.includes("column")
@@ -859,80 +896,27 @@
   }
 
   async function savePostViaRestWithSchemaFallback(payload, activeEditingId = null) {
-    const attempts = [
-      {
-        payload,
-        label: "full"
+    try {
+      return await savePostViaRest(payload, activeEditingId);
+    } catch (error) {
+      if (!payload.fishing_type || !isFishingTypeSchemaFallbackError(error)) {
+        throw error;
       }
-    ];
 
-    if (Object.prototype.hasOwnProperty.call(payload, "fishing_type")) {
       const withoutFishingType = { ...payload };
       delete withoutFishingType.fishing_type;
 
-      attempts.push({
-        payload: withoutFishingType,
-        label: "without_fishing_type"
+      console.warn("Klevby posts form: REST save retry without fishing_type", {
+        activeEditingId: activeEditingId || null,
+        message: error?.message || String(error || "")
       });
-    }
 
-    if (Object.prototype.hasOwnProperty.call(payload, "trip_date")) {
-      const withoutTripDate = { ...payload };
-      delete withoutTripDate.trip_date;
-
-      attempts.push({
-        payload: withoutTripDate,
-        label: "without_trip_date"
+      debugSaveStep(activeEditingId ? "REST update retry without fishing_type" : "REST insert retry without fishing_type", {
+        activeEditingId: activeEditingId || null
       });
+
+      return savePostViaRest(withoutFishingType, activeEditingId);
     }
-
-    if (
-      Object.prototype.hasOwnProperty.call(payload, "fishing_type") ||
-      Object.prototype.hasOwnProperty.call(payload, "trip_date")
-    ) {
-      const basicPayload = { ...payload };
-      delete basicPayload.fishing_type;
-      delete basicPayload.trip_date;
-
-      attempts.push({
-        payload: basicPayload,
-        label: "without_optional_fields"
-      });
-    }
-
-    let lastError = null;
-
-    for (let i = 0; i < attempts.length; i += 1) {
-      const attempt = attempts[i];
-
-      try {
-        if (i > 0) {
-          console.warn("Klevby posts form: REST save retry without optional schema fields", {
-            attempt: attempt.label,
-            activeEditingId: activeEditingId || null
-          });
-
-          debugSaveStep(activeEditingId ? "REST update schema fallback retry" : "REST insert schema fallback retry", {
-            attempt: attempt.label,
-            activeEditingId: activeEditingId || null
-          });
-        }
-
-        return await savePostViaRest(attempt.payload, activeEditingId);
-      } catch (error) {
-        lastError = error;
-
-        if (!isSchemaFallbackError(error)) {
-          throw error;
-        }
-
-        if (i === attempts.length - 1) {
-          break;
-        }
-      }
-    }
-
-    throw lastError;
   }
 
   async function savePost() {
@@ -989,16 +973,25 @@
         return null;
       }
 
-      if (!values.name || !values.city || !values.destination || !values.tripTime || !values.text) {
-        debugSaveStep("validation failed", {
+      if (!values.name || !values.city || !values.destination || !values.text) {
+        debugSaveStep("validation failed: required text fields", {
           name: Boolean(values.name),
           city: Boolean(values.city),
           destination: Boolean(values.destination),
-          tripTime: Boolean(values.tripTime),
           text: Boolean(values.text)
         });
 
-        showFormMessageSafe("Заполни Nickname, город, куда едешь, когда и описание.", true);
+        showFormMessageSafe("Заполни Nickname, город, куда едешь и описание.", true);
+        return null;
+      }
+
+      if (!values.tripDate) {
+        debugSaveStep("validation failed: trip_date missing", {
+          tripDatePresent: false
+        });
+
+        focusTripDateInput();
+        showFormMessageSafe("Выбери дату выезда. Без даты объявление не сохранится.", true);
         return null;
       }
 
@@ -1011,7 +1004,7 @@
         city: values.city,
         destination: values.destination,
         trip_time: values.tripTime,
-        trip_date: values.tripDate || null,
+        trip_date: values.tripDate,
         transport: values.transport,
         seats: values.seats,
         text: values.text,
@@ -1129,6 +1122,7 @@
     if (!post) return;
 
     setCurrentEditingId(id);
+    ensureTripDateRequiredUi();
 
     const values = {
       nameInput: post.name || "",
@@ -1216,6 +1210,8 @@
         el.value = "";
       }
     });
+
+    ensureTripDateRequiredUi();
   }
 
   window.KlevbyPostsForm = {
@@ -1225,6 +1221,8 @@
     cancelEdit,
     clearForm
   };
+
+  ensureTripDateRequiredUi();
 
   console.log("Klevby posts form loaded", {
     version: POSTS_FORM_VERSION
