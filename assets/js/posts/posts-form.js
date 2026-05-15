@@ -1,5 +1,7 @@
 (function () {
-  const POSTS_FORM_VERSION = "20260514-posts-form-split-1";
+  const POSTS_FORM_VERSION = "20260515-posts-form-resume-save-1";
+
+  let savePostInProgress = false;
 
   function getState() {
     return window.KlevbyPostsState || {};
@@ -11,6 +13,20 @@
 
   function getApi() {
     return window.KlevbyPostsApi || {};
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  function debugSaveStep(step, details = {}) {
+    try {
+      console.debug("Klevby posts form save:", step, details);
+    } catch (error) {
+      // ignore debug errors
+    }
   }
 
   function getCurrentUserSafe() {
@@ -243,257 +259,235 @@
     return null;
   }
 
+  function getSaveButtonSafe() {
+    return (
+      document.querySelector('button[onclick="savePost()"]') ||
+      Array.from(document.querySelectorAll("button")).find((button) => {
+        return String(button.textContent || "").trim() === "Сохранить";
+      }) ||
+      null
+    );
+  }
+
+  function setSaveButtonBusy(isBusy) {
+    const button = getSaveButtonSafe();
+    if (!button) return;
+
+    button.disabled = Boolean(isBusy);
+    button.setAttribute("aria-busy", isBusy ? "true" : "false");
+    button.classList.toggle("is-saving", Boolean(isBusy));
+  }
+
+  async function getAuthDiagnosticsSafe() {
+    const user = getCurrentUserSafe();
+    const db = getSupabaseClientSafe();
+
+    const diagnostics = {
+      authReady: getCurrentAuthReady(),
+      currentUserExists: Boolean(user),
+      currentUserIdPresent: Boolean(user?.id),
+      hasSupabaseClient: Boolean(db),
+      hasAuthClient: Boolean(db?.auth),
+      sessionUserPresent: false,
+      sessionTokenPresent: false,
+      sessionError: null,
+      getUserPresent: false,
+      getUserError: null
+    };
+
+    if (!db?.auth) {
+      return diagnostics;
+    }
+
+    try {
+      const sessionResult = await db.auth.getSession();
+
+      diagnostics.sessionUserPresent = Boolean(sessionResult?.data?.session?.user?.id);
+      diagnostics.sessionTokenPresent = Boolean(sessionResult?.data?.session?.access_token);
+      diagnostics.sessionError = sessionResult?.error?.message || null;
+    } catch (error) {
+      diagnostics.sessionError = error?.message || String(error || "session check failed");
+    }
+
+    try {
+      const userResult = await db.auth.getUser();
+
+      diagnostics.getUserPresent = Boolean(userResult?.data?.user?.id);
+      diagnostics.getUserError = userResult?.error?.message || null;
+    } catch (error) {
+      diagnostics.getUserError = error?.message || String(error || "user check failed");
+    }
+
+    return diagnostics;
+  }
+
+  async function restoreAuthStateSafe(reason) {
+    if (typeof window.restoreAuthState !== "function") {
+      return null;
+    }
+
+    try {
+      return await window.restoreAuthState(reason, false);
+    } catch (error) {
+      console.warn("Klevby posts form: restoreAuthState failed", {
+        reason,
+        message: error?.message || String(error || "")
+      });
+
+      return null;
+    }
+  }
+
   async function ensureUserForPostAction() {
+    debugSaveStep("ensure user start", {
+      authReady: getCurrentAuthReady(),
+      userIdPresent: Boolean(getCurrentUserSafe()?.id)
+    });
+
     let user = getCurrentUserSafe();
 
     if (user && user.id) {
+      debugSaveStep("ensure user immediate success", {
+        userIdPresent: true
+      });
+
       return user;
     }
 
     if (typeof window.restoreAuthState === "function" && !getCurrentAuthReady()) {
-      await window.restoreAuthState("before_post_action", false);
+      await restoreAuthStateSafe("before_post_action");
     }
 
     user = getCurrentUserSafe();
 
     if (user && user.id) {
+      debugSaveStep("ensure user after first restore", {
+        userIdPresent: true
+      });
+
       return user;
     }
 
-    if (typeof window.restoreAuthState === "function") {
-      await window.restoreAuthState("post_action_retry", false);
+    await restoreAuthStateSafe("post_action_retry");
+
+    user = getCurrentUserSafe();
+
+    if (user && user.id) {
+      debugSaveStep("ensure user after retry restore", {
+        userIdPresent: true
+      });
+
+      return user;
     }
 
-    return getCurrentUserSafe();
+    const retryDelays = [150, 220, 320];
+
+    for (let i = 0; i < retryDelays.length; i += 1) {
+      await wait(retryDelays[i]);
+
+      user = getCurrentUserSafe();
+
+      if (user && user.id) {
+        debugSaveStep("ensure user delayed success before restore", {
+          attempt: i + 1,
+          delay: retryDelays[i],
+          userIdPresent: true
+        });
+
+        return user;
+      }
+
+      await restoreAuthStateSafe(`post_action_delayed_retry_${i + 1}`);
+
+      user = getCurrentUserSafe();
+
+      if (user && user.id) {
+        debugSaveStep("ensure user delayed success after restore", {
+          attempt: i + 1,
+          delay: retryDelays[i],
+          userIdPresent: true
+        });
+
+        return user;
+      }
+    }
+
+    const diagnostics = await getAuthDiagnosticsSafe();
+
+    console.warn("Klevby posts form: user missing after auth retries", diagnostics);
+
+    debugSaveStep("ensure user end missing", {
+      authReady: diagnostics.authReady,
+      currentUserExists: diagnostics.currentUserExists,
+      currentUserIdPresent: diagnostics.currentUserIdPresent,
+      sessionUserPresent: diagnostics.sessionUserPresent,
+      sessionTokenPresent: diagnostics.sessionTokenPresent
+    });
+
+    return null;
+  }
+
+  function collectFormValues() {
+    return {
+      name: document.getElementById("nameInput")?.value.trim() || "",
+      city: document.getElementById("cityInput")?.value.trim() || "",
+      destination: document.getElementById("destinationInput")?.value.trim() || "",
+      tripTime: document.getElementById("tripTimeInput")?.value.trim() || "",
+      fishingType: document.getElementById("fishingTypeInput")?.value.trim() || "",
+      transport: document.getElementById("transportInput")?.value.trim() || "",
+      seats: document.getElementById("seatsInput")?.value.trim() || "",
+      text: document.getElementById("textInput")?.value.trim() || "",
+      telegram: cleanTelegram(document.getElementById("telegramInput")?.value || "")
+    };
   }
 
   async function savePost() {
-    const restoredUser = await ensureUserForPostAction();
-
-    const name = document.getElementById("nameInput")?.value.trim() || "";
-    const city = document.getElementById("cityInput")?.value.trim() || "";
-    const destination = document.getElementById("destinationInput")?.value.trim() || "";
-    const tripTime = document.getElementById("tripTimeInput")?.value.trim() || "";
-    const fishingType = document.getElementById("fishingTypeInput")?.value.trim() || "";
-    const transport = document.getElementById("transportInput")?.value.trim() || "";
-    const seats = document.getElementById("seatsInput")?.value.trim() || "";
-    const text = document.getElementById("textInput")?.value.trim() || "";
-    const telegram = cleanTelegram(document.getElementById("telegramInput")?.value || "");
-
-    if (!restoredUser) {
-      if (typeof window.showSection === "function") {
-        window.showSection("auth");
-      }
-
-      alert("Сначала создай профиль или войди. Так объявления будут защищены от удаления чужими людьми.");
-      return;
+    if (savePostInProgress) {
+      debugSaveStep("savePost ignored: already in progress");
+      showFormMessageSafe("Сохранение уже выполняется. Подожди пару секунд.", false);
+      return null;
     }
 
-    if (!name || !city || !destination || !tripTime || !text) {
-      showFormMessageSafe("Заполни Nickname, город, куда едешь, когда и описание.", true);
-      return;
-    }
+    savePostInProgress = true;
+    setSaveButtonBusy(true);
 
-    const db = getSupabaseClientSafe();
-
-    if (!db) {
-      showFormMessageSafe("Supabase ещё не готов. Обнови страницу.", true);
-      return;
-    }
-
-    saveAuthorLocal(name, telegram);
-
-    const payload = {
-      name,
-      city,
-      destination,
-      trip_time: tripTime,
-      transport,
-      seats,
-      text,
-      telegram,
-      owner_id: restoredUser.id
-    };
-
-    if (fishingType) {
-      payload.fishing_type = fishingType;
-    }
-
-    let result;
-    const activeEditingId = getCurrentEditingId();
-
-    if (activeEditingId) {
-      result = await db
-        .from("posts")
-        .update(payload)
-        .eq("id", activeEditingId);
-    } else {
-      result = await db
-        .from("posts")
-        .insert([{ ...payload, crew_full: false }]);
-    }
-
-    if (result.error && String(result.error.message || "").includes("fishing_type")) {
-      console.warn("В posts нет fishing_type. Сохраняю без этого поля:", result.error);
-
-      delete payload.fishing_type;
-
-      if (activeEditingId) {
-        result = await db
-          .from("posts")
-          .update(payload)
-          .eq("id", activeEditingId);
-      } else {
-        result = await db
-          .from("posts")
-          .insert([{ ...payload, crew_full: false }]);
-      }
-    }
-
-    if (result.error) {
-      showFormMessageSafe("Не получилось сохранить объявление: " + (result.error.message || "ошибка Supabase"), true);
-      console.error("Ошибка сохранения posts:", result.error);
-      return;
-    }
-
-    const wasEditing = Boolean(activeEditingId);
-
-    clearForm();
-
-    if (typeof window.fillAuthorLocal === "function") {
-      window.fillAuthorLocal();
-    }
-
-    setCurrentEditingId(null);
-
-    const formTitle = document.getElementById("formTitle");
-    const cancelEditBtn = document.getElementById("cancelEditBtn");
-
-    if (formTitle) {
-      formTitle.innerText = "Создать выезд";
-    }
-
-    if (cancelEditBtn) {
-      cancelEditBtn.classList.add("hidden");
-    }
-
-    showFormMessageSafe(wasEditing ? "Выезд обновлён." : "Выезд создан.");
-
-    setCurrentViewMode("all");
-    await loadPosts({ force: true });
-
-    if (typeof window.klevbyReloadMap === "function") {
-      window.klevbyReloadMap();
-    }
-
-    if (typeof window.setMode === "function") {
-      window.setMode("all");
-    } else if (typeof window.showSection === "function") {
-      window.showSection("trips");
-    }
-  }
-
-  function editPost(id) {
-    const post = getPostsArray().find((item) => String(item.id) === String(id));
-    if (!post) return;
-
-    setCurrentEditingId(id);
-
-    const values = {
-      nameInput: post.name || "",
-      cityInput: post.city || "",
-      destinationInput: post.destination || "",
-      tripTimeInput: post.trip_time || "",
-      fishingTypeInput: getPostFishingType(post),
-      transportInput: post.transport || "",
-      seatsInput: post.seats || "",
-      textInput: post.text || "",
-      telegramInput: post.telegram || ""
-    };
-
-    Object.keys(values).forEach((idKey) => {
-      const el = document.getElementById(idKey);
-
-      if (el) {
-        el.value = values[idKey];
-      }
+    debugSaveStep("savePost entered", {
+      version: POSTS_FORM_VERSION
     });
 
-    const formTitle = document.getElementById("formTitle");
-    const cancelEditBtn = document.getElementById("cancelEditBtn");
+    try {
+      const restoredUser = await ensureUserForPostAction();
 
-    if (formTitle) {
-      formTitle.innerText = "Редактировать выезд";
-    }
+      debugSaveStep("ensure user end", {
+        userIdPresent: Boolean(restoredUser?.id)
+      });
 
-    if (cancelEditBtn) {
-      cancelEditBtn.classList.remove("hidden");
-    }
+      const values = collectFormValues();
 
-    if (typeof window.showCreatePostScreen === "function") {
-      window.showCreatePostScreen();
-    } else if (typeof window.showSection === "function") {
-      window.showSection("create");
-    }
+      debugSaveStep("form values collected", {
+        nameLength: values.name.length,
+        cityLength: values.city.length,
+        destinationLength: values.destination.length,
+        tripTimeLength: values.tripTime.length,
+        textLength: values.text.length,
+        fishingTypeLength: values.fishingType.length,
+        transportLength: values.transport.length,
+        seatsLength: values.seats.length,
+        telegramPresent: Boolean(values.telegram)
+      });
 
-    if (typeof window.updateHomeFloatButton === "function") {
-      setTimeout(window.updateHomeFloatButton, 120);
-    }
-  }
+      if (!restoredUser) {
+        const diagnostics = await getAuthDiagnosticsSafe();
 
-  function cancelEdit() {
-    setCurrentEditingId(null);
-    clearForm();
+        console.warn("Klevby posts form: cannot save because user is missing", diagnostics);
 
-    if (typeof window.fillAuthorLocal === "function") {
-      window.fillAuthorLocal();
-    }
+        if (diagnostics.sessionTokenPresent || diagnostics.sessionUserPresent) {
+          showFormMessageSafe("Авторизация ещё восстанавливается. Подожди пару секунд и нажми сохранить ещё раз.", true);
+          return null;
+        }
 
-    const formTitle = document.getElementById("formTitle");
-    const cancelEditBtn = document.getElementById("cancelEditBtn");
+        if (typeof window.showSection === "function") {
+          window.showSection("auth");
+        }
 
-    if (formTitle) {
-      formTitle.innerText = "Создать выезд";
-    }
-
-    if (cancelEditBtn) {
-      cancelEditBtn.classList.add("hidden");
-    }
-
-    showFormMessageSafe("");
-  }
-
-  function clearForm() {
-    const ids = [
-      "nameInput",
-      "cityInput",
-      "destinationInput",
-      "tripTimeInput",
-      "fishingTypeInput",
-      "transportInput",
-      "seatsInput",
-      "textInput",
-      "telegramInput"
-    ];
-
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-
-      if (el) {
-        el.value = "";
-      }
-    });
-  }
-
-  window.KlevbyPostsForm = {
-    ensureUserForPostAction,
-    savePost,
-    editPost,
-    cancelEdit,
-    clearForm
-  };
-
-  console.log("Klevby posts form loaded", {
-    version: POSTS_FORM_VERSION
-  });
-})();
+        alert("Сначала создай профиль или войди. Так объявления будут
