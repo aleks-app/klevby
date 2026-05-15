@@ -1,0 +1,213 @@
+/* Klevby mobile home polish
+   Scope: only mobile home screen.
+   Desktop, posts, chat, market, ponds, map and profile are not touched.
+*/
+
+@media (max-width: 767px) {
+  #homeSection .trust-bar {
+    gap: 12px !important;
+  }
+
+  #homeSection .trust-item {
+    border: 1px solid rgba(255, 191, 89, 0.44) !important;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(255, 196, 88, 0.18), transparent 38%),
+      linear-gradient(180deg, rgba(18, 34, 27, 0.92), rgba(7, 18, 14, 0.88)) !important;
+    box-shadow:
+      0 0 0 1px rgba(255, 223, 156, 0.07) inset,
+      0 0 18px rgba(255, 174, 43, 0.14),
+      0 12px 26px rgba(0, 0, 0, 0.24) !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #homeSection .trust-item:active {
+    transform: scale(0.985);
+  }
+
+  #homeSection .trust-icon {
+    box-shadow:
+      0 0 0 1px rgba(255, 214, 143, 0.18),
+      0 0 14px rgba(255, 174, 43, 0.16) !important;
+  }
+
+  #homeSection .trust-value {
+    color: rgba(255, 239, 206, 0.98) !important;
+    text-shadow: 0 0 16px rgba(255, 174, 43, 0.14);
+  }
+
+  #homeSection .trust-label {
+    color: rgba(244, 251, 247, 0.70) !important;
+  }
+
+  #homeSection #forecastPanel.forecast-panel {
+    margin-top: 18px !important;
+    margin-bottom: 22px !important;
+    padding: 15px 14px 13px !important;
+    border-radius: 25px !important;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.07), transparent 36%),
+      linear-gradient(180deg, rgba(32, 45, 40, 0.72), rgba(17, 31, 26, 0.68)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.105) !important;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+      0 12px 32px rgba(0, 0, 0, 0.20) !important;
+    overflow: hidden !important;
+  }
+
+  #homeSection #forecastPanel::before,
+  #homeSection #forecastPanel::after {
+    opacity: 0.18 !important;
+  }
+
+  #homeSection #forecastPanel .cloud,
+  #homeSection #forecastPanel .rain-layer {
+    opacity: 0.18 !important;
+  }
+
+  #homeSection #forecastPanel .forecast-head {
+    margin-bottom: 11px !important;
+    gap: 10px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-head h2 {
+    font-size: 21px !important;
+    line-height: 1.08 !important;
+    margin: 0 0 2px !important;
+    letter-spacing: -0.03em;
+  }
+
+  #homeSection #forecastPanel .forecast-head p,
+  #homeSection #forecastPanel #weatherStatus {
+    font-size: 12px !important;
+    line-height: 1.28 !important;
+    opacity: 0.70 !important;
+    margin: 0 !important;
+  }
+
+  #homeSection #forecastPanel .forecast-head .main-btn {
+    display: none !important;
+  }
+
+  #homeSection #forecastPanel .forecast-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0 !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.065) !important;
+    box-shadow: none !important;
+  }
+
+  #homeSection #forecastPanel .forecast-item {
+    min-height: 74px !important;
+    padding: 9px 4px 8px !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    position: relative !important;
+  }
+
+  #homeSection #forecastPanel .forecast-item + .forecast-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 15px;
+    bottom: 15px;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  #homeSection #forecastPanel .forecast-icon {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    margin: 0 auto 6px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.075) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 17px !important;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.07),
+      0 7px 14px rgba(0, 0, 0, 0.14) !important;
+  }
+
+  #homeSection #forecastPanel .forecast-label {
+    font-size: 9.5px !important;
+    line-height: 1.1 !important;
+    opacity: 0.58 !important;
+    white-space: nowrap !important;
+  }
+
+  #homeSection #forecastPanel .forecast-value {
+    font-size: 14px !important;
+    line-height: 1.05 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  #homeSection #forecastPanel .bite-line {
+    display: block !important;
+    margin-top: 9px !important;
+    padding: 8px 10px !important;
+    border-radius: 16px !important;
+    background: rgba(255, 175, 45, 0.085) !important;
+    border: 1px solid rgba(255, 184, 70, 0.16) !important;
+    color: rgba(255, 232, 184, 0.92) !important;
+    font-size: 12px !important;
+    line-height: 1.28 !important;
+    font-weight: 800 !important;
+    box-shadow: none !important;
+  }
+
+  #homeSection #forecastPanel .bite-line::before {
+    content: "🐟 ";
+  }
+
+  #homeSection #profileFeedSection.social-feed-grid {
+    margin-top: 2px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  #homeSection #forecastPanel.forecast-panel {
+    padding: 14px 12px 12px !important;
+    border-radius: 23px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-head h2 {
+    font-size: 20px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-grid {
+    border-radius: 18px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-item {
+    min-height: 70px !important;
+    padding: 8px 3px 7px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-icon {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    font-size: 16px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-label {
+    font-size: 9px !important;
+  }
+
+  #homeSection #forecastPanel .forecast-value {
+    font-size: 13px !important;
+  }
+
+  #homeSection #forecastPanel .bite-line {
+    font-size: 11.5px !important;
+    padding: 7px 9px !important;
+  }
+}
