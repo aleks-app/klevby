@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_FORM_VERSION = "20260515-posts-form-trip-date-required-1";
+  const POSTS_FORM_VERSION = "20260515-posts-form-trip-date-required-ui-1";
   const POSTS_SAVE_TIMEOUT_MS = 12000;
   const POSTS_RELOAD_AFTER_SAVE_DELAY_MS = 180;
 
@@ -734,29 +734,166 @@
     return "";
   }
 
-  function focusTripDateInput() {
-    const input = document.getElementById("tripDateInput");
-
-    if (!input) return;
-
-    try {
-      input.focus({ preventScroll: false });
-    } catch (error) {
-      input.focus();
+  function ensureTripDateStyles() {
+    if (document.getElementById("klevby-posts-form-trip-date-style")) {
+      return;
     }
 
-    input.classList.add("input-error-pulse");
+    const style = document.createElement("style");
+    style.id = "klevby-posts-form-trip-date-style";
+    style.textContent = `
+      #createSection .klevby-trip-date-wrap {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        display: grid;
+        gap: 8px;
+      }
 
-    setTimeout(() => {
-      input.classList.remove("input-error-pulse");
-    }, 900);
+      #createSection .klevby-trip-date-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: rgba(255,255,255,0.82);
+        font-weight: 900;
+        font-size: 13px;
+        line-height: 1.2;
+        padding: 0 4px;
+      }
+
+      #createSection .klevby-trip-date-label span {
+        color: #ffb23f;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      #createSection .klevby-trip-date-hint {
+        color: rgba(255,255,255,0.46);
+        font-weight: 700;
+        font-size: 12px;
+        line-height: 1.35;
+        padding: 0 4px;
+      }
+
+      #createSection #tripDateInput {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        overflow: hidden !important;
+        -webkit-appearance: none;
+        appearance: none;
+        color: #ffffff !important;
+      }
+
+      #createSection #tripDateInput::-webkit-date-and-time-value {
+        text-align: left;
+      }
+
+      #createSection #tripDateInput::-webkit-calendar-picker-indicator {
+        opacity: 0.85;
+        cursor: pointer;
+      }
+
+      #createSection #tripTimeInput {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      #createSection .input-error-pulse {
+        animation: klevbyTripDatePulse 0.9s ease both;
+      }
+
+      @keyframes klevbyTripDatePulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(255, 178, 63, 0.72);
+        }
+
+        60% {
+          box-shadow: 0 0 0 9px rgba(255, 178, 63, 0);
+        }
+
+        100% {
+          box-shadow: none;
+        }
+      }
+
+      @media (max-width: 767px) {
+        #createSection .klevby-trip-date-wrap {
+          grid-column: 1 / -1;
+        }
+
+        #createSection .klevby-trip-date-label {
+          font-size: 12px;
+        }
+
+        #createSection .klevby-trip-date-hint {
+          font-size: 11px;
+        }
+
+        #createSection #tripDateInput {
+          font-size: 16px !important;
+          min-height: 56px !important;
+          padding-left: 18px !important;
+          padding-right: 18px !important;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  function decorateTripDateField() {
+    const input = document.getElementById("tripDateInput");
+
+    if (!input) {
+      return;
+    }
+
+    if (input.dataset.klevbyTripDateDecorated === "1") {
+      return;
+    }
+
+    const parent = input.parentNode;
+    if (!parent) {
+      return;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "klevby-trip-date-wrap";
+
+    const label = document.createElement("label");
+    label.className = "klevby-trip-date-label";
+    label.htmlFor = "tripDateInput";
+    label.innerHTML = 'Дата выезда <span>обязательно</span>';
+
+    const hint = document.createElement("div");
+    hint.className = "klevby-trip-date-hint";
+    hint.textContent = "Выбери дату в календаре. После этой даты объявление уйдёт из активных.";
+
+    parent.insertBefore(wrap, input);
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    wrap.appendChild(hint);
+
+    input.dataset.klevbyTripDateDecorated = "1";
   }
 
   function ensureTripDateRequiredUi() {
+    ensureTripDateStyles();
+    decorateTripDateField();
+
     const tripDateInput = document.getElementById("tripDateInput");
     const tripTimeInput = document.getElementById("tripTimeInput");
 
     if (tripDateInput) {
+      tripDateInput.type = "date";
       tripDateInput.required = true;
       tripDateInput.setAttribute("aria-required", "true");
       tripDateInput.setAttribute("title", "Дата выезда обязательна");
@@ -768,6 +905,37 @@
       tripTimeInput.placeholder = "Время/детали: утром, вечером, после работы...";
       tripTimeInput.setAttribute("title", "Необязательно: время или детали выезда");
     }
+  }
+
+  function focusTripDateInput() {
+    ensureTripDateRequiredUi();
+
+    const input = document.getElementById("tripDateInput");
+
+    if (!input) return;
+
+    try {
+      input.scrollIntoView({
+        block: "center",
+        behavior: "smooth"
+      });
+    } catch (error) {
+      // ignore scroll errors
+    }
+
+    setTimeout(() => {
+      try {
+        input.focus({ preventScroll: true });
+      } catch (error) {
+        input.focus();
+      }
+
+      input.classList.add("input-error-pulse");
+
+      setTimeout(() => {
+        input.classList.remove("input-error-pulse");
+      }, 900);
+    }, 120);
   }
 
   function collectFormValues() {
@@ -1223,6 +1391,14 @@
   };
 
   ensureTripDateRequiredUi();
+
+  document.addEventListener("DOMContentLoaded", () => {
+    ensureTripDateRequiredUi();
+  });
+
+  window.addEventListener("pageshow", () => {
+    ensureTripDateRequiredUi();
+  });
 
   console.log("Klevby posts form loaded", {
     version: POSTS_FORM_VERSION
