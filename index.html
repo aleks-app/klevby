@@ -211,34 +211,55 @@
         </div>
 
         <div class="forecast-grid">
-    <div class="forecast-item">
-      <div class="forecast-icon" data-mobile-icon="🌡️">☀️</div>
-      <div class="forecast-label">Температура</div>
-      <div class="forecast-value" id="weatherTemp">—</div>
-    </div>
-    <div class="forecast-item">
-      <div class="forecast-icon" data-mobile-icon="💨">💨</div>
-      <div class="forecast-label">Ветер</div>
-      <div class="forecast-value" id="weatherWind">—</div>
-    </div>
-    <div class="forecast-item">
-      <div class="forecast-icon" data-mobile-icon="🧭">⌁</div>
-      <div class="forecast-label">Давление</div>
-      <div class="forecast-value" id="weatherPressure">—</div>
-    </div>
-    <div class="forecast-item forecast-moon-item">
-      <div class="forecast-icon" data-mobile-icon="🌕">◐</div>
-      <div class="forecast-label">Фаза луны</div>
-      <div class="forecast-value" id="weatherMoon">—</div>
-    </div>
-    <div class="forecast-item forecast-bite-item">
-      <div class="forecast-icon" data-mobile-icon="🐟">🐟</div>
-      <div class="forecast-label">Клёв</div>
-    <div class="forecast-value">Средний</div>
-  </div>
-</div>
+          <div class="forecast-item">
+            <div class="forecast-icon" data-mobile-icon="🌡️">☀️</div>
+            <div class="forecast-label">Температура</div>
+            <div class="forecast-value" id="weatherTemp">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon" data-mobile-icon="💨">💨</div>
+            <div class="forecast-label">Ветер</div>
+            <div class="forecast-value" id="weatherWind">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon" data-mobile-icon="🧭">⌁</div>
+            <div class="forecast-label">Давление</div>
+            <div class="forecast-value" id="weatherPressure">—</div>
+          </div>
+          <div class="forecast-item forecast-moon-item">
+            <div class="forecast-icon" data-mobile-icon="🌕">◐</div>
+            <div class="forecast-label">Фаза луны</div>
+            <div class="forecast-value" id="weatherMoon">—</div>
+          </div>
+          <div class="forecast-item forecast-bite-item">
+            <div class="forecast-icon" data-mobile-icon="🐟">🐟</div>
+            <div class="forecast-label">Клёв</div>
+            <div class="forecast-value">Средний</div>
+          </div>
+        </div>
 
-<div class="bite-line bite-medium-line" id="biteForecast">Прогноз средний, нужно пробовать.</div>
+        <div class="bite-line bite-medium-line" id="biteForecast">Прогноз средний, нужно пробовать.</div>
+      </div>
+
+      <div class="home-mobile-feed-head" aria-label="Лента и погода">
+        <div class="home-mobile-feed-title">Лента</div>
+
+        <div class="home-weather-chips" aria-label="Краткая погода">
+          <button class="home-weather-chip" id="homeWeatherTempChip" type="button" aria-label="Температура">
+            <span class="home-weather-chip-icon">🌡️</span>
+            <span class="home-weather-chip-value">—</span>
+          </button>
+
+          <button class="home-weather-chip" id="homeWeatherWindChip" type="button" aria-label="Ветер">
+            <span class="home-weather-chip-icon">💨</span>
+            <span class="home-weather-chip-value">—</span>
+          </button>
+
+          <button class="home-weather-chip home-weather-chip-bite" id="homeWeatherBiteChip" type="button" aria-label="Прогноз клёва">
+            <span class="home-weather-chip-icon">🐟</span>
+            <span class="home-weather-chip-value">Клёв</span>
+          </button>
+        </div>
       </div>
 
       <div id="profileFeedSection" class="grid social-feed-grid">
