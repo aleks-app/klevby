@@ -257,8 +257,8 @@
       "author date"
       "actions actions" !important;
     align-items: center !important;
-    gap: 14px 12px !important;
-    padding: 18px 26px 22px !important;
+    gap: 11px 10px !important;
+    padding: 14px 20px 15px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
@@ -306,7 +306,24 @@
   #homeSection #profileFeedSection .profile-feed-actions {
     grid-area: actions !important;
     width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
     margin: 0 !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-open-btn {
+    display: none !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-like-btn,
+  #homeSection #profileFeedSection .profile-feed-comment-btn {
+    min-height: 38px !important;
+    padding: 8px 10px !important;
+    border-radius: 16px !important;
+    font-size: 13.5px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-description {
@@ -370,8 +387,8 @@
     grid-template-areas:
       "author date"
       "actions actions" !important;
-    gap: 12px 10px !important;
-    padding: 16px 22px 20px !important;
+    gap: 10px 9px !important;
+    padding: 13px 18px 14px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-tags {
@@ -386,5 +403,25 @@
 
   #homeSection #profileFeedSection .profile-feed-tags .tag:last-child {
     display: inline-flex !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    margin: 0 !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-open-btn {
+    display: none !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-like-btn,
+  #homeSection #profileFeedSection .profile-feed-comment-btn {
+    min-height: 36px !important;
+    padding: 7px 9px !important;
+    border-radius: 15px !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
   }
 }
