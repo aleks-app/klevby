@@ -45,6 +45,27 @@
     return "home";
   }
 
+  function updateHomeFloatButtonSafe() {
+    setTimeout(() => {
+      if (typeof window.updateHomeFloatButton === "function") {
+        window.updateHomeFloatButton();
+      }
+    }, 120);
+  }
+
+  function scrollPageTop() {
+    try {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    } catch (_) {
+      window.scrollTo(0, 0);
+    }
+
+    updateHomeFloatButtonSafe();
+  }
+
   function setMode(mode, dependencies = {}) {
     if (typeof dependencies.setMode === "function") {
       dependencies.setMode(mode);
@@ -61,6 +82,7 @@
 
   function goMobileFeed(dependencies = {}) {
     showSection("home", dependencies);
+    scrollPageTop();
   }
 
   function goMobileMap(dependencies = {}) {
@@ -83,23 +105,27 @@
           block: "start"
         });
       }
+
+      updateHomeFloatButtonSafe();
     }, 120);
   }
 
   function goHomeTop(dependencies = {}) {
     const visibleSection = getVisibleSectionName(dependencies);
 
-    if (visibleSection === "profile") {
-      showSection("home", dependencies);
+    if (visibleSection === "home") {
+      scrollPageTop();
       return;
     }
 
     if (visibleSection === "create") {
       setMode("all", dependencies);
+      updateHomeFloatButtonSafe();
       return;
     }
 
     showSection("home", dependencies);
+    scrollPageTop();
   }
 
   window.KlevbyAppMobileActions = {
