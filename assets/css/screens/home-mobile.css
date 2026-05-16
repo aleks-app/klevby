@@ -149,160 +149,80 @@
   }
 
   #homeSection #forecastPanel.forecast-panel {
-    --klevby-home-weather-cell-height: 74px;
+    display: none !important;
+  }
 
-    margin-top: 18px !important;
-    margin-bottom: 18px !important;
-    padding: 15px 14px 13px !important;
-    border-radius: 25px !important;
+  #homeSection .home-mobile-feed-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    min-height: 38px !important;
+    margin: 18px 0 -42px !important;
+    position: relative !important;
+    z-index: 5 !important;
+    pointer-events: none !important;
+  }
+
+  #homeSection .home-mobile-feed-title {
+    display: none !important;
+  }
+
+  #homeSection .home-weather-chips {
+    max-width: calc(100% - 130px) !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 7px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    pointer-events: auto !important;
+  }
+
+  #homeSection .home-weather-chips::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  #homeSection .home-weather-chip {
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
     background:
-      radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.07), transparent 36%),
-      linear-gradient(180deg, rgba(32, 45, 40, 0.72), rgba(17, 31, 26, 0.68)) !important;
-    border: 1px solid rgba(255, 255, 255, 0.105) !important;
+      radial-gradient(circle at 18% 0%, rgba(255, 196, 88, 0.14), transparent 42%),
+      rgba(18, 28, 24, 0.72) !important;
+    color: rgba(255, 248, 234, 0.92) !important;
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.025) inset,
-      0 12px 32px rgba(0, 0, 0, 0.20) !important;
-    overflow: hidden !important;
-  }
-
-  #homeSection #forecastPanel::before,
-  #homeSection #forecastPanel::after {
-    opacity: 0.18 !important;
-  }
-
-  #homeSection #forecastPanel .cloud,
-  #homeSection #forecastPanel .rain-layer {
-    opacity: 0.18 !important;
-  }
-
-  #homeSection #forecastPanel .forecast-head {
-    margin-bottom: 11px !important;
-    gap: 10px !important;
-  }
-
-  #homeSection #forecastPanel .forecast-head h2 {
-    font-size: 21px !important;
-    line-height: 1.08 !important;
-    margin: 0 0 2px !important;
-    letter-spacing: -0.03em;
-  }
-
-  #homeSection #forecastPanel .forecast-head p,
-  #homeSection #forecastPanel #weatherStatus {
+      0 8px 18px rgba(0, 0, 0, 0.20),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    font-family: inherit !important;
     font-size: 12px !important;
-    line-height: 1.28 !important;
-    opacity: 0.70 !important;
-    margin: 0 !important;
-  }
-
-  #homeSection #forecastPanel .forecast-head .main-btn {
-    display: none !important;
-  }
-
-  #homeSection #forecastPanel .forecast-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 0 !important;
-    border-radius: 20px !important;
-    overflow: hidden !important;
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(255, 255, 255, 0.065) !important;
-    box-shadow: none !important;
-    position: relative !important;
-  }
-
-  #homeSection #forecastPanel .forecast-grid::before,
-  #homeSection #forecastPanel .forecast-grid::after {
-    content: none !important;
-    display: none !important;
-  }
-
-  #homeSection #forecastPanel .forecast-item {
-    min-height: var(--klevby-home-weather-cell-height) !important;
-    padding: 9px 4px 8px !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    background-image: none !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    position: relative !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  #homeSection #forecastPanel .forecast-moon-item {
-    display: none !important;
-  }
-
-  #homeSection #forecastPanel .forecast-bite-item {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-
-  #homeSection #forecastPanel .forecast-bite-item > * {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-
-  #homeSection #forecastPanel .forecast-item + .forecast-item::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 15px;
-    bottom: 15px;
-    width: 1px;
-    background: rgba(255, 255, 255, 0.055);
-  }
-
-  #homeSection #forecastPanel .forecast-moon-item::before {
-    content: none !important;
-    display: none !important;
-  }
-
-  #homeSection #forecastPanel .forecast-icon {
-    order: 1;
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px !important;
-    margin: 0 auto 6px !important;
-    border-radius: 50% !important;
-    background: rgba(255, 255, 255, 0.075) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 17px !important;
     line-height: 1 !important;
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.07),
-      0 7px 14px rgba(0, 0, 0, 0.14) !important;
+    font-weight: 800 !important;
   }
 
-  #homeSection #forecastPanel .forecast-bite-item .forecast-icon {
-    font-size: 22px !important;
+  #homeSection .home-weather-chip-icon {
+    font-size: 15px !important;
+    line-height: 1 !important;
   }
 
-  #homeSection #forecastPanel .forecast-value {
-    order: 2;
-    font-size: 14px !important;
-    line-height: 1.05 !important;
-    font-weight: 900 !important;
-    white-space: nowrap !important;
+  #homeSection .home-weather-chip-value {
+    display: inline-block !important;
+    min-width: 0 !important;
   }
 
-  #homeSection #forecastPanel .forecast-label {
-    order: 3;
-    font-size: 9.5px !important;
-    line-height: 1.1 !important;
-    opacity: 0.58 !important;
-    white-space: nowrap !important;
-  }
-
-  #homeSection #forecastPanel .bite-line {
-    display: none !important;
+  #homeSection #profileFeedSection.grid::before,
+  #homeSection #profileFeedSection.social-feed-grid::before {
+    content: "Лента" !important;
+    display: block !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-title {
@@ -410,42 +330,24 @@
     min-height: 219px !important;
   }
 
-  #homeSection #forecastPanel.forecast-panel {
-    --klevby-home-weather-cell-height: 70px;
-
-    padding: 14px 12px 12px !important;
-    border-radius: 23px !important;
+  #homeSection .home-mobile-feed-head {
+    min-height: 36px !important;
+    margin: 16px 0 -40px !important;
   }
 
-  #homeSection #forecastPanel .forecast-head h2 {
-    font-size: 20px !important;
+  #homeSection .home-weather-chips {
+    max-width: calc(100% - 118px) !important;
+    gap: 6px !important;
   }
 
-  #homeSection #forecastPanel .forecast-grid {
-    border-radius: 18px !important;
+  #homeSection .home-weather-chip {
+    min-height: 32px !important;
+    padding: 6px 9px !important;
+    font-size: 11.5px !important;
   }
 
-  #homeSection #forecastPanel .forecast-item {
-    padding: 8px 3px 7px !important;
-  }
-
-  #homeSection #forecastPanel .forecast-icon {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    font-size: 16px !important;
-  }
-
-  #homeSection #forecastPanel .forecast-bite-item .forecast-icon {
-    font-size: 21px !important;
-  }
-
-  #homeSection #forecastPanel .forecast-label {
-    font-size: 9px !important;
-  }
-
-  #homeSection #forecastPanel .forecast-value {
-    font-size: 13px !important;
+  #homeSection .home-weather-chip-icon {
+    font-size: 14px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-image {
