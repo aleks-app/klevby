@@ -432,67 +432,90 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    padding: 0 12px 12px;
+    padding: 8px 12px 12px;
   }
 
   #homeSection #profileFeedSection .profile-feed-body > .profile-feed-author,
   #homeSection #profileFeedSection .profile-feed-title,
   #homeSection #profileFeedSection .profile-feed-description,
-  #homeSection #profileFeedSection .profile-feed-tags {
+  #homeSection #profileFeedSection .profile-feed-tags,
+  #homeSection #profileFeedSection .profile-feed-body .profile-feed-tags,
+  #homeSection #profileFeedSection .profile-feed-body .tags {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-actions {
-    display: flex;
+    display: flex !important;
     align-items: center;
-    gap: 10px;
+    justify-content: flex-start;
+    gap: 16px;
     min-width: 0;
-    margin: 0;
-    padding-top: 10px;
+    margin: 0 !important;
+    padding: 4px 0 0 !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-actions :where(button, a) {
-    min-height: 42px;
-    min-width: 44px;
-    margin: 0;
-    border-radius: 999px;
-    border: 1px solid rgba(244,178,74,0.09);
-    background: rgba(255,255,255,0.055);
-    color: rgba(255,248,234,0.84);
-    box-shadow: none;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    font-size: 13px;
-    font-weight: 900;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-like-btn,
-  #homeSection #profileFeedSection .profile-feed-comment-btn,
-  #homeSection #profileFeedSection .profile-feed-profile-btn {
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-like-btn,
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-comment-btn,
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-profile-btn {
+    appearance: none;
     order: 1;
-    flex: 0 0 auto;
-    padding: 0 13px;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 8px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    color: rgba(255,248,234,0.84) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-comment-btn,
-  #homeSection #profileFeedSection .profile-feed-profile-btn {
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-comment-btn,
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-profile-btn {
     order: 2;
   }
 
-  #homeSection #profileFeedSection .profile-feed-open-btn {
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-open-btn {
+    appearance: none;
     order: 10;
-    flex: 0 0 44px;
-    width: 44px;
-    min-width: 44px;
-    margin-left: auto;
-    padding: 0;
-    font-size: 0;
-    color: transparent;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 0 0 auto !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(244,178,74,0.10) !important;
+    background: rgba(255,255,255,0.052) !important;
+    color: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-open-btn::after {
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-open-btn::before {
     content: "⤢";
     display: inline-flex;
     align-items: center;
@@ -502,6 +525,11 @@
     color: rgba(255,248,234,0.88);
     font-size: 19px;
     line-height: 1;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-actions .profile-feed-open-btn::after {
+    content: none !important;
+    display: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-actions :where(button, a):active {
