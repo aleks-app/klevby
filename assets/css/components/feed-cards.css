@@ -336,6 +336,66 @@
   }
 }
 
+@media (max-width: 767px) {
+  #homeSection #profileFeedSection .profile-feed-card {
+    position: relative;
+    isolation: isolate;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.020)),
+      rgba(7, 15, 12, 0.94);
+  }
+
+  #homeSection #profileFeedSection .profile-feed-image {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-image::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 145px;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(7, 15, 12, 0) 0%,
+        rgba(7, 15, 12, 0.16) 28%,
+        rgba(7, 15, 12, 0.58) 68%,
+        rgba(7, 15, 12, 0.96) 100%
+      );
+  }
+
+  #homeSection #profileFeedSection .profile-feed-body {
+    position: relative;
+    z-index: 2;
+    margin-top: -86px;
+    padding: 72px 18px 18px;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(7, 15, 12, 0) 0%,
+        rgba(7, 15, 12, 0.38) 22%,
+        rgba(7, 15, 12, 0.82) 54%,
+        rgba(7, 15, 12, 0.98) 100%
+      );
+  }
+
+  #homeSection #profileFeedSection .profile-feed-author {
+    margin-bottom: 13px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-avatar-img,
+  #homeSection #profileFeedSection .profile-feed-avatar-fallback {
+    box-shadow:
+      0 10px 24px rgba(0,0,0,0.30),
+      0 0 0 1px rgba(255,255,255,0.05);
+  }
+}
+
 .home-empty-card {
   grid-column: 1 / -1;
   min-height: 260px;
