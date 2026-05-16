@@ -190,15 +190,9 @@
       ? `(function(){ const userId = '${authorUserIdAttr}'; const me = String(window.currentUserId || window.klevbyUserId || window.viewerUserId || window.authUserId || window.userId || '').trim(); if (me && userId && me === userId) { openKlevbyProfileSafe(); return; } if (userId && typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(userId, JSON.parse('${authorFallbackJson}')); return; } openKlevbyProfileSafe(); })()`
       : "openKlevbyProfileSafe()";
 
-    return `
-      <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="profile-feed-media" data-feed-media="photo">
-          <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}${mobileImageBaseHtml}</div>
-        </div>
-
-        <div class="card-body profile-feed-body">
+    const authorButtonHtml = (className = "profile-feed-author") => `
           <button
-            class="profile-feed-author"
+            class="${className}"
             type="button"
             onclick="event.stopPropagation(); ${authorClickAction}"
             aria-label="Открыть профиль автора"
@@ -210,6 +204,20 @@
               <span class="profile-feed-author-action">добавил фото с рыбалки</span>
             </span>
           </button>
+    `;
+
+    return `
+      <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
+        <div class="profile-feed-mobile-head" style="display: none;">
+          ${authorButtonHtml("profile-feed-author profile-feed-author-mobile")}
+        </div>
+
+        <div class="profile-feed-media" data-feed-media="photo">
+          <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}${mobileImageBaseHtml}</div>
+        </div>
+
+        <div class="card-body profile-feed-body">
+          ${authorButtonHtml("profile-feed-author")}
 
           <div class="trip-title profile-feed-title">
             <span class="trip-name">${escapeHtml(authorName)}</span>
