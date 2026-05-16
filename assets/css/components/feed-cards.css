@@ -415,7 +415,9 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    padding: 10px 16px 14px;
+    padding: 8px 16px 12px;
+    min-height: 0;
+    background: rgba(7, 15, 12, 0.94);
   }
 
   #homeSection #profileFeedSection .profile-feed-body > .profile-feed-author {
@@ -424,16 +426,36 @@
 
   #homeSection #profileFeedSection .profile-feed-author-action,
   #homeSection #profileFeedSection .profile-feed-title,
-  #homeSection #profileFeedSection .profile-feed-tags,
   #homeSection #profileFeedSection .profile-feed-open-btn {
     display: none !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-body .profile-feed-tags,
+  #homeSection #profileFeedSection .profile-feed-tags,
+  #homeSection #profileFeedSection .profile-feed-tags .tag {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-actions {
     display: flex;
     align-items: center;
-    gap: 18px;
+    justify-content: flex-start;
+    gap: 20px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
     margin: 0;
+    background: transparent;
   }
 
   #homeSection #profileFeedSection .profile-feed-actions .profile-feed-like-btn,
@@ -441,9 +463,9 @@
   #homeSection #profileFeedSection .profile-feed-actions .profile-feed-profile-btn {
     appearance: none !important;
     width: auto !important;
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
     padding: 0 !important;
     margin: 0 !important;
     border: 0 !important;
