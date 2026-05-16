@@ -209,27 +209,42 @@
     return isProfileReturnMode() || isProfileSettingsModalVisible();
   }
 
+  function setFloatButtonBackToProfile(btn) {
+    if (!btn) return;
+
+    btn.textContent = "←";
+    btn.dataset.floatMode = "back";
+    btn.dataset.floatIcon = "←";
+    btn.setAttribute("aria-label", "Вернуться в профиль");
+    btn.setAttribute("title", "В профиль");
+    btn.classList.add("show");
+  }
+
+  function setFloatButtonBackToFeed(btn) {
+    if (!btn) return;
+
+    btn.textContent = "←";
+    btn.dataset.floatMode = "back";
+    btn.dataset.floatIcon = "←";
+    btn.setAttribute("aria-label", "Вернуться в ленту");
+    btn.setAttribute("title", "В ленту");
+    btn.classList.add("show");
+  }
+
   function updateProfileHomeFloatButton() {
     const btn = document.getElementById("homeFloatBtn");
 
     if (!btn) return;
 
     if (shouldShowProfileBackButton()) {
-      btn.textContent = "← Профиль";
-      btn.setAttribute("aria-label", "Вернуться в профиль");
-      btn.classList.add("show");
+      setFloatButtonBackToProfile(btn);
       return;
     }
 
     if (isProfileSectionVisible()) {
-      btn.textContent = "⌂ Главная";
-      btn.setAttribute("aria-label", "Вернуться на главную");
-      btn.classList.add("show");
+      setFloatButtonBackToFeed(btn);
       return;
     }
-
-    btn.textContent = "⌂ Главная";
-    btn.setAttribute("aria-label", "Вернуться на главную");
 
     if (typeof klevbyOriginalUpdateHomeFloatButton === "function") {
       try {
