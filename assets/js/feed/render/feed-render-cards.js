@@ -137,6 +137,7 @@
     const authorName = item?.authorName || item?.author_name || "Рыбак";
     const authorCity = item?.authorCity || item?.author_city || "";
     const title = item?.title || item?.caption || "Фото с рыбалки";
+    const safeImageAlt = escapeAttr(title || authorName || "Фото");
     const likesCount = getItemLikesCount(item);
     const commentsCount = getItemCommentsCount(item);
     const date = formatDate(item?.createdAt || item?.created_at);
@@ -155,7 +156,10 @@
       ? ""
       : ` style="background-image: url('${safeImage}')"`;
     const imageElementHtml = useDesktopImageElement
-      ? `<img class="profile-feed-image-img" src="${safeImage}" alt="" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
+      ? `<img class="profile-feed-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
+      : "";
+    const mobileImageBaseHtml = !useDesktopImageElement
+      ? `<img class="profile-feed-mobile-image-img" data-src="${safeImage}" alt="${safeImageAlt}" loading="lazy" decoding="async" draggable="false" hidden aria-hidden="true">`
       : "";
 
     const avatarHtml = avatar
@@ -188,7 +192,9 @@
 
     return `
       <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}</div>
+        <div class="profile-feed-media" data-feed-media="photo">
+          <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}${mobileImageBaseHtml}</div>
+        </div>
 
         <div class="card-body profile-feed-body">
           <button
