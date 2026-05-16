@@ -245,16 +245,16 @@
     left: 0 !important;
     right: 0 !important;
     bottom: -1px !important;
-    height: 98px !important;
+    height: 46px !important;
     pointer-events: none !important;
     z-index: 2 !important;
     background:
       linear-gradient(
         180deg,
         rgba(4, 17, 12, 0.00) 0%,
-        rgba(4, 17, 12, 0.18) 38%,
-        rgba(4, 17, 12, 0.58) 72%,
-        rgba(4, 17, 12, 0.94) 100%
+        rgba(4, 17, 12, 0.10) 42%,
+        rgba(4, 17, 12, 0.34) 76%,
+        rgba(4, 17, 12, 0.70) 100%
       ) !important;
   }
 
@@ -276,6 +276,8 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
+    position: relative !important;
+    z-index: 3 !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     grid-template-areas:
@@ -283,9 +285,17 @@
       "actions actions" !important;
     align-items: center !important;
     gap: 9px 10px !important;
-    padding: 12px 18px 13px !important;
+    margin-top: -84px !important;
+    padding: 40px 18px 13px !important;
     background:
-      linear-gradient(180deg, rgba(4, 17, 12, 0.96), rgba(4, 17, 12, 0.98)) !important;
+      linear-gradient(
+        180deg,
+        rgba(4, 17, 12, 0.00) 0%,
+        rgba(4, 17, 12, 0.24) 24%,
+        rgba(4, 17, 12, 0.68) 56%,
+        rgba(4, 17, 12, 0.96) 82%,
+        rgba(4, 17, 12, 0.98) 100%
+      ) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
@@ -399,7 +409,7 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-media::after {
-    height: 88px !important;
+    height: 40px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-image {
@@ -419,9 +429,17 @@
       "author date"
       "actions actions" !important;
     gap: 8px 9px !important;
-    padding: 11px 16px 12px !important;
+    margin-top: -78px !important;
+    padding: 37px 16px 12px !important;
     background:
-      linear-gradient(180deg, rgba(4, 17, 12, 0.96), rgba(4, 17, 12, 0.98)) !important;
+      linear-gradient(
+        180deg,
+        rgba(4, 17, 12, 0.00) 0%,
+        rgba(4, 17, 12, 0.24) 24%,
+        rgba(4, 17, 12, 0.68) 56%,
+        rgba(4, 17, 12, 0.96) 82%,
+        rgba(4, 17, 12, 0.98) 100%
+      ) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-tags {
