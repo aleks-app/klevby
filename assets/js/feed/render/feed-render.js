@@ -369,7 +369,30 @@
     }
   }
 
+  function getRenderRetryModule() {
+    const retry = window.KlevbyFeedRenderRetry;
+
+    if (!retry || typeof retry !== "object") {
+      return null;
+    }
+
+    if (
+      typeof retry.resetRenderRetry === "function" &&
+      typeof retry.scheduleRenderRetry === "function"
+    ) {
+      return retry;
+    }
+
+    return null;
+  }
+
   function resetRenderRetry() {
+    const retry = getRenderRetryModule();
+
+    if (retry) {
+      retry.resetRenderRetry();
+    }
+
     klevbyFeedRenderRetryCount = 0;
 
     if (klevbyFeedRenderRetryTimer) {
@@ -379,6 +402,13 @@
   }
 
   function scheduleRenderRetry(reason = "retry", customDelay = null) {
+    const retry = getRenderRetryModule();
+
+    if (retry) {
+      retry.scheduleRenderRetry(renderProfileFeed, reason, customDelay);
+      return;
+    }
+
     if (klevbyFeedRenderRetryCount >= FEED_RENDER_MAX_RETRIES) {
       return;
     }
