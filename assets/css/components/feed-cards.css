@@ -176,6 +176,14 @@
   border-color: rgba(244,178,74,0.15);
 }
 
+.profile-feed-media {
+  display: block;
+}
+
+.profile-feed-mobile-image-img {
+  display: none !important;
+}
+
 .profile-feed-image {
   height: 300px;
 }
