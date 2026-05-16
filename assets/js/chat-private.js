@@ -5,6 +5,8 @@
 
   let ctx = null;
 
+  const privateProfileAvatarCache = new Map();
+
   function init(options = {}) {
     ctx = options || {};
   }
@@ -167,6 +169,122 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function escapeCssUrl(value) {
+    return String(value || "")
+      .replaceAll("\\", "\\\\")
+      .replaceAll("\n", "")
+      .replaceAll("\r", "")
+      .replaceAll('"', "%22")
+      .replaceAll("'", "%27")
+      .trim();
+  }
+
+  function normalizePrivateAvatarUrl(value) {
+    const url = String(value || "").trim();
+
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image/")) {
+      return url;
+    }
+
+    return "";
+  }
+
+  function rememberPrivateProfileAvatar(userId, avatarUrl) {
+    const safeUserId = String(userId || "").trim();
+    const safeAvatarUrl = normalizePrivateAvatarUrl(avatarUrl);
+
+    if (!isValidSupabaseUuid(safeUserId)) return;
+
+    privateProfileAvatarCache.set(safeUserId, safeAvatarUrl);
+  }
+
+  function getPrivateProfileAvatar(userId) {
+    const safeUserId = String(userId || "").trim();
+
+    if (!isValidSupabaseUuid(safeUserId)) return "";
+
+    return normalizePrivateAvatarUrl(privateProfileAvatarCache.get(safeUserId) || "");
+  }
+
+  function renderPrivateDialogAvatar(peer) {
+    const peerName = String(peer?.name || "Рыбак");
+    const avatarUrl = normalizePrivateAvatarUrl(peer?.avatarUrl || getPrivateProfileAvatar(peer?.id));
+    const initials = escapeHtml(getInitials(peerName));
+
+    if (!avatarUrl) {
+      return `<span class="klevby-private-dialog-avatar">${initials}</span>`;
+    }
+
+    const safeAvatarUrl = escapeCssUrl(avatarUrl);
+
+    return `
+      <span
+        class="klevby-private-dialog-avatar klevby-private-dialog-avatar-image"
+        style="background-image:url('${safeAvatarUrl}');background-size:cover;background-position:center;color:transparent;overflow:hidden;"
+        aria-label="${escapeHtml(peerName)}"
+      >${initials}</span>
+    `;
+  }
+
+  async function loadPrivateProfileAvatarsByIds(ids = []) {
+    const uniqueIds = Array.from(new Set((ids || [])
+      .map((id) => String(id || "").trim())
+      .filter((id) => isValidSupabaseUuid(id))));
+
+    if (!uniqueIds.length) return;
+
+    const missingIds = uniqueIds.filter((id) => !privateProfileAvatarCache.has(id));
+    if (!missingIds.length) return;
+
+    const config = window.KLEVB_CONFIG || {};
+    const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "")
+      .trim()
+      .replace(/\/$/, "");
+    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+
+    if (!supabaseUrl || !supabaseAnonKey) return;
+
+    const idList = missingIds.map((id) => encodeURIComponent(id)).join(",");
+    const endpoint = `${supabaseUrl}/rest/v1/public_profiles?select=id,avatar_url&id=in.(${idList})`;
+
+    try {
+      const headers = {
+        apikey: supabaseAnonKey
+      };
+
+      const accessToken = getPrivateAccessTokenQuick();
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers
+      });
+
+      if (!response.ok) {
+        throw new Error(`public_profiles avatar load failed: ${response.status}`);
+      }
+
+      const rows = await response.json();
+
+      (rows || []).forEach((profile) => {
+        rememberPrivateProfileAvatar(profile?.id, profile?.avatar_url);
+      });
+
+      missingIds.forEach((id) => {
+        if (!privateProfileAvatarCache.has(id)) {
+          privateProfileAvatarCache.set(id, "");
+        }
+      });
+    } catch (error) {
+      console.debug("[KlevbyPrivate] avatars optional load skipped", {
+        error: String(error?.message || error)
+      });
+    }
   }
 
   function isOnline(userId) {
@@ -516,6 +634,7 @@
           peersMap.set(peerId, {
             id: peerId,
             name: peerName,
+            avatarUrl: getPrivateProfileAvatar(peerId),
             lastMessage: "",
             lastTime: "",
             lastTimeValue: 0,
@@ -525,6 +644,7 @@
 
         const peer = peersMap.get(peerId);
         peer.name = getProfileName(peerId, peer.name || peerName);
+        peer.avatarUrl = getPrivateProfileAvatar(peerId) || peer.avatarUrl || "";
 
         if (message) {
           const messageTimeValue = getTimestamp(message.created_at);
@@ -592,7 +712,8 @@
       const renderPeersList = () => {
         const peers = Array.from(peersMap.values()).map((peer) => ({
           ...peer,
-          name: getProfileName(peer.id, peer.name)
+          name: getProfileName(peer.id, peer.name),
+          avatarUrl: getPrivateProfileAvatar(peer.id) || peer.avatarUrl || ""
         })).sort((a, b) => {
           if (a.unreadCount > 0 && b.unreadCount <= 0) return -1;
           if (a.unreadCount <= 0 && b.unreadCount > 0) return 1;
@@ -618,7 +739,7 @@
 
           return `
           <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
-            <span class="klevby-private-dialog-avatar">${escapeHtml(getInitials(peer.name))}</span>
+            ${renderPrivateDialogAvatar(peer)}
 
             <span class="klevby-private-dialog-main">
               <span class="klevby-private-dialog-top">
@@ -650,9 +771,12 @@
       Promise.resolve()
         .then(async () => {
           console.info("[KlevbyPrivate] private list enrichment start");
-          await withPrivateOptionalStepTimeout("profiles select for private_messages peers", () => loadProfilesByIds(
-            (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id])
-          ));
+          const profileIds = (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id]);
+
+          await withPrivateOptionalStepTimeout("profiles select for private_messages peers", async () => {
+            await loadProfilesByIds(profileIds);
+            await loadPrivateProfileAvatarsByIds(profileIds);
+          });
 
           if (isStaleNavigation(navToken)) return;
           if (getCtx().getActiveMode && getCtx().getActiveMode() !== "private") return;
@@ -721,7 +845,10 @@
       }
 
       Promise.resolve()
-        .then(() => withPrivateOptionalStepTimeout("profiles select for selected peer", () => loadProfilesByIds([safePeerId])))
+        .then(() => withPrivateOptionalStepTimeout("profiles select for selected peer", async () => {
+          await loadProfilesByIds([safePeerId]);
+          await loadPrivateProfileAvatarsByIds([safePeerId]);
+        }))
         .then(() => {
           if (isStaleNavigation(navToken)) return;
 
@@ -729,6 +856,7 @@
           if (!selectedPeer || selectedPeer.id !== safePeerId) return;
 
           selectedPeer.name = getProfileName(safePeerId, selectedPeer.name || peerName || "Рыбак");
+          selectedPeer.avatarUrl = getPrivateProfileAvatar(safePeerId) || selectedPeer.avatarUrl || "";
           setSelectedPeer(selectedPeer);
 
           if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
@@ -742,7 +870,8 @@
 
       const nextPeer = {
         id: safePeerId,
-        name: getProfileName(safePeerId, peerName || "Рыбак")
+        name: getProfileName(safePeerId, peerName || "Рыбак"),
+        avatarUrl: getPrivateProfileAvatar(safePeerId)
       };
 
       setSelectedPeer(nextPeer);
@@ -848,12 +977,16 @@
 
       const participantIds = (data || []).flatMap((message) => [message.sender_id, message.receiver_id]);
       Promise.resolve()
-        .then(() => withPrivateOptionalStepTimeout("profiles select for dialog messages", () => loadProfilesByIds(participantIds)))
+        .then(() => withPrivateOptionalStepTimeout("profiles select for dialog messages", async () => {
+          await loadProfilesByIds(participantIds);
+          await loadPrivateProfileAvatarsByIds(participantIds);
+        }))
         .then(() => {
           if (isStaleNavigation(navToken)) return;
 
           const selectedPeer = getSelectedPeer() || nextPeer;
           selectedPeer.name = getProfileName(safePeerId, selectedPeer.name);
+          selectedPeer.avatarUrl = getPrivateProfileAvatar(safePeerId) || selectedPeer.avatarUrl || "";
           setSelectedPeer(selectedPeer);
 
           if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
