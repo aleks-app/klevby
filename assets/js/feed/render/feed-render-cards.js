@@ -131,7 +131,99 @@
     }
   }
 
+  function getAuthorClickAction(item) {
+    const authorUserIdRaw = item?.userId || item?.user_id || item?.ownerId || item?.owner_id || "";
+    const authorUserId = String(authorUserIdRaw || "").trim();
+
+    const fallbackData = {
+      authorName: item?.authorName || item?.author_name || "",
+      authorCity: item?.authorCity || item?.author_city || "",
+      authorAvatarUrl: item?.authorAvatarUrl || item?.author_avatar_url || item?.avatarUrl || item?.avatar_url || "",
+      avatarUrl: item?.authorAvatarUrl || item?.author_avatar_url || item?.avatarUrl || item?.avatar_url || "",
+      image: item?.image || item?.imageUrl || item?.image_url || "",
+      imageUrl: item?.image || item?.imageUrl || item?.image_url || ""
+    };
+
+    const authorFallbackJson = escapeAttr(JSON.stringify(fallbackData));
+    const authorUserIdAttr = escapeAttr(authorUserId);
+
+    if (!authorUserId) {
+      return "openKlevbyProfileSafe()";
+    }
+
+    return `(function(){ const userId = '${authorUserIdAttr}'; const me = String(window.currentUserId || window.klevbyUserId || window.viewerUserId || window.authUserId || window.userId || '').trim(); if (me && userId && me === userId) { openKlevbyProfileSafe(); return; } if (userId && typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(userId, JSON.parse('${authorFallbackJson}')); return; } openKlevbyProfileSafe(); })()`;
+  }
+
+  function profilePhotoMobileCardHtml(item, index = 0) {
+    const safeId = escapeAttr(item?.id || "");
+    const safeImage = escapeAttr(item?.image || item?.imageUrl || "");
+    const authorName = item?.authorName || item?.author_name || "Рыбак";
+    const title = item?.title || item?.caption || "Фото с рыбалки";
+    const safeImageAlt = escapeAttr(title || authorName || "Фото");
+    const likesCount = getItemLikesCount(item);
+    const commentsCount = getItemCommentsCount(item);
+    const date = formatDate(item?.createdAt || item?.created_at);
+    const avatar = getAvatar(item);
+    const authorInitial = String(authorName || "Р").trim().charAt(0).toUpperCase() || "Р";
+    const isSupabase = item?.source === "supabase";
+    const likedState = getItemLikedState(item);
+    const likedAttrs = typeof likedState === "boolean"
+      ? ` data-liked="${likedState ? "true" : "false"}" aria-pressed="${likedState ? "true" : "false"}"`
+      : "";
+
+    const avatarHtml = avatar
+      ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
+      : `<span class="profile-feed-avatar-fallback" aria-hidden="true">${escapeHtml(authorInitial)}</span>`;
+
+    const authorClickAction = getAuthorClickAction(item);
+
+    const likeButton = isSupabase
+      ? `<button class="profile-feed-mobile-action profile-feed-like-btn${likedState ? " is-liked liked" : ""}" type="button" data-feed-post-id="${safeId}" data-like-count="${likesCount}"${likedAttrs} onclick="event.stopPropagation(); toggleFeedLike('${safeId}')">👍 <span>${likesCount}</span></button>`
+      : "";
+
+    const commentButton = isSupabase
+      ? `<button class="profile-feed-mobile-action profile-feed-comment-btn" type="button" data-feed-post-id="${safeId}" data-comment-count="${commentsCount}" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 <span>${commentsCount}</span></button>`
+      : `<button class="profile-feed-mobile-action profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
+
+    return `
+      <article class="card profile-feed-card profile-feed-card-mobile-social" data-feed-card-id="${safeId}">
+        <div class="profile-feed-mobile-head">
+          <button
+            class="profile-feed-author profile-feed-mobile-author"
+            type="button"
+            onclick="event.stopPropagation(); ${authorClickAction}"
+            aria-label="Открыть профиль автора"
+          >
+            ${avatarHtml}
+
+            <span class="profile-feed-author-text">
+              <span class="profile-feed-author-name">${escapeHtml(authorName)}</span>
+              <span class="profile-feed-author-action">добавил фото с рыбалки</span>
+            </span>
+          </button>
+
+          ${date ? `<span class="profile-feed-mobile-date">🕒 ${escapeHtml(date)}</span>` : ""}
+        </div>
+
+        <button class="profile-feed-mobile-photo-button" type="button" onclick="event.stopPropagation(); openProfilePhotoFeedItem('${safeId}')" aria-label="Открыть фото">
+          <img class="profile-feed-mobile-social-img" src="${safeImage}" alt="${safeImageAlt}" loading="lazy" decoding="async" draggable="false">
+        </button>
+
+        <div class="profile-feed-mobile-actions">
+          ${likeButton}
+          ${commentButton}
+        </div>
+      </article>
+    `;
+  }
+
   function profilePhotoCardHtml(item, index = 0) {
+    const useDesktopImageElement = isDesktopFeedMode();
+
+    if (!useDesktopImageElement) {
+      return profilePhotoMobileCardHtml(item, index);
+    }
+
     const safeId = escapeAttr(item?.id || "");
     const safeImage = escapeAttr(item?.image || item?.imageUrl || "");
     const authorName = item?.authorName || item?.author_name || "Рыбак";
@@ -149,18 +241,9 @@
       ? ` data-liked="${likedState ? "true" : "false"}" aria-pressed="${likedState ? "true" : "false"}"`
       : "";
 
-    const useDesktopImageElement = isDesktopFeedMode();
-    const imageLoading = useDesktopImageElement && index < FEED_DESKTOP_EAGER_LIMIT ? "eager" : "lazy";
-    const imageFetchPriority = useDesktopImageElement && index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
-    const imageBackgroundAttr = useDesktopImageElement
-      ? ""
-      : ` style="background-image: url('${safeImage}')"`;
-    const imageElementHtml = useDesktopImageElement
-      ? `<img class="profile-feed-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
-      : "";
-    const mobileImageBaseHtml = !useDesktopImageElement
-      ? `<img class="profile-feed-mobile-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="lazy" decoding="async" draggable="false">`
-      : "";
+    const imageLoading = index < FEED_DESKTOP_EAGER_LIMIT ? "eager" : "lazy";
+    const imageFetchPriority = index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
+    const imageElementHtml = `<img class="profile-feed-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`;
 
     const avatarHtml = avatar
       ? `<span class="profile-feed-avatar-img" style="background-image: url('${escapeAttr(avatar)}');" aria-hidden="true"></span>`
@@ -174,26 +257,12 @@
       ? `<button class="small-btn gray profile-feed-comment-btn" type="button" data-feed-post-id="${safeId}" data-comment-count="${commentsCount}" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
-    const authorUserIdRaw = item?.userId || item?.user_id || item?.ownerId || item?.owner_id || "";
-    const authorUserId = String(authorUserIdRaw || "").trim();
-    const fallbackData = {
-      authorName: item?.authorName || item?.author_name || "",
-      authorCity: item?.authorCity || item?.author_city || "",
-      authorAvatarUrl: item?.authorAvatarUrl || item?.author_avatar_url || item?.avatarUrl || item?.avatar_url || "",
-      avatarUrl: item?.authorAvatarUrl || item?.author_avatar_url || item?.avatarUrl || item?.avatar_url || "",
-      image: item?.image || item?.imageUrl || item?.image_url || "",
-      imageUrl: item?.image || item?.imageUrl || item?.image_url || ""
-    };
-    const authorFallbackJson = escapeAttr(JSON.stringify(fallbackData));
-    const authorUserIdAttr = escapeAttr(authorUserId);
-    const authorClickAction = authorUserId
-      ? `(function(){ const userId = '${authorUserIdAttr}'; const me = String(window.currentUserId || window.klevbyUserId || window.viewerUserId || window.authUserId || window.userId || '').trim(); if (me && userId && me === userId) { openKlevbyProfileSafe(); return; } if (userId && typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(userId, JSON.parse('${authorFallbackJson}')); return; } openKlevbyProfileSafe(); })()`
-      : "openKlevbyProfileSafe()";
+    const authorClickAction = getAuthorClickAction(item);
 
     return `
       <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
         <div class="profile-feed-media" data-feed-media="photo">
-          <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}${mobileImageBaseHtml}</div>
+          <div class="card-img profile-feed-image">${imageElementHtml}</div>
         </div>
 
         <div class="card-body profile-feed-body">
