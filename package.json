@@ -1,0 +1,14 @@
+{
+  "name": "klevby-smoke-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Minimal Playwright smoke tests for Klevby.com",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}
