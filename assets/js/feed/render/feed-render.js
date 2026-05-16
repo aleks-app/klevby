@@ -1097,15 +1097,9 @@
       ? `<button class="small-btn gray profile-feed-comment-btn" type="button" data-feed-post-id="${safeId}" data-comment-count="${commentsCount}" onclick="event.stopPropagation(); openFeedCommentModal('${safeId}')">💬 ${commentsCount}</button>`
       : `<button class="small-btn gray profile-feed-profile-btn" type="button" onclick="event.stopPropagation(); openKlevbyProfileSafe()">Профиль</button>`;
 
-    return `
-      <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
-        <div class="profile-feed-media" data-feed-media="photo">
-          <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}${mobileImageBaseHtml}</div>
-        </div>
-
-        <div class="card-body profile-feed-body">
+    const authorButtonHtml = (className = "profile-feed-author") => `
           <button
-            class="profile-feed-author"
+            class="${className}"
             type="button"
             onclick="event.stopPropagation(); openKlevbyProfileSafe()"
             aria-label="Открыть профиль автора"
@@ -1117,6 +1111,20 @@
               <span class="profile-feed-author-action">добавил фото с рыбалки</span>
             </span>
           </button>
+    `;
+
+    return `
+      <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
+        <div class="profile-feed-mobile-head" style="display: none;">
+          ${authorButtonHtml("profile-feed-author profile-feed-author-mobile")}
+        </div>
+
+        <div class="profile-feed-media" data-feed-media="photo">
+          <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}${mobileImageBaseHtml}</div>
+        </div>
+
+        <div class="card-body profile-feed-body">
+          ${authorButtonHtml("profile-feed-author")}
 
           <div class="trip-title profile-feed-title">
             <span class="trip-name">${escapeHtml(authorName)}</span>
