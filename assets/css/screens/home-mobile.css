@@ -7,6 +7,10 @@
   display: none;
 }
 
+#homeSection .home-mobile-feed-head {
+  display: none;
+}
+
 @media (max-width: 767px) {
   header {
     background: transparent !important;
