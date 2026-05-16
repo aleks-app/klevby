@@ -176,6 +176,10 @@
   border-color: rgba(244,178,74,0.15);
 }
 
+.profile-feed-mobile-header {
+  display: none;
+}
+
 .profile-feed-image {
   height: 300px;
 }
@@ -333,6 +337,175 @@
   #homeSection #profileFeedSection .profile-feed-actions {
     grid-area: actions;
     margin-top: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  #homeSection #profileFeedSection.social-feed-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    margin-top: 14px;
+    margin-bottom: 34px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-card {
+    min-height: 0;
+    border-radius: 26px;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.024)),
+      rgba(9, 16, 13, 0.86);
+    border-color: rgba(244,178,74,0.075);
+    box-shadow: 0 18px 42px rgba(0,0,0,0.26);
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 12px 10px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-author {
+    appearance: none;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-header .profile-feed-avatar-img,
+  #homeSection #profileFeedSection .profile-feed-mobile-header .profile-feed-avatar-fallback {
+    width: 36px;
+    height: 36px;
+    border-color: rgba(244,178,74,0.20);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-author-text {
+    min-width: 0;
+    display: block;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-author-name {
+    display: block;
+    max-width: 52vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #fff8ea;
+    font-size: 14.5px;
+    line-height: 1.15;
+    font-weight: 900;
+    letter-spacing: -0.12px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-date {
+    flex: 0 0 auto;
+    max-width: 35vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(255,248,234,0.48);
+    font-size: 11.5px;
+    line-height: 1.15;
+    font-weight: 800;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-image {
+    width: calc(100% - 20px);
+    height: clamp(390px, 125vw, 560px);
+    margin: 0 10px;
+    border-radius: 22px;
+    background-size: cover;
+    background-position: center 38%;
+    box-shadow:
+      0 14px 30px rgba(0,0,0,0.30),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  #homeSection #profileFeedSection .profile-feed-body {
+    padding: 0 12px 12px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-body > .profile-feed-author,
+  #homeSection #profileFeedSection .profile-feed-title,
+  #homeSection #profileFeedSection .profile-feed-description,
+  #homeSection #profileFeedSection .profile-feed-tags {
+    display: none !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding-top: 10px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-actions :where(button, a) {
+    min-height: 42px;
+    min-width: 44px;
+    margin: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(244,178,74,0.09);
+    background: rgba(255,255,255,0.055);
+    color: rgba(255,248,234,0.84);
+    box-shadow: none;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-like-btn,
+  #homeSection #profileFeedSection .profile-feed-comment-btn,
+  #homeSection #profileFeedSection .profile-feed-profile-btn {
+    order: 1;
+    flex: 0 0 auto;
+    padding: 0 13px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-comment-btn,
+  #homeSection #profileFeedSection .profile-feed-profile-btn {
+    order: 2;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-open-btn {
+    order: 10;
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    margin-left: auto;
+    padding: 0;
+    font-size: 0;
+    color: transparent;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-open-btn::after {
+    content: "⤢";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: rgba(255,248,234,0.88);
+    font-size: 19px;
+    line-height: 1;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-actions :where(button, a):active {
+    transform: scale(0.97);
   }
 }
 
