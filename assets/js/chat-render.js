@@ -8,8 +8,6 @@
   let lastRenderedMessageMeta = null;
   let contextMessageData = null;
 
-  const MESSAGE_NEAR_DUPLICATE_WINDOW_MS = 9000;
-
   function init(options = {}) {
     ctx = options || {};
     resetRenderState();
@@ -249,123 +247,6 @@
     };
   }
 
-  function normalizeMessageContent(value) {
-    return String(value || "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function getMessageSenderKey(message, type, isMine, authorKey) {
-    if (type === "private") {
-      return String(message?.sender_id || authorKey || (isMine ? "me" : "peer") || "").trim();
-    }
-
-    return String(message?.user_id || message?.user_name || authorKey || (isMine ? "me" : "public") || "").trim();
-  }
-
-  function getMessageReceiverKey(message, type) {
-    if (type === "private") {
-      return String(message?.receiver_id || "").trim();
-    }
-
-    return "";
-  }
-
-  function getMessageDedupeData({ message, type, isMine, authorKey }) {
-    const parsed = parseReplyContent(message?.content || "");
-    const content = normalizeMessageContent(parsed.mainText || "");
-    const timeStamp = getTimestamp(message?.created_at);
-    const senderKey = getMessageSenderKey(message, type, isMine, authorKey);
-    const receiverKey = getMessageReceiverKey(message, type);
-
-    return {
-      id: String(message?.id || "").trim(),
-      type: String(type || ""),
-      isMine: isMine ? "1" : "0",
-      content,
-      timeStamp,
-      senderKey,
-      receiverKey
-    };
-  }
-
-  function hasSameMessageIdentity(a, b) {
-    if (!a || !b) return false;
-    if (a.type !== b.type) return false;
-    if (a.isMine !== b.isMine) return false;
-    if (a.content !== b.content) return false;
-
-    if (a.senderKey && b.senderKey && a.senderKey !== b.senderKey) {
-      return false;
-    }
-
-    if (a.type === "private" && a.receiverKey && b.receiverKey && a.receiverKey !== b.receiverKey) {
-      return false;
-    }
-
-    const delta = Math.abs(Number(a.timeStamp || 0) - Number(b.timeStamp || 0));
-    return Number.isFinite(delta) && delta <= MESSAGE_NEAR_DUPLICATE_WINDOW_MS;
-  }
-
-  function updateDuplicateRowIdentity(row, dedupeData) {
-    if (!row || !dedupeData) return;
-
-    if (dedupeData.id && !String(row.dataset.messageId || "").trim()) {
-      row.dataset.messageId = dedupeData.id;
-    }
-
-    if (dedupeData.id && String(row.dataset.messageId || "").startsWith("local-")) {
-      row.dataset.messageId = dedupeData.id;
-    }
-
-    if (dedupeData.senderKey) {
-      row.dataset.senderKey = dedupeData.senderKey;
-    }
-
-    if (dedupeData.receiverKey) {
-      row.dataset.receiverKey = dedupeData.receiverKey;
-    }
-
-    if (dedupeData.timeStamp) {
-      row.dataset.messageTs = String(dedupeData.timeStamp);
-    }
-  }
-
-  function findDuplicateMessageRow(dedupeData) {
-    const messagesContainer = getMessagesContainer();
-    if (!messagesContainer || !dedupeData) return null;
-
-    if (dedupeData.id) {
-      const byId = messagesContainer.querySelector(
-        `[data-message-type="${cssEscape(dedupeData.type)}"][data-message-id="${cssEscape(dedupeData.id)}"]`
-      );
-
-      if (byId) return byId;
-    }
-
-    const rows = messagesContainer.querySelectorAll(
-      `[data-message-type="${cssEscape(dedupeData.type)}"].chat-message-row`
-    );
-
-    for (const row of rows) {
-      const existing = {
-        id: String(row.dataset.messageId || "").trim(),
-        type: String(row.dataset.messageType || "").trim(),
-        isMine: String(row.dataset.isMine || "").trim(),
-        content: normalizeMessageContent(row.dataset.content || ""),
-        timeStamp: Number(row.dataset.messageTs || 0),
-        senderKey: String(row.dataset.senderKey || "").trim(),
-        receiverKey: String(row.dataset.receiverKey || "").trim()
-      };
-
-      if (hasSameMessageIdentity(existing, dedupeData)) {
-        return row;
-      }
-    }
-
-    return null;
-  }
-
   function shouldGroupWithPrevious(meta) {
     if (!lastRenderedMessageMeta) return false;
     if (lastRenderedMessageMeta.type !== meta.type) return false;
@@ -406,12 +287,6 @@
     const parsed = parseReplyContent(message.content || "");
     const time = getMessageTime(message.created_at);
     const timeStamp = getTimestamp(message.created_at);
-    const dedupeData = getMessageDedupeData({
-      message,
-      type,
-      isMine,
-      authorKey
-    });
 
     const meta = {
       type,
@@ -431,14 +306,11 @@
       groupedWithPrevious ? "grouped-with-prev" : "first-in-group"
     ].join(" ");
 
-    row.dataset.messageId = dedupeData.id || "";
+    row.dataset.messageId = message.id || "";
     row.dataset.messageType = type;
     row.dataset.author = author;
-    row.dataset.content = dedupeData.content || "";
+    row.dataset.content = parsed.mainText || "";
     row.dataset.isMine = isMine ? "1" : "0";
-    row.dataset.messageTs = String(dedupeData.timeStamp || timeStamp || Date.now());
-    row.dataset.senderKey = dedupeData.senderKey || "";
-    row.dataset.receiverKey = dedupeData.receiverKey || "";
 
     const avatar = document.createElement("div");
     avatar.className = "klevby-message-avatar";
@@ -478,21 +350,6 @@
     const author = isMine ? "Вы" : getProfileName(message.user_id, message.user_name || "Рыбак");
     const authorKey = message.user_id || message.user_name || author;
 
-    const dedupeData = getMessageDedupeData({
-      message,
-      type: "public",
-      isMine,
-      authorKey: String(authorKey)
-    });
-
-    const duplicateRow = findDuplicateMessageRow(dedupeData);
-
-    if (duplicateRow) {
-      updateDuplicateRowIdentity(duplicateRow, dedupeData);
-      console.log("[KlevbyRender] duplicate public message skipped", dedupeData.id || dedupeData.content);
-      return;
-    }
-
     const row = buildMessageRow({
       message,
       type: "public",
@@ -508,6 +365,18 @@
   function renderPrivateMessage(message) {
     const messagesContainer = getMessagesContainer();
     if (!messagesContainer) return;
+    const messageId = String(message?.id || "").trim();
+
+    if (messageId) {
+      const duplicateRow = messagesContainer.querySelector(
+        `[data-message-type="private"][data-message-id="${cssEscape(messageId)}"]`
+      );
+
+      if (duplicateRow) {
+        console.log("[KlevbyRender] duplicate private message skipped", messageId);
+        return;
+      }
+    }
 
     const selectedPeer = getSelectedPeer();
 
@@ -519,21 +388,6 @@
     const author = isMine ? "Вы" : getProfileName(message.sender_id, message.sender_name || selectedPeer?.name || "Рыбак");
     const authorKey = message.sender_id || author;
 
-    const dedupeData = getMessageDedupeData({
-      message,
-      type: "private",
-      isMine,
-      authorKey: String(authorKey)
-    });
-
-    const duplicateRow = findDuplicateMessageRow(dedupeData);
-
-    if (duplicateRow) {
-      updateDuplicateRowIdentity(duplicateRow, dedupeData);
-      console.log("[KlevbyRender] duplicate private message skipped", dedupeData.id || dedupeData.content);
-      return;
-    }
-
     const row = buildMessageRow({
       message,
       type: "private",
@@ -541,6 +395,11 @@
       author,
       authorKey: String(authorKey)
     });
+
+    if (messageId) {
+      row.dataset.messageType = "private";
+      row.dataset.messageId = messageId;
+    }
 
     messagesContainer.appendChild(row);
     scrollChatToBottom();
