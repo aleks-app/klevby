@@ -12,9 +12,12 @@ const KLEVB_PROFILE_AVATAR_QUALITY = 0.78;
 const KLEVB_PROFILE_AVATAR_BUCKET = "profile-avatars";
 const KLEVB_PROFILE_REST_TIMEOUT_MS = 12000;
 const KLEVB_PROFILE_FEED_SYNC_LOCK_TTL_MS = 2 * 60 * 1000;
+const KLEVB_PROFILE_FEED_RECOVERY_MIN_INTERVAL_MS = 7000;
 
 let klevbyProfileFeedSyncInProgress = false;
 let klevbyProfileFeedSyncTimer = null;
+let klevbyProfileFeedRecoveryTimer = null;
+let klevbyProfileFeedRecoveryLastAt = 0;
 let klevbyProfilePhotoUploadInProgress = false;
 
 function getProfileCore() {
@@ -365,7 +368,6 @@ function showHomeSectionFallback() {
   return requireProfileUiMethod("showHomeSectionFallback")();
 }
 
-
 function openKlevbyPublicProfile(userId, fallbackData) {
   if (!window.KlevbyPublicProfile || typeof window.KlevbyPublicProfile.open !== "function") return;
   return window.KlevbyPublicProfile.open(userId, fallbackData || {});
@@ -405,6 +407,7 @@ function openKlevbyProfile() {
   setProfileTabActive(0);
   updateKlevbyProfileView();
   setProfilePhotoButtonsDisabled(klevbyProfilePhotoUploadInProgress);
+  scheduleProfileFeedRecoverySync("open_profile", 1600);
 
   window.scrollTo({
     top: 0,
@@ -521,6 +524,7 @@ function openProfilePhotoAction() {
   applyProfileTabbar();
   setProfileTabActive(0);
   updateProfileHomeFloatButton();
+  scheduleProfileFeedRecoverySync("before_photo_action", 900);
   triggerProfilePhotoInput();
 }
 
@@ -590,6 +594,13 @@ function clearProfileFeedSyncTimer() {
   }
 }
 
+function clearProfileFeedRecoveryTimer() {
+  if (klevbyProfileFeedRecoveryTimer) {
+    clearTimeout(klevbyProfileFeedRecoveryTimer);
+    klevbyProfileFeedRecoveryTimer = null;
+  }
+}
+
 function getProfilePhotoFeedSyncState(photo) {
   return String(photo?.feedSyncState || "").trim().toLowerCase();
 }
@@ -614,6 +625,28 @@ function isProfilePhotoFeedSyncLocked(photo) {
   }
 
   return Date.now() - updatedAt < KLEVB_PROFILE_FEED_SYNC_LOCK_TTL_MS;
+}
+
+function hasRecoverableLocalProfilePhotos() {
+  try {
+    const photos = readProfilePhotos();
+
+    return photos.some((photo) => {
+      if (!photo || !photo.src || photo.feedPostId || photo.feedImageUrl) {
+        return false;
+      }
+
+      const state = getProfilePhotoFeedSyncState(photo);
+
+      if (state === "done") {
+        return false;
+      }
+
+      return true;
+    });
+  } catch (error) {
+    return false;
+  }
 }
 
 function markProfilePhotoFeedSyncState(localId, state, extra = {}) {
@@ -647,12 +680,62 @@ function scheduleProfileFeedSync(delay = 1200) {
   }, safeDelay);
 }
 
+function scheduleProfileFeedRecoverySync(reason = "recovery", delay = 1800) {
+  if (!hasRecoverableLocalProfilePhotos()) {
+    return;
+  }
+
+  clearProfileFeedRecoveryTimer();
+
+  const now = Date.now();
+  const elapsed = now - klevbyProfileFeedRecoveryLastAt;
+  const baseDelay = Number(delay || 1800);
+  const throttledDelay = elapsed < KLEVB_PROFILE_FEED_RECOVERY_MIN_INTERVAL_MS
+    ? Math.max(baseDelay, KLEVB_PROFILE_FEED_RECOVERY_MIN_INTERVAL_MS - elapsed)
+    : baseDelay;
+
+  klevbyProfileFeedRecoveryTimer = setTimeout(() => {
+    klevbyProfileFeedRecoveryTimer = null;
+
+    if (klevbyProfilePhotoUploadInProgress) {
+      scheduleProfileFeedRecoverySync("upload_in_progress", 4200);
+      return;
+    }
+
+    if (!hasRecoverableLocalProfilePhotos()) {
+      return;
+    }
+
+    klevbyProfileFeedRecoveryLastAt = Date.now();
+
+    syncLocalProfilePhotosToSupabaseFeed(true)
+      .then((changed) => {
+        if (changed) {
+          console.info("Klevby profile: зависшие локальные фото синхронизированы", {
+            reason
+          });
+          return;
+        }
+
+        if (hasRecoverableLocalProfilePhotos()) {
+          console.info("Klevby profile: локальные фото ещё ждут синхронизации", {
+            reason
+          });
+        }
+      })
+      .catch((error) => {
+        console.warn("Klevby profile: recovery-синхронизация фото не сработала", error);
+      });
+  }, Math.max(0, throttledDelay));
+}
+
 async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
   if (klevbyProfileFeedSyncInProgress) return false;
 
   if (typeof window.klevbyCreateFeedPhotoPost !== "function") {
     if (force) {
       console.warn("Klevby profile: feed-supabase.js ещё не готов для синхронизации фото");
+      scheduleProfileFeedRecoverySync("feed_api_not_ready", 4500);
     }
 
     return false;
@@ -663,6 +746,7 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
   if (!currentUser || !currentUser.id) {
     if (force) {
       console.warn("Klevby profile: нет пользователя для загрузки локальных фото в Supabase");
+      scheduleProfileFeedRecoverySync("user_not_ready", 4500);
     }
 
     return false;
@@ -693,6 +777,7 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
   klevbyProfileFeedSyncInProgress = true;
 
   let changed = false;
+  let failed = false;
 
   try {
     for (const pendingPhoto of pendingPhotos) {
@@ -724,6 +809,8 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
 
         dispatchProfileFeedEvent("local_profile_photo_synced_to_supabase", feedItem);
       } catch (error) {
+        failed = true;
+
         console.warn("Klevby profile: локальное фото не удалось отправить в Supabase", error);
 
         updateProfilePhotoByLocalId(pendingPhoto.id, (photo) => {
@@ -744,6 +831,10 @@ async function syncLocalProfilePhotosToSupabaseFeed(force = false) {
   if (changed) {
     updateKlevbyProfileView();
     refreshProfileFeedSoon(250);
+  }
+
+  if (failed && force && hasRecoverableLocalProfilePhotos()) {
+    scheduleProfileFeedRecoverySync("failed_retry_later", 12000);
   }
 
   return changed;
@@ -813,6 +904,7 @@ async function handleProfilePhotoUpload(event) {
       feedItem = await uploadProfilePhotoToSupabaseFeed(compressedPhoto, file);
 
       clearProfileFeedSyncTimer();
+      clearProfileFeedRecoveryTimer();
 
       updateProfilePhotoByLocalId(localPhoto.id, (photo) => {
         return {
@@ -853,6 +945,7 @@ async function handleProfilePhotoUpload(event) {
       dispatchProfileFeedEvent("profile_photo_saved_locally", localPhoto, supabaseError);
 
       scheduleProfileFeedSync(2200);
+      scheduleProfileFeedRecoverySync("upload_failed", 5200);
 
       finishProfileUploadStatus("Фото в профиле. Синхронизация ленты повторится…", "warning", 2600);
       finished = true;
@@ -870,6 +963,8 @@ async function handleProfilePhotoUpload(event) {
           feedSyncUpdatedAt: Date.now()
         };
       });
+
+      scheduleProfileFeedRecoverySync("processing_failed_local_photo", 5200);
     }
 
     finishProfileUploadStatus("Не получилось обработать фото", "error", 2200);
@@ -1074,7 +1169,26 @@ function openProfileCreateView() {
 
 window.addEventListener("klevby-profile-photos-updated", () => {
   updateKlevbyProfileView();
+  scheduleProfileFeedRecoverySync("photos_updated", 1800);
 });
+
+window.addEventListener("klevby-app-resumed", () => {
+  scheduleProfileFeedRecoverySync("app_resumed", 2200);
+});
+
+window.addEventListener("pageshow", () => {
+  scheduleProfileFeedRecoverySync("pageshow", 2600);
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    scheduleProfileFeedRecoverySync("visibility_visible", 2400);
+  }
+});
+
+setTimeout(() => {
+  scheduleProfileFeedRecoverySync("startup", 3200);
+}, 0);
 
 window.KlevbyProfile = {
   openKlevbyProfile,
@@ -1104,7 +1218,9 @@ window.KlevbyProfile = {
   updateProfileHomeFloatButton,
   patchHomeFloatButton,
   showHomeSectionFallback,
-  openKlevbyPublicProfile
+  openKlevbyPublicProfile,
+  syncLocalProfilePhotosToSupabaseFeed,
+  scheduleProfileFeedRecoverySync
 };
 
 console.log("Klevby profile bridge loaded");
