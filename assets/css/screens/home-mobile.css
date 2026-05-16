@@ -233,6 +233,31 @@
     display: none !important;
   }
 
+  #homeSection #profileFeedSection .profile-feed-media {
+    position: relative !important;
+    overflow: hidden !important;
+    background: #06110d !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-media::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: -1px !important;
+    height: 98px !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(4, 17, 12, 0.00) 0%,
+        rgba(4, 17, 12, 0.18) 38%,
+        rgba(4, 17, 12, 0.58) 72%,
+        rgba(4, 17, 12, 0.94) 100%
+      ) !important;
+  }
+
   #homeSection #profileFeedSection .profile-feed-image {
     height: clamp(380px, 64vh, 490px) !important;
     min-height: 380px !important;
@@ -259,6 +284,8 @@
     align-items: center !important;
     gap: 9px 10px !important;
     padding: 12px 18px 13px !important;
+    background:
+      linear-gradient(180deg, rgba(4, 17, 12, 0.96), rgba(4, 17, 12, 0.98)) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
@@ -371,6 +398,10 @@
     font-size: 13px !important;
   }
 
+  #homeSection #profileFeedSection .profile-feed-media::after {
+    height: 88px !important;
+  }
+
   #homeSection #profileFeedSection .profile-feed-image {
     height: clamp(365px, 62vh, 455px) !important;
     min-height: 365px !important;
@@ -389,6 +420,8 @@
       "actions actions" !important;
     gap: 8px 9px !important;
     padding: 11px 16px 12px !important;
+    background:
+      linear-gradient(180deg, rgba(4, 17, 12, 0.96), rgba(4, 17, 12, 0.98)) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-tags {
