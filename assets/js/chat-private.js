@@ -218,14 +218,22 @@
       return `<span class="klevby-private-dialog-avatar">${initials}</span>`;
     }
 
-    const safeAvatarUrl = escapeCssUrl(avatarUrl);
+    const safeAvatarUrl = escapeHtml(avatarUrl);
 
     return `
       <span
         class="klevby-private-dialog-avatar klevby-private-dialog-avatar-image"
-        style="background-image:url('${safeAvatarUrl}');background-size:cover;background-position:center;color:transparent;overflow:hidden;"
         aria-label="${escapeHtml(peerName)}"
-      >${initials}</span>
+        style="overflow:hidden;padding:0;"
+      >
+        <img
+          src="${safeAvatarUrl}"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          style="width:100%;height:100%;display:block;object-fit:cover;object-position:center;border-radius:inherit;"
+        >
+      </span>
     `;
   }
 
