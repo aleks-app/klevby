@@ -252,13 +252,9 @@
 
     try {
       const headers = {
-        apikey: supabaseAnonKey
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`
       };
-
-      const accessToken = getPrivateAccessTokenQuick();
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
-      }
 
       const response = await fetch(endpoint, {
         method: "GET",
@@ -764,6 +760,13 @@
         }
       };
 
+      const privateProfileIds = (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id]);
+
+      await withPrivateOptionalStepTimeout("avatars select for private_messages peers", () =>
+        loadPrivateProfileAvatarsByIds(privateProfileIds),
+        2500
+      );
+
       console.info("[KlevbyPrivate] private list first render start");
       renderPeersList();
       console.info("[KlevbyPrivate] private list first render end");
@@ -771,12 +774,16 @@
       Promise.resolve()
         .then(async () => {
           console.info("[KlevbyPrivate] private list enrichment start");
-          const profileIds = (privateUsers || []).flatMap((item) => [item.sender_id, item.receiver_id]);
+          const profileIds = privateProfileIds;
 
           await withPrivateOptionalStepTimeout("profiles select for private_messages peers", async () => {
             await loadProfilesByIds(profileIds);
-            await loadPrivateProfileAvatarsByIds(profileIds);
           });
+
+          await withPrivateOptionalStepTimeout("avatars refresh for private_messages peers", () =>
+            loadPrivateProfileAvatarsByIds(profileIds),
+            2500
+          );
 
           if (isStaleNavigation(navToken)) return;
           if (getCtx().getActiveMode && getCtx().getActiveMode() !== "private") return;
