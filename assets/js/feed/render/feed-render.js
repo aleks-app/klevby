@@ -1082,7 +1082,7 @@
       ? `<img class="profile-feed-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
       : "";
     const mobileImageBaseHtml = !useDesktopImageElement
-      ? `<img class="profile-feed-mobile-image-img" data-src="${safeImage}" alt="${safeImageAlt}" loading="lazy" decoding="async" draggable="false" hidden aria-hidden="true">`
+      ? `<img class="profile-feed-mobile-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="lazy" decoding="async" draggable="false">`
       : "";
 
     const avatarHtml = avatar
