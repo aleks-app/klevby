@@ -340,9 +340,7 @@
   #homeSection #profileFeedSection .profile-feed-card {
     position: relative;
     isolation: isolate;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.020)),
-      rgba(7, 15, 12, 0.94);
+    background: rgba(7, 15, 12, 0.94);
   }
 
   #homeSection #profileFeedSection .profile-feed-image {
@@ -357,14 +355,15 @@
     left: 0;
     right: 0;
     bottom: -1px;
-    height: 145px;
+    height: 190px;
     pointer-events: none;
     background:
       linear-gradient(
         180deg,
         rgba(7, 15, 12, 0) 0%,
-        rgba(7, 15, 12, 0.16) 28%,
-        rgba(7, 15, 12, 0.58) 68%,
+        rgba(7, 15, 12, 0.06) 22%,
+        rgba(7, 15, 12, 0.28) 48%,
+        rgba(7, 15, 12, 0.70) 76%,
         rgba(7, 15, 12, 0.96) 100%
       );
   }
@@ -372,20 +371,17 @@
   #homeSection #profileFeedSection .profile-feed-body {
     position: relative;
     z-index: 2;
-    margin-top: -86px;
-    padding: 72px 18px 18px;
-    background:
-      linear-gradient(
-        180deg,
-        rgba(7, 15, 12, 0) 0%,
-        rgba(7, 15, 12, 0.38) 22%,
-        rgba(7, 15, 12, 0.82) 54%,
-        rgba(7, 15, 12, 0.98) 100%
-      );
+    margin-top: -118px;
+    padding: 94px 18px 18px;
+    background: transparent !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
     margin-bottom: 13px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-tags {
+    margin-bottom: 12px;
   }
 
   #homeSection #profileFeedSection .profile-feed-avatar-img,
