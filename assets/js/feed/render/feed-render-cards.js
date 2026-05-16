@@ -187,7 +187,7 @@
       : "openKlevbyProfileSafe()";
 
     const mobileHeaderHtml = `
-      <div class="profile-feed-mobile-header" hidden aria-hidden="true">
+      <div class="profile-feed-mobile-header">
         <button
           class="profile-feed-mobile-author"
           type="button"
