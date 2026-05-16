@@ -336,62 +336,6 @@
   }
 }
 
-@media (max-width: 767px) {
-  #homeSection #profileFeedSection .profile-feed-card {
-    position: relative;
-    isolation: isolate;
-    background: rgba(7, 15, 12, 0.94);
-  }
-
-  #homeSection #profileFeedSection .profile-feed-image {
-    position: relative;
-    z-index: 1;
-    overflow: hidden;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-image::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -1px;
-    height: 190px;
-    pointer-events: none;
-    background:
-      linear-gradient(
-        180deg,
-        rgba(7, 15, 12, 0) 0%,
-        rgba(7, 15, 12, 0.06) 22%,
-        rgba(7, 15, 12, 0.28) 48%,
-        rgba(7, 15, 12, 0.70) 76%,
-        rgba(7, 15, 12, 0.96) 100%
-      );
-  }
-
-  #homeSection #profileFeedSection .profile-feed-body {
-    position: relative;
-    z-index: 2;
-    margin-top: -118px;
-    padding: 94px 18px 18px;
-    background: transparent !important;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-author {
-    margin-bottom: 13px;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-tags {
-    margin-bottom: 12px;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-avatar-img,
-  #homeSection #profileFeedSection .profile-feed-avatar-fallback {
-    box-shadow:
-      0 10px 24px rgba(0,0,0,0.30),
-      0 0 0 1px rgba(255,255,255,0.05);
-  }
-}
-
 .home-empty-card {
   grid-column: 1 / -1;
   min-height: 260px;
