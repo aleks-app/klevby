@@ -38,16 +38,63 @@ function closeMobileMenuSafe() {
   }
 }
 
+function getVisibleSectionName() {
+  if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
+  if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
+  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
+  if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
+  if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
+  if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
+  if (!document.getElementById("authSection")?.classList.contains("hidden")) return "auth";
+  if (!document.getElementById("profileSection")?.classList.contains("hidden")) return "profile";
+
+  return "home";
+}
+
+function setHomeFloatButtonMode(btn, mode) {
+  if (!btn) return;
+
+  if (mode === "top") {
+    btn.textContent = "↑";
+    btn.dataset.floatMode = "top";
+    btn.dataset.floatIcon = "↑";
+    btn.setAttribute("aria-label", "Наверх");
+    btn.setAttribute("title", "Наверх");
+    return;
+  }
+
+  if (mode === "back") {
+    btn.textContent = "←";
+    btn.dataset.floatMode = "back";
+    btn.dataset.floatIcon = "←";
+    btn.setAttribute("aria-label", "Вернуться в ленту");
+    btn.setAttribute("title", "В ленту");
+    return;
+  }
+
+  btn.textContent = "";
+  btn.dataset.floatMode = "";
+  btn.dataset.floatIcon = "";
+  btn.removeAttribute("title");
+}
+
 function updateHomeFloatButton() {
   const btn = document.getElementById("homeFloatBtn");
   const homeSection = document.getElementById("homeSection");
 
   if (!btn || !homeSection) return;
 
-  const isNotHome = homeSection.classList.contains("hidden");
+  const visibleSection = getVisibleSectionName();
   const isScrolledDown = window.scrollY > 300;
 
-  btn.classList.toggle("show", isNotHome || isScrolledDown);
+  if (visibleSection === "home") {
+    setHomeFloatButtonMode(btn, "top");
+    btn.classList.toggle("show", isScrolledDown);
+    return;
+  }
+
+  setHomeFloatButtonMode(btn, "back");
+  btn.classList.add("show");
 }
 
 function getMobileTabButtons() {
@@ -97,6 +144,8 @@ window.KlevbyUiShell = {
   closeMobileMenu,
   closeMobileMenuSafe,
   updateHomeFloatButton,
+  getVisibleSectionName,
+  setHomeFloatButtonMode,
   getMobileTabButtons,
   setMobileTabActive,
   scrollToPosts,
@@ -108,6 +157,8 @@ window.toggleMobileMenu = toggleMobileMenu;
 window.closeMobileMenu = closeMobileMenu;
 window.closeMobileMenuSafe = closeMobileMenuSafe;
 window.updateHomeFloatButton = updateHomeFloatButton;
+window.getVisibleSectionName = getVisibleSectionName;
+window.setHomeFloatButtonMode = setHomeFloatButtonMode;
 window.getMobileTabButtons = getMobileTabButtons;
 window.setMobileTabActive = setMobileTabActive;
 window.scrollToPosts = scrollToPosts;
