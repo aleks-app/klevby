@@ -384,24 +384,32 @@
     border: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
-    color: rgba(255, 248, 234, 0.92) !important;
+    color: #fff8ea !important;
+    opacity: 1 !important;
     box-shadow: none !important;
     font-size: 14px !important;
     line-height: 1 !important;
-    font-weight: 900 !important;
+    font-weight: 950 !important;
+    filter: brightness(1.45) saturate(1.25) !important;
     text-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.72),
-      0 0 14px rgba(0, 0, 0, 0.30) !important;
+      0 2px 8px rgba(0, 0, 0, 0.88),
+      0 0 18px rgba(0, 0, 0, 0.46),
+      0 0 10px rgba(255, 248, 234, 0.14) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-like-btn {
-    border-right: 1px solid rgba(255, 248, 234, 0.10) !important;
+    border-right: 1px solid rgba(255, 248, 234, 0.13) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-like-btn.is-liked,
   #homeSection #profileFeedSection .profile-feed-like-btn.liked {
-    color: #ffd27a !important;
+    color: #ffd76f !important;
     background: transparent !important;
+    filter: brightness(1.55) saturate(1.35) !important;
+    text-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.88),
+      0 0 18px rgba(255, 187, 64, 0.22),
+      0 0 10px rgba(255, 248, 234, 0.16) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-description {
@@ -530,5 +538,12 @@
     font-size: 13.5px !important;
     line-height: 1 !important;
     background: transparent !important;
+    color: #fff8ea !important;
+    opacity: 1 !important;
+    filter: brightness(1.45) saturate(1.25) !important;
+    text-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.88),
+      0 0 18px rgba(0, 0, 0, 0.46),
+      0 0 10px rgba(255, 248, 234, 0.14) !important;
   }
 }
