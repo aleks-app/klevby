@@ -4,6 +4,7 @@ function getBiteForecastByPressure(pressureMm) {
   if (!Number.isFinite(pressure)) {
     return {
       text: "Прогноз средний, нужно пробовать.",
+      shortText: "Средний",
       lineClass: "bite-medium-line"
     };
   }
@@ -11,24 +12,56 @@ function getBiteForecastByPressure(pressureMm) {
   if (pressure >= 755 && pressure <= 765) {
     return {
       text: "Прогноз отличный! 🎣",
+      shortText: "Отличный",
       lineClass: "bite-good-line"
     };
   }
 
   return {
     text: "Прогноз средний, нужно пробовать.",
+    shortText: "Средний",
     lineClass: "bite-medium-line"
   };
 }
 
+function updateWeatherChip(chipId, value) {
+  const chip = document.getElementById(chipId);
+  if (!chip) return;
+
+  const valueEl = chip.querySelector(".home-weather-chip-value");
+
+  if (valueEl) {
+    valueEl.textContent = value;
+    return;
+  }
+
+  chip.textContent = value;
+}
+
+function updateMobileWeatherChips({ tempText, windText, biteText }) {
+  if (tempText) {
+    updateWeatherChip("homeWeatherTempChip", tempText);
+  }
+
+  if (windText) {
+    updateWeatherChip("homeWeatherWindChip", windText);
+  }
+
+  if (biteText) {
+    updateWeatherChip("homeWeatherBiteChip", biteText);
+  }
+}
+
 function updateBiteForecast(pressureMm) {
   const el = document.getElementById("biteForecast");
-  if (!el) return;
-
   const result = getBiteForecastByPressure(pressureMm);
 
-  el.className = `bite-line ${result.lineClass}`;
-  el.textContent = result.text;
+  if (el) {
+    el.className = `bite-line ${result.lineClass}`;
+    el.textContent = result.text;
+  }
+
+  updateWeatherChip("homeWeatherBiteChip", result.shortText);
 }
 
 function getMoonPhaseName() {
@@ -137,24 +170,47 @@ async function fetchWeather() {
     const description = data.weather?.[0]?.description || "погода обновлена";
     const main = data.weather?.[0]?.main || "";
 
-    tempEl.textContent = `${temp > 0 ? "+" : ""}${temp}°C`;
-    windEl.textContent = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
-    pressureEl.textContent = `${pressureMm} мм`;
+    const tempText = `${temp > 0 ? "+" : ""}${temp}°C`;
+    const windText = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
+    const pressureText = `${pressureMm} мм`;
+    const biteResult = getBiteForecastByPressure(pressureMm);
+
+    tempEl.textContent = tempText;
+    windEl.textContent = windText;
+    pressureEl.textContent = pressureText;
     moonEl.textContent = getMoonPhaseName();
     status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
 
     updateBiteForecast(pressureMm);
+    updateMobileWeatherChips({
+      tempText,
+      windText,
+      biteText: biteResult.shortText
+    });
+
     setWeatherAnimation(main, description);
   } catch (error) {
     console.error(error);
 
+    const fallbackTempText = "+14°C";
+    const fallbackWindText = "3 м/с СЗ";
+    const fallbackPressureMm = 752;
+    const fallbackPressureText = `${fallbackPressureMm} мм`;
+    const fallbackBiteResult = getBiteForecastByPressure(fallbackPressureMm);
+
     status.textContent = "Погоду не удалось загрузить. Показываем ориентировочные значения.";
-    tempEl.textContent = "+14°C";
-    windEl.textContent = "3 м/с СЗ";
-    pressureEl.textContent = "752 мм";
+    tempEl.textContent = fallbackTempText;
+    windEl.textContent = fallbackWindText;
+    pressureEl.textContent = fallbackPressureText;
     moonEl.textContent = getMoonPhaseName();
 
-    updateBiteForecast(752);
+    updateBiteForecast(fallbackPressureMm);
+    updateMobileWeatherChips({
+      tempText: fallbackTempText,
+      windText: fallbackWindText,
+      biteText: fallbackBiteResult.shortText
+    });
+
     setWeatherAnimation("Clouds", "облачно");
   }
 }
