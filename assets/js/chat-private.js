@@ -237,6 +237,47 @@
     `;
   }
 
+  function renderPrivateHeaderAvatar(peer) {
+    const chatAvatar = getElement("chatAvatar");
+    if (!chatAvatar) return;
+
+    const peerName = String(peer?.name || "Рыбак");
+    const avatarUrl = normalizePrivateAvatarUrl(peer?.avatarUrl || getPrivateProfileAvatar(peer?.id));
+
+    chatAvatar.textContent = "";
+    chatAvatar.innerHTML = "";
+    chatAvatar.classList.remove("klevby-chat-avatar-image");
+
+    if (!avatarUrl) {
+      chatAvatar.textContent = getInitials(peerName);
+      return;
+    }
+
+    const img = document.createElement("img");
+    img.src = avatarUrl;
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.display = "block";
+    img.style.objectFit = "cover";
+    img.style.objectPosition = "center";
+    img.style.borderRadius = "inherit";
+
+    chatAvatar.classList.add("klevby-chat-avatar-image");
+    chatAvatar.appendChild(img);
+  }
+
+  function resetPrivateHeaderAvatar(value = "✉") {
+    const chatAvatar = getElement("chatAvatar");
+    if (!chatAvatar) return;
+
+    chatAvatar.classList.remove("klevby-chat-avatar-image");
+    chatAvatar.innerHTML = "";
+    chatAvatar.textContent = value;
+  }
+
   async function loadPrivateProfileAvatarsByIds(ids = []) {
     const uniqueIds = Array.from(new Set((ids || [])
       .map((id) => String(id || "").trim())
@@ -482,7 +523,7 @@
     const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "")
       .trim()
       .replace(/\/$/, "");
-    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY).trim();
     const accessToken = getPrivateAccessTokenQuick();
 
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -565,7 +606,6 @@
     const privateTab = getElement("privateTab");
     const privatePeople = getElement("privatePeople");
     const backBtn = getElement("backBtn");
-    const chatAvatar = getElement("chatAvatar");
     const chatTitle = getElement("chatTitle");
     const chatSubtitle = getElement("chatSubtitle");
 
@@ -598,7 +638,7 @@
       if (privatePeople) privatePeople.classList.add("hidden");
       if (backBtn) backBtn.classList.add("hidden");
 
-      if (chatAvatar) chatAvatar.textContent = "✉";
+      resetPrivateHeaderAvatar("✉");
       if (chatTitle) chatTitle.textContent = "Личные сообщения";
       if (chatSubtitle) chatSubtitle.textContent = currentChatUser ? "Выбери диалог" : "Для лички нужен вход";
       if (input) {
@@ -827,7 +867,6 @@
     const input = getElement("input");
     const sendBtn = getElement("sendBtn");
     const backBtn = getElement("backBtn");
-    const chatAvatar = getElement("chatAvatar");
     const chatTitle = getElement("chatTitle");
     const chatSubtitle = getElement("chatSubtitle");
 
@@ -874,7 +913,7 @@
           selectedPeer.avatarUrl = getPrivateProfileAvatar(safePeerId) || selectedPeer.avatarUrl || "";
           setSelectedPeer(selectedPeer);
 
-          if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
+          renderPrivateHeaderAvatar(selectedPeer);
           if (chatTitle) chatTitle.textContent = selectedPeer.name;
 
           syncSelectedPeerForCalls();
@@ -899,7 +938,7 @@
 
       clearReply();
 
-      if (chatAvatar) chatAvatar.textContent = getInitials(nextPeer.name);
+      renderPrivateHeaderAvatar(nextPeer);
       if (chatTitle) chatTitle.textContent = nextPeer.name;
       if (chatSubtitle) chatSubtitle.textContent = getUserStatusText(nextPeer.id);
       if (input) {
@@ -1004,7 +1043,7 @@
           selectedPeer.avatarUrl = getPrivateProfileAvatar(safePeerId) || selectedPeer.avatarUrl || "";
           setSelectedPeer(selectedPeer);
 
-          if (chatAvatar) chatAvatar.textContent = getInitials(selectedPeer.name);
+          renderPrivateHeaderAvatar(selectedPeer);
           if (chatTitle) chatTitle.textContent = selectedPeer.name;
 
           syncSelectedPeerForCalls();
