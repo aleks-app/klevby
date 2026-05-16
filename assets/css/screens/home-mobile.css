@@ -234,8 +234,8 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-image {
-    height: clamp(360px, 62vh, 460px) !important;
-    min-height: 360px !important;
+    height: clamp(380px, 64vh, 490px) !important;
+    min-height: 380px !important;
     max-height: none !important;
     background-size: cover !important;
     background-position: center 38% !important;
@@ -257,8 +257,8 @@
       "author date"
       "actions actions" !important;
     align-items: center !important;
-    gap: 11px 10px !important;
-    padding: 14px 20px 15px !important;
+    gap: 9px 10px !important;
+    padding: 12px 18px 13px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
@@ -289,7 +289,7 @@
     justify-content: flex-end !important;
     align-items: center !important;
     gap: 0 !important;
-    max-width: 42vw !important;
+    max-width: 40vw !important;
     flex-wrap: nowrap !important;
   }
 
@@ -308,7 +308,7 @@
     width: 100% !important;
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
+    gap: 7px !important;
     margin: 0 !important;
   }
 
@@ -318,10 +318,10 @@
 
   #homeSection #profileFeedSection .profile-feed-like-btn,
   #homeSection #profileFeedSection .profile-feed-comment-btn {
-    min-height: 38px !important;
-    padding: 8px 10px !important;
-    border-radius: 16px !important;
-    font-size: 13.5px !important;
+    min-height: 35px !important;
+    padding: 7px 9px !important;
+    border-radius: 15px !important;
+    font-size: 13px !important;
     line-height: 1 !important;
     font-weight: 900 !important;
   }
@@ -372,8 +372,8 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-image {
-    height: clamp(350px, 60vh, 430px) !important;
-    min-height: 350px !important;
+    height: clamp(365px, 62vh, 455px) !important;
+    min-height: 365px !important;
     max-height: none !important;
     background-position: center 38% !important;
   }
@@ -387,14 +387,14 @@
     grid-template-areas:
       "author date"
       "actions actions" !important;
-    gap: 10px 9px !important;
-    padding: 13px 18px 14px !important;
+    gap: 8px 9px !important;
+    padding: 11px 16px 12px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-tags {
     justify-self: end !important;
     justify-content: flex-end !important;
-    max-width: 40vw !important;
+    max-width: 39vw !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-tags .tag {
@@ -408,7 +408,7 @@
   #homeSection #profileFeedSection .profile-feed-actions {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 7px !important;
+    gap: 6px !important;
     margin: 0 !important;
   }
 
@@ -418,10 +418,10 @@
 
   #homeSection #profileFeedSection .profile-feed-like-btn,
   #homeSection #profileFeedSection .profile-feed-comment-btn {
-    min-height: 36px !important;
-    padding: 7px 9px !important;
-    border-radius: 15px !important;
-    font-size: 13px !important;
+    min-height: 34px !important;
+    padding: 6px 8px !important;
+    border-radius: 14px !important;
+    font-size: 12.8px !important;
     line-height: 1 !important;
   }
 }
