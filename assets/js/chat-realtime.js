@@ -130,6 +130,30 @@
     chatSubtitle.textContent = getUserStatusText(selectedPeer.id);
   }
 
+  function getDebugState(extra = {}) {
+    const currentUser = getCurrentUser();
+    const selectedPeer = getSelectedPeer();
+
+    return {
+      activeMode: getActiveMode(),
+      currentUserId: currentUser?.id || null,
+      selectedPeerId: selectedPeer?.id || null,
+      selectedPeerName: selectedPeer?.name || null,
+      presenceChannelKey,
+      hasPublicSubscription: Boolean(publicSubscription),
+      hasPrivateSubscription: Boolean(privateSubscription),
+      hasPresenceChannel: Boolean(presenceChannel),
+      ...extra
+    };
+  }
+
+  function logPrivateInsert(reason, extra = {}) {
+    console.info("[KlevbyRealtime] private INSERT", getDebugState({
+      returnReason: reason,
+      ...extra
+    }));
+  }
+
   async function removePresenceChannel(reason = "cleanup") {
     const client = getClient();
     const channel = presenceChannel;
@@ -378,13 +402,30 @@
           { event: "INSERT", schema: "public", table: "private_messages" },
           async (payload) => {
             try {
+              const msg = payload.new || {};
+
+              logPrivateInsert("received", {
+                msgId: msg.id || null,
+                senderId: msg.sender_id || null,
+                receiverId: msg.receiver_id || null,
+                senderName: msg.sender_name || null,
+                contentPreview: String(msg.content || "").slice(0, 48)
+              });
+
               await safeAsyncCall("refreshCurrentUser");
 
               const currentUser = getCurrentUser();
-              const msg = payload.new;
               const myId = String(currentUser?.id || "");
 
-              if (!myId || !isValidSupabaseUuid(myId)) return;
+              if (!myId || !isValidSupabaseUuid(myId)) {
+                logPrivateInsert("return_auth_missing", {
+                  msgId: msg.id || null,
+                  senderId: msg.sender_id || null,
+                  receiverId: msg.receiver_id || null,
+                  myId
+                });
+                return;
+              }
 
               if (msg.sender_id && msg.sender_name) {
                 safeCall("rememberFallbackProfile", msg.sender_id, msg.sender_name);
@@ -397,34 +438,111 @@
 
               const isForMe = String(msg.receiver_id) === myId;
               const senderId = String(msg.sender_id || "");
+              const receiverId = String(msg.receiver_id || "");
+
+              const alreadyInThisDialog =
+                activeMode === "private" &&
+                selectedPeer &&
+                String(selectedPeer.id) === senderId;
+
+              logPrivateInsert("after_state_check", {
+                msgId: msg.id || null,
+                senderId,
+                receiverId,
+                myId,
+                activeMode,
+                selectedPeerId: selectedPeer?.id || null,
+                isForMe,
+                alreadyInThisDialog
+              });
 
               if (isForMe) {
-                const alreadyInThisDialog =
-                  activeMode === "private" &&
-                  selectedPeer &&
-                  String(selectedPeer.id) === senderId;
-
                 if (!alreadyInThisDialog) {
+                  logPrivateInsert("increment_unread", {
+                    msgId: msg.id || null,
+                    senderId,
+                    receiverId,
+                    myId,
+                    activeMode,
+                    selectedPeerId: selectedPeer?.id || null
+                  });
+
                   safeCall("incrementUnreadPrivateCount", 1);
                 }
 
                 if (activeMode === "private" && !selectedPeer) {
+                  logPrivateInsert("return_load_private_people_no_selected_peer", {
+                    msgId: msg.id || null,
+                    senderId,
+                    receiverId,
+                    myId,
+                    activeMode
+                  });
+
                   await safeAsyncCall("loadPrivatePeople");
                   return;
                 }
               }
 
-              if (!currentUser || activeMode !== "private" || !selectedPeer) return;
+              if (!currentUser || activeMode !== "private" || !selectedPeer) {
+                logPrivateInsert("return_not_open_dialog", {
+                  msgId: msg.id || null,
+                  senderId,
+                  receiverId,
+                  myId,
+                  hasCurrentUser: Boolean(currentUser),
+                  activeMode,
+                  selectedPeerId: selectedPeer?.id || null
+                });
+
+                return;
+              }
 
               const peerId = String(selectedPeer.id);
 
-              if (!isValidSupabaseUuid(peerId)) return;
+              if (!isValidSupabaseUuid(peerId)) {
+                logPrivateInsert("return_invalid_peer_id", {
+                  msgId: msg.id || null,
+                  senderId,
+                  receiverId,
+                  myId,
+                  peerId
+                });
+
+                return;
+              }
 
               const belongsToDialog =
                 (String(msg.sender_id) === myId && String(msg.receiver_id) === peerId) ||
                 (String(msg.sender_id) === peerId && String(msg.receiver_id) === myId);
 
-              if (!belongsToDialog) return;
+              if (!belongsToDialog) {
+                logPrivateInsert("return_belongs_to_dialog_false", {
+                  msgId: msg.id || null,
+                  senderId,
+                  receiverId,
+                  myId,
+                  peerId,
+                  activeMode,
+                  selectedPeerId: selectedPeer?.id || null,
+                  isForMe,
+                  alreadyInThisDialog
+                });
+
+                return;
+              }
+
+              logPrivateInsert("render_private_message", {
+                msgId: msg.id || null,
+                senderId,
+                receiverId,
+                myId,
+                peerId,
+                activeMode,
+                selectedPeerId: selectedPeer?.id || null,
+                isForMe,
+                alreadyInThisDialog
+              });
 
               safeCall("markPeerAsRead", peerId);
 
