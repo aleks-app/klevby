@@ -186,8 +186,29 @@
       ? `(function(){ const userId = '${authorUserIdAttr}'; const me = String(window.currentUserId || window.klevbyUserId || window.viewerUserId || window.authUserId || window.userId || '').trim(); if (me && userId && me === userId) { openKlevbyProfileSafe(); return; } if (userId && typeof window.openKlevbyPublicProfile === 'function') { window.openKlevbyPublicProfile(userId, JSON.parse('${authorFallbackJson}')); return; } openKlevbyProfileSafe(); })()`
       : "openKlevbyProfileSafe()";
 
+    const mobileHeaderHtml = `
+      <div class="profile-feed-mobile-header" hidden aria-hidden="true">
+        <button
+          class="profile-feed-mobile-author"
+          type="button"
+          onclick="event.stopPropagation(); ${authorClickAction}"
+          aria-label="Открыть профиль автора"
+        >
+          ${avatarHtml}
+
+          <span class="profile-feed-mobile-author-text">
+            <span class="profile-feed-mobile-author-name">${escapeHtml(authorName)}</span>
+          </span>
+        </button>
+
+        ${date ? `<span class="profile-feed-mobile-date">${escapeHtml(date)}</span>` : ""}
+      </div>
+    `;
+
     return `
       <article class="card profile-feed-card" data-feed-card-id="${safeId}" onclick="openProfilePhotoFeedItem('${safeId}')">
+        ${mobileHeaderHtml}
+
         <div class="card-img profile-feed-image"${imageBackgroundAttr}>${imageElementHtml}</div>
 
         <div class="card-body profile-feed-body">
