@@ -345,39 +345,29 @@
 }
 
 @media (max-width: 767px) {
-  #homeSection #profileFeedSection .profile-feed-media {
-    display: block;
+  #homeSection #profileFeedSection .profile-feed-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)),
+      rgba(7, 15, 12, 0.90);
+    border-radius: 28px;
     overflow: hidden;
-    border-radius: 24px 24px 0 0;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-image {
-    position: relative;
-    overflow: hidden;
-    background-size: cover;
-    background-position: center;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-mobile-image-img {
-    display: block !important;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center center;
-    border-radius: 24px 24px 0 0;
-    pointer-events: none;
-    user-select: none;
-    -webkit-user-drag: none;
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    padding: 13px 16px 15px;
+    display: contents;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
+    order: 1;
+    width: auto;
     align-items: center;
     gap: 10px;
-    margin-bottom: 6px;
+    padding: 12px 16px 11px;
+    margin: 0;
+    background: rgba(7, 15, 12, 0.88);
   }
 
   #homeSection #profileFeedSection .profile-feed-avatar-img,
@@ -396,34 +386,50 @@
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-title {
-    display: none !important;
+  #homeSection #profileFeedSection .profile-feed-media {
+    order: 2;
+    display: block;
+    overflow: hidden;
+    border-radius: 0;
   }
 
+  #homeSection #profileFeedSection .profile-feed-image {
+    position: relative;
+    height: min(72svh, 620px);
+    min-height: 420px;
+    max-height: 660px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    border-radius: 0;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-image-img {
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    border-radius: 0;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-title,
+  #homeSection #profileFeedSection .profile-feed-tags,
   #homeSection #profileFeedSection .profile-feed-open-btn {
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags {
-    margin: 2px 0 8px;
-  }
-
-  #homeSection #profileFeedSection .profile-feed-tags .tag {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: rgba(255,248,234,0.48);
-    font-size: 12px;
-    line-height: 1.1;
-    font-weight: 800;
-    box-shadow: none;
-  }
-
   #homeSection #profileFeedSection .profile-feed-actions {
+    order: 3;
     display: flex;
     align-items: center;
     gap: 18px;
-    margin-top: 4px;
+    padding: 10px 16px 13px;
+    margin: 0;
+    background: rgba(7, 15, 12, 0.92);
   }
 
   #homeSection #profileFeedSection .profile-feed-actions .profile-feed-like-btn,
