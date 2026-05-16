@@ -371,11 +371,29 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    padding: 14px 16px 16px;
+    padding: 13px 16px 15px;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-avatar-img,
+  #homeSection #profileFeedSection .profile-feed-avatar-fallback {
+    width: 38px;
+    height: 38px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-author-name {
+    font-size: 17px;
+    line-height: 1.1;
+    letter-spacing: -0.18px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-author-action {
+    display: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-title {
@@ -386,11 +404,26 @@
     display: none !important;
   }
 
+  #homeSection #profileFeedSection .profile-feed-tags {
+    margin: 2px 0 8px;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-tags .tag {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(255,248,234,0.48);
+    font-size: 12px;
+    line-height: 1.1;
+    font-weight: 800;
+    box-shadow: none;
+  }
+
   #homeSection #profileFeedSection .profile-feed-actions {
     display: flex;
     align-items: center;
     gap: 18px;
-    margin-top: 8px;
+    margin-top: 4px;
   }
 
   #homeSection #profileFeedSection .profile-feed-actions .profile-feed-like-btn,
