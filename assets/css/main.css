@@ -13,4 +13,5 @@
 
 @import url("./responsive/mobile.css");
 @import url("./mobile/mobile-tabbar.css");
+@import url("./mobile/mobile-float-button.css");
 @import url("./screens/home-mobile.css");
