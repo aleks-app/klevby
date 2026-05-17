@@ -1,1 +1,307 @@
+/* Klevby mobile posts/trips styles
+   Behavior-preserving split from assets/css/responsive/mobile.css.
+   Scope: only #postsSection mobile cards.
+*/
 
+@media (max-width: 900px) {
+  #postsSection.grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+    margin: 12px 0 44px;
+  }
+
+  #postsSection.grid::before {
+    content: "Напарники";
+    grid-column: 1 / -1;
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    margin: 3px 0 -2px;
+    color: #fff8ea;
+    text-shadow: 0 12px 34px rgba(0,0,0,0.45);
+  }
+
+  #postsSection .card {
+    min-height: 375px;
+    height: 100%;
+    border-radius: 22px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.070), rgba(255,255,255,0.034)),
+      rgba(13, 20, 17, 0.82);
+    border: 1px solid rgba(244,178,74,0.14);
+    box-shadow:
+      0 12px 32px rgba(0,0,0,0.34),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  #postsSection .card-img {
+    width: 100%;
+    height: 118px;
+    flex: 0 0 118px;
+    border-radius: 22px 22px 0 0;
+    background-position: center;
+  }
+
+  #postsSection .card-body {
+    padding: 10px;
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #postsSection .card h3 {
+    font-size: 13px;
+    line-height: 1.18;
+    letter-spacing: -0.15px;
+    margin: 0 0 7px;
+  }
+
+  #postsSection .card p {
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: rgba(255,248,234,0.66);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    min-height: 31px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #postsSection .trip-title {
+    min-height: 33px;
+    font-size: 13.5px;
+    line-height: 1.18;
+    margin-bottom: 7px;
+    letter-spacing: -0.18px;
+  }
+
+  #postsSection .trip-facts {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin: 7px 0 8px;
+  }
+
+  #postsSection .trip-fact {
+    min-height: 38px;
+    padding: 7px 8px;
+    border-radius: 13px;
+    background: rgba(255,255,255,0.055);
+    border-color: rgba(244,178,74,0.09);
+  }
+
+  #postsSection .trip-fact:nth-child(n+3) {
+    display: none;
+  }
+
+  #postsSection .trip-fact-label {
+    font-size: 8.5px;
+  }
+
+  #postsSection .trip-fact-value {
+    font-size: 10px;
+    -webkit-line-clamp: 1;
+  }
+
+  #postsSection .tags {
+    gap: 5px;
+    margin: 9px 0 0;
+  }
+
+  #postsSection .tag {
+    padding: 5px 7px;
+    border-radius: 12px;
+    font-size: 9.5px;
+    line-height: 1;
+  }
+
+  #postsSection .tag:nth-child(n+4) {
+    display: none;
+  }
+
+  #postsSection .actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+    margin-top: auto;
+    padding-top: 10px;
+  }
+
+  #postsSection .actions:empty {
+    display: none;
+  }
+
+  #postsSection .actions .small-btn.blue,
+  #postsSection .actions .small-btn.gray,
+  #postsSection .actions .small-btn.disabled {
+    display: none;
+  }
+
+  #postsSection .actions .small-btn {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    line-height: 1.1;
+    white-space: normal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  #postsSection .actions .small-btn img,
+  #postsSection .actions .small-btn .telegram-icon,
+  #postsSection .actions .small-btn .telegram-btn-icon,
+  #postsSection .actions .small-btn .tg-icon {
+    width: 23px;
+    height: 23px;
+    flex: 0 0 23px;
+    object-fit: contain;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  #postsSection .small-btn {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    line-height: 1.1;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 520px) {
+  #postsSection.grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+    align-items: stretch;
+  }
+
+  #postsSection .card {
+    min-height: 370px;
+  }
+
+  #postsSection .card-img {
+    height: 112px;
+    flex-basis: 112px;
+  }
+
+  #postsSection .card-body {
+    padding: 10px;
+  }
+
+  #postsSection .card h3 {
+    font-size: 13px;
+  }
+
+  #postsSection .card p {
+    font-size: 11.3px;
+    min-height: 31px;
+    -webkit-line-clamp: 2;
+  }
+
+  #postsSection .actions {
+    gap: 7px;
+    padding-top: 10px;
+  }
+
+  #postsSection .actions .small-btn,
+  #postsSection .small-btn {
+    min-height: 42px;
+    padding: 9px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+  }
+
+  #postsSection .actions .small-btn img,
+  #postsSection .actions .small-btn .telegram-icon,
+  #postsSection .actions .small-btn .telegram-btn-icon,
+  #postsSection .actions .small-btn .tg-icon {
+    width: 23px;
+    height: 23px;
+    flex-basis: 23px;
+  }
+}
+
+@media (max-width: 380px) {
+  #postsSection.grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  #postsSection .card {
+    display: flex;
+    min-height: 350px;
+  }
+
+  #postsSection .card-img {
+    height: 98px;
+    flex-basis: 98px;
+  }
+
+  #postsSection .card-body {
+    padding: 9px;
+  }
+
+  #postsSection .card h3 {
+    font-size: 12px;
+  }
+
+  #postsSection .card p {
+    font-size: 10.8px;
+    min-height: 30px;
+  }
+
+  #postsSection .trip-title {
+    min-height: 31px;
+    font-size: 13px;
+  }
+
+  #postsSection .tag:nth-child(n+4) {
+    display: none;
+  }
+
+  #postsSection .actions {
+    gap: 6px;
+    padding-top: 9px;
+  }
+
+  #postsSection .actions .small-btn,
+  #postsSection .small-btn {
+    min-height: 40px;
+    padding: 8px 9px;
+    border-radius: 14px;
+    font-size: 11.5px;
+  }
+
+  #postsSection .actions .small-btn img,
+  #postsSection .actions .small-btn .telegram-icon,
+  #postsSection .actions .small-btn .telegram-btn-icon,
+  #postsSection .actions .small-btn .tg-icon {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
+  }
+
+  .trip-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-fact:nth-child(n+3) {
+    display: none;
+  }
+}
