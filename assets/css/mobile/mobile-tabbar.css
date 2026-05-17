@@ -1,1 +1,30 @@
-/* Klevby mobile tabbar styles */
+/* Klevby mobile tabbar styles
+   Behavior-preserving split from assets/css/responsive/mobile.css.
+   Scope: only the fixed bottom mobile tabbar container.
+*/
+
+@media (max-width: 900px) {
+  .mobile-tabbar {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 8px;
+    z-index: 1100;
+    height: 78px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    padding: 7px 8px max(7px, env(safe-area-inset-bottom));
+    background:
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.13), transparent 42%),
+      rgba(12, 18, 16, 0.88);
+    border: 1px solid rgba(244,178,74,0.16);
+    border-radius: 30px 30px 25px 25px;
+    box-shadow:
+      0 -8px 34px rgba(0,0,0,0.48),
+      0 0 34px rgba(244,178,74,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.07);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
