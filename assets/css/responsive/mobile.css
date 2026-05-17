@@ -533,22 +533,6 @@
     min-height: 48px;
   }
 
-  .post-modal-backdrop {
-    align-items: center;
-    justify-content: center;
-    padding: 14px;
-  }
-
-  .post-modal-sheet {
-    width: min(100%, 720px);
-    max-height: 85vh;
-    border-radius: 24px;
-  }
-
-  .post-modal-image {
-    height: 300px;
-  }
-
   .market-hero {
     padding: 20px 16px;
     border-radius: 28px;
@@ -631,29 +615,6 @@
     height: 240px;
   }
 
-  .post-modal-sheet {
-    border-radius: 24px;
-    max-height: 85vh;
-  }
-
-  .post-modal-image {
-    height: 275px;
-  }
-
-  .post-modal-content {
-    padding: 0 14px 0;
-  }
-
-  .post-modal-card {
-    padding: 18px;
-    border-radius: 24px;
-  }
-
-  .post-modal-text {
-    font-size: 15px;
-    line-height: 1.65;
-  }
-
   .install-banner {
     bottom: 100px;
     padding: 16px;
@@ -714,9 +675,5 @@
 
   #profileFeedSection .trip-title {
     font-size: 17px;
-  }
-
-  .post-modal-image {
-    height: 245px;
   }
 }
