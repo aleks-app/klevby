@@ -1,1 +1,53 @@
+/* Klevby mobile modal styles
+   Behavior-preserving split from assets/css/responsive/mobile.css.
+   Scope: mobile post modal only.
+*/
 
+@media (max-width: 900px) {
+  .post-modal-backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+  }
+
+  .post-modal-sheet {
+    width: min(100%, 720px);
+    max-height: 85vh;
+    border-radius: 24px;
+  }
+
+  .post-modal-image {
+    height: 300px;
+  }
+}
+
+@media (max-width: 520px) {
+  .post-modal-sheet {
+    border-radius: 24px;
+    max-height: 85vh;
+  }
+
+  .post-modal-image {
+    height: 275px;
+  }
+
+  .post-modal-content {
+    padding: 0 14px 0;
+  }
+
+  .post-modal-card {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .post-modal-text {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+}
+
+@media (max-width: 380px) {
+  .post-modal-image {
+    height: 245px;
+  }
+}
