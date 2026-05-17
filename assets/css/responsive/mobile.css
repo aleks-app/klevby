@@ -468,15 +468,6 @@
   .main-btn {
     min-height: 48px;
   }
-
-  .market-hero {
-    padding: 20px 16px;
-    border-radius: 28px;
-  }
-
-  .market-hero h2 {
-    font-size: 32px;
-  }
 }
 
 @media (max-width: 520px) {
