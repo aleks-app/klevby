@@ -12,4 +12,5 @@
 @import url("./screens/profile.css");
 
 @import url("./responsive/mobile.css");
+@import url("./mobile/mobile-tabbar.css");
 @import url("./screens/home-mobile.css");
