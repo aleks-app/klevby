@@ -1,4 +1,4 @@
-/* Mobile feed card footer: soft gradient + author row + actions row
+/* Mobile feed card footer: lower soft gradient + author row + actions row
    Scope: only home mobile feed cards.
 */
 
@@ -22,16 +22,16 @@
     left: 0 !important;
     right: 0 !important;
     bottom: -1px !important;
-    height: 82px !important;
+    height: 58px !important;
     pointer-events: none !important;
     z-index: 2 !important;
     background:
       linear-gradient(
         180deg,
         rgba(4, 17, 12, 0.00) 0%,
-        rgba(4, 17, 12, 0.10) 32%,
-        rgba(4, 17, 12, 0.34) 66%,
-        rgba(4, 17, 12, 0.72) 100%
+        rgba(4, 17, 12, 0.04) 42%,
+        rgba(4, 17, 12, 0.24) 72%,
+        rgba(4, 17, 12, 0.62) 100%
       ) !important;
   }
 
@@ -63,14 +63,14 @@
       "actions actions" !important;
     align-items: center !important;
     gap: 14px 12px !important;
-    margin-top: -34px !important;
-    padding: 46px 18px 18px !important;
+    margin-top: -18px !important;
+    padding: 30px 18px 18px !important;
     background:
       linear-gradient(
         180deg,
         rgba(6, 17, 13, 0.00) 0%,
-        rgba(6, 17, 13, 0.32) 22%,
-        rgba(6, 17, 13, 0.76) 56%,
+        rgba(6, 17, 13, 0.22) 24%,
+        rgba(6, 17, 13, 0.72) 58%,
         rgba(6, 17, 13, 0.97) 100%
       ) !important;
     border-top: 0 !important;
@@ -224,8 +224,8 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    margin-top: -30px !important;
-    padding: 42px 16px 17px !important;
+    margin-top: -16px !important;
+    padding: 28px 16px 17px !important;
     gap: 12px 10px !important;
   }
 
