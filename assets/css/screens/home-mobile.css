@@ -1,4 +1,4 @@
-/* Restore old mobile feed card footer with Like / Comment
+/* Restore old mobile feed card footer with Open / Like / Comment
    Scope: only home mobile feed cards.
 */
 
@@ -136,7 +136,7 @@
     grid-area: actions !important;
     width: 100% !important;
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 8px !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -148,9 +148,10 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-open-btn {
-    display: none !important;
+    display: inline-flex !important;
   }
 
+  #homeSection #profileFeedSection .profile-feed-open-btn,
   #homeSection #profileFeedSection .profile-feed-like-btn,
   #homeSection #profileFeedSection .profile-feed-comment-btn {
     min-height: 42px !important;
@@ -203,14 +204,10 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 7px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-open-btn {
-    display: none !important;
-  }
-
+  #homeSection #profileFeedSection .profile-feed-open-btn,
   #homeSection #profileFeedSection .profile-feed-like-btn,
   #homeSection #profileFeedSection .profile-feed-comment-btn {
     min-height: 40px !important;
