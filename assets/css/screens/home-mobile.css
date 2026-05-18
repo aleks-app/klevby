@@ -1,4 +1,4 @@
-/* Mobile feed card footer: gradient belongs to footer top third
+/* Restore old mobile feed card footer with Like / Comment
    Scope: only home mobile feed cards.
 */
 
@@ -7,7 +7,6 @@
     position: relative !important;
     overflow: hidden !important;
     border-radius: 24px !important;
-    background: rgba(5, 15, 11, 0.96) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-media {
@@ -48,24 +47,13 @@
       "author date"
       "actions actions" !important;
     align-items: center !important;
-    gap: 14px 12px !important;
-
-    /* футер слегка заходит на фото, но переход находится внутри футера */
-    margin-top: -34px !important;
-
-    /* верхняя треть футера — зона плавного перехода */
-    padding: 46px 18px 18px !important;
-
+    gap: 13px 12px !important;
+    margin-top: 0 !important;
+    padding: 16px 18px 18px !important;
     background:
-      linear-gradient(
-        180deg,
-        rgba(6, 17, 13, 0.00) 0%,
-        rgba(6, 17, 13, 0.10) 18%,
-        rgba(6, 17, 13, 0.38) 34%,
-        rgba(6, 17, 13, 0.76) 56%,
-        rgba(6, 17, 13, 0.97) 100%
-      ) !important;
-    border-top: 0 !important;
+      linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.025)),
+      rgba(6, 17, 13, 0.96) !important;
+    border-top: 1px solid rgba(255, 248, 234, 0.08) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
@@ -142,13 +130,6 @@
     display: inline-flex !important;
     margin: 0 !important;
     white-space: nowrap !important;
-    padding: 7px 9px !important;
-    border-radius: 999px !important;
-    border: 1px solid rgba(255, 248, 234, 0.08) !important;
-    background: rgba(3, 13, 10, 0.24) !important;
-    color: rgba(255,248,234,0.58) !important;
-    font-size: 11.5px !important;
-    font-weight: 800 !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-actions {
@@ -158,17 +139,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
     margin: 0 !important;
-    padding: 10px !important;
-    border-radius: 18px !important;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.050), rgba(255,255,255,0.018)),
-      rgba(3, 13, 10, 0.42) !important;
-    border: 1px solid rgba(255, 248, 234, 0.085) !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.05),
-      0 10px 22px rgba(0,0,0,0.16) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-open-btn {
@@ -180,14 +156,16 @@
     min-height: 42px !important;
     width: 100% !important;
     padding: 8px 10px !important;
-    border-radius: 14px !important;
-    border: 1px solid rgba(255, 248, 234, 0.08) !important;
+    border-radius: 15px !important;
+    border: 1px solid rgba(255, 248, 234, 0.10) !important;
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.062), rgba(255,255,255,0.020)),
-      rgba(3, 13, 10, 0.34) !important;
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.030)),
+      rgba(3, 13, 10, 0.62) !important;
     color: #fff8ea !important;
     opacity: 1 !important;
-    box-shadow: none !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 8px 18px rgba(0,0,0,0.18) !important;
     font-size: 13.5px !important;
     line-height: 1 !important;
     font-weight: 900 !important;
@@ -203,9 +181,9 @@
   #homeSection #profileFeedSection .profile-feed-like-btn.liked {
     color: #ffd76f !important;
     background:
-      linear-gradient(180deg, rgba(255,215,111,0.14), rgba(255,215,111,0.040)),
-      rgba(3, 13, 10, 0.38) !important;
-    border-color: rgba(255,215,111,0.20) !important;
+      linear-gradient(180deg, rgba(255,215,111,0.15), rgba(255,215,111,0.055)),
+      rgba(3, 13, 10, 0.66) !important;
+    border-color: rgba(255,215,111,0.22) !important;
   }
 }
 
@@ -216,8 +194,7 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    margin-top: -30px !important;
-    padding: 42px 16px 17px !important;
+    padding: 15px 16px 17px !important;
     gap: 12px 10px !important;
   }
 
@@ -228,8 +205,6 @@
   #homeSection #profileFeedSection .profile-feed-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 7px !important;
-    padding: 9px !important;
-    border-radius: 17px !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-open-btn {
@@ -240,7 +215,7 @@
   #homeSection #profileFeedSection .profile-feed-comment-btn {
     min-height: 40px !important;
     padding: 7px 8px !important;
-    border-radius: 13px !important;
+    border-radius: 14px !important;
     font-size: 13px !important;
   }
 }
