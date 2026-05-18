@@ -392,3 +392,30 @@
   line-height: 1.55;
   font-weight: 600;
 }
+
+@media (max-width: 767px) {
+  #homeSection #profileFeedSection .profile-feed-media {
+    display: block;
+    overflow: hidden;
+    border-radius: 24px 24px 0 0;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-image {
+    position: relative;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-mobile-image-img {
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    border-radius: 24px 24px 0 0;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+}
