@@ -49,11 +49,15 @@
     align-items: center !important;
     gap: 13px 12px !important;
     margin-top: 0 !important;
-    padding: 16px 18px 18px !important;
+    padding: 20px 18px 18px !important;
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.025)),
-      rgba(6, 17, 13, 0.96) !important;
-    border-top: 1px solid rgba(255, 248, 234, 0.08) !important;
+      linear-gradient(
+        180deg,
+        rgba(6, 17, 13, 0.52) 0%,
+        rgba(6, 17, 13, 0.76) 33%,
+        rgba(6, 17, 13, 0.94) 100%
+      ) !important;
+    border-top: 1px solid rgba(255, 248, 234, 0.055) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-author {
@@ -194,8 +198,15 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-body {
-    padding: 15px 16px 17px !important;
+    padding: 19px 16px 17px !important;
     gap: 12px 10px !important;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(6, 17, 13, 0.52) 0%,
+        rgba(6, 17, 13, 0.76) 33%,
+        rgba(6, 17, 13, 0.94) 100%
+      ) !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-tags {
