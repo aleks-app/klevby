@@ -8,10 +8,10 @@
     position: fixed;
     left: 16px;
     right: 16px;
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: max(16px, env(safe-area-inset-bottom));
     z-index: 1100;
 
-    height: 76px;
+    height: 78px;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: center;
@@ -19,19 +19,17 @@
 
     padding: 8px 10px;
 
-    background:
-      radial-gradient(circle at 50% -20%, rgba(244, 178, 74, 0.18), transparent 46%),
-      linear-gradient(180deg, rgba(25, 33, 29, 0.9), rgba(10, 15, 13, 0.88));
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(22, 22, 22, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 30px;
 
     box-shadow:
-      0 18px 44px rgba(0, 0, 0, 0.46),
-      0 0 28px rgba(244, 178, 74, 0.1),
+      0 18px 42px rgba(0, 0, 0, 0.48),
+      0 8px 20px rgba(0, 0, 0, 0.32),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   .mobile-tabbar .mobile-tab-btn {
@@ -49,11 +47,12 @@
     border-radius: 22px;
     background: transparent;
 
-    color: rgba(226, 232, 228, 0.72);
+    color: #a8b0ac;
     font: inherit;
     text-decoration: none;
 
     -webkit-tap-highlight-color: transparent;
+
     transition:
       color 0.18s ease,
       background 0.18s ease,
@@ -66,27 +65,34 @@
   }
 
   .mobile-tabbar .mobile-tab-btn.active,
-  .mobile-tabbar .mobile-tab-btn[aria-current="page"] {
+  .mobile-tabbar .mobile-tab-btn.is-active,
+  .mobile-tabbar .mobile-tab-btn[aria-current="page"],
+  .mobile-tabbar .mobile-tab-btn[aria-selected="true"],
+  .mobile-tabbar .mobile-tab-btn[data-active="true"] {
     color: #ffffff;
   }
 
   .mobile-tabbar .mobile-tab-btn:not(.mobile-tab-create).active,
-  .mobile-tabbar .mobile-tab-btn:not(.mobile-tab-create)[aria-current="page"] {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
-      rgba(244, 178, 74, 0.1);
+  .mobile-tabbar .mobile-tab-btn:not(.mobile-tab-create).is-active,
+  .mobile-tabbar .mobile-tab-btn:not(.mobile-tab-create)[aria-current="page"],
+  .mobile-tabbar .mobile-tab-btn:not(.mobile-tab-create)[aria-selected="true"],
+  .mobile-tabbar .mobile-tab-btn:not(.mobile-tab-create)[data-active="true"] {
+    background: rgba(255, 255, 255, 0.075);
     box-shadow:
-      inset 0 0 0 1px rgba(244, 178, 74, 0.16),
-      0 8px 20px rgba(0, 0, 0, 0.18);
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 8px 18px rgba(0, 0, 0, 0.2);
   }
 
   .mobile-tabbar .mobile-tab-icon {
-    width: 30px;
-    height: 30px;
+    width: 31px;
+    height: 31px;
 
     display: flex;
     align-items: center;
     justify-content: center;
+
+    margin: 0;
+    padding: 0;
 
     font-size: 25px;
     line-height: 1;
@@ -94,6 +100,12 @@
 
     color: currentColor;
     text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+  }
+
+  .mobile-tabbar .mobile-tab-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 
   .mobile-tabbar .mobile-tab-text {
@@ -104,7 +116,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    font-size: 12px;
+    font-size: 12.5px;
     line-height: 1.05;
     font-weight: 700;
     letter-spacing: 0.01em;
@@ -113,15 +125,20 @@
   }
 
   .mobile-tabbar .mobile-tab-create {
-    min-height: 64px;
+    min-height: 62px;
     padding: 0 2px;
     gap: 0;
-    transform: translateY(-8px);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transform: translateY(-7px);
     border-radius: 999px;
   }
 
   .mobile-tabbar .mobile-tab-create:active {
-    transform: translateY(-8px) scale(0.96);
+    transform: translateY(-7px) scale(0.96);
   }
 
   .mobile-tabbar .mobile-tab-create .mobile-tab-icon {
@@ -132,21 +149,25 @@
     align-items: center;
     justify-content: center;
 
+    margin: 0;
+    padding: 0;
+
     border-radius: 999px;
     background:
-      radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.34), transparent 27%),
-      linear-gradient(180deg, #ffc46a 0%, #f59a2f 52%, #df7820 100%);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+      radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.36), transparent 28%),
+      linear-gradient(180deg, #ffc464 0%, #f6a12f 54%, #e77d1f 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 
-    color: #1b1208;
-    font-size: 34px;
+    color: #161006;
+    font-size: 35px;
     line-height: 1;
     font-weight: 900;
 
     box-shadow:
-      0 14px 28px rgba(223, 120, 32, 0.34),
-      0 4px 12px rgba(0, 0, 0, 0.32),
-      inset 0 1px 0 rgba(255, 255, 255, 0.42);
+      0 13px 26px rgba(231, 125, 31, 0.35),
+      0 4px 12px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.44);
+
     text-shadow: none;
   }
 
@@ -157,11 +178,11 @@
 
 @media (max-width: 380px) {
   .mobile-tabbar {
-    left: 10px;
-    right: 10px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    height: 74px;
-    padding: 7px 8px;
+    left: 12px;
+    right: 12px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    height: 76px;
+    padding: 8px 8px;
     border-radius: 28px;
   }
 
@@ -172,18 +193,18 @@
   }
 
   .mobile-tabbar .mobile-tab-icon {
-    width: 28px;
-    height: 28px;
+    width: 29px;
+    height: 29px;
     font-size: 23px;
   }
 
   .mobile-tabbar .mobile-tab-text {
-    font-size: 11.5px;
+    font-size: 12px;
   }
 
   .mobile-tabbar .mobile-tab-create .mobile-tab-icon {
     width: 54px;
     height: 54px;
-    font-size: 32px;
+    font-size: 33px;
   }
 }
