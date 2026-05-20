@@ -1,0 +1,80 @@
+.mobile-tabbar {
+  display: none;
+}
+
+.mobile-tab-btn {
+  appearance: none;
+  height: 60px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: rgba(255,248,234,0.58);
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: 0.22s ease;
+}
+
+.mobile-tab-btn.active {
+  color: var(--gold);
+}
+
+.mobile-tab-btn.active .mobile-tab-icon:not(.mobile-tab-create .mobile-tab-icon),
+.mobile-tab-btn.active .mobile-tab-text {
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(244,178,74,0.42);
+}
+
+.mobile-tab-btn.active:not(.mobile-tab-create) .mobile-tab-icon {
+  background: rgba(244,178,74,0.14);
+  box-shadow: 0 0 22px rgba(244,178,74,0.24);
+}
+
+.mobile-tab-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 900;
+  filter: saturate(1.25) contrast(1.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-tab-text {
+  line-height: 1;
+  font-weight: 800;
+}
+
+.mobile-tab-create {
+  transform: translateY(-14px);
+  color: #ffffff;
+}
+
+.mobile-tab-create .mobile-tab-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #1b1004;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 900;
+  box-shadow:
+    0 12px 32px rgba(244,178,74,0.36),
+    inset 0 1px 0 rgba(255,255,255,0.24);
+}
+
+.mobile-tab-create .mobile-tab-text {
+  margin-top: 1px;
+  color: #fff8ea;
+}

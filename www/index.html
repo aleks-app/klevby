@@ -1,10 +1,823 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Klevby Capacitor Shell</title>
-  </head>
-  <body>
-    <p>Klevby Capacitor shell placeholder.</p>
-  </body>
+<!DOCTYPE html>
+<html lang="ru" class="">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    if (!window.supabase) {
+      document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+    }
+  </script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <script>
+    (function () {
+      function isMobileLikeViewport() {
+        try {
+          const width = Number(window.innerWidth || document.documentElement.clientWidth || 0);
+          const screenMin = Math.min(Number(screen.width || 0), Number(screen.height || 0));
+
+          return (
+            width <= 900 ||
+            screenMin <= 900 ||
+            window.matchMedia("(pointer: coarse)").matches ||
+            window.navigator.standalone === true
+          );
+        } catch (_) {
+          return true;
+        }
+      }
+
+      function preventPinchZoom(event) {
+        if (!isMobileLikeViewport()) return;
+
+        if (event.touches && event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }
+
+      function preventGestureZoom(event) {
+        if (!isMobileLikeViewport()) return;
+
+        event.preventDefault();
+      }
+
+      document.addEventListener("touchstart", preventPinchZoom, { passive: false });
+      document.addEventListener("touchmove", preventPinchZoom, { passive: false });
+      document.addEventListener("gesturestart", preventGestureZoom, { passive: false });
+      document.addEventListener("gesturechange", preventGestureZoom, { passive: false });
+      document.addEventListener("gestureend", preventGestureZoom, { passive: false });
+    })();
+  </script>
+
+  <title>Klevby — Карта клева и поиск напарника на рыбалку в Беларуси</title>
+  <meta name="description" content="Klevby — рыбалка в Беларуси: карта клева, Минск, Чигиринка, Нарочь, отчеты, барахолка снастей и поиск экипажа для совместного выезда." />
+  <meta name="keywords" content="рыбалка в Беларуси, карта клева РБ, ловля щуки Минск, найти напарника на рыбалку, отчеты о рыбалке Беларусь, рыболовная барахолка снастей бу Беларусь" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="author" content="Klevby" />
+  <meta name="application-name" content="Klevby" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <link rel="canonical" href="https://klevby.com/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Klevby" />
+  <meta property="og:locale" content="ru_BY" />
+  <meta property="og:url" content="https://klevby.com/" />
+  <meta property="og:title" content="Klevby — Карта клева и поиск напарника на рыбалку в Беларуси" />
+  <meta property="og:description" content="Карта клева, точки рыбалки, отчеты, барахолка снастей и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
+  <meta property="og:image" content="https://klevby.com/assets/img/narach-bg.webp" />
+  <meta property="og:image:secure_url" content="https://klevby.com/assets/img/narach-bg.webp" />
+  <meta property="og:image:type" content="image/webp" />
+  <meta property="og:image:alt" content="Klevby — рыбалка в Беларуси, карта клева и поиск напарника" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Klevby — Карта клева и поиск напарника на рыбалку в Беларуси" />
+  <meta name="twitter:description" content="Карта клева, точки рыбалки, отчеты, барахолка снастей и поиск экипажа по Беларуси: Минск, Чигиринка, Нарочь и другие места." />
+  <meta name="twitter:image" content="https://klevby.com/assets/img/narach-bg.webp" />
+
+  <meta name="theme-color" content="#000000" />
+  <meta name="background-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Klevby" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/img/klevby-icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/img/klevby-icon-512.png">
+  <link rel="shortcut icon" type="image/png" href="assets/img/klevby-icon-512.png">
+  <link rel="apple-touch-icon" href="assets/img/klevby-icon-512.png">
+  <link rel="manifest" id="pwaManifest" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://api.openweathermap.org">
+  <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="assets/css/main.css?v=20260515-home-mobile-1">
+  <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
+  <link rel="stylesheet" href="assets/css/chat-style.css?v=20260504-1">
+  <link rel="stylesheet" href="assets/css/screens/profile-public.css?v=20260514-public-profile-hero-polish-pr1g-1">
+
+  <script src="assets/js/pwa-manifest.js?v=20260503-4"></script>
+</head>
+
+<body>
+  <div id="appSplash" class="app-splash" aria-hidden="true">
+    <div class="splash-logo">
+      <span class="splash-k">K</span>
+      <div class="splash-rest">
+        <span class="letter">l</span>
+        <span class="letter">e</span>
+        <span class="letter">v</span>
+        <span class="letter">b</span>
+        <span class="letter">y</span>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="wrap header-inner">
+      <div class="logo">🎣💧 Klevby</div>
+
+      <nav>
+        <button class="nav-btn" onclick="showSection('home')">Лента</button>
+        <button class="nav-btn" onclick="setMode('all')">Напарники</button>
+        <button class="nav-btn" onclick="showSection('market')">Барахолка</button>
+        <button class="nav-btn" onclick="showSection('ponds')">Платные пруды</button>
+        <button class="nav-btn active" onclick="openTelegram()">Telegram</button>
+        <button class="nav-btn nav-mine" onclick="setMode('mine')">Мои выезды</button>
+        <button class="nav-btn" onclick="openKlevbyProfile()">Профиль</button>
+        <button class="nav-btn install-nav-btn pwa-install-trigger" onclick="handleInstallClick()">📱 Приложение</button>
+        <button class="nav-btn nav-auth" onclick="showSection('auth')">Вход</button>
+      </nav>
+
+      <div class="mobile-actions">
+        <button class="mobile-profile-btn" id="mobileProfileBtn" type="button" onclick="openKlevbyProfile()" aria-label="Открыть профиль рыбака">
+          <span id="mobileProfileAvatarIcon" class="mobile-profile-avatar-icon">👤</span>
+        </button>
+
+        <div class="mobile-menu-wrap">
+          <button class="burger-btn" id="burgerBtn" onclick="toggleMobileMenu()" aria-label="Открыть меню" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <div class="mobile-menu" id="mobileMenu">
+            <button class="mobile-menu-item" onclick="showSection('home'); closeMobileMenu()">Лента</button>
+            <button class="mobile-menu-item" onclick="setMode('all'); closeMobileMenu()">Напарники</button>
+            <button class="mobile-menu-item" onclick="showSection('market'); closeMobileMenu()">Барахолка</button>
+            <button class="mobile-menu-item" onclick="showSection('ponds'); closeMobileMenu()">Платные пруды</button>
+            <button class="mobile-menu-item" onclick="openKlevbyProfile(); closeMobileMenu()">👤 Профиль рыбака</button>
+            <button class="mobile-menu-item" onclick="openTelegram(); closeMobileMenu()">Telegram</button>
+            <button class="mobile-menu-item" onclick="setMode('mine'); closeMobileMenu()">Мои выезды</button>
+            <button class="mobile-menu-item pwa-install-trigger" onclick="handleInstallClick(); closeMobileMenu()">📱 Приложение</button>
+            <button class="mobile-menu-item" onclick="forceAppUpdate(); closeMobileMenu()">🔄 Обновить приложение</button>
+            <button class="mobile-menu-item" onclick="showSection('auth'); closeMobileMenu()">Вход</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="homeSection">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="badge">Соцсеть для рыбаков Беларуси</div>
+          <h1>Klevby — рыбалка в Беларуси</h1>
+          <p>Фото, отчёты, места, прогноз клёва и напарники в одном приложении.</p>
+
+          <div class="trust-bar">
+            <div class="trust-item" onclick="showSection('map')" style="cursor:pointer;">
+              <div class="trust-icon fish">🗺️</div>
+              <div class="trust-value">Карта</div>
+              <div class="trust-label">Открыть точки</div>
+            </div>
+
+            <div class="trust-item" onclick="setMode('all')" style="cursor:pointer;">
+              <div class="trust-icon pin">🎣</div>
+              <div class="trust-value">Выезды</div>
+              <div class="trust-label">Найти напарника</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-photo"></div>
+      </div>
+
+      <div class="forecast-panel weather-cloudy" id="forecastPanel">
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="rain-layer">
+          <span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span><span class="drop"></span>
+        </div>
+
+        <div class="mobile-weather-title">
+          <div class="mobile-weather-city">Minsk</div>
+          <div class="mobile-weather-condition" id="mobileWeatherCondition">☀️ Солнце</div>
+        </div>
+
+        <div class="forecast-head">
+          <div>
+            <h2>Прогноз на сегодня</h2>
+            <p id="weatherStatus">Загружаем погоду для Минска...</p>
+          </div>
+          <button class="main-btn blue" onclick="showSection('map')">Открыть карту клева</button>
+        </div>
+
+        <div class="forecast-grid">
+          <div class="forecast-item">
+            <div class="forecast-icon" data-mobile-icon="🌡️">☀️</div>
+            <div class="forecast-label">Температура</div>
+            <div class="forecast-value" id="weatherTemp">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon" data-mobile-icon="💨">💨</div>
+            <div class="forecast-label">Ветер</div>
+            <div class="forecast-value" id="weatherWind">—</div>
+          </div>
+          <div class="forecast-item">
+            <div class="forecast-icon" data-mobile-icon="🧭">⌁</div>
+            <div class="forecast-label">Давление</div>
+            <div class="forecast-value" id="weatherPressure">—</div>
+          </div>
+          <div class="forecast-item forecast-moon-item">
+            <div class="forecast-icon" data-mobile-icon="🌕">◐</div>
+            <div class="forecast-label">Фаза луны</div>
+            <div class="forecast-value" id="weatherMoon">—</div>
+          </div>
+          <div class="forecast-item forecast-bite-item">
+            <div class="forecast-icon" data-mobile-icon="🐟">🐟</div>
+            <div class="forecast-label">Клёв</div>
+            <div class="forecast-value">Средний</div>
+          </div>
+        </div>
+
+        <div class="bite-line bite-medium-line" id="biteForecast">Прогноз средний, нужно пробовать.</div>
+      </div>
+
+      <div class="home-mobile-feed-head" aria-label="Лента и погода">
+    
+        <div class="home-weather-chips" aria-label="Краткая погода">
+          <button class="home-weather-chip" id="homeWeatherTempChip" type="button" aria-label="Температура">
+            <span class="home-weather-chip-icon">🌡️</span>
+            <span class="home-weather-chip-value">—</span>
+          </button>
+
+          <button class="home-weather-chip" id="homeWeatherWindChip" type="button" aria-label="Ветер">
+            <span class="home-weather-chip-icon">💨</span>
+            <span class="home-weather-chip-value">—</span>
+          </button>
+
+          <button class="home-weather-chip home-weather-chip-bite" id="homeWeatherBiteChip" type="button" aria-label="Прогноз клёва">
+            <span class="home-weather-chip-icon">🐟</span>
+            <span class="home-weather-chip-value">Клёв</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="profileFeedSection" class="grid social-feed-grid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section id="tripsSection" class="hidden">
+      <div class="trips-hero">
+        <div>
+          <div class="section-kicker">Напарники</div>
+          <h2>Выезды на рыбалку</h2>
+          <p>Здесь только объявления: кто куда едет, кто ищет компанию, у кого есть свободное место или лодка.</p>
+        </div>
+
+        <button class="small-btn green" type="button" onclick="showSection('create')">Создать выезд</button>
+      </div>
+
+      <div id="statusLine" class="info-line">Загрузка объявлений...</div>
+
+      <div class="filter-card">
+        <div class="filter-title">
+          <h3>Фильтр объявлений</h3>
+          <span>Компактный поиск по выездам</span>
+        </div>
+
+        <div class="filters">
+          <input id="searchInput" placeholder="Поиск: лодка, карп, завтра..." oninput="renderPosts()" />
+
+          <select id="citySelect" onchange="renderPosts()">
+            <option value="">Выберите город</option>
+            <option value="Минск">Минск</option><option value="Гомель">Гомель</option><option value="Могилев">Могилев</option><option value="Витебск">Витебск</option><option value="Гродно">Гродно</option><option value="Брест">Брест</option><option value="Барановичи">Барановичи</option><option value="Бобруйск">Бобруйск</option><option value="Борисов">Борисов</option><option value="Пинск">Пинск</option><option value="Орша">Орша</option><option value="Мозырь">Мозырь</option><option value="Солигорск">Солигорск</option><option value="Новополоцк">Новополоцк</option><option value="Лида">Лида</option><option value="Молодечно">Молодечно</option><option value="Полоцк">Полоцк</option><option value="Жлобин">Жлобин</option><option value="Слуцк">Слуцк</option><option value="Светлогорск">Светлогорск</option><option value="Речица">Речица</option><option value="Жодино">Жодино</option><option value="Кобрин">Кобрин</option><option value="Сморгонь">Сморгонь</option><option value="Волковыск">Волковыск</option>
+          </select>
+
+          <select id="typeSelect" onchange="renderPosts()">
+            <option value="">Способ ловли</option>
+            <option value="Спиннинг">Спиннинг</option>
+            <option value="Фидер">Фидер</option>
+            <option value="Поплавок">Поплавок</option>
+            <option value="Карпфишинг">Карпфишинг</option>
+            <option value="Зимняя">Зимняя</option>
+          </select>
+
+          <label class="check">
+            <input type="checkbox" id="telegramOnly" onchange="renderPosts()" /> Telegram
+          </label>
+
+          <button class="filter-reset" onclick="resetFilters()">Сбросить</button>
+        </div>
+      </div>
+
+      <div id="postsSection" class="grid">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section id="createSection" class="hidden">
+      <div class="create-screen-head">
+        <div>
+          <div class="section-kicker">Создание</div>
+          <h2>Создать выезд</h2>
+          <p>Заполни объявление: куда едешь, когда, есть ли транспорт и сколько мест.</p>
+        </div>
+
+        <button class="small-btn gray" type="button" onclick="setMode('all')">К объявлениям</button>
+      </div>
+
+      <div class="panel" id="createPanel">
+        <h2 id="formTitle">Создать выезд</h2>
+
+        <div class="form-row">
+          <input id="nameInput" placeholder="Nickname / имя на сайте" />
+          <input id="cityInput" placeholder="Город отправления" />
+        </div>
+
+        <div class="form-row">
+          <input id="destinationInput" placeholder="Куда едешь: Минское море, Нарочь..." />
+          <input id="tripTimeInput" placeholder="Когда словами: завтра утром, в субботу..." />
+        </div>
+
+        <input id="tripDateInput" type="date" aria-label="Дата выезда" />
+
+        <div class="form-row">
+          <select id="fishingTypeInput">
+            <option value="">Тип рыбалки</option>
+            <option value="Спиннинг">Спиннинг</option>
+            <option value="Фидер">Фидер</option>
+            <option value="Поплавок">Поплавок</option>
+            <option value="Карпфишинг">Карпфишинг</option>
+            <option value="Зимняя">Зимняя</option>
+          </select>
+
+          <select id="transportInput">
+            <option value="">Транспорт</option>
+            <option value="Есть машина">Есть машина</option>
+            <option value="Ищу место в машине">Ищу место в машине</option>
+            <option value="Есть лодка">Есть лодка</option>
+            <option value="Без транспорта">Без транспорта</option>
+          </select>
+        </div>
+
+        <input id="seatsInput" placeholder="Места: 1 свободное, 2 места, экипаж набран..." />
+        <textarea id="textInput" placeholder="Описание: детали выезда, снасти, лодка, опыт, что взять с собой"></textarea>
+        <input id="telegramInput" placeholder="Telegram username, @username или https://t.me/username" />
+
+        <div class="actions">
+          <button class="small-btn green" onclick="savePost()">Сохранить</button>
+          <button id="cancelEditBtn" class="small-btn gray hidden" onclick="cancelEdit()">Отмена</button>
+        </div>
+
+        <div id="formMessage" class="auth-status"></div>
+      </div>
+    </section>
+
+    <section id="profileSection" class="hidden">
+      <div class="profile-shell">
+        <div class="profile-cover"></div>
+
+        <div class="profile-main-card">
+          <label class="profile-avatar-wrap" for="profileAvatarInput" aria-label="Выбрать аватар">
+            <img id="profileAvatarImage" class="profile-avatar-image hidden" alt="Аватар профиля">
+            <span id="profileAvatarFallback" class="profile-avatar-fallback">A</span>
+          </label>
+
+          <input id="profileAvatarInput" class="profile-avatar-input" type="file" accept="image/*" onchange="handleLocalAvatarUpload(event)" />
+
+          <h2 id="profileNameText" class="profile-name">Alex</h2>
+          <p id="profileStatusText" class="profile-status">🎣 Рыбак Klevby</p>
+
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <span class="profile-stat-label">Отчётов</span>
+              <strong id="profileReportsCount">0</strong>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-label">Фото</span>
+              <strong id="profilePhotosCount">0</strong>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-label">Выездов</span>
+              <strong id="profileTripsCount">0</strong>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-label">Напарников</span>
+              <strong id="profileFriendsCount">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-content-card">
+          <div class="profile-card-head">
+            <h3>Мои фото и отчёты</h3>
+            <button type="button" onclick="openProfilePhotoAction()">Добавить</button>
+          </div>
+
+          <div class="profile-empty-state">
+            <div class="profile-empty-icon">📸</div>
+            <h4>Пока нет фото и отчётов</h4>
+            <p>
+              Добавь первое фото с рыбалки. Позже здесь будут твои уловы,
+              точки, выезды и отчёты, которые смогут смотреть другие рыбаки.
+            </p>
+            <button type="button" onclick="openProfilePhotoAction()">Добавить фото</button>
+          </div>
+        </div>
+
+        <div class="profile-menu-card">
+          <button type="button" onclick="openProfilePhotoAction()">
+            <span>📸 Мои фото и отчёты</span>
+            <b>›</b>
+          </button>
+
+          <button type="button" onclick="openProfileTripsView()">
+            <span>🏷️ Мои выезды</span>
+            <b>›</b>
+          </button>
+
+          <button type="button" onclick="openProfileCreateView()">
+            <span>➕ Создать выезд</span>
+            <b>›</b>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="marketSection" class="hidden">
+      <div class="market-hero">
+        <h2>Барахолка снастей</h2>
+        <p>Продажа и покупка рыболовных вещей: удилища, катушки, приманки, лодки, эхолоты и всё, что может пригодиться на рыбалке.</p>
+      </div>
+
+      <div class="panel market-shell">
+        <div id="marketRoot">
+          <div class="info-line">Загрузка барахолки...</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pondsSection" class="hidden">
+      <div class="ponds-shell">
+        <div class="ponds-hero">
+          <div>
+            <div class="ponds-badge">💧 Платная рыбалка</div>
+            <h2>Платные пруды Беларуси</h2>
+            <p>
+              Каталог платных водоёмов: цены, рыба, контакты, фото и координаты.
+              Раздел загружается из Supabase.
+            </p>
+          </div>
+
+          <div class="ponds-hero-card">
+            <div class="ponds-hero-price">BYN</div>
+            <div class="ponds-hero-text">Цены, рыба и контакты в одном месте</div>
+          </div>
+        </div>
+
+        <div id="pondsAdminPanel" class="ponds-admin-panel hidden">
+          <div class="ponds-admin-head">
+            <div>
+              <h3 id="pondFormTitle">Добавить платный пруд</h3>
+              <p>Эта форма видна только админу.</p>
+            </div>
+
+            <button id="pondCancelEditBtn" class="ponds-btn ponds-btn-muted hidden" type="button">
+              Отмена
+            </button>
+          </div>
+
+          <form id="pondForm" class="ponds-form">
+            <div class="ponds-form-group">
+              <h4>Основная информация</h4>
+
+              <div class="ponds-form-grid">
+                <label>
+                  <span>Название</span>
+                  <input id="pondNameInput" type="text" placeholder="Например: Пруд возле Минска" required>
+                </label>
+
+                <label>
+                  <span>Город / область</span>
+                  <input id="pondCityInput" type="text" placeholder="Минск, Брестская область..." required>
+                </label>
+
+                <label>
+                  <span>Цена</span>
+                  <input id="pondPriceInput" type="text" placeholder="Например: 25 BYN / день">
+                </label>
+
+                <label>
+                  <span>Виды рыб</span>
+                  <input id="pondFishInput" type="text" placeholder="Карп, карась, амур, щука">
+                </label>
+              </div>
+
+              <label>
+                <span>Описание</span>
+                <textarea id="pondDescriptionInput" placeholder="Условия рыбалки, правила, беседки, ночёвка, запуск рыбы..."></textarea>
+              </label>
+            </div>
+
+            <div class="ponds-form-group">
+              <h4>Медиа и Гео</h4>
+
+              <div class="ponds-form-grid">
+                <label>
+                  <span>Фото URL</span>
+                  <input id="pondPhotoInput" type="url" placeholder="https://...">
+                </label>
+
+                <label>
+                  <span>Latitude</span>
+                  <input id="pondLatInput" type="number" step="any" placeholder="53.9006">
+                </label>
+
+                <label>
+                  <span>Longitude</span>
+                  <input id="pondLngInput" type="number" step="any" placeholder="27.5590">
+                </label>
+
+                <label class="ponds-check-label">
+                  <input id="pondActiveInput" type="checkbox" checked>
+                  <span>Показывать на сайте</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="ponds-form-group">
+              <h4>Контакты</h4>
+
+              <div class="ponds-form-grid">
+                <label>
+                  <span>Контакты</span>
+                  <input id="pondContactsInput" type="text" placeholder="Телефон, Telegram, сайт">
+                </label>
+              </div>
+            </div>
+
+            <div class="ponds-form-actions">
+              <button id="pondSaveBtn" class="ponds-btn ponds-btn-primary" type="submit">
+                Сохранить пруд
+              </button>
+
+              <div id="pondFormMessage" class="ponds-form-message"></div>
+            </div>
+          </form>
+        </div>
+
+        <div class="ponds-toolbar">
+          <div>
+            <h3>Каталог водоёмов</h3>
+            <p id="pondsStatus">Загрузка платных прудов...</p>
+          </div>
+
+          <input id="pondsSearchInput" class="ponds-search" type="text" placeholder="Поиск: Минск, карп, амур...">
+        </div>
+
+        <div id="pondsGrid" class="ponds-grid">
+          <div class="ponds-skeleton"></div>
+          <div class="ponds-skeleton"></div>
+          <div class="ponds-skeleton"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mapSection" class="hidden">
+      <div class="map-placeholder">
+        <div class="map-card">
+          <h2>Карта клева Беларуси</h2>
+          <p>Скоро: отмечай свои выезды, добавляй точки, смотри, где клюет, и находи популярные места рядом.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="authSection" class="hidden">
+      <div class="panel">
+        <h2 id="authTitle">Создать профиль рыбака</h2>
+        <p id="authSubtitle" style="margin-top:-8px;color:rgba(244,251,247,0.66);font-weight:600;">
+          Никнейм будет виден в объявлениях и чате. Почта нужна для входа и подтверждения аккаунта.
+        </p>
+
+        <label id="usernameLabel" class="auth-label" for="usernameInput">Nickname</label>
+        <input id="usernameInput" type="text" placeholder="Например: alex822alex" autocomplete="nickname" maxlength="32" />
+
+        <label class="auth-label" for="emailInput">Email</label>
+        <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
+
+        <label class="auth-label" for="passwordInput">Пароль</label>
+        <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="new-password" />
+
+        <div class="actions">
+          <button id="authCreateBtn" class="small-btn green" onclick="register()">Создать профиль</button>
+          <button id="authLoginBtn" class="small-btn blue hidden" onclick="login()">Войти</button>
+          <button class="small-btn yellow" onclick="sendRecovery()">Сбросить пароль</button>
+          <button class="small-btn red" onclick="logout()">Выйти</button>
+        </div>
+
+        <div id="authSwitchText" class="auth-status" style="margin-top:16px;">
+          Уже есть аккаунт?
+          <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
+        </div>
+
+        <div id="authStatus" class="auth-status">Проверяем вход...</div>
+      </div>
+    </section>
+
+    <div class="footer">Klevby.com — рыбалка в Беларуси 🎣</div>
+  </main>
+
+  <button id="homeFloatBtn" class="home-float-btn" onclick="goHomeTop()" aria-label="Вернуться на главную">⌂ Главная</button>
+
+  <div id="resetModal" class="modal-bg hidden">
+    <div class="modal">
+      <h2>Новый пароль</h2>
+      <p>Введите новый пароль для аккаунта.</p>
+      <input id="newPasswordInput" type="password" placeholder="Новый пароль" />
+      <div class="actions">
+        <button class="small-btn green" onclick="updatePassword()">Сохранить пароль</button>
+        <button class="small-btn gray" onclick="closeResetModal()">Закрыть</button>
+      </div>
+      <div id="resetMessage" class="auth-status"></div>
+    </div>
+  </div>
+
+  <div id="iosInstallModal" class="modal-bg hidden">
+    <div class="modal">
+      <h2>Установить Klevby на iPhone 📱</h2>
+      <p style="color:rgba(245,245,245,0.66);line-height:1.6;font-weight:500;">На iPhone установка делается через меню Safari:</p>
+      <div class="ios-step"><div class="ios-step-icon">📤</div><div>1. Нажми <b>«Поделиться»</b> — квадрат со стрелочкой.</div></div>
+      <div class="ios-step"><div class="ios-step-icon">📲</div><div>2. Выбери <b>«На экран Домой»</b>, затем нажми <b>«Добавить»</b>.</div></div>
+      <div class="actions"><button class="small-btn green" onclick="closeIosInstallModal()">Понятно</button></div>
+    </div>
+  </div>
+
+  <div id="profileSettingsModal" class="modal-bg hidden" onclick="handleProfileSettingsBackdrop(event)">
+    <div class="modal profile-settings-modal" role="dialog" aria-modal="true" aria-labelledby="profileSettingsTitle" onclick="event.stopPropagation()">
+      <button class="profile-settings-close" type="button" onclick="closeProfileSettingsModal()" aria-label="Закрыть настройки">×</button>
+
+      <h2 id="profileSettingsTitle">Настройки профиля</h2>
+      <p class="profile-settings-subtitle">
+        Настрой имя, Telegram, город и описание. Аватар можно поменять здесь или нажатием на фото профиля.
+      </p>
+
+      <button class="profile-settings-avatar-action" type="button" onclick="triggerProfileAvatarInput()">
+        <span>👤</span>
+        <strong>Сменить аватар</strong>
+      </button>
+
+      <label class="auth-label" for="profileSettingsNameInput">Nickname</label>
+      <input id="profileSettingsNameInput" type="text" placeholder="Например: alex822alex" maxlength="32" autocomplete="nickname" />
+
+      <label class="auth-label" for="profileSettingsTelegramInput">Telegram</label>
+      <input id="profileSettingsTelegramInput" type="text" placeholder="@username или https://t.me/username" autocomplete="off" />
+
+      <label class="auth-label" for="profileSettingsCityInput">Город / область</label>
+      <input id="profileSettingsCityInput" type="text" placeholder="Минск, Гомель, Брест..." autocomplete="address-level2" />
+
+      <label class="auth-label" for="profileSettingsAboutInput">О себе</label>
+      <textarea id="profileSettingsAboutInput" placeholder="Например: люблю спиннинг, часто езжу на Нарочь, ищу напарников на выходные"></textarea>
+
+      <div class="profile-settings-actions">
+        <button class="small-btn yellow" type="button" onclick="saveProfileSettings()">Сохранить</button>
+        <button class="small-btn gray" type="button" onclick="closeProfileSettingsModal()">Закрыть</button>
+        <button class="small-btn red" type="button" onclick="logoutFromProfileSettings()">Выйти</button>
+      </div>
+
+      <div id="profileSettingsMessage" class="auth-status"></div>
+    </div>
+  </div>
+
+  <div id="installBanner" class="install-banner hidden" role="dialog" aria-live="polite">
+    <div class="install-inner">
+      <div class="install-icon">🎣</div>
+      <div><div class="install-text">Установить Klevby на главный экран?</div><div class="install-subtext">Открывай как приложение — без лишних вкладок.</div></div>
+      <div class="install-actions"><button class="install-btn" onclick="handleInstallClick()">Установить</button><button class="install-close" onclick="hideInstallBanner(true)" aria-label="Закрыть">×</button></div>
+    </div>
+  </div>
+
+  <div id="postModal" class="post-modal-backdrop hidden" onclick="handlePostModalBackdrop(event)">
+    <div class="post-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="postModalTitle" onclick="event.stopPropagation()">
+      <button class="post-modal-close" onclick="closePostModal()" aria-label="Закрыть">×</button>
+      <div class="post-modal-scroll">
+        <div id="postModalImage" class="post-modal-image"></div>
+        <div class="post-modal-content">
+          <div class="post-modal-card">
+            <div class="post-modal-kicker">🎣 Выезд на рыбалку</div>
+            <h2 id="postModalTitle" class="post-modal-title">Объявление</h2>
+            <div id="postModalMeta" class="post-modal-meta"></div>
+            <div id="postModalText" class="post-modal-text"></div>
+            <button id="postModalWriteBtn" class="post-modal-write" onclick="writePostAuthor()">Написать</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-tabbar" aria-label="Нижняя навигация">
+    <button class="mobile-tab-btn active" onclick="goMobileFeed()"><span class="mobile-tab-icon">▰</span><span class="mobile-tab-text">Лента</span></button>
+    <button class="mobile-tab-btn" onclick="goMobileMap()"><span class="mobile-tab-icon">⌖</span><span class="mobile-tab-text">Карта</span></button>
+    <button class="mobile-tab-btn mobile-tab-create" onclick="goMobileCreate()"><span class="mobile-tab-icon">+</span><span class="mobile-tab-text">Создать</span></button>
+    <button class="mobile-tab-btn" onclick="goMobileWeather()"><span class="mobile-tab-icon">☁</span><span class="mobile-tab-text">Погода</span></button>
+    <button id="nav-chat" class="mobile-tab-btn"><span class="mobile-tab-icon">☵</span><span class="mobile-tab-text">Чат</span></button>
+  </div>
+
+  <script src="assets/js/config.js?v=20260503-4" defer></script>
+  <script src="assets/js/weather.js?v=20260503-4" defer></script>
+  <script src="assets/js/pwa.js?v=20260514-pwa-soft-update-1" defer></script>
+  <script src="assets/js/auth.js?v=20260503-4" defer></script>
+  <script src="assets/js/posts/posts-state.js?v=20260514-posts-state-split-1" defer></script>
+  <script src="assets/js/posts/posts-utils.js?v=20260515-trip-card-images-1" defer></script>
+  <script src="assets/js/posts/posts-api.js?v=20260515-posts-api-trip-date-1" defer></script>
+  <script src="assets/js/posts/posts-render.js?v=20260515-posts-render-mobile-filter-telegram-fix-1" defer></script>
+  <script src="assets/js/posts/posts-modal.js?v=20260515-posts-modal-owner-icons-1" defer></script>
+  <script src="assets/js/posts/posts-form.js?v=20260515-posts-form-trip-date-required-ui-1" defer></script>
+  <script src="assets/js/posts/posts-actions.js?v=20260515-posts-actions-rest-auth-1" defer></script>
+  <script src="assets/js/posts.js?v=20260515-posts-bridge-modal-check-1" defer></script>
+  <script src="assets/js/ui/ui-shell.js?v=20260513-ui-shell-split-1" defer></script>
+  <script src="assets/js/ui/ui-tabbar.js?v=20260513-ui-tabbar-split-1" defer></script>
+  <script src="assets/js/ui/ui-profile-bridge.js?v=20260513-ui-profile-bridge-split-1" defer></script>
+  <script src="assets/js/ui.js?v=20260513-ui-profile-bridge-split-1" defer></script>
+  <script src="assets/js/profile/profile-utils.js?v=20260513-profile-utils-split-1" defer></script>
+  <script src="assets/js/profile/profile-storage.js?v=20260513-profile-storage-split-1" defer></script>
+  <script src="assets/js/profile/profile-core.js?v=20260513-profile-storage-split-1" defer></script>
+  <script src="assets/js/profile/profile-ui.js?v=20260512-profile-ui-1" defer></script>
+  <script src="assets/js/profile/profile-photos.js?v=20260513-profile-feed-events-split-1" defer></script>
+  <script src="assets/js/profile/profile-avatar.js?v=20260512-profile-avatar-split-1" defer></script>
+  <script src="assets/js/profile/profile-settings.js?v=20260512-profile-settings-split-1" defer></script>
+  <script src="assets/js/profile.js?v=20260514-public-profile-skeleton-1" defer></script>
+  <script src="assets/js/profile/public/profile-public-state.js?v=20260514-public-profile-skeleton-1" defer></script>
+  <script src="assets/js/profile/public/profile-public-api.js?v=20260514-public-profile-api-safe-fields-1" defer></script>
+  <script src="assets/js/profile/public/profile-public-render.js?v=20260514-public-profile-tabs-pr1e-1" defer></script>
+  <script src="assets/js/profile/public/profile-public-gallery.js?v=20260514-public-profile-viewer-1" defer></script>
+  <script src="assets/js/profile/public/profile-public-main.js?v=20260514-public-profile-skeleton-1" defer></script>
+
+  <script src="assets/js/feed/supabase/supabase-core.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-auth.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-rest.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-normalize.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-counts.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-posts.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-likes.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-comments.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-realtime.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed/supabase/supabase-main.js?v=20260509-feed-supabase-split-1" defer></script>
+  <script src="assets/js/feed-supabase.js?v=20260509-feed-supabase-split-1" defer></script>
+
+  <script src="assets/js/feed/feed-utils.js?v=20260512-feed-avatar-render-fix-1" defer></script>
+  <script src="assets/js/feed/feed-state.js?v=20260507-feed-modular-1" defer></script>
+  <script src="assets/js/feed/ranking/feed-ranking.js?v=20260512-feed-ranking-pr1-1" defer></script>
+  <script src="assets/js/feed/feed-api.js?v=20260512-feed-ranking-pr1-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-styles.js?v=20260510-feed-render-styles-split-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-cache.js?v=20260510-feed-render-cache-split-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-utils.js?v=20260510-feed-render-utils-split-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-images.js?v=20260510-feed-render-images-split-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-cards.js?v=20260514-public-profile-click-pr1b-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-list.js?v=20260512-feed-avatar-render-fix-1" defer></script>
+  <script src="assets/js/feed/render/feed-render-retry.js?v=20260510-feed-render-retry-split-1" defer></script>
+  <script src="assets/js/feed/feed-render.js?v=20260510-feed-render-retry-split-1" defer></script>
+  <script src="assets/js/feed/feed-modals.js?v=20260507-feed-modular-1" defer></script>
+  <script src="assets/js/feed/actions/actions-core.js?v=20260511-feed-actions-core-1" defer></script>
+  <script src="assets/js/feed/feed-actions.js?v=20260507-feed-modular-1" defer></script>
+  <script src="assets/js/feed/feed-events.js?v=20260507-feed-modular-1" defer></script>
+  <script src="assets/js/feed/main/feed-main-core.js?v=20260511-feed-main-core-1" defer></script>
+  <script src="assets/js/feed/main/feed-main-legacy.js?v=20260512-feed-main-legacy-1" defer></script>
+  <script src="assets/js/feed/feed-main.js?v=20260512-feed-main-legacy-split-1" defer></script>
+
+  <script src="assets/js/app/app-navigation.js?v=20260513-app-navigation-split-1" defer></script>
+  <script src="assets/js/app/app-splash.js?v=20260513-app-splash-split-1" defer></script>
+  <script src="assets/js/app/app-profile-patches.js?v=20260513-app-profile-patches-split-1" defer></script>
+  <script src="assets/js/app/app-mobile-actions.js?v=20260513-app-mobile-actions-split-1" defer></script>
+  <script src="assets/js/app/app-ui-helpers.js?v=20260513-app-ui-helpers-split-1" defer></script>
+  <script src="assets/js/app/app-filters.js?v=20260513-app-filters-split-1" defer></script>
+  <script src="assets/js/app/app-global-events.js?v=20260513-app-global-events-split-1" defer></script>
+  <script src="assets/js/app/app-trip-actions.js?v=20260513-app-trip-actions-split-1" defer></script>
+  <script src="assets/js/app/app-window-exports.js?v=20260513-app-window-exports-split-1" defer></script>
+  <script src="assets/js/app/app-ponds-bridge.js?v=20260513-app-ponds-bridge-split-1" defer></script>
+  <script src="assets/js/app.js?v=20260513-app-ponds-bridge-split-1" defer></script>
+  <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
+  <script src="assets/js/chat-state.js?v=20260506-1" defer></script>
+  <script src="assets/js/chat-push.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-viewport.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-realtime.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-user.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-render.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-public.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-private.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-reply.js?v=20260504-1" defer></script>
+  <script src="assets/js/chat-message-actions.js?v=20260505-1" defer></script>
+  <script src="assets/js/chat-lifecycle.js?v=20260506-1" defer></script>
+  <script src="assets/js/chat-auth-events.js?v=20260506-1" defer></script>
+  <script src="assets/js/chat-events.js?v=20260505-1" defer></script>
+  <script src="assets/js/chat.js?v=20260506-2" defer></script>
+  <script src="assets/js/call-styles.js?v=20260506-2" defer></script>
+  <script src="assets/js/call-audio.js?v=20260506-2" defer></script>
+  <script src="assets/js/call-ui.js?v=20260506-2" defer></script>
+  <script src="assets/js/call-realtime.js?v=20260507-1" defer></script>
+  <script src="assets/js/call.js?v=20260507-1" defer></script>
+  <script src="assets/js/map-logic.js?v=20260503-4" defer></script>
+  <script src="assets/js/market-logic.js?v=20260503-4" defer></script>
+  <script src="assets/js/ponds.js?v=20260503-4" defer></script>
+</body>
 </html>

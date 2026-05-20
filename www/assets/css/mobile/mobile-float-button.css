@@ -1,0 +1,93 @@
+/* Klevby mobile floating button styles
+   Behavior-preserving split from assets/css/responsive/mobile.css.
+   Scope: only #homeFloatBtn / .home-float-btn.
+*/
+
+@media (max-width: 900px) {
+  .home-float-btn {
+    top: auto;
+    right: 14px;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 17px;
+    font-size: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 28% 0%, rgba(255, 210, 122, 0.20), transparent 44%),
+      rgba(8, 18, 14, 0.84);
+    border: 1px solid rgba(255, 214, 143, 0.22);
+    box-shadow:
+      0 14px 30px rgba(0, 0, 0, 0.34),
+      0 0 18px rgba(244, 178, 74, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
+  }
+
+  .home-float-btn::before {
+    content: attr(data-float-icon);
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 950;
+    color: #fff8ea;
+    transform: translateY(-1px);
+    text-shadow:
+      0 2px 8px rgba(0,0,0,0.62),
+      0 0 14px rgba(255, 210, 122, 0.16);
+  }
+
+  .home-float-btn[data-float-mode="top"]::before {
+    transform: translateY(-2px);
+  }
+
+  .home-float-btn[data-float-mode="back"]::before {
+    font-size: 27px;
+    transform: translate(-1px, -1px);
+  }
+
+  .home-float-btn.show {
+    animation: klevbyFloatBtnPop 0.22s ease both;
+  }
+
+  .home-float-btn:active {
+    transform: scale(0.94);
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  @keyframes klevbyFloatBtnPop {
+    from {
+      transform: translateY(6px) scale(0.94);
+    }
+
+    to {
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+@media (max-width: 380px) {
+  .home-float-btn {
+    right: 12px;
+    bottom: calc(90px + env(safe-area-inset-bottom));
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    border-radius: 16px;
+  }
+
+  .home-float-btn::before {
+    font-size: 24px;
+  }
+}

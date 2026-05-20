@@ -1,0 +1,171 @@
+.public-profile-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, .78); }
+.public-profile-overlay.hidden { display: none; }
+.public-profile-viewer-open { overflow: hidden; }
+.public-profile-screen { max-width: 720px; margin: 0 auto; height: 100%; background: #0f1114; color: #fff; overflow: auto; }
+.public-profile-hero {
+  background:
+    linear-gradient(180deg, rgba(8, 14, 22, .5) 0%, rgba(10, 16, 24, .64) 58%, rgba(15, 17, 20, .86) 100%),
+    radial-gradient(circle at 80% -10%, rgba(98, 162, 214, .28), transparent 44%),
+    radial-gradient(circle at 20% 5%, rgba(18, 78, 124, .45), transparent 42%),
+    url("../../img/public-profile-hero.jpg"),
+    linear-gradient(180deg, #132333 0%, #101820 62%, #0f1114 100%);
+  background-size: auto, auto, auto, cover, auto;
+  background-position: center, 80% -10%, 20% 5%, center, center;
+  background-repeat: no-repeat;
+  border-bottom: none;
+  box-shadow: inset 0 -40px 64px -48px rgba(15, 17, 20, .88);
+}
+.public-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+.public-profile-title { margin: 0; font-size: 17px; font-weight: 700; opacity: .94; }
+.public-profile-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 108px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: rgba(8, 20, 33, .75);
+  color: #d2ecff;
+  border: 1px solid rgba(170, 216, 255, .22);
+  font-weight: 700;
+  font-size: 16px;
+}
+.public-profile-body { padding: 16px; }
+.public-profile-user { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+.public-profile-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: #1d2530;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+  border: 2px solid rgba(255, 255, 255, .14);
+}
+.public-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.public-profile-name { font-weight: 800; font-size: 24px; line-height: 1.2; }
+.public-profile-subtitle { margin-top: 6px; color: rgba(214, 236, 255, .86); font-size: 14px; }
+.public-profile-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.public-profile-stat { background: rgba(11, 24, 38, .72); border: 1px solid rgba(168, 212, 248, .14); border-radius: 12px; padding: 10px 12px; }
+.public-profile-stat-value { font-size: 18px; font-weight: 800; }
+.public-profile-stat-label { margin-top: 2px; opacity: .82; font-size: 13px; }
+.public-profile-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.public-profile-tab { border: 1px solid rgba(167, 212, 246, .25); background: rgba(8, 22, 34, .64); color: #d8eeff; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700; }
+.public-profile-tab.is-active { background: #2c95da; border-color: transparent; color: #fff; }
+.public-profile-content { padding-top: 14px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+.public-profile-section { margin-bottom: 16px; }
+.public-profile-section-title { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
+.public-profile-gallery-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.public-profile-photo { padding: 0; border: 0; background: #121820; border-radius: 12px; overflow: hidden; aspect-ratio: 1 / 1; }
+.public-profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+.public-profile-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(4, 8, 14, .95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.public-profile-viewer-overlay.hidden { display: none; }
+.public-profile-viewer-panel {
+  width: 100%;
+  max-width: 960px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.public-profile-viewer-close {
+  align-self: flex-start;
+  min-height: 44px;
+  min-width: 108px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(174, 219, 255, .28);
+  background: rgba(10, 25, 40, .9);
+  color: #d8eeff;
+  font-weight: 700;
+  font-size: 16px;
+}
+.public-profile-viewer-image {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100vh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  border-radius: 12px;
+  object-fit: contain;
+  background: rgba(3, 8, 14, .92);
+}
+.public-profile-empty, .public-profile-placeholder {
+  opacity: .9;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+
+@media (min-width: 560px) {
+  .public-profile-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 430px) {
+  .public-profile-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .public-profile-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    width: 100%;
+    padding: 10px 12px;
+    text-align: center;
+  }
+}
+
+@media (min-width: 769px) {
+  .public-profile-header { padding-top: 14px; }
+}
+
+.public-profile-tab[data-klevby-public-placeholder-tab] {
+  opacity: .72;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.public-profile-tab[data-klevby-public-placeholder-tab]:hover { opacity: .85; }
+.public-profile-tab-note {
+  margin-top: 10px;
+  min-height: 20px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed rgba(167, 212, 246, .34);
+  background: rgba(8, 22, 34, .52);
+  color: rgba(216, 238, 255, .95);
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.public-profile-tab-note.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.public-profile-tab-note[hidden] {
+  display: none;
+}

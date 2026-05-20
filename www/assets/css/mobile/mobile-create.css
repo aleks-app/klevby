@@ -1,0 +1,56 @@
+/* Klevby mobile create screen styles
+   Behavior-preserving split from assets/css/responsive/mobile.css.
+   Scope: mobile create section and create panel only.
+*/
+
+@media (max-width: 900px) {
+  #createSection {
+    padding-bottom: 18px;
+  }
+
+  #createPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+      rgba(14, 21, 18, 0.82);
+    border-color: rgba(244,178,74,0.15);
+  }
+
+  #createPanel h2 {
+    margin: 0;
+    font-weight: 800 !important;
+  }
+
+  #createPanel .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+
+  #createPanel input,
+  #createPanel select,
+  #createPanel textarea {
+    width: 100%;
+    margin: 0;
+  }
+
+  #createPanel .actions {
+    width: 100%;
+    margin-top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #createPanel .actions .small-btn.green {
+    width: 60%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

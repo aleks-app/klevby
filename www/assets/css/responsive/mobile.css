@@ -1,0 +1,508 @@
+@media (max-width: 1050px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filter-reset,
+  .check {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  body {
+    padding-bottom: 100px;
+    background: #020403;
+  }
+
+  body::before {
+    opacity: 0.40;
+    z-index: -2;
+    background:
+      url("../../img/gold-lake-bg.webp") center top / cover no-repeat;
+    transform: scale(1.02);
+  }
+
+  body::after {
+    opacity: 1;
+    z-index: -1;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.15), transparent 32%),
+      linear-gradient(180deg, rgba(2,4,3,0.38) 0%, rgba(2,4,3,0.68) 32%, rgba(2,4,3,0.92) 72%, #020403 100%);
+  }
+
+  header {
+    position: relative;
+    top: auto;
+    padding: calc(env(safe-area-inset-top) + 14px) 0 5px;
+    background: transparent;
+    z-index: 2000;
+  }
+
+  .header-inner {
+    align-items: center;
+  }
+
+  .mobile-menu-wrap {
+    margin-top: 0;
+    z-index: 2100;
+  }
+
+  .burger-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 19px;
+    background:
+      radial-gradient(circle at 30% 0%, rgba(244,178,74,0.18), transparent 44%),
+      rgba(255,255,255,0.08);
+    border-color: rgba(244,178,74,0.16);
+    box-shadow:
+      0 12px 28px rgba(0,0,0,0.32),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .logo {
+    font-size: 21px;
+    line-height: 1;
+    padding-top: 0;
+    font-weight: 800 !important;
+    position: relative;
+    z-index: 2100;
+    color: #fff8ea;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+    margin: 5px 0 11px;
+    padding: 14px;
+    min-height: 265px;
+    border-radius: 30px;
+    background:
+      linear-gradient(180deg, rgba(2,4,3,0.03) 0%, rgba(2,4,3,0.18) 24%, rgba(2,4,3,0.88) 100%),
+      linear-gradient(90deg, rgba(2,4,3,0.72) 0%, rgba(2,4,3,0.16) 100%),
+      url("../../img/gold-lake-bg.webp") center / cover no-repeat;
+    border: 1px solid rgba(244,178,74,0.18);
+    box-shadow:
+      0 16px 44px rgba(0,0,0,0.42),
+      0 0 34px rgba(244,178,74,0.09),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 72% 32%, rgba(244,178,74,0.22), transparent 28%),
+      linear-gradient(180deg, transparent 48%, rgba(2,4,3,0.78));
+    pointer-events: none;
+  }
+
+  .hero-copy {
+    padding: 10px 1px 0;
+    max-width: none;
+    justify-content: flex-end;
+    min-height: 230px;
+  }
+
+  .badge {
+    margin-bottom: 10px;
+    font-size: 11.5px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(244,178,74,0.18);
+    color: rgba(255,248,234,0.90);
+  }
+
+  .hero h1 {
+    font-size: 29px;
+    letter-spacing: -0.95px;
+    margin-bottom: 8px;
+    font-weight: 800 !important;
+    line-height: 1.06;
+  }
+
+  .hero h1::after {
+    content: "";
+    display: none;
+  }
+
+  .hero p {
+    font-size: 13.8px;
+    margin-bottom: 13px;
+    color: rgba(255,248,234,0.78);
+    line-height: 1.42;
+  }
+
+  .trust-bar {
+    gap: 8px;
+  }
+
+  .trust-item {
+    min-height: 52px;
+    padding: 10px;
+    grid-template-columns: 28px 1fr;
+    column-gap: 9px;
+    border-radius: 18px;
+    background: rgba(8,12,10,0.62);
+    border-color: rgba(244,178,74,0.14);
+  }
+
+  .trust-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 17px;
+  }
+
+  .trust-value {
+    font-size: 18px;
+  }
+
+  .trust-label {
+    font-size: 10.5px;
+  }
+
+  .hero-photo {
+    display: none;
+  }
+
+  .forecast-panel {
+    margin: 10px 0;
+    padding: 15px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+      rgba(14, 21, 18, 0.78);
+    border: 1px solid rgba(244,178,74,0.15);
+    border-radius: 24px;
+    box-shadow:
+      0 14px 38px rgba(0,0,0,0.32),
+      inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+
+  .forecast-panel::before,
+  .forecast-panel::after,
+  .cloud,
+  .rain-layer {
+    display: none !important;
+  }
+
+  .mobile-weather-title {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .mobile-weather-city {
+    font-size: 20px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.35px;
+    color: #ffffff;
+  }
+
+  .mobile-weather-city::before {
+    content: "Погода и клёв";
+    display: block;
+    font-size: 17px;
+    margin-bottom: 6px;
+  }
+
+  .mobile-weather-city::after {
+    content: "📍 Минск";
+    display: block;
+    color: rgba(255,248,234,0.58);
+    font-size: 11.5px;
+    margin-top: 4px;
+  }
+
+  .mobile-weather-condition {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.075);
+    border: 1px solid rgba(244,178,74,0.10);
+    color: rgba(255,248,234,0.88);
+    font-size: 12.5px;
+    line-height: 1;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .forecast-head {
+    display: none;
+  }
+
+  .forecast-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(244,178,74,0.08);
+    border-radius: 19px;
+    overflow: hidden;
+  }
+
+  .forecast-item {
+    min-height: 74px;
+    padding: 11px 8px;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "icon"
+      "value"
+      "label";
+    align-items: center;
+    justify-items: center;
+    column-gap: 0;
+    box-shadow: none;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    border-right: 1px solid rgba(244,178,74,0.10);
+  }
+
+  .forecast-item:nth-child(3) {
+    border-right: 0;
+  }
+
+  .forecast-item:nth-child(4) {
+    display: none;
+  }
+
+  .forecast-icon {
+    grid-area: icon;
+    width: 30px;
+    height: 30px;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(244,178,74,0.09);
+    font-size: 0;
+    line-height: 1;
+  }
+
+  .forecast-icon::before {
+    content: attr(data-mobile-icon);
+    font-size: 19px;
+    line-height: 1;
+  }
+
+  .forecast-label {
+    grid-area: label;
+    margin: 2px 0 0;
+    color: rgba(255,248,234,0.56);
+    font-size: 9.6px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .forecast-value {
+    grid-area: value;
+    font-size: 14.5px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.15px;
+    text-align: center;
+  }
+
+  .bite-line {
+    display: none;
+  }
+
+  #statusLine.info-line {
+    width: 100%;
+    margin: 14px 0 10px;
+    padding: 12px 14px;
+    text-align: center;
+    background: rgba(14, 21, 18, 0.78);
+    border: 1px solid rgba(244,178,74,0.14);
+    border-radius: 20px;
+    color: var(--gold);
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+
+  .home-feed-head,
+  .trips-hero,
+  .create-screen-head,
+  .home-trip-link-card {
+    margin: 12px 0;
+    padding: 15px;
+    border-radius: 24px;
+  }
+
+  .home-feed-head,
+  .trips-hero,
+  .create-screen-head,
+  .home-trip-link-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .home-feed-head h2,
+  .trips-hero h2,
+  .create-screen-head h2 {
+    font-size: 25px;
+    letter-spacing: -0.55px;
+  }
+
+  .home-feed-head p,
+  .trips-hero p,
+  .create-screen-head p,
+  .home-trip-link-card span {
+    font-size: 12.8px;
+    line-height: 1.45;
+  }
+
+  .home-feed-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-feed-actions .small-btn,
+  .home-trip-link-card .small-btn,
+  .trips-hero .small-btn,
+  .create-screen-head .small-btn {
+    width: 100%;
+  }
+
+  .filter-card {
+    padding: 18px;
+    margin: 14px 0;
+  }
+
+  .filter-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .filters,
+  .form-row,
+  .ponds-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+
+  .filters > input,
+  .filters > select,
+  .filters > .filter-reset,
+  .filters > .check {
+    margin: 0;
+  }
+
+  .filter-reset {
+    width: 100%;
+  }
+
+  .small-btn,
+  .main-btn {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 520px) {
+  .wrap {
+    width: 92%;
+  }
+
+  header {
+    padding: calc(env(safe-area-inset-top) + 14px) 0 5px;
+  }
+
+  .logo {
+    font-size: 21px;
+    font-weight: 800 !important;
+    position: relative;
+    z-index: 2100;
+  }
+
+  .hero {
+    margin: 5px 0 10px;
+    padding: 14px;
+    gap: 10px;
+    min-height: 255px;
+  }
+
+  .hero-copy {
+    min-height: 222px;
+  }
+
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 800 !important;
+  }
+
+  .hero p {
+    font-size: 13.4px;
+  }
+
+  .hero-photo {
+    min-height: 210px;
+  }
+
+  .panel {
+    padding: 18px;
+  }
+
+  .panel h2 {
+    font-size: 23px;
+    font-weight: 800 !important;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .map-placeholder {
+    min-height: 360px;
+    padding: 22px;
+  }
+
+  .map-card h2 {
+    font-size: 24px;
+    font-weight: 800 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero {
+    min-height: 238px;
+    padding: 13px;
+  }
+
+  .hero-copy {
+    min-height: 207px;
+  }
+
+  .hero h1 {
+    font-size: 25.5px;
+  }
+
+  .hero p {
+    font-size: 12.8px;
+  }
+
+  .badge {
+    font-size: 10.8px;
+  }
+}
