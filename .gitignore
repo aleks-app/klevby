@@ -1,6 +1,31 @@
 node_modules/
 .DS_Store
+
 .env
 .env.local
+.env.*.local
+
 dist/
 build/
+
+# Android / Gradle
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+
+# Android local config
+android/local.properties
+
+# Android signing keys - NEVER commit these
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+keystore.properties
+android/keystore.properties
+android/app/keystore.properties
+
+# Capacitor / generated artifacts
+www/
