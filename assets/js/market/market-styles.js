@@ -68,6 +68,28 @@
         width: 100%;
       }
 
+      .market-view-switch,
+      .market-owner-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 10px;
+      }
+
+      .market-view-btn,
+      .market-owner-tab-btn {
+        min-height: 36px;
+        padding: 8px 13px;
+        border-radius: 999px;
+      }
+
+      .market-view-btn.is-active,
+      .market-owner-tab-btn.is-active {
+        background: rgba(87,230,178,0.24);
+        border-color: rgba(87,230,178,0.5);
+        color: #d6fff2;
+      }
+
       .market-filters {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr 0.8fr;
@@ -410,6 +432,11 @@
           grid-template-columns: 1fr;
           gap: 8px;
           margin-bottom: 10px;
+        }
+
+        .market-view-switch,
+        .market-owner-tabs {
+          margin-bottom: 8px;
         }
 
         .market-grid {

@@ -1,6 +1,7 @@
 (function () {
   let marketDb = null;
   let marketItems = [];
+  let marketOwnerItems = [];
   let marketUser = null;
   let editingMarketId = null;
   let marketRendered = false;
@@ -15,6 +16,8 @@
   let marketHasPendingNewItems = false;
   let marketOpenDetailsItemId = null;
   let marketLastResumeRecoverAt = 0;
+  let marketViewMode = "all";
+  let marketOwnerTab = "active";
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -161,6 +164,40 @@
       if (aborted) {
         throw new Error("MARKET_TIMEOUT:market_items_rest");
       }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function loadOwnerMarketItemsViaRest(ownerId) {
+    const restConfig = getMarketSupabaseRestConfig();
+    if (!restConfig) throw new Error("MARKET_REST_CONFIG_MISSING");
+
+    const accessToken = await getMarketAccessToken();
+    if (!accessToken) throw new Error("MARKET_AUTH_REQUIRED");
+
+    const endpoint = `${restConfig.supabaseUrl}/rest/v1/market_items?select=*&owner_id=eq.${encodeURIComponent(String(ownerId))}&order=created_at.desc`;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = setTimeout(function () {
+      if (controller) controller.abort();
+    }, MARKET_LOAD_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          apikey: restConfig.supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`
+        },
+        signal: controller ? controller.signal : undefined
+      });
+
+      if (!response.ok) throw new Error("MARKET_OWNER_REST_HTTP_" + response.status);
+      const data = await response.json();
+      return { data: Array.isArray(data) ? data : [], error: null };
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error("MARKET_TIMEOUT:market_owner_items_rest");
       throw error;
     } finally {
       clearTimeout(timeoutId);
@@ -576,6 +613,17 @@
         </div>
 
         <div class="market-list-panel">
+          <div class="market-view-switch" role="tablist" aria-label="Режим барахолки">
+            <button id="marketViewAllBtn" class="small-btn market-view-btn is-active" type="button" onclick="switchMarketView('all')">Все объявления</button>
+            <button id="marketViewMineBtn" class="small-btn market-view-btn" type="button" onclick="switchMarketView('mine')">Мои объявления</button>
+          </div>
+          <div id="marketOwnerTabs" class="market-owner-tabs hidden" role="tablist" aria-label="Мои объявления">
+            <button id="marketOwnerTabActiveBtn" class="small-btn market-owner-tab-btn is-active" type="button" onclick="switchMarketOwnerTab('active')">Активные</button>
+            <button id="marketOwnerTabArchiveBtn" class="small-btn market-owner-tab-btn" type="button" onclick="switchMarketOwnerTab('archive')">Архив</button>
+            <button id="marketOwnerTabSoldBtn" class="small-btn market-owner-tab-btn" type="button" onclick="switchMarketOwnerTab('sold')">Продано</button>
+          </div>
+          <div id="marketOwnerLoginMessage" class="info-line hidden">Чтобы смотреть свои объявления, войдите в аккаунт.</div>
+
           <div id="marketFiltersBox" class="market-filters hidden">
             <input id="marketSearchInput" placeholder="Поиск: катушка, лодка, Shimano..." oninput="renderMarketItems()" />
 
@@ -617,6 +665,27 @@
 
     marketRendered = true;
     updateMarketUiState();
+  }
+
+  function updateMarketViewControls() {
+    const allBtn = document.getElementById("marketViewAllBtn");
+    const mineBtn = document.getElementById("marketViewMineBtn");
+    const ownerTabs = document.getElementById("marketOwnerTabs");
+    const ownerMessage = document.getElementById("marketOwnerLoginMessage");
+    const activeBtn = document.getElementById("marketOwnerTabActiveBtn");
+    const archiveBtn = document.getElementById("marketOwnerTabArchiveBtn");
+    const soldBtn = document.getElementById("marketOwnerTabSoldBtn");
+    const isMine = marketViewMode === "mine";
+    const hasUser = Boolean(marketUser && marketUser.id);
+
+    if (allBtn) allBtn.classList.toggle("is-active", !isMine);
+    if (mineBtn) mineBtn.classList.toggle("is-active", isMine);
+    if (ownerTabs) ownerTabs.classList.toggle("hidden", !isMine || !hasUser);
+    if (ownerMessage) ownerMessage.classList.toggle("hidden", !isMine || hasUser);
+
+    if (activeBtn) activeBtn.classList.toggle("is-active", marketOwnerTab === "active");
+    if (archiveBtn) archiveBtn.classList.toggle("is-active", marketOwnerTab === "archive");
+    if (soldBtn) soldBtn.classList.toggle("is-active", marketOwnerTab === "sold");
   }
 
   async function refreshMarketUser(options = {}) {
@@ -1063,6 +1132,9 @@
       }
 
       marketItems = result.data || [];
+      if (marketViewMode === "mine") {
+        await loadOwnerMarketItems();
+      }
       marketHasPendingNewItems = false;
       hideMarketNewItemsNotice();
 
@@ -1095,7 +1167,9 @@
     const category = normalizeText(document.getElementById("marketCategoryFilter")?.value);
     const city = normalizeText(document.getElementById("marketCityFilter")?.value);
 
-    let filtered = [...marketItems];
+    const hasUser = Boolean(marketUser && marketUser.id);
+    const sourceItems = marketViewMode === "mine" && hasUser ? marketOwnerItems : marketItems;
+    let filtered = [...sourceItems];
 
     if (search) {
       filtered = filtered.filter(function (item) {
@@ -1121,7 +1195,15 @@
       });
     }
 
-    showMarketStatus(`Товаров в барахолке: ${filtered.length}`);
+    if (marketViewMode === "mine" && hasUser) {
+      filtered = filtered.filter(ownerTabFilter);
+    }
+
+    if (marketViewMode === "mine") {
+      showMarketStatus(hasUser ? `Мои объявления: ${filtered.length}` : "Войдите в аккаунт, чтобы смотреть свои объявления.");
+    } else {
+      showMarketStatus(`Товаров в барахолке: ${filtered.length}`);
+    }
 
     if (!filtered.length) {
       grid.innerHTML = `<div class="info-line">Пока товаров нет. Добавь первый товар.</div>`;
@@ -1129,6 +1211,73 @@
     }
 
     grid.innerHTML = filtered.map(marketCardHtml).join("");
+  }
+
+  function isOwnerArchivedItem(item) {
+    if (!item || typeof item !== "object") return false;
+    const status = String(item.status || "").trim().toLowerCase();
+    if (status === "archived") return true;
+    const expiresAtTs = Date.parse(item.expires_at || "");
+    return Number.isFinite(expiresAtTs) && expiresAtTs <= Date.now();
+  }
+
+  function ownerTabFilter(item) {
+    const status = String(item.status || "").trim().toLowerCase();
+    if (marketOwnerTab === "sold") return status === "sold";
+    if (marketOwnerTab === "archive") return status === "archived" || isOwnerArchivedItem(item);
+    return status === "active" && isMarketItemPubliclyVisible(item);
+  }
+
+  async function loadOwnerMarketItems() {
+    const user = await ensureMarketUserForWrite();
+    if (!user || !user.id) {
+      marketOwnerItems = [];
+      return;
+    }
+
+    let result;
+    try {
+      result = await loadOwnerMarketItemsViaRest(user.id);
+    } catch (error) {
+      const loadClient = refreshMarketDbBinding();
+      result = await withMarketTimeout(
+        loadClient
+          .from("market_items")
+          .select("*")
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: false }),
+        MARKET_LOAD_TIMEOUT_MS,
+        "market_owner_items_select"
+      );
+    }
+
+    marketOwnerItems = Array.isArray(result.data) ? result.data : [];
+  }
+
+  async function switchMarketView(mode) {
+    const nextMode = String(mode || "").trim() === "mine" ? "mine" : "all";
+    if (marketViewMode === nextMode && !(nextMode === "mine" && !marketOwnerItems.length)) {
+      updateMarketViewControls();
+      renderMarketItems();
+      return;
+    }
+
+    marketViewMode = nextMode;
+    await refreshMarketUser();
+    updateMarketViewControls();
+
+    if (marketViewMode === "mine" && marketUser && marketUser.id) {
+      await loadOwnerMarketItems();
+    }
+
+    renderMarketItems();
+  }
+
+  function switchMarketOwnerTab(tab) {
+    const nextTab = ["active", "archive", "sold"].includes(tab) ? tab : "active";
+    marketOwnerTab = nextTab;
+    updateMarketViewControls();
+    renderMarketItems();
   }
 
   function handleMarketCardKeydown(event, id) {
@@ -1504,6 +1653,8 @@
       window.closeMarketItemDetails = closeMarketItemDetails;
       window.handleMarketCardKeydown = handleMarketCardKeydown;
       window.applyMarketPendingNewItems = applyMarketPendingNewItems;
+      window.switchMarketView = switchMarketView;
+      window.switchMarketOwnerTab = switchMarketOwnerTab;
 
       await loadMarketItems({ force: true });
       subscribeMarketRealtime();
@@ -1524,6 +1675,11 @@
 
     if (mainUser && mainUser.id) {
       marketUser = mainUser;
+      updateMarketViewControls();
+      renderMarketItems();
+    } else {
+      marketUser = null;
+      updateMarketViewControls();
       renderMarketItems();
     }
   });
