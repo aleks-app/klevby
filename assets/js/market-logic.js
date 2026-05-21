@@ -8,6 +8,7 @@
   let marketUserRefreshPromise = null;
   let marketLastUserRefreshAt = 0;
   let marketLoadPromise = null;
+  let marketLoadStartedAt = 0;
   let marketLoadTimer = null;
   let marketPendingForceReload = false;
   let marketRealtimeChannel = null;
@@ -17,6 +18,8 @@
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
   const MARKET_AUTH_TIMEOUT_MS = 7000;
+  const MARKET_LOAD_TIMEOUT_MS = 9000;
+  const MARKET_STALE_LOAD_MS = 12000;
 
   function getMainSupabaseClient() {
     return (
@@ -535,6 +538,32 @@
     return true;
   }
 
+  function isMarketLoadStale() {
+    if (!marketLoadPromise) return false;
+    if (!marketLoadStartedAt) return false;
+
+    return Date.now() - marketLoadStartedAt >= MARKET_STALE_LOAD_MS;
+  }
+
+  function resetStaleMarketLoadLock(reason) {
+    if (!isMarketLoadStale()) return false;
+
+    console.warn("Klevby барахолка: сбрасываем зависшую загрузку барахолки:", reason || "stale-load-lock");
+    marketLoadPromise = null;
+    marketLoadStartedAt = 0;
+    return true;
+  }
+
+  async function recoverMarketOnResume(reason) {
+    if (!isMarketVisible()) return;
+
+    resetStaleMarketLoadLock(reason || "resume");
+
+    await refreshMarketUser();
+    subscribeMarketRealtime();
+    await loadMarketItems({ force: true });
+  }
+
   function applyMarketPendingNewItems() {
     if (!marketHasPendingNewItems) return;
 
@@ -669,6 +698,10 @@
       return;
     }
 
+    if (force) {
+      resetStaleMarketLoadLock("force-reload");
+    }
+
     if (marketLoadPromise) {
       if (force) {
         marketPendingForceReload = true;
@@ -679,6 +712,7 @@
 
     marketPendingForceReload = false;
 
+    marketLoadStartedAt = Date.now();
     marketLoadPromise = (async function () {
       showMarketStatus("Загрузка барахолки...");
 
@@ -700,11 +734,31 @@
       let result;
 
       try {
-        result = await marketDb
-          .from("market_items")
-          .select("*")
-          .order("created_at", { ascending: false });
+        result = await withMarketTimeout(
+          marketDb
+            .from("market_items")
+            .select("*")
+            .order("created_at", { ascending: false }),
+          MARKET_LOAD_TIMEOUT_MS,
+          "market_items_select"
+        );
       } catch (error) {
+        const message = String(error?.message || "");
+        if (message.includes("MARKET_TIMEOUT:") && retry < 1) {
+          console.warn("Klevby барахолка: таймаут загрузки market_items, будет повторная попытка:", error);
+          showMarketStatus("Барахолка отвечает слишком долго. Повторяем загрузку...");
+          setTimeout(() => {
+            loadMarketItems({ force: true, retry: retry + 1 }).catch(() => {});
+          }, MARKET_LOAD_RETRY_DELAY_MS);
+          return;
+        }
+
+        if (message.includes("MARKET_TIMEOUT:")) {
+          console.warn("Klevby барахолка: таймаут загрузки market_items, можно повторить вручную или при возврате в приложение:", error);
+          showMarketStatus("Загрузка барахолки заняла слишком много времени. Попробуй ещё раз.", true);
+          return;
+        }
+
         if (isAuthLockError(error) && retry < 2) {
           console.warn("Klevby барахолка: Supabase Auth занят, повторяем загрузку:", error);
           showMarketStatus("Подключение занято, повторяем загрузку барахолки...");
@@ -760,6 +814,7 @@
       return await marketLoadPromise;
     } finally {
       marketLoadPromise = null;
+      marketLoadStartedAt = 0;
 
       if (marketPendingForceReload) {
         marketPendingForceReload = false;
@@ -1033,7 +1088,12 @@
     showMarketMessage(wasEditing ? "Товар обновлён." : "Товар добавлен.");
     setMarketFormOpen(false);
 
-    await loadMarketItems({ force: true });
+    try {
+      await loadMarketItems({ force: true });
+    } catch (error) {
+      console.warn("Klevby барахолка: пост-обновление после сохранения завершилось с ошибкой:", error);
+      showMarketStatus("Товар сохранён. Обновление списка можно повторить вручную.", true);
+    }
   }
 
   async function editMarketItem(id) {
@@ -1118,7 +1178,12 @@
 
     closeMarketItemDetails();
 
-    await loadMarketItems({ force: true });
+    try {
+      await loadMarketItems({ force: true });
+    } catch (error) {
+      console.warn("Klevby барахолка: пост-обновление после удаления завершилось с ошибкой:", error);
+      showMarketStatus("Товар удалён. Обновление списка можно повторить вручную.", true);
+    }
   }
 
   async function initMarket() {
@@ -1173,6 +1238,27 @@
   });
 
   window.addEventListener("beforeunload", unsubscribeMarketRealtime);
+  window.addEventListener("focus", function () {
+    recoverMarketOnResume("window-focus").catch((error) => {
+      console.warn("Klevby барахолка: не удалось восстановиться после focus:", error);
+    });
+  });
+  window.addEventListener("pageshow", function () {
+    recoverMarketOnResume("pageshow").catch((error) => {
+      console.warn("Klevby барахолка: не удалось восстановиться после pageshow:", error);
+    });
+  });
+  window.addEventListener("klevby-app-resumed", function () {
+    recoverMarketOnResume("klevby-app-resumed").catch((error) => {
+      console.warn("Klevby барахолка: не удалось восстановиться после возобновления приложения:", error);
+    });
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) return;
+    recoverMarketOnResume("visibilitychange").catch((error) => {
+      console.warn("Klevby барахолка: не удалось восстановиться после visibilitychange:", error);
+    });
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initMarket);
