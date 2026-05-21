@@ -91,6 +91,12 @@
   }
 
   function cleanTelegram(value) {
+    const marketContacts = window.KlevbyMarket || {};
+
+    if (typeof marketContacts.cleanMarketContact === "function") {
+      return marketContacts.cleanMarketContact(value);
+    }
+
     if (typeof marketUtils.cleanTelegram === "function") {
       return marketUtils.cleanTelegram(value);
     }
@@ -617,9 +623,12 @@
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
 
-    const contactBlock = contact
-      ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
-      : `<span class="market-contact-missing">Контакт не указан</span>`;
+    const marketContacts = window.KlevbyMarket || {};
+    const contactBlock = typeof marketContacts.marketContactCtaHtml === "function"
+      ? marketContacts.marketContactCtaHtml(contact, { text: "Написать", stopPropagation: true })
+      : (contact
+        ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
+        : `<span class="market-contact-missing">Контакт не указан</span>`);
 
     const editBtn = canManage
       ? `<button class="small-btn yellow" type="button" onclick="event.stopPropagation(); editMarketItem('${safeId}')">Редактировать</button>`
@@ -685,9 +694,12 @@
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
 
-    const contactBlock = contact
-      ? `<button class="small-btn green" type="button" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать продавцу</button>`
-      : `<span class="market-contact-missing">Контакт не указан</span>`;
+    const marketContacts = window.KlevbyMarket || {};
+    const contactBlock = typeof marketContacts.marketContactCtaHtml === "function"
+      ? marketContacts.marketContactCtaHtml(contact, { text: "Написать продавцу" })
+      : (contact
+        ? `<button class="small-btn green" type="button" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать продавцу</button>`
+        : `<span class="market-contact-missing">Контакт не указан</span>`);
 
     const editBtn = canManage
       ? `<button class="small-btn yellow" type="button" onclick="closeMarketItemDetails(); editMarketItem('${safeId}')">Редактировать</button>`
