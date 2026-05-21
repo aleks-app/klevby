@@ -154,6 +154,13 @@
         font-weight: 800;
       }
 
+      .market-city {
+        color: rgba(244,251,247,0.72);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+
       .market-text {
         color: rgba(244,251,247,0.66);
         font-size: 13px;
