@@ -11,9 +11,6 @@
   let marketLoadTimer = null;
   let marketPendingForceReload = false;
 
-  let marketFormOpen = false;
-  let marketFiltersOpen = false;
-
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
 
@@ -61,6 +58,11 @@
   }
 
   const marketUtils = window.KlevbyMarket || {};
+  const marketUiState = { marketFormOpen: false, marketFiltersOpen: false };
+
+  function getMarketUiHelpers() {
+    return window.KlevbyMarket || {};
+  }
 
   function isAuthLockError(error) {
     if (typeof marketUtils.isAuthLockError === "function") {
@@ -136,35 +138,49 @@
   }
 
   function updateMarketUiState() {
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.updateMarketUiState === "function") {
+      marketUi.updateMarketUiState(marketUiState);
+      return;
+    }
+
     const formBox = document.getElementById("marketFormBox");
     const filtersBox = document.getElementById("marketFiltersBox");
     const formBtn = document.getElementById("marketToggleFormBtn");
     const filtersBtn = document.getElementById("marketToggleFiltersBtn");
 
     if (formBox) {
-      formBox.classList.toggle("hidden", !marketFormOpen);
+      formBox.classList.toggle("hidden", !marketUiState.marketFormOpen);
     }
 
     if (filtersBox) {
-      filtersBox.classList.toggle("hidden", !marketFiltersOpen);
+      filtersBox.classList.toggle("hidden", !marketUiState.marketFiltersOpen);
     }
 
     if (formBtn) {
-      formBtn.textContent = marketFormOpen ? "Скрыть форму" : "+ Добавить товар";
-      formBtn.setAttribute("aria-expanded", String(marketFormOpen));
+      formBtn.textContent = marketUiState.marketFormOpen ? "Скрыть форму" : "+ Добавить товар";
+      formBtn.setAttribute("aria-expanded", String(marketUiState.marketFormOpen));
     }
 
     if (filtersBtn) {
-      filtersBtn.textContent = marketFiltersOpen ? "Скрыть фильтры" : "Фильтры";
-      filtersBtn.setAttribute("aria-expanded", String(marketFiltersOpen));
+      filtersBtn.textContent = marketUiState.marketFiltersOpen ? "Скрыть фильтры" : "Фильтры";
+      filtersBtn.setAttribute("aria-expanded", String(marketUiState.marketFiltersOpen));
     }
   }
 
   function setMarketFormOpen(open, options = {}) {
-    marketFormOpen = Boolean(open);
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.setMarketFormOpen === "function") {
+      marketUi.setMarketFormOpen(marketUiState, open, options);
+      return;
+    }
+
+    marketUiState.marketFormOpen = Boolean(open);
     updateMarketUiState();
 
-    if (marketFormOpen && options.scroll) {
+    if (marketUiState.marketFormOpen && options.scroll) {
       const formBox = document.getElementById("marketFormBox");
       if (formBox) {
         setTimeout(function () {
@@ -178,10 +194,17 @@
   }
 
   function setMarketFiltersOpen(open, options = {}) {
-    marketFiltersOpen = Boolean(open);
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.setMarketFiltersOpen === "function") {
+      marketUi.setMarketFiltersOpen(marketUiState, open, options);
+      return;
+    }
+
+    marketUiState.marketFiltersOpen = Boolean(open);
     updateMarketUiState();
 
-    if (marketFiltersOpen && options.scroll) {
+    if (marketUiState.marketFiltersOpen && options.scroll) {
       const filtersBox = document.getElementById("marketFiltersBox");
       if (filtersBox) {
         setTimeout(function () {
@@ -195,12 +218,26 @@
   }
 
   function toggleMarketForm() {
-    const nextOpen = !marketFormOpen;
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.toggleMarketForm === "function") {
+      marketUi.toggleMarketForm(marketUiState);
+      return;
+    }
+
+    const nextOpen = !marketUiState.marketFormOpen;
     setMarketFormOpen(nextOpen, { scroll: nextOpen });
   }
 
   function toggleMarketFilters() {
-    const nextOpen = !marketFiltersOpen;
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.toggleMarketFilters === "function") {
+      marketUi.toggleMarketFilters(marketUiState);
+      return;
+    }
+
+    const nextOpen = !marketUiState.marketFiltersOpen;
     setMarketFiltersOpen(nextOpen, { scroll: nextOpen });
   }
 
@@ -366,6 +403,13 @@
   }
 
   function showMarketMessage(message, isError = false) {
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.showMarketMessage === "function") {
+      marketUi.showMarketMessage(message, isError);
+      return;
+    }
+
     const el = document.getElementById("marketMessage");
     if (!el) return;
 
@@ -374,6 +418,13 @@
   }
 
   function showMarketStatus(message, isError = false) {
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.showMarketStatus === "function") {
+      marketUi.showMarketStatus(message, isError);
+      return;
+    }
+
     const el = document.getElementById("marketStatusLine");
     if (!el) return;
 
