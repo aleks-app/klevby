@@ -106,6 +106,20 @@
     el.classList.toggle("error-line", isError);
   }
 
+  function showMarketNewItemsNotice() {
+    const el = document.getElementById("marketNewItemsNotice");
+    if (!el) return;
+
+    el.classList.remove("hidden");
+  }
+
+  function hideMarketNewItemsNotice() {
+    const el = document.getElementById("marketNewItemsNotice");
+    if (!el) return;
+
+    el.classList.add("hidden");
+  }
+
   window.KlevbyMarket.updateMarketUiState = updateMarketUiState;
   window.KlevbyMarket.setMarketFormOpen = setMarketFormOpen;
   window.KlevbyMarket.setMarketFiltersOpen = setMarketFiltersOpen;
@@ -113,4 +127,6 @@
   window.KlevbyMarket.toggleMarketFilters = toggleMarketFilters;
   window.KlevbyMarket.showMarketMessage = showMarketMessage;
   window.KlevbyMarket.showMarketStatus = showMarketStatus;
+  window.KlevbyMarket.showMarketNewItemsNotice = showMarketNewItemsNotice;
+  window.KlevbyMarket.hideMarketNewItemsNotice = hideMarketNewItemsNotice;
 })();
