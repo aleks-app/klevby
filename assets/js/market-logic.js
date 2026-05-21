@@ -295,7 +295,14 @@
 
           <textarea id="marketDescriptionInput" placeholder="Описание: состояние, комплект, причина продажи"></textarea>
           <input id="marketContactInput" placeholder="Telegram продавца: @username или ссылка" />
-          <input id="marketImageInput" placeholder="Ссылка на фото товара, можно оставить пустым" />
+          <div class="form-row">
+            <input id="marketPhoneInput" placeholder="Телефон: +375..." />
+            <input id="marketWhatsAppInput" placeholder="WhatsApp: номер или ссылка" />
+          </div>
+          <div class="form-row">
+            <input id="marketViberInput" placeholder="Viber: номер" />
+            <input id="marketImageInput" placeholder="Ссылка на фото товара, можно оставить пустым" />
+          </div>
 
           <div class="actions">
             <button class="small-btn green" type="button" onclick="saveMarketItem()">Сохранить</button>
@@ -617,17 +624,25 @@
   }
 
   function marketCardHtml(item) {
-    const contact = cleanTelegram(item.contact || item.telegram);
+    const marketContacts = window.KlevbyMarket || {};
+    const contacts = typeof marketContacts.resolveMarketContacts === "function"
+      ? marketContacts.resolveMarketContacts(item)
+      : {
+        phone: "",
+        telegram: cleanTelegram(item.contact_telegram || item.contact || item.telegram || ""),
+        viber: "",
+        whatsapp: "",
+        hasAny: Boolean(cleanTelegram(item.contact_telegram || item.contact || item.telegram || ""))
+      };
     const ownerId = marketUser ? marketUser.id : null;
     const canManage = ownerId && item.owner_id === ownerId;
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
 
-    const marketContacts = window.KlevbyMarket || {};
     const contactBlock = typeof marketContacts.marketContactCtaHtml === "function"
-      ? marketContacts.marketContactCtaHtml(contact, { text: "Написать", stopPropagation: true })
-      : (contact
-        ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
+      ? marketContacts.marketContactCtaHtml(contacts, { stopPropagation: true })
+      : (contacts.telegram
+        ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contacts.telegram)}','_blank')">Telegram</button>`
         : `<span class="market-contact-missing">Контакт не указан</span>`);
 
     const editBtn = canManage
@@ -655,7 +670,10 @@
             ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
             ${item.category ? `<span class="market-tag">🎣 ${escapeHtml(item.category)}</span>` : ""}
             ${item.condition ? `<span class="market-tag">${escapeHtml(item.condition)}</span>` : ""}
-            ${contact ? `<span class="market-tag">Telegram</span>` : ""}
+            ${contacts.telegram ? `<span class="market-tag">Telegram</span>` : ""}
+            ${contacts.phone ? `<span class="market-tag">📞 Телефон</span>` : ""}
+            ${contacts.whatsapp ? `<span class="market-tag">WhatsApp</span>` : ""}
+            ${contacts.viber ? `<span class="market-tag">Viber</span>` : ""}
           </div>
 
           <div class="market-actions">
@@ -688,17 +706,25 @@
   }
 
   function marketDetailsHtml(item) {
-    const contact = cleanTelegram(item.contact || item.telegram);
+    const marketContacts = window.KlevbyMarket || {};
+    const contacts = typeof marketContacts.resolveMarketContacts === "function"
+      ? marketContacts.resolveMarketContacts(item)
+      : {
+        phone: "",
+        telegram: cleanTelegram(item.contact_telegram || item.contact || item.telegram || ""),
+        viber: "",
+        whatsapp: "",
+        hasAny: Boolean(cleanTelegram(item.contact_telegram || item.contact || item.telegram || ""))
+      };
     const ownerId = marketUser ? marketUser.id : null;
     const canManage = ownerId && item.owner_id === ownerId;
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
 
-    const marketContacts = window.KlevbyMarket || {};
     const contactBlock = typeof marketContacts.marketContactCtaHtml === "function"
-      ? marketContacts.marketContactCtaHtml(contact, { text: "Написать продавцу" })
-      : (contact
-        ? `<button class="small-btn green" type="button" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать продавцу</button>`
+      ? marketContacts.marketContactCtaHtml(contacts)
+      : (contacts.telegram
+        ? `<button class="small-btn green" type="button" onclick="window.open('https://t.me/${escapeHtml(contacts.telegram)}','_blank')">Telegram</button>`
         : `<span class="market-contact-missing">Контакт не указан</span>`);
 
     const editBtn = canManage
@@ -728,7 +754,10 @@
             ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
             ${item.category ? `<span class="market-tag">🎣 ${escapeHtml(item.category)}</span>` : ""}
             ${item.condition ? `<span class="market-tag">${escapeHtml(item.condition)}</span>` : ""}
-            ${contact ? `<span class="market-tag">Telegram</span>` : ""}
+            ${contacts.telegram ? `<span class="market-tag">Telegram</span>` : ""}
+            ${contacts.phone ? `<span class="market-tag">📞 Телефон</span>` : ""}
+            ${contacts.whatsapp ? `<span class="market-tag">WhatsApp</span>` : ""}
+            ${contacts.viber ? `<span class="market-tag">Viber</span>` : ""}
           </div>
 
           <p class="market-details-description">${escapeHtml(item.description || "Описание не указано")}</p>
@@ -785,7 +814,16 @@
     const category = document.getElementById("marketCategoryInput").value.trim();
     const condition = document.getElementById("marketConditionInput").value.trim();
     const description = document.getElementById("marketDescriptionInput").value.trim();
-    const contact = cleanTelegram(document.getElementById("marketContactInput").value);
+    const marketContacts = window.KlevbyMarket || {};
+    const contactRaw = document.getElementById("marketContactInput").value;
+    const phoneRaw = document.getElementById("marketPhoneInput").value;
+    const whatsappRaw = document.getElementById("marketWhatsAppInput").value;
+    const viberRaw = document.getElementById("marketViberInput").value;
+
+    const contact = typeof marketContacts.normalizeMarketTelegram === "function" ? marketContacts.normalizeMarketTelegram(contactRaw) : cleanTelegram(contactRaw);
+    const contactPhone = typeof marketContacts.normalizeMarketPhone === "function" ? marketContacts.normalizeMarketPhone(phoneRaw) : String(phoneRaw || "").trim();
+    const contactWhatsapp = typeof marketContacts.normalizeMarketWhatsapp === "function" ? marketContacts.normalizeMarketWhatsapp(whatsappRaw) : String(whatsappRaw || "").trim();
+    const contactViber = typeof marketContacts.normalizeMarketViber === "function" ? marketContacts.normalizeMarketViber(viberRaw) : String(viberRaw || "").trim();
     const imageUrl = document.getElementById("marketImageInput").value.trim();
 
     if (!title || !price || !city || !description) {
@@ -802,6 +840,10 @@
       description,
       contact,
       telegram: contact,
+      contact_telegram: contact,
+      contact_phone: contactPhone,
+      contact_whatsapp: contactWhatsapp,
+      contact_viber: contactViber,
       image_url: imageUrl,
       owner_id: marketUser.id
     };
@@ -861,7 +903,10 @@
     document.getElementById("marketCategoryInput").value = item.category || "";
     document.getElementById("marketConditionInput").value = item.condition || "";
     document.getElementById("marketDescriptionInput").value = item.description || "";
-    document.getElementById("marketContactInput").value = item.contact || item.telegram || "";
+    document.getElementById("marketContactInput").value = item.contact_telegram || item.contact || item.telegram || "";
+    document.getElementById("marketPhoneInput").value = item.contact_phone || "";
+    document.getElementById("marketWhatsAppInput").value = item.contact_whatsapp || "";
+    document.getElementById("marketViberInput").value = item.contact_viber || "";
     document.getElementById("marketImageInput").value = item.image_url || "";
 
     document.getElementById("marketFormTitle").textContent = "Редактировать товар";
@@ -887,6 +932,9 @@
     document.getElementById("marketConditionInput").value = "";
     document.getElementById("marketDescriptionInput").value = "";
     document.getElementById("marketContactInput").value = "";
+    document.getElementById("marketPhoneInput").value = "";
+    document.getElementById("marketWhatsAppInput").value = "";
+    document.getElementById("marketViberInput").value = "";
     document.getElementById("marketImageInput").value = "";
   }
 
