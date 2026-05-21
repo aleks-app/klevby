@@ -60,7 +60,13 @@
     });
   }
 
+  const marketUtils = window.KlevbyMarket || {};
+
   function isAuthLockError(error) {
+    if (typeof marketUtils.isAuthLockError === "function") {
+      return marketUtils.isAuthLockError(error);
+    }
+
     const message = String(error?.message || error || "").toLowerCase();
 
     return (
@@ -70,6 +76,10 @@
   }
 
   function escapeHtml(value) {
+    if (typeof marketUtils.escapeHtml === "function") {
+      return marketUtils.escapeHtml(value);
+    }
+
     return String(value || "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
@@ -79,6 +89,10 @@
   }
 
   function cleanTelegram(value) {
+    if (typeof marketUtils.cleanTelegram === "function") {
+      return marketUtils.cleanTelegram(value);
+    }
+
     let v = String(value || "").trim();
 
     v = v.replace(/^@/, "");
@@ -93,10 +107,18 @@
   }
 
   function normalizeText(value) {
+    if (typeof marketUtils.normalizeText === "function") {
+      return marketUtils.normalizeText(value);
+    }
+
     return String(value || "").toLowerCase().trim();
   }
 
   function getMarketImage(item) {
+    if (typeof marketUtils.getMarketImage === "function") {
+      return marketUtils.getMarketImage(item);
+    }
+
     const image = String(item.image_url || "").trim();
 
     if (image) return image;
