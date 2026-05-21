@@ -416,23 +416,36 @@
         }
 
         .market-details-overlay {
-          align-items: flex-end;
+          align-items: stretch;
+          justify-content: stretch;
           padding: 0;
         }
 
         .market-details-panel {
           width: 100%;
-          max-height: 92vh;
-          border-radius: 28px 28px 0 0;
+          height: 100dvh;
+          max-height: 100dvh;
+          border-radius: 0;
+          border-left: 0;
+          border-right: 0;
+          overflow: auto;
+        }
+
+        .market-details-close {
+          top: calc(12px + env(safe-area-inset-top));
+          right: 14px;
+          width: 46px;
+          height: 46px;
+          font-size: 26px;
         }
 
         .market-details-img {
-          min-height: 260px;
-          border-radius: 28px 28px 0 0;
+          min-height: 42dvh;
+          border-radius: 0;
         }
 
         .market-details-body {
-          padding: 20px 18px calc(24px + env(safe-area-inset-bottom));
+          padding: 22px 18px calc(34px + env(safe-area-inset-bottom));
         }
 
         .market-details-title {
