@@ -103,6 +103,20 @@
     return marketDb;
   }
 
+
+
+  function isMarketItemPubliclyVisible(item) {
+    if (!item || typeof item !== "object") return false;
+    if (String(item.status || "").trim().toLowerCase() !== "active") return false;
+
+    const expiresAtRaw = item.expires_at;
+    if (!expiresAtRaw) return false;
+
+    const expiresAtTs = Date.parse(expiresAtRaw);
+    if (!Number.isFinite(expiresAtTs)) return false;
+
+    return expiresAtTs > Date.now();
+  }
   function getMarketSupabaseRestConfig() {
     const config = window.KLEVB_CONFIG || {};
     const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/$/, "");
@@ -119,7 +133,8 @@
       throw new Error("MARKET_REST_CONFIG_MISSING");
     }
 
-    const endpoint = `${restConfig.supabaseUrl}/rest/v1/market_items?select=*&order=created_at.desc`;
+    const nowIso = new Date().toISOString();
+    const endpoint = `${restConfig.supabaseUrl}/rest/v1/market_items?select=*&status=eq.active&expires_at=gt.${encodeURIComponent(nowIso)}&order=created_at.desc`;
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timeoutId = setTimeout(function () {
       if (controller) controller.abort();
@@ -862,19 +877,36 @@
           const updatedId = updatedRow?.id ?? payload?.old?.id ?? null;
           if (!updatedRow || !updatedId) return;
 
+          const isVisible = isMarketItemPubliclyVisible(updatedRow);
           let updated = false;
-          marketItems = marketItems.map(function (item) {
-            if (String(item.id) !== String(updatedId)) return item;
-            updated = true;
-            return updatedRow;
-          });
+          let removed = false;
 
-          if (!updated) return;
+          marketItems = marketItems.reduce(function (acc, item) {
+            if (String(item.id) !== String(updatedId)) {
+              acc.push(item);
+              return acc;
+            }
+
+            if (isVisible) {
+              acc.push(updatedRow);
+              updated = true;
+              return acc;
+            }
+
+            removed = true;
+            return acc;
+          }, []);
+
+          if (!updated && !removed) return;
 
           renderMarketItems();
 
           if (marketOpenDetailsItemId && String(marketOpenDetailsItemId) === String(updatedId)) {
-            openMarketItemDetails(updatedId);
+            if (isVisible) {
+              openMarketItemDetails(updatedId);
+            } else {
+              closeMarketItemDetails();
+            }
           }
         })
         .subscribe(function (status) {
@@ -962,6 +994,8 @@
             loadClient
               .from("market_items")
               .select("*")
+              .eq("status", "active")
+              .gt("expires_at", new Date().toISOString())
               .order("created_at", { ascending: false }),
             MARKET_LOAD_TIMEOUT_MS,
             "market_items_select"
