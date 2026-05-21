@@ -530,159 +530,63 @@
     grid.innerHTML = filtered.map(marketCardHtml).join("");
   }
 
-  function handleMarketCardKeydown(event, id) {
-    if (event.key !== "Enter" && event.key !== " ") return;
-
-    event.preventDefault();
-    openMarketItemDetails(id);
-  }
-
-  function marketCardHtml(item) {
-    const contact = cleanTelegram(item.contact || item.telegram);
-    const ownerId = marketUser ? marketUser.id : null;
-    const canManage = ownerId && item.owner_id === ownerId;
-    const image = getMarketImage(item);
-    const safeId = escapeHtml(item.id);
-
-    const contactBlock = contact
-      ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
-      : `<span class="market-contact-missing">Контакт не указан</span>`;
-
-    const editBtn = canManage
-      ? `<button class="small-btn yellow" type="button" onclick="event.stopPropagation(); editMarketItem('${safeId}')">Редактировать</button>`
-      : "";
-
-    const deleteBtn = canManage
-      ? `<button class="small-btn red" type="button" onclick="event.stopPropagation(); deleteMarketItem('${safeId}')">Удалить</button>`
-      : "";
-
-    return `
-      <article class="market-card" role="button" tabindex="0" onclick="openMarketItemDetails('${safeId}')" onkeydown="handleMarketCardKeydown(event, '${safeId}')">
-        <div class="market-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${escapeHtml(image)}')">
-          <span class="market-open-badge">Открыть</span>
-        </div>
-
-        <div class="market-body">
-          <h3 class="market-title">${escapeHtml(item.title || "Товар")}</h3>
-          <div class="market-price">${escapeHtml(item.price || "Цена не указана")}</div>
-
-          <div class="market-text">${escapeHtml(item.description || "Описание не указано")}</div>
-          <div class="market-card-more">Подробнее →</div>
-
-          <div class="market-tags">
-            ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
-            ${item.category ? `<span class="market-tag">🎣 ${escapeHtml(item.category)}</span>` : ""}
-            ${item.condition ? `<span class="market-tag">${escapeHtml(item.condition)}</span>` : ""}
-            ${contact ? `<span class="market-tag">Telegram</span>` : ""}
-          </div>
-
-          <div class="market-actions">
-            ${contactBlock}
-            ${editBtn}
-            ${deleteBtn}
-          </div>
-        </div>
-      </article>
-    `;
-  }
+  const marketDetailsController = window.KlevbyMarket && typeof window.KlevbyMarket.createDetailsController === "function"
+    ? window.KlevbyMarket.createDetailsController({
+        getItems: function () {
+          return marketItems;
+        },
+        getUser: function () {
+          return marketUser;
+        },
+        helpers: {
+          escapeHtml: escapeHtml,
+          cleanTelegram: cleanTelegram,
+          getMarketImage: getMarketImage
+        }
+      })
+    : null;
 
   function ensureMarketDetailsOverlay() {
-    let overlay = document.getElementById("marketDetailsOverlay");
+    if (marketDetailsController && typeof marketDetailsController.ensureMarketDetailsOverlay === "function") {
+      return marketDetailsController.ensureMarketDetailsOverlay();
+    }
 
-    if (overlay) return overlay;
-
-    overlay = document.createElement("div");
-    overlay.id = "marketDetailsOverlay";
-    overlay.className = "market-details-overlay hidden";
-    document.body.appendChild(overlay);
-
-    return overlay;
+    console.warn("Klevby барахолка: market-details.js не загружен");
+    return null;
   }
 
   function handleMarketDetailsEscape(event) {
-    if (event.key === "Escape") {
-      closeMarketItemDetails();
+    if (marketDetailsController && typeof marketDetailsController.handleMarketDetailsEscape === "function") {
+      return marketDetailsController.handleMarketDetailsEscape(event);
+    }
+  }
+
+  function handleMarketCardKeydown(event, id) {
+    if (marketDetailsController && typeof marketDetailsController.handleMarketCardKeydown === "function") {
+      return marketDetailsController.handleMarketCardKeydown(event, id);
     }
   }
 
   function marketDetailsHtml(item) {
-    const contact = cleanTelegram(item.contact || item.telegram);
-    const ownerId = marketUser ? marketUser.id : null;
-    const canManage = ownerId && item.owner_id === ownerId;
-    const image = getMarketImage(item);
-    const safeId = escapeHtml(item.id);
+    if (marketDetailsController && typeof marketDetailsController.marketDetailsHtml === "function") {
+      return marketDetailsController.marketDetailsHtml(item);
+    }
 
-    const contactBlock = contact
-      ? `<button class="small-btn green" type="button" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать продавцу</button>`
-      : `<span class="market-contact-missing">Контакт не указан</span>`;
-
-    const editBtn = canManage
-      ? `<button class="small-btn yellow" type="button" onclick="closeMarketItemDetails(); editMarketItem('${safeId}')">Редактировать</button>`
-      : "";
-
-    const deleteBtn = canManage
-      ? `<button class="small-btn red" type="button" onclick="closeMarketItemDetails(); deleteMarketItem('${safeId}')">Удалить</button>`
-      : "";
-
-    return `
-      <button class="market-details-backdrop" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть карточку товара"></button>
-
-      <section class="market-details-panel" role="dialog" aria-modal="true" aria-label="Карточка товара">
-        <button class="market-details-close" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть">×</button>
-
-        <div class="market-details-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.38)), url('${escapeHtml(image)}')"></div>
-
-        <div class="market-details-body">
-          <p class="market-details-kicker">Барахолка снастей</p>
-
-          <h2 class="market-details-title">${escapeHtml(item.title || "Товар")}</h2>
-
-          <div class="market-details-price">${escapeHtml(item.price || "Цена не указана")}</div>
-
-          <div class="market-details-meta">
-            ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
-            ${item.category ? `<span class="market-tag">🎣 ${escapeHtml(item.category)}</span>` : ""}
-            ${item.condition ? `<span class="market-tag">${escapeHtml(item.condition)}</span>` : ""}
-            ${contact ? `<span class="market-tag">Telegram</span>` : ""}
-          </div>
-
-          <p class="market-details-description">${escapeHtml(item.description || "Описание не указано")}</p>
-
-          <div class="market-details-actions">
-            ${contactBlock}
-            ${editBtn}
-            ${deleteBtn}
-          </div>
-        </div>
-      </section>
-    `;
+    return "";
   }
 
   function openMarketItemDetails(id) {
-    const item = marketItems.find(function (x) {
-      return String(x.id) === String(id);
-    });
+    if (marketDetailsController && typeof marketDetailsController.openMarketItemDetails === "function") {
+      return marketDetailsController.openMarketItemDetails(id);
+    }
 
-    if (!item) return;
-
-    const overlay = ensureMarketDetailsOverlay();
-
-    overlay.innerHTML = marketDetailsHtml(item);
-    overlay.classList.remove("hidden");
-    document.body.classList.add("market-details-open");
-    document.addEventListener("keydown", handleMarketDetailsEscape);
+    console.warn("Klevby барахолка: market-details.js не загружен");
   }
 
   function closeMarketItemDetails() {
-    const overlay = document.getElementById("marketDetailsOverlay");
-
-    if (overlay) {
-      overlay.classList.add("hidden");
-      overlay.innerHTML = "";
+    if (marketDetailsController && typeof marketDetailsController.closeMarketItemDetails === "function") {
+      return marketDetailsController.closeMarketItemDetails();
     }
-
-    document.body.classList.remove("market-details-open");
-    document.removeEventListener("keydown", handleMarketDetailsEscape);
   }
 
   async function saveMarketItem() {
