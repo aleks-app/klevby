@@ -16,6 +16,7 @@
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
+  const MARKET_AUTH_TIMEOUT_MS = 7000;
 
   function getMainSupabaseClient() {
     return (
@@ -35,6 +36,31 @@
       marketUser ||
       null
     );
+  }
+
+  function withMarketTimeout(promise, ms, label) {
+    return new Promise(function (resolve, reject) {
+      let settled = false;
+      const timeout = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        reject(new Error("MARKET_TIMEOUT:" + String(label || "operation")));
+      }, Math.max(1, Number(ms) || 1));
+
+      Promise.resolve(promise)
+        .then(function (value) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          resolve(value);
+        })
+        .catch(function (error) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
   }
 
   function waitForMarketClient() {
@@ -392,7 +418,11 @@
 
     marketUserRefreshPromise = (async function () {
       try {
-        const result = await marketDb.auth.getUser();
+        const result = await withMarketTimeout(
+          marketDb.auth.getUser(),
+          MARKET_AUTH_TIMEOUT_MS,
+          "auth.getUser"
+        );
 
         if (result.error) {
           console.warn("Klevby барахолка: пользователь не получен:", result.error);
@@ -410,8 +440,12 @@
 
         return marketUser;
       } catch (error) {
-        console.warn("Klevby барахолка: ошибка получения пользователя:", error);
-        marketUser = getMainUser() || null;
+        if (String(error && error.message || "").includes("MARKET_TIMEOUT:auth.getUser")) {
+          console.warn("Klevby барахолка: auth.getUser timeout, используем fallback пользователя");
+        } else {
+          console.warn("Klevby барахолка: ошибка получения пользователя:", error);
+        }
+        marketUser = getMainUser() || marketUser || null;
         return marketUser;
       } finally {
         marketUserRefreshPromise = null;
@@ -419,6 +453,23 @@
     })();
 
     return marketUserRefreshPromise;
+  }
+
+  async function ensureMarketUserForWrite() {
+    let user = getMainUser();
+
+    if (user && user.id) {
+      marketUser = user;
+      return marketUser;
+    }
+
+    user = await refreshMarketUser({ force: true });
+    if (user && user.id) return user;
+
+    user = await refreshMarketUser({ force: true });
+    if (user && user.id) return user;
+
+    return null;
   }
 
   function showMarketMessage(message, isError = false) {
@@ -903,11 +954,12 @@
   }
 
   async function saveMarketItem() {
-    await refreshMarketUser({ force: true });
+    const safeUser = await ensureMarketUserForWrite();
 
-    if (!marketUser) {
+    if (!safeUser) {
       if (typeof showSection === "function") showSection("auth");
-      alert("Сначала войди или зарегистрируйся, чтобы добавить товар.");
+      showMarketMessage("Не удалось проверить авторизацию. Открой раздел входа и попробуй снова.", true);
+      alert("Не удалось проверить авторизацию. Войди в аккаунт и попробуй снова.");
       return;
     }
 
@@ -948,7 +1000,7 @@
       contact_whatsapp: contactWhatsapp,
       contact_viber: contactViber,
       image_url: imageUrl,
-      owner_id: marketUser.id
+      owner_id: safeUser.id
     };
 
     let result;
@@ -958,7 +1010,7 @@
         .from("market_items")
         .update(payload)
         .eq("id", editingMarketId)
-        .eq("owner_id", marketUser.id);
+        .eq("owner_id", safeUser.id);
     } else {
       result = await marketDb
         .from("market_items")
@@ -1042,10 +1094,11 @@
   }
 
   async function deleteMarketItem(id) {
-    await refreshMarketUser({ force: true });
+    const safeUser = await ensureMarketUserForWrite();
 
-    if (!marketUser) {
-      alert("Сначала войди в аккаунт.");
+    if (!safeUser) {
+      showMarketMessage("Не удалось проверить авторизацию для удаления. Попробуй снова.", true);
+      alert("Не удалось проверить авторизацию. Войди в аккаунт и попробуй снова.");
       return;
     }
 
@@ -1055,7 +1108,7 @@
       .from("market_items")
       .delete()
       .eq("id", id)
-      .eq("owner_id", marketUser.id);
+      .eq("owner_id", safeUser.id);
 
     if (result.error) {
       console.error(result.error);
