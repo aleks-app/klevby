@@ -12,6 +12,7 @@
   let marketPendingForceReload = false;
   let marketRealtimeChannel = null;
   let marketHasPendingNewItems = false;
+  let marketOpenDetailsItemId = null;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -512,7 +513,7 @@
 
     try {
       marketRealtimeChannel = marketDb
-        .channel("klevby-market-items-insert")
+        .channel("klevby-market-items-live")
         .on("postgres_changes", {
           event: "INSERT",
           schema: "public",
@@ -522,6 +523,59 @@
 
           marketHasPendingNewItems = true;
           showMarketNewItemsNotice();
+        })
+        .on("postgres_changes", {
+          event: "DELETE",
+          schema: "public",
+          table: "market_items"
+        }, function (payload) {
+          const deletedId = payload?.old?.id ?? payload?.id ?? null;
+
+          if (!deletedId) {
+            if (isMarketVisible()) {
+              loadMarketItems({ force: true }).catch((error) => {
+                console.warn("Klevby барахолка: не удалось обновить после live DELETE:", error);
+              });
+            }
+            return;
+          }
+
+          const beforeLength = marketItems.length;
+          marketItems = marketItems.filter(function (item) {
+            return String(item.id) !== String(deletedId);
+          });
+
+          if (beforeLength === marketItems.length) return;
+
+          if (marketOpenDetailsItemId && String(marketOpenDetailsItemId) === String(deletedId)) {
+            closeMarketItemDetails();
+          }
+
+          renderMarketItems();
+        })
+        .on("postgres_changes", {
+          event: "UPDATE",
+          schema: "public",
+          table: "market_items"
+        }, function (payload) {
+          const updatedRow = payload?.new;
+          const updatedId = updatedRow?.id ?? payload?.old?.id ?? null;
+          if (!updatedRow || !updatedId) return;
+
+          let updated = false;
+          marketItems = marketItems.map(function (item) {
+            if (String(item.id) !== String(updatedId)) return item;
+            updated = true;
+            return updatedRow;
+          });
+
+          if (!updated) return;
+
+          renderMarketItems();
+
+          if (marketOpenDetailsItemId && String(marketOpenDetailsItemId) === String(updatedId)) {
+            openMarketItemDetails(updatedId);
+          }
         })
         .subscribe(function (status) {
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
@@ -830,6 +884,7 @@
 
     overlay.innerHTML = marketDetailsHtml(item);
     overlay.classList.remove("hidden");
+    marketOpenDetailsItemId = String(id);
     document.body.classList.add("market-details-open");
     document.addEventListener("keydown", handleMarketDetailsEscape);
   }
@@ -842,6 +897,7 @@
       overlay.innerHTML = "";
     }
 
+    marketOpenDetailsItemId = null;
     document.body.classList.remove("market-details-open");
     document.removeEventListener("keydown", handleMarketDetailsEscape);
   }
