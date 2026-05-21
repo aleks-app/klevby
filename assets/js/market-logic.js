@@ -123,7 +123,7 @@
         flex-wrap: wrap;
         gap: 10px;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         margin: 0 0 2px;
       }
 
@@ -141,12 +141,6 @@
         font-size: 14px;
         line-height: 1.1;
         white-space: nowrap;
-      }
-
-      .market-toolbar-hint {
-        color: rgba(244,251,247,0.58);
-        font-size: 13px;
-        font-weight: 700;
       }
 
       .market-form-box {
@@ -191,23 +185,57 @@
       }
 
       .market-card {
+        position: relative;
         overflow: hidden;
         border-radius: 20px;
         background: rgba(255,255,255,0.055);
         border: 1px solid rgba(255,255,255,0.08);
         box-shadow: 0 10px 28px rgba(0,0,0,0.22);
         transition: 0.22s ease;
+        cursor: pointer;
       }
 
       .market-card:hover {
         transform: translateY(-3px);
         box-shadow: 0 14px 34px rgba(0,0,0,0.30);
+        border-color: rgba(244,178,74,0.22);
+      }
+
+      .market-card:active {
+        transform: translateY(-1px) scale(0.992);
+      }
+
+      .market-card:focus-visible {
+        outline: 2px solid rgba(255,183,69,0.92);
+        outline-offset: 4px;
       }
 
       .market-img {
+        position: relative;
         height: 150px;
         background-size: cover;
         background-position: center;
+      }
+
+      .market-open-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 30px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(5,10,8,0.72);
+        color: rgba(255,255,255,0.92);
+        border: 1px solid rgba(255,255,255,0.16);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        font-size: 11px;
+        line-height: 1;
+        font-weight: 900;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.26);
       }
 
       .market-body {
@@ -237,6 +265,14 @@
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
+      }
+
+      .market-card-more {
+        margin-top: 10px;
+        color: rgba(255,190,82,0.92);
+        font-size: 12px;
+        line-height: 1.25;
+        font-weight: 900;
       }
 
       .market-tags {
@@ -282,6 +318,132 @@
         font-weight: 800;
       }
 
+      .market-details-open {
+        overflow: hidden;
+      }
+
+      .market-details-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+      }
+
+      .market-details-backdrop {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        padding: 0;
+        background: rgba(0,0,0,0.68);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        cursor: pointer;
+      }
+
+      .market-details-panel {
+        position: relative;
+        z-index: 1;
+        width: min(920px, 100%);
+        max-height: min(86vh, 840px);
+        overflow: auto;
+        border-radius: 28px;
+        background:
+          radial-gradient(circle at 14% 0%, rgba(244,178,74,0.16), transparent 34%),
+          linear-gradient(180deg, rgba(26,35,30,0.98), rgba(8,14,12,0.98));
+        border: 1px solid rgba(255,255,255,0.11);
+        box-shadow: 0 28px 80px rgba(0,0,0,0.48);
+      }
+
+      .market-details-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 3;
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 999px;
+        background: rgba(0,0,0,0.42);
+        color: #ffffff;
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 800;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .market-details-img {
+        min-height: 330px;
+        background-size: cover;
+        background-position: center;
+        border-radius: 28px 28px 0 0;
+      }
+
+      .market-details-body {
+        padding: 24px;
+      }
+
+      .market-details-kicker {
+        margin: 0 0 8px;
+        color: rgba(255,190,82,0.94);
+        font-size: 13px;
+        line-height: 1.25;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .market-details-title {
+        margin: 0 0 10px;
+        color: #ffffff;
+        font-size: clamp(28px, 5vw, 44px);
+        line-height: 1.02;
+        letter-spacing: -0.9px;
+        font-weight: 900;
+      }
+
+      .market-details-price {
+        margin: 0 0 16px;
+        color: #57e6b2;
+        font-size: 32px;
+        line-height: 1.05;
+        font-weight: 900;
+      }
+
+      .market-details-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 18px;
+      }
+
+      .market-details-description {
+        margin: 0;
+        color: rgba(244,251,247,0.78);
+        font-size: 16px;
+        line-height: 1.62;
+        white-space: pre-wrap;
+      }
+
+      .market-details-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .market-details-actions .small-btn {
+        min-height: 44px;
+        padding: 12px 16px;
+        border-radius: 16px;
+      }
+
       @media (max-width: 900px) {
         .market-layout {
           gap: 12px;
@@ -303,12 +465,6 @@
           min-height: 46px;
           padding: 12px 12px;
           font-size: 13px;
-        }
-
-        .market-toolbar-hint {
-          width: 100%;
-          font-size: 12px;
-          opacity: 0.86;
         }
 
         .market-form-box {
@@ -353,9 +509,45 @@
           -webkit-line-clamp: 2;
         }
 
+        .market-card-more {
+          font-size: 11px;
+        }
+
         .market-actions .small-btn {
           padding: 8px 10px;
           font-size: 12px;
+        }
+
+        .market-details-overlay {
+          align-items: flex-end;
+          padding: 0;
+        }
+
+        .market-details-panel {
+          width: 100%;
+          max-height: 92vh;
+          border-radius: 28px 28px 0 0;
+        }
+
+        .market-details-img {
+          min-height: 260px;
+          border-radius: 28px 28px 0 0;
+        }
+
+        .market-details-body {
+          padding: 20px 18px calc(24px + env(safe-area-inset-bottom));
+        }
+
+        .market-details-title {
+          font-size: 30px;
+        }
+
+        .market-details-price {
+          font-size: 28px;
+        }
+
+        .market-details-description {
+          font-size: 15px;
         }
       }
 
@@ -379,6 +571,12 @@
         .market-text {
           font-size: 14px;
           -webkit-line-clamp: 3;
+        }
+
+        .market-open-badge {
+          min-height: 32px;
+          padding: 8px 11px;
+          font-size: 11px;
         }
 
         .market-actions {
@@ -481,8 +679,6 @@
               Фильтры
             </button>
           </div>
-
-          <div class="market-toolbar-hint">Сначала товары, форма и поиск — по кнопке</div>
         </div>
 
         <div id="marketFormBox" class="market-form-box hidden">
@@ -815,33 +1011,44 @@
     grid.innerHTML = filtered.map(marketCardHtml).join("");
   }
 
+  function handleMarketCardKeydown(event, id) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    openMarketItemDetails(id);
+  }
+
   function marketCardHtml(item) {
     const contact = cleanTelegram(item.contact || item.telegram);
     const ownerId = marketUser ? marketUser.id : null;
     const canManage = ownerId && item.owner_id === ownerId;
     const image = getMarketImage(item);
+    const safeId = escapeHtml(item.id);
 
     const contactBlock = contact
-      ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
+      ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
       : `<span class="market-contact-missing">Контакт не указан</span>`;
 
     const editBtn = canManage
-      ? `<button class="small-btn yellow" onclick="editMarketItem('${escapeHtml(item.id)}')">Редактировать</button>`
+      ? `<button class="small-btn yellow" type="button" onclick="event.stopPropagation(); editMarketItem('${safeId}')">Редактировать</button>`
       : "";
 
     const deleteBtn = canManage
-      ? `<button class="small-btn red" onclick="deleteMarketItem('${escapeHtml(item.id)}')">Удалить</button>`
+      ? `<button class="small-btn red" type="button" onclick="event.stopPropagation(); deleteMarketItem('${safeId}')">Удалить</button>`
       : "";
 
     return `
-      <div class="market-card">
-        <div class="market-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${escapeHtml(image)}')"></div>
+      <article class="market-card" role="button" tabindex="0" onclick="openMarketItemDetails('${safeId}')" onkeydown="handleMarketCardKeydown(event, '${safeId}')">
+        <div class="market-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${escapeHtml(image)}')">
+          <span class="market-open-badge">Открыть</span>
+        </div>
 
         <div class="market-body">
           <h3 class="market-title">${escapeHtml(item.title || "Товар")}</h3>
           <div class="market-price">${escapeHtml(item.price || "Цена не указана")}</div>
 
           <div class="market-text">${escapeHtml(item.description || "Описание не указано")}</div>
+          <div class="market-card-more">Подробнее →</div>
 
           <div class="market-tags">
             ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
@@ -856,8 +1063,107 @@
             ${deleteBtn}
           </div>
         </div>
-      </div>
+      </article>
     `;
+  }
+
+  function ensureMarketDetailsOverlay() {
+    let overlay = document.getElementById("marketDetailsOverlay");
+
+    if (overlay) return overlay;
+
+    overlay = document.createElement("div");
+    overlay.id = "marketDetailsOverlay";
+    overlay.className = "market-details-overlay hidden";
+    document.body.appendChild(overlay);
+
+    return overlay;
+  }
+
+  function handleMarketDetailsEscape(event) {
+    if (event.key === "Escape") {
+      closeMarketItemDetails();
+    }
+  }
+
+  function marketDetailsHtml(item) {
+    const contact = cleanTelegram(item.contact || item.telegram);
+    const ownerId = marketUser ? marketUser.id : null;
+    const canManage = ownerId && item.owner_id === ownerId;
+    const image = getMarketImage(item);
+    const safeId = escapeHtml(item.id);
+
+    const contactBlock = contact
+      ? `<button class="small-btn green" type="button" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать продавцу</button>`
+      : `<span class="market-contact-missing">Контакт не указан</span>`;
+
+    const editBtn = canManage
+      ? `<button class="small-btn yellow" type="button" onclick="closeMarketItemDetails(); editMarketItem('${safeId}')">Редактировать</button>`
+      : "";
+
+    const deleteBtn = canManage
+      ? `<button class="small-btn red" type="button" onclick="closeMarketItemDetails(); deleteMarketItem('${safeId}')">Удалить</button>`
+      : "";
+
+    return `
+      <button class="market-details-backdrop" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть карточку товара"></button>
+
+      <section class="market-details-panel" role="dialog" aria-modal="true" aria-label="Карточка товара">
+        <button class="market-details-close" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть">×</button>
+
+        <div class="market-details-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.38)), url('${escapeHtml(image)}')"></div>
+
+        <div class="market-details-body">
+          <p class="market-details-kicker">Барахолка снастей</p>
+
+          <h2 class="market-details-title">${escapeHtml(item.title || "Товар")}</h2>
+
+          <div class="market-details-price">${escapeHtml(item.price || "Цена не указана")}</div>
+
+          <div class="market-details-meta">
+            ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
+            ${item.category ? `<span class="market-tag">🎣 ${escapeHtml(item.category)}</span>` : ""}
+            ${item.condition ? `<span class="market-tag">${escapeHtml(item.condition)}</span>` : ""}
+            ${contact ? `<span class="market-tag">Telegram</span>` : ""}
+          </div>
+
+          <p class="market-details-description">${escapeHtml(item.description || "Описание не указано")}</p>
+
+          <div class="market-details-actions">
+            ${contactBlock}
+            ${editBtn}
+            ${deleteBtn}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function openMarketItemDetails(id) {
+    const item = marketItems.find(function (x) {
+      return String(x.id) === String(id);
+    });
+
+    if (!item) return;
+
+    const overlay = ensureMarketDetailsOverlay();
+
+    overlay.innerHTML = marketDetailsHtml(item);
+    overlay.classList.remove("hidden");
+    document.body.classList.add("market-details-open");
+    document.addEventListener("keydown", handleMarketDetailsEscape);
+  }
+
+  function closeMarketItemDetails() {
+    const overlay = document.getElementById("marketDetailsOverlay");
+
+    if (overlay) {
+      overlay.classList.add("hidden");
+      overlay.innerHTML = "";
+    }
+
+    document.body.classList.remove("market-details-open");
+    document.removeEventListener("keydown", handleMarketDetailsEscape);
   }
 
   async function saveMarketItem() {
@@ -1002,6 +1308,8 @@
       return;
     }
 
+    closeMarketItemDetails();
+
     await loadMarketItems({ force: true });
   }
 
@@ -1028,6 +1336,9 @@
       window.deleteMarketItem = deleteMarketItem;
       window.toggleMarketForm = toggleMarketForm;
       window.toggleMarketFilters = toggleMarketFilters;
+      window.openMarketItemDetails = openMarketItemDetails;
+      window.closeMarketItemDetails = closeMarketItemDetails;
+      window.handleMarketCardKeydown = handleMarketCardKeydown;
 
       await loadMarketItems({ force: true });
 
