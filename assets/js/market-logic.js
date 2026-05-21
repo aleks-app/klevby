@@ -10,6 +10,8 @@
   let marketLoadPromise = null;
   let marketLoadTimer = null;
   let marketPendingForceReload = false;
+  let marketRealtimeChannel = null;
+  let marketHasPendingNewItems = false;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -343,6 +345,9 @@
           </div>
 
           <div id="marketStatusLine" class="info-line">Загрузка барахолки...</div>
+          <button id="marketNewItemsNotice" class="market-new-items-notice hidden" type="button" onclick="applyMarketPendingNewItems()">
+            Появились новые товары — показать
+          </button>
 
           <div id="marketItemsGrid" class="market-grid">
             <div class="skeleton"></div>
@@ -443,6 +448,90 @@
 
     el.textContent = message;
     el.classList.toggle("error-line", isError);
+  }
+
+  function showMarketNewItemsNotice() {
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.showMarketNewItemsNotice === "function") {
+      marketUi.showMarketNewItemsNotice();
+      return;
+    }
+
+    const notice = document.getElementById("marketNewItemsNotice");
+    if (notice) notice.classList.remove("hidden");
+  }
+
+  function hideMarketNewItemsNotice() {
+    const marketUi = getMarketUiHelpers();
+
+    if (typeof marketUi.hideMarketNewItemsNotice === "function") {
+      marketUi.hideMarketNewItemsNotice();
+      return;
+    }
+
+    const notice = document.getElementById("marketNewItemsNotice");
+    if (notice) notice.classList.add("hidden");
+  }
+
+  function isMarketVisible() {
+    const root = document.getElementById("marketRoot");
+    if (!root) return false;
+    if (document.hidden) return false;
+    if (root.offsetParent === null) return false;
+
+    return true;
+  }
+
+  function applyMarketPendingNewItems() {
+    if (!marketHasPendingNewItems) return;
+
+    marketHasPendingNewItems = false;
+    hideMarketNewItemsNotice();
+
+    loadMarketItems({ force: true }).catch((error) => {
+      console.warn("Klevby барахолка: не удалось обновить список новых товаров:", error);
+    });
+  }
+
+  function unsubscribeMarketRealtime() {
+    if (!marketRealtimeChannel || !marketDb) return;
+
+    try {
+      marketDb.removeChannel(marketRealtimeChannel);
+    } catch (error) {
+      console.warn("Klevby барахолка: не удалось отписаться от realtime:", error);
+    }
+
+    marketRealtimeChannel = null;
+  }
+
+  function subscribeMarketRealtime() {
+    if (!marketDb || typeof marketDb.channel !== "function") return;
+    if (marketRealtimeChannel) return;
+
+    try {
+      marketRealtimeChannel = marketDb
+        .channel("klevby-market-items-insert")
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: "market_items"
+        }, function () {
+          if (!isMarketVisible()) return;
+
+          marketHasPendingNewItems = true;
+          showMarketNewItemsNotice();
+        })
+        .subscribe(function (status) {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn("Klevby барахолка: realtime недоступен, продолжаем без live-уведомлений:", status);
+          }
+        });
+    } catch (error) {
+      marketRealtimeChannel = null;
+      console.warn("Klevby барахолка: ошибка подписки realtime, продолжаем в обычном режиме:", error);
+    }
   }
 
   function scheduleMarketLoad(delay = MARKET_LOAD_RETRY_DELAY_MS, force = false) {
@@ -551,6 +640,8 @@
       }
 
       marketItems = result.data || [];
+      marketHasPendingNewItems = false;
+      hideMarketNewItemsNotice();
 
       const mainUser = getMainUser();
       if (mainUser && mainUser.id) {
@@ -947,8 +1038,10 @@
       window.openMarketItemDetails = openMarketItemDetails;
       window.closeMarketItemDetails = closeMarketItemDetails;
       window.handleMarketCardKeydown = handleMarketCardKeydown;
+      window.applyMarketPendingNewItems = applyMarketPendingNewItems;
 
       await loadMarketItems({ force: true });
+      subscribeMarketRealtime();
 
       console.log("Klevby барахолка запущена.");
     } catch (error) {
@@ -969,6 +1062,8 @@
       renderMarketItems();
     }
   });
+
+  window.addEventListener("beforeunload", unsubscribeMarketRealtime);
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initMarket);

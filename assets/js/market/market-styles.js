@@ -348,6 +348,23 @@
         border-radius: 16px;
       }
 
+      .market-new-items-notice {
+        margin: 8px 0 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        max-width: 100%;
+        min-height: 36px;
+        border: 1px solid rgba(87,230,178,0.38);
+        border-radius: 999px;
+        padding: 8px 14px;
+        background: rgba(87,230,178,0.14);
+        color: #bdf7e4;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
       @media (max-width: 900px) {
         .market-layout {
           gap: 12px;
@@ -369,6 +386,14 @@
           min-height: 46px;
           padding: 12px 12px;
           font-size: 13px;
+        }
+
+        .market-new-items-notice {
+          width: 100%;
+          justify-content: flex-start;
+          font-size: 12px;
+          min-height: 38px;
+          padding: 9px 12px;
         }
 
         .market-form-box {
