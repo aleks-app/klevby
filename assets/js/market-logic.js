@@ -624,34 +624,8 @@
   }
 
   function marketCardHtml(item) {
-    const marketContacts = window.KlevbyMarket || {};
-    const contacts = typeof marketContacts.resolveMarketContacts === "function"
-      ? marketContacts.resolveMarketContacts(item)
-      : {
-        phone: "",
-        telegram: cleanTelegram(item.contact_telegram || item.contact || item.telegram || ""),
-        viber: "",
-        whatsapp: "",
-        hasAny: Boolean(cleanTelegram(item.contact_telegram || item.contact || item.telegram || ""))
-      };
-    const ownerId = marketUser ? marketUser.id : null;
-    const canManage = ownerId && item.owner_id === ownerId;
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
-
-    const contactBlock = typeof marketContacts.marketContactCtaHtml === "function"
-      ? marketContacts.marketContactCtaHtml(contacts, { stopPropagation: true })
-      : (contacts.telegram
-        ? `<button class="small-btn green" type="button" onclick="event.stopPropagation(); window.open('https://t.me/${escapeHtml(contacts.telegram)}','_blank')">Telegram</button>`
-        : `<span class="market-contact-missing">Контакт не указан</span>`);
-
-    const editBtn = canManage
-      ? `<button class="small-btn yellow" type="button" onclick="event.stopPropagation(); editMarketItem('${safeId}')">Редактировать</button>`
-      : "";
-
-    const deleteBtn = canManage
-      ? `<button class="small-btn red" type="button" onclick="event.stopPropagation(); deleteMarketItem('${safeId}')">Удалить</button>`
-      : "";
 
     return `
       <article class="market-card" role="button" tabindex="0" onclick="openMarketItemDetails('${safeId}')" onkeydown="handleMarketCardKeydown(event, '${safeId}')">
@@ -662,25 +636,7 @@
         <div class="market-body">
           <h3 class="market-title">${escapeHtml(item.title || "Товар")}</h3>
           <div class="market-price">${escapeHtml(item.price || "Цена не указана")}</div>
-
-          <div class="market-text">${escapeHtml(item.description || "Описание не указано")}</div>
-          <div class="market-card-more">Подробнее →</div>
-
-          <div class="market-tags">
-            ${item.city ? `<span class="market-tag">📍 ${escapeHtml(item.city)}</span>` : ""}
-            ${item.category ? `<span class="market-tag">🎣 ${escapeHtml(item.category)}</span>` : ""}
-            ${item.condition ? `<span class="market-tag">${escapeHtml(item.condition)}</span>` : ""}
-            ${contacts.telegram ? `<span class="market-tag">Telegram</span>` : ""}
-            ${contacts.phone ? `<span class="market-tag">📞 Телефон</span>` : ""}
-            ${contacts.whatsapp ? `<span class="market-tag">WhatsApp</span>` : ""}
-            ${contacts.viber ? `<span class="market-tag">Viber</span>` : ""}
-          </div>
-
-          <div class="market-actions">
-            ${contactBlock}
-            ${editBtn}
-            ${deleteBtn}
-          </div>
+          ${item.city ? `<div class="market-city">📍 ${escapeHtml(item.city)}</div>` : ""}
         </div>
       </article>
     `;
