@@ -11,6 +11,9 @@
   let marketLoadTimer = null;
   let marketPendingForceReload = false;
 
+  let marketFormOpen = false;
+  let marketFiltersOpen = false;
+
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
 
@@ -109,13 +112,46 @@
 
     style.textContent = `
       .market-layout {
-        display: grid;
-        grid-template-columns: 380px 1fr;
-        gap: 16px;
-        align-items: start;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        align-items: stretch;
+      }
+
+      .market-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 2px;
+      }
+
+      .market-toolbar-left {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .market-toolbar-btn {
+        min-height: 42px;
+        padding: 11px 16px;
+        border-radius: 999px;
+        font-size: 14px;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .market-toolbar-hint {
+        color: rgba(244,251,247,0.58);
+        font-size: 13px;
+        font-weight: 700;
       }
 
       .market-form-box {
+        max-width: 760px;
+        width: 100%;
         background: rgba(255,255,255,0.045);
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 22px;
@@ -137,11 +173,15 @@
         font-weight: 500;
       }
 
+      .market-list-panel {
+        width: 100%;
+      }
+
       .market-filters {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr 0.8fr;
         gap: 10px;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
 
       .market-grid {
@@ -219,20 +259,77 @@
         display: flex;
         flex-wrap: wrap;
         gap: 7px;
+        align-items: center;
         margin-top: 12px;
+      }
+
+      .market-actions .small-btn {
+        padding: 9px 12px;
+        border-radius: 14px;
+        font-size: 13px;
+        line-height: 1.1;
+      }
+
+      .market-contact-missing {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.055);
+        color: rgba(244,251,247,0.55);
+        font-size: 12px;
+        font-weight: 800;
       }
 
       @media (max-width: 900px) {
         .market-layout {
-          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .market-toolbar {
+          align-items: stretch;
+        }
+
+        .market-toolbar-left {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+
+        .market-toolbar-btn {
+          width: 100%;
+          min-height: 46px;
+          padding: 12px 12px;
+          font-size: 13px;
+        }
+
+        .market-toolbar-hint {
+          width: 100%;
+          font-size: 12px;
+          opacity: 0.86;
+        }
+
+        .market-form-box {
+          max-width: none;
+          padding: 16px;
+          border-radius: 22px;
+        }
+
+        .market-form-box h2 {
+          font-size: 21px;
         }
 
         .market-filters {
           grid-template-columns: 1fr;
+          gap: 8px;
+          margin-bottom: 10px;
         }
 
         .market-grid {
           grid-template-columns: 1fr 1fr;
+          gap: 12px;
         }
 
         .market-img {
@@ -255,16 +352,117 @@
           font-size: 12px;
           -webkit-line-clamp: 2;
         }
+
+        .market-actions .small-btn {
+          padding: 8px 10px;
+          font-size: 12px;
+        }
       }
 
       @media (max-width: 430px) {
         .market-grid {
           grid-template-columns: 1fr;
         }
+
+        .market-img {
+          height: 178px;
+        }
+
+        .market-title {
+          font-size: 18px;
+        }
+
+        .market-price {
+          font-size: 22px;
+        }
+
+        .market-text {
+          font-size: 14px;
+          -webkit-line-clamp: 3;
+        }
+
+        .market-actions {
+          gap: 8px;
+        }
+
+        .market-actions .small-btn {
+          min-height: 38px;
+          padding: 9px 12px;
+          font-size: 13px;
+        }
       }
     `;
 
     document.head.appendChild(style);
+  }
+
+  function updateMarketUiState() {
+    const formBox = document.getElementById("marketFormBox");
+    const filtersBox = document.getElementById("marketFiltersBox");
+    const formBtn = document.getElementById("marketToggleFormBtn");
+    const filtersBtn = document.getElementById("marketToggleFiltersBtn");
+
+    if (formBox) {
+      formBox.classList.toggle("hidden", !marketFormOpen);
+    }
+
+    if (filtersBox) {
+      filtersBox.classList.toggle("hidden", !marketFiltersOpen);
+    }
+
+    if (formBtn) {
+      formBtn.textContent = marketFormOpen ? "Скрыть форму" : "+ Добавить товар";
+      formBtn.setAttribute("aria-expanded", String(marketFormOpen));
+    }
+
+    if (filtersBtn) {
+      filtersBtn.textContent = marketFiltersOpen ? "Скрыть фильтры" : "Фильтры";
+      filtersBtn.setAttribute("aria-expanded", String(marketFiltersOpen));
+    }
+  }
+
+  function setMarketFormOpen(open, options = {}) {
+    marketFormOpen = Boolean(open);
+    updateMarketUiState();
+
+    if (marketFormOpen && options.scroll) {
+      const formBox = document.getElementById("marketFormBox");
+      if (formBox) {
+        setTimeout(function () {
+          formBox.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }, 40);
+      }
+    }
+  }
+
+  function setMarketFiltersOpen(open, options = {}) {
+    marketFiltersOpen = Boolean(open);
+    updateMarketUiState();
+
+    if (marketFiltersOpen && options.scroll) {
+      const filtersBox = document.getElementById("marketFiltersBox");
+      if (filtersBox) {
+        setTimeout(function () {
+          filtersBox.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+          });
+        }, 40);
+      }
+    }
+  }
+
+  function toggleMarketForm() {
+    const nextOpen = !marketFormOpen;
+    setMarketFormOpen(nextOpen, { scroll: nextOpen });
+  }
+
+  function toggleMarketFilters() {
+    const nextOpen = !marketFiltersOpen;
+    setMarketFiltersOpen(nextOpen, { scroll: nextOpen });
   }
 
   function renderMarketBase() {
@@ -273,7 +471,21 @@
 
     root.innerHTML = `
       <div class="market-layout">
-        <div class="market-form-box">
+        <div class="market-toolbar">
+          <div class="market-toolbar-left">
+            <button id="marketToggleFormBtn" class="small-btn green market-toolbar-btn" type="button" onclick="toggleMarketForm()" aria-expanded="false">
+              + Добавить товар
+            </button>
+
+            <button id="marketToggleFiltersBtn" class="small-btn gray market-toolbar-btn" type="button" onclick="toggleMarketFilters()" aria-expanded="false">
+              Фильтры
+            </button>
+          </div>
+
+          <div class="market-toolbar-hint">Сначала товары, форма и поиск — по кнопке</div>
+        </div>
+
+        <div id="marketFormBox" class="market-form-box hidden">
           <h2 id="marketFormTitle">Добавить товар</h2>
 
           <input id="marketTitleInput" placeholder="Название: спиннинг, катушка, лодка..." />
@@ -306,8 +518,8 @@
           <input id="marketImageInput" placeholder="Ссылка на фото товара, можно оставить пустым" />
 
           <div class="actions">
-            <button class="small-btn green" onclick="saveMarketItem()">Сохранить</button>
-            <button id="marketCancelEditBtn" class="small-btn gray hidden" onclick="cancelMarketEdit()">Отмена</button>
+            <button class="small-btn green" type="button" onclick="saveMarketItem()">Сохранить</button>
+            <button id="marketCancelEditBtn" class="small-btn gray hidden" type="button" onclick="cancelMarketEdit()">Отмена</button>
           </div>
 
           <div id="marketMessage" class="auth-status"></div>
@@ -317,8 +529,8 @@
           </div>
         </div>
 
-        <div>
-          <div class="market-filters">
+        <div class="market-list-panel">
+          <div id="marketFiltersBox" class="market-filters hidden">
             <input id="marketSearchInput" placeholder="Поиск: катушка, лодка, Shimano..." oninput="renderMarketItems()" />
 
             <select id="marketCategoryFilter" onchange="renderMarketItems()">
@@ -355,6 +567,7 @@
     `;
 
     marketRendered = true;
+    updateMarketUiState();
   }
 
   async function refreshMarketUser(options = {}) {
@@ -608,9 +821,9 @@
     const canManage = ownerId && item.owner_id === ownerId;
     const image = getMarketImage(item);
 
-    const contactBtn = contact
+    const contactBlock = contact
       ? `<button class="small-btn green" onclick="window.open('https://t.me/${escapeHtml(contact)}','_blank')">Написать</button>`
-      : `<button class="small-btn gray" disabled>Нет контакта</button>`;
+      : `<span class="market-contact-missing">Контакт не указан</span>`;
 
     const editBtn = canManage
       ? `<button class="small-btn yellow" onclick="editMarketItem('${escapeHtml(item.id)}')">Редактировать</button>`
@@ -638,7 +851,7 @@
           </div>
 
           <div class="market-actions">
-            ${contactBtn}
+            ${contactBlock}
             ${editBtn}
             ${deleteBtn}
           </div>
@@ -711,6 +924,7 @@
     document.getElementById("marketCancelEditBtn").classList.add("hidden");
 
     showMarketMessage(wasEditing ? "Товар обновлён." : "Товар добавлен.");
+    setMarketFormOpen(false);
 
     await loadMarketItems({ force: true });
   }
@@ -743,13 +957,7 @@
     document.getElementById("marketFormTitle").textContent = "Редактировать товар";
     document.getElementById("marketCancelEditBtn").classList.remove("hidden");
 
-    const marketSection = document.getElementById("marketSection");
-    if (marketSection) {
-      marketSection.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-    }
+    setMarketFormOpen(true, { scroll: true });
   }
 
   function cancelMarketEdit() {
@@ -758,6 +966,7 @@
     document.getElementById("marketFormTitle").textContent = "Добавить товар";
     document.getElementById("marketCancelEditBtn").classList.add("hidden");
     showMarketMessage("");
+    setMarketFormOpen(false);
   }
 
   function clearMarketForm() {
@@ -817,6 +1026,8 @@
       window.editMarketItem = editMarketItem;
       window.cancelMarketEdit = cancelMarketEdit;
       window.deleteMarketItem = deleteMarketItem;
+      window.toggleMarketForm = toggleMarketForm;
+      window.toggleMarketFilters = toggleMarketFilters;
 
       await loadMarketItems({ force: true });
 
