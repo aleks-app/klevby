@@ -8,8 +8,8 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-card);
-  padding: 24px;
-  margin: 14px 0;
+  padding: 18px 20px;
+  margin: 10px 0 12px;
   background:
     linear-gradient(135deg, rgba(3,6,5,0.88), rgba(33,24,13,0.82)),
     radial-gradient(circle at 10% 0%, rgba(244,178,74,0.18), transparent 34%),
@@ -21,21 +21,22 @@
 }
 
 .market-hero h2 {
-  margin: 0 0 10px;
-  font-size: clamp(28px, 5vw, 44px);
+  margin: 0 0 6px;
+  font-size: clamp(24px, 4vw, 36px);
   line-height: 1.05;
-  letter-spacing: -1px;
+  letter-spacing: -0.8px;
 }
 
 .market-hero p {
-  max-width: 720px;
+  max-width: 640px;
   margin: 0;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .market-shell {
-  margin: 14px 0 44px;
+  margin: 12px 0 44px;
 }
 
 #marketRoot {

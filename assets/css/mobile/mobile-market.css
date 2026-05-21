@@ -1,15 +1,48 @@
 /* Klevby mobile market styles
-   Behavior-preserving split from assets/css/responsive/mobile.css.
-   Scope: mobile market hero only.
+   Scope: compact mobile market hero and spacing.
 */
 
 @media (max-width: 900px) {
   .market-hero {
-    padding: 20px 16px;
-    border-radius: 28px;
+    padding: 16px 16px;
+    margin: 8px 0 10px;
+    border-radius: 24px;
   }
 
   .market-hero h2 {
-    font-size: 32px;
+    margin-bottom: 6px;
+    font-size: 28px;
+    line-height: 1.05;
+    letter-spacing: -0.7px;
+  }
+
+  .market-hero p {
+    max-width: 100%;
+    font-size: 13px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .market-shell {
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .market-hero {
+    padding: 14px 14px;
+    border-radius: 22px;
+  }
+
+  .market-hero h2 {
+    font-size: 26px;
+  }
+
+  .market-hero p {
+    font-size: 12.5px;
+    -webkit-line-clamp: 2;
   }
 }
