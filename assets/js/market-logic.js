@@ -1228,6 +1228,17 @@
     return status === "active" && isMarketItemPubliclyVisible(item);
   }
 
+  function getMarketItemById(id) {
+    const safeId = String(id);
+    const fromOwner = marketOwnerItems.find(function (x) {
+      return String(x.id) === safeId;
+    });
+    if (fromOwner) return fromOwner;
+    return marketItems.find(function (x) {
+      return String(x.id) === safeId;
+    }) || null;
+  }
+
   async function loadOwnerMarketItems() {
     const user = await ensureMarketUserForWrite();
     if (!user || !user.id) {
@@ -1354,6 +1365,17 @@
     const deleteBtn = canManage
       ? `<button class="small-btn red" type="button" onclick="closeMarketItemDetails(); deleteMarketItem('${safeId}')">Удалить</button>`
       : "";
+    const status = String(item.status || "").trim().toLowerCase();
+    const canResume = status !== "sold" && isOwnerArchivedItem(item);
+    const renewBtn = canManage
+      ? `<button class="small-btn green" type="button" onclick="applyMarketOwnerAction('${safeId}', 'renew')">${canResume ? "Возобновить продажу" : "Продлить на 30 дней"}</button>`
+      : "";
+    const soldBtn = canManage
+      ? `<button class="small-btn gray" type="button" onclick="applyMarketOwnerAction('${safeId}', 'sold')">Продано</button>`
+      : "";
+    const archiveBtn = canManage
+      ? `<button class="small-btn gray" type="button" onclick="applyMarketOwnerAction('${safeId}', 'archive')">Убрать в архив</button>`
+      : "";
 
     return `
       <button class="market-details-backdrop" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть карточку товара"></button>
@@ -1385,6 +1407,9 @@
           <div class="market-details-actions">
             ${contactBlock}
             ${editBtn}
+            ${renewBtn}
+            ${soldBtn}
+            ${archiveBtn}
             ${deleteBtn}
           </div>
         </div>
@@ -1393,9 +1418,7 @@
   }
 
   function openMarketItemDetails(id) {
-    const item = marketItems.find(function (x) {
-      return String(x.id) === String(id);
-    });
+    const item = getMarketItemById(id);
 
     if (!item) return;
 
@@ -1526,9 +1549,7 @@
   async function editMarketItem(id) {
     await refreshMarketUser();
 
-    const item = marketItems.find(function (x) {
-      return String(x.id) === String(id);
-    });
+    const item = getMarketItemById(id);
 
     if (!item) return;
 
@@ -1626,6 +1647,102 @@
     }
   }
 
+  async function applyMarketOwnerAction(id, action) {
+    refreshMarketDbBinding();
+    const safeUser = await ensureMarketUserForWrite();
+
+    if (!safeUser) {
+      showMarketMessage("Не удалось проверить авторизацию. Попробуй снова.", true);
+      alert("Не удалось проверить авторизацию. Войди в аккаунт и попробуй снова.");
+      return;
+    }
+
+    const item = getMarketItemById(id);
+
+    if (!item || String(item.owner_id || "") !== String(safeUser.id || "")) {
+      showMarketMessage("Управлять товаром может только владелец.", true);
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const renewed = new Date();
+    renewed.setDate(renewed.getDate() + 30);
+
+    let payload = null;
+    let successMessage = "";
+
+    if (action === "renew") {
+      payload = {
+        status: "active",
+        expires_at: renewed.toISOString(),
+        archived_at: null,
+        sold_at: null
+      };
+      successMessage = isOwnerArchivedItem(item) ? "Продажа возобновлена на 30 дней." : "Объявление продлено на 30 дней.";
+    } else if (action === "sold") {
+      payload = {
+        status: "sold",
+        sold_at: nowIso
+      };
+      successMessage = "Объявление отмечено как проданное.";
+    } else if (action === "archive") {
+      payload = {
+        status: "archived",
+        archived_at: nowIso
+      };
+      successMessage = "Объявление отправлено в архив.";
+    } else {
+      showMarketMessage("Неизвестное действие.", true);
+      return;
+    }
+
+    let result;
+    try {
+      result = await updateMarketItemViaRest(id, safeUser.id, payload);
+    } catch (error) {
+      const msg = String(error?.message || "");
+      if (msg.includes("MARKET_AUTH_REQUIRED")) {
+        showMarketMessage("Сессия устарела. Войди снова и повтори действие.", true);
+        return;
+      }
+      if (msg.includes("MARKET_TIMEOUT:market_items_update_rest")) {
+        showMarketMessage("Операция заняла слишком много времени. Попробуй ещё раз.", true);
+        return;
+      }
+      console.error("Klevby барахолка: owner action не выполнено:", error);
+      showMarketMessage("Не удалось выполнить действие. Попробуй ещё раз.", true);
+      return;
+    }
+
+    if (result.error) {
+      console.error(result.error);
+      showMarketMessage("Не удалось выполнить действие. Проверь таблицу market_items и RLS.", true);
+      return;
+    }
+
+    showMarketMessage(successMessage);
+
+    try {
+      await loadMarketItems({ force: true });
+      if (action === "renew") {
+        marketViewMode = "mine";
+        marketOwnerTab = "active";
+      } else if (action === "archive") {
+        marketViewMode = "mine";
+        marketOwnerTab = "archive";
+      } else if (action === "sold") {
+        marketViewMode = "mine";
+        marketOwnerTab = "sold";
+      }
+      updateMarketViewControls();
+      renderMarketItems();
+      closeMarketItemDetails();
+    } catch (error) {
+      console.warn("Klevby барахолка: пост-обновление после owner action завершилось с ошибкой:", error);
+      showMarketStatus("Операция выполнена. Обновление списка можно повторить вручную.", true);
+    }
+  }
+
   async function initMarket() {
     try {
       injectMarketStyles();
@@ -1647,6 +1764,7 @@
       window.editMarketItem = editMarketItem;
       window.cancelMarketEdit = cancelMarketEdit;
       window.deleteMarketItem = deleteMarketItem;
+      window.applyMarketOwnerAction = applyMarketOwnerAction;
       window.toggleMarketForm = toggleMarketForm;
       window.toggleMarketFilters = toggleMarketFilters;
       window.openMarketItemDetails = openMarketItemDetails;
