@@ -599,6 +599,18 @@
             <input id="marketViberInput" placeholder="Viber: номер" />
             <input id="marketImageInput" placeholder="Ссылка на фото товара, можно оставить пустым" />
           </div>
+          <div class="form-row market-upload-row">
+            <label class="small-btn gray market-file-label" for="marketPhotoFileInput">Выбрать фото</label>
+            <input id="marketPhotoFileInput" class="market-file-input" type="file" accept="image/*" />
+            <div class="market-file-meta">
+              <div id="marketPhotoSelectedStatus" class="market-file-status">Фото не выбрано</div>
+              <span id="marketPhotoFileName" class="market-file-name">Файл не выбран</span>
+            </div>
+            <button id="marketPhotoClearBtn" class="small-btn gray market-file-clear-btn hidden" type="button">Очистить фото</button>
+          </div>
+          <div id="marketPhotoPreviewWrap" class="market-photo-preview hidden">
+            <img id="marketPhotoPreviewImage" alt="Предпросмотр фото товара" />
+          </div>
 
           <div class="actions">
             <button class="small-btn green" type="button" onclick="saveMarketItem()">Сохранить</button>
@@ -1491,10 +1503,58 @@
     const contactWhatsapp = typeof marketContacts.normalizeMarketWhatsapp === "function" ? marketContacts.normalizeMarketWhatsapp(whatsappRaw) : String(whatsappRaw || "").trim();
     const contactViber = typeof marketContacts.normalizeMarketViber === "function" ? marketContacts.normalizeMarketViber(viberRaw) : String(viberRaw || "").trim();
     const imageUrl = document.getElementById("marketImageInput").value.trim();
+    const photoFileInput = document.getElementById("marketPhotoFileInput");
+    const selectedPhotoFile = photoFileInput?.files?.[0] || null;
 
     if (!title || !price || !city || !description) {
       showMarketMessage("Заполни название, цену, город и описание.", true);
       return;
+    }
+
+    let resolvedImageUrl = imageUrl;
+    if (selectedPhotoFile) {
+      const uploader = window.KlevbyMarket || {};
+      if (typeof uploader.uploadMarketPhotoFile !== "function") {
+        showMarketMessage("Не удалось подготовить загрузку фото. Обнови страницу и попробуй снова.", true);
+        return;
+      }
+      const accessToken = await getMarketAccessToken();
+      if (!accessToken) {
+        showMarketMessage("Нужен вход в аккаунт для загрузки фото.", true);
+        return;
+      }
+
+      showMarketMessage("Загружаем фото…");
+
+      try {
+        const uploadResult = await uploader.uploadMarketPhotoFile({
+          userId: safeUser.id,
+          file: selectedPhotoFile,
+          accessToken
+        });
+        resolvedImageUrl = String(uploadResult?.publicUrl || "").trim();
+      } catch (error) {
+        const msg = String(error?.message || "");
+        if (msg.includes("MARKET_UPLOAD_AUTH_REQUIRED")) {
+          showMarketMessage("Нужен вход в аккаунт для загрузки фото.", true);
+          return;
+        }
+        if (msg.includes("MARKET_UPLOAD_TYPE_INVALID")) {
+          showMarketMessage("Поддерживаются только JPEG, PNG или WEBP.", true);
+          return;
+        }
+        if (msg.includes("MARKET_UPLOAD_TOO_LARGE")) {
+          showMarketMessage("Фото должно быть не больше 5 МБ.", true);
+          return;
+        }
+        if (msg.includes("MARKET_IMAGE_PROCESS_FAILED")) {
+          showMarketMessage("Не удалось обработать это фото. Попробуй выбрать другое фото.", true);
+          return;
+        }
+        console.error("Klevby барахолка: загрузка фото не удалась:", error);
+        showMarketMessage("Не удалось загрузить фото. Попробуй другой файл или повтори позже.", true);
+        return;
+      }
     }
 
     const payload = {
@@ -1510,7 +1570,7 @@
       contact_phone: contactPhone,
       contact_whatsapp: contactWhatsapp,
       contact_viber: contactViber,
-      image_url: imageUrl,
+      image_url: resolvedImageUrl,
       owner_id: safeUser.id
     };
 
@@ -1618,6 +1678,72 @@
     document.getElementById("marketWhatsAppInput").value = "";
     document.getElementById("marketViberInput").value = "";
     document.getElementById("marketImageInput").value = "";
+    clearSelectedMarketPhoto();
+  }
+
+  function clearSelectedMarketPhoto() {
+    const fileInput = document.getElementById("marketPhotoFileInput");
+    const fileName = document.getElementById("marketPhotoFileName");
+    const fileStatus = document.getElementById("marketPhotoSelectedStatus");
+    const previewWrap = document.getElementById("marketPhotoPreviewWrap");
+    const previewImage = document.getElementById("marketPhotoPreviewImage");
+    const clearBtn = document.getElementById("marketPhotoClearBtn");
+
+    if (fileInput) fileInput.value = "";
+    if (fileName) fileName.textContent = "Файл не выбран";
+    if (fileStatus) fileStatus.textContent = "Фото не выбрано";
+    if (previewImage) previewImage.removeAttribute("src");
+    if (previewWrap) previewWrap.classList.add("hidden");
+    if (clearBtn) clearBtn.classList.add("hidden");
+  }
+
+  function showMarketPhotoPreview(file) {
+    const fileName = document.getElementById("marketPhotoFileName");
+    const fileStatus = document.getElementById("marketPhotoSelectedStatus");
+    const previewWrap = document.getElementById("marketPhotoPreviewWrap");
+    const previewImage = document.getElementById("marketPhotoPreviewImage");
+    const clearBtn = document.getElementById("marketPhotoClearBtn");
+    if (!file || !previewImage || !previewWrap) {
+      clearSelectedMarketPhoto();
+      return;
+    }
+
+    if (fileName) fileName.textContent = file.name || "Файл выбран";
+    if (fileStatus) fileStatus.textContent = "Фото выбрано";
+    if (clearBtn) clearBtn.classList.remove("hidden");
+
+    const reader = new FileReader();
+    reader.onerror = function () {
+      previewWrap.classList.add("hidden");
+      previewImage.removeAttribute("src");
+    };
+    reader.onload = function () {
+      previewImage.src = String(reader.result || "");
+      previewWrap.classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function bindMarketPhotoInput() {
+    const fileInput = document.getElementById("marketPhotoFileInput");
+    const fileName = document.getElementById("marketPhotoFileName");
+    const fileStatus = document.getElementById("marketPhotoSelectedStatus");
+    const clearBtn = document.getElementById("marketPhotoClearBtn");
+    if (!fileInput || !fileName || !fileStatus || !clearBtn || fileInput.dataset.marketBound === "1") return;
+
+    fileInput.dataset.marketBound = "1";
+    fileInput.addEventListener("change", function () {
+      const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+      if (!file) {
+        clearSelectedMarketPhoto();
+        return;
+      }
+      showMarketPhotoPreview(file);
+    });
+
+    clearBtn.addEventListener("click", function () {
+      clearSelectedMarketPhoto();
+    });
   }
 
   async function deleteMarketItem(id) {
@@ -1766,6 +1892,7 @@
     try {
       injectMarketStyles();
       renderMarketBase();
+      bindMarketPhotoInput();
 
       refreshMarketDbBinding();
 
