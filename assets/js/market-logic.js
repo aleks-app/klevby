@@ -597,7 +597,7 @@
           <textarea id="marketDescriptionInput" placeholder="Описание: состояние, комплект, причина продажи"></textarea>
           <input id="marketContactInput" placeholder="Telegram продавца: @username или ссылка" />
           <div class="form-row">
-            <input id="marketPhoneInput" placeholder="Телефон: +375..." />
+            <input id="marketPhoneInput" placeholder="Телефон: +375..." inputmode="tel" autocomplete="tel" />
             <input id="marketWhatsAppInput" placeholder="WhatsApp: номер или ссылка" />
           </div>
           <div class="form-row">
@@ -1815,6 +1815,19 @@
     });
   }
 
+  function bindMarketPhoneInput() {
+    const phoneInput = document.getElementById("marketPhoneInput");
+    if (!phoneInput || phoneInput.dataset.marketBound === "1") return;
+
+    phoneInput.dataset.marketBound = "1";
+    phoneInput.addEventListener("focus", function () {
+      if (phoneInput.value !== "") return;
+      phoneInput.value = "+375 ";
+      const cursorPos = phoneInput.value.length;
+      phoneInput.setSelectionRange(cursorPos, cursorPos);
+    });
+  }
+
   async function deleteMarketItem(id) {
     refreshMarketDbBinding();
     const safeUser = await ensureMarketUserForWrite();
@@ -1961,6 +1974,7 @@
     try {
       injectMarketStyles();
       renderMarketBase();
+      bindMarketPhoneInput();
       bindMarketPhotoInput();
 
       refreshMarketDbBinding();
