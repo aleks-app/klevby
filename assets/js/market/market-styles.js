@@ -122,6 +122,11 @@
         object-fit: cover;
         display: block;
       }
+      #marketSaveBtn.is-saving,
+      #marketSaveBtn:disabled {
+        opacity: 0.72;
+        cursor: not-allowed;
+      }
 
       .market-list-panel {
         width: 100%;

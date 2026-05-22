@@ -22,6 +22,7 @@
   let marketPreparedPhotoPreviewUrl = "";
   let marketPhotoInvalid = false;
   let marketSelectedPhotoFile = null;
+  let marketSaveInProgress = false;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -619,7 +620,7 @@
           </div>
 
           <div class="actions">
-            <button class="small-btn green" type="button" onclick="saveMarketItem()">Сохранить</button>
+            <button id="marketSaveBtn" class="small-btn green" type="button" onclick="saveMarketItem()">Сохранить</button>
             <button id="marketCancelEditBtn" class="small-btn gray hidden" type="button" onclick="cancelMarketEdit()">Отмена</button>
           </div>
 
@@ -1481,18 +1482,33 @@
     document.removeEventListener("keydown", handleMarketDetailsEscape);
   }
 
+  function setMarketSaveButtonState(isSaving) {
+    const saveBtn = document.getElementById("marketSaveBtn");
+    if (!saveBtn) return;
+    const nextSaving = Boolean(isSaving);
+    saveBtn.disabled = nextSaving;
+    saveBtn.classList.toggle("is-saving", nextSaving);
+    saveBtn.textContent = nextSaving ? "Сохраняем…" : "Сохранить";
+    saveBtn.setAttribute("aria-busy", nextSaving ? "true" : "false");
+  }
+
   async function saveMarketItem() {
-    refreshMarketDbBinding();
-    const safeUser = await ensureMarketUserForWrite();
+    if (marketSaveInProgress) return;
+    marketSaveInProgress = true;
+    setMarketSaveButtonState(true);
 
-    if (!safeUser) {
-      if (typeof showSection === "function") showSection("auth");
-      showMarketMessage("Не удалось проверить авторизацию. Открой раздел входа и попробуй снова.", true);
-      alert("Не удалось проверить авторизацию. Войди в аккаунт и попробуй снова.");
-      return;
-    }
+    try {
+      refreshMarketDbBinding();
+      const safeUser = await ensureMarketUserForWrite();
 
-    const title = document.getElementById("marketTitleInput").value.trim();
+      if (!safeUser) {
+        if (typeof showSection === "function") showSection("auth");
+        showMarketMessage("Не удалось проверить авторизацию. Открой раздел входа и попробуй снова.", true);
+        alert("Не удалось проверить авторизацию. Войди в аккаунт и попробуй снова.");
+        return;
+      }
+
+      const title = document.getElementById("marketTitleInput").value.trim();
     const price = document.getElementById("marketPriceInput").value.trim();
     const city = document.getElementById("marketCityInput").value.trim();
     const category = document.getElementById("marketCategoryInput").value.trim();
@@ -1621,21 +1637,25 @@
       return;
     }
 
-    const wasEditing = Boolean(editingMarketId);
+      const wasEditing = Boolean(editingMarketId);
 
-    clearMarketForm();
-    editingMarketId = null;
-    document.getElementById("marketFormTitle").textContent = "Добавить товар";
-    document.getElementById("marketCancelEditBtn").classList.add("hidden");
+      clearMarketForm();
+      editingMarketId = null;
+      document.getElementById("marketFormTitle").textContent = "Добавить товар";
+      document.getElementById("marketCancelEditBtn").classList.add("hidden");
 
-    showMarketMessage(wasEditing ? "Товар обновлён." : "Товар добавлен.");
-    setMarketFormOpen(false);
+      showMarketMessage(wasEditing ? "Товар обновлён." : "Товар добавлен.");
+      setMarketFormOpen(false);
 
-    try {
-      await loadMarketItems({ force: true });
-    } catch (error) {
-      console.warn("Klevby барахолка: пост-обновление после сохранения завершилось с ошибкой:", error);
-      showMarketStatus("Товар сохранён. Обновление списка можно повторить вручную.", true);
+      try {
+        await loadMarketItems({ force: true });
+      } catch (error) {
+        console.warn("Klevby барахолка: пост-обновление после сохранения завершилось с ошибкой:", error);
+        showMarketStatus("Товар сохранён. Обновление списка можно повторить вручную.", true);
+      }
+    } finally {
+      marketSaveInProgress = false;
+      setMarketSaveButtonState(false);
     }
   }
 

@@ -119,8 +119,9 @@
     if (!accessToken) throw new Error("MARKET_UPLOAD_AUTH_REQUIRED");
 
     if (!String(file.type || "").toLowerCase().startsWith("image/")) throw new Error("MARKET_UPLOAD_TYPE_INVALID");
-    if ((Number(file.size) || 0) > MARKET_MAX_FILE_SIZE) throw new Error("MARKET_UPLOAD_TOO_LARGE");
     const preparedFile = params?.preparedFile || (await prepareMarketPhotoFile(file)).file;
+    if (!MARKET_ALLOWED_UPLOAD_TYPES.includes(preparedFile.type)) throw new Error("MARKET_UPLOAD_TYPE_INVALID");
+    if ((Number(preparedFile.size) || 0) > MARKET_MAX_FILE_SIZE) throw new Error("MARKET_UPLOAD_TOO_LARGE");
 
     const restConfig = getRestConfig();
     if (!restConfig) throw new Error("MARKET_UPLOAD_CONFIG_MISSING");
