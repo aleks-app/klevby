@@ -1,77 +1,21 @@
-const CACHE_NAME = "klevby-cache-v10-fast-refresh-2026-05-07";
+const CACHE_NAME = "klevby-cache-v12-min-shell-precache-2026-05-22";
 
+// Minimal app shell for faster cold start.
 const APP_FILES = [
   "/",
   "/index.html",
 
   "/assets/css/main.css",
-  "/assets/css/ponds.css",
-  "/assets/css/chat-style.css",
-
-  "/assets/css/base/global.css",
-
-  "/assets/css/layout/header.css",
-  "/assets/css/layout/bottom-nav.css",
-
-  "/assets/css/components/buttons-forms.css",
-  "/assets/css/components/feed-cards.css",
-  "/assets/css/components/modals-install.css",
-
-  "/assets/css/screens/home.css",
-  "/assets/css/screens/secondary.css",
-  "/assets/css/screens/profile.css",
-
-  "/assets/css/responsive/mobile.css",
 
   "/assets/js/config.js",
   "/assets/js/pwa-manifest.js",
   "/assets/js/pwa.js",
-  "/assets/js/weather.js",
   "/assets/js/auth.js",
   "/assets/js/posts.js",
   "/assets/js/ui.js",
   "/assets/js/app.js",
 
-  "/assets/js/feed/feed-state.js",
-  "/assets/js/feed/feed-utils.js",
-  "/assets/js/feed/feed-api.js",
-  "/assets/js/feed/feed-render.js",
-  "/assets/js/feed/feed-modals.js",
-  "/assets/js/feed/feed-actions.js",
-  "/assets/js/feed/feed-events.js",
-  "/assets/js/feed/feed-main.js",
-  "/assets/js/feed.js",
-  "/assets/js/feed-supabase.js",
-  "/assets/js/profile.js",
-
-  "/assets/js/chat-shell.js",
-  "/assets/js/chat-state.js",
-  "/assets/js/chat-push.js",
-  "/assets/js/chat-viewport.js",
-  "/assets/js/chat-realtime.js",
-  "/assets/js/chat-user.js",
-  "/assets/js/chat-render.js",
-  "/assets/js/chat-public.js",
-  "/assets/js/chat-private.js",
-  "/assets/js/chat-reply.js",
-  "/assets/js/chat-message-actions.js",
-  "/assets/js/chat-lifecycle.js",
-  "/assets/js/chat-auth-events.js",
-  "/assets/js/chat-events.js",
-  "/assets/js/chat.js",
-
-  "/assets/js/call-styles.js",
-  "/assets/js/call-audio.js",
-  "/assets/js/call-ui.js",
-  "/assets/js/call.js",
-
-  "/assets/js/map-logic.js",
-  "/assets/js/market-logic.js",
-  "/assets/js/ponds.js",
-
-  "/assets/img/klevby-icon-512.png",
-  "/assets/img/narach-bg.webp",
-  "/assets/img/gold-lake-bg.webp"
+  "/assets/img/klevby-icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
