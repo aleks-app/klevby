@@ -548,7 +548,11 @@ function showSection(section) {
   if (safeSection === "trips") {
     setMobileTabVisual(0);
 
-    if (typeof window.renderPosts === "function") {
+    if (typeof window.loadPosts === "function") {
+      window.loadPosts({ force: true }).catch((error) => {
+        console.warn("Klevby trips: не удалось загрузить объявления при открытии раздела:", error);
+      });
+    } else if (typeof window.renderPosts === "function") {
       window.renderPosts();
     }
   }

@@ -65,6 +65,16 @@
     );
   }
 
+  function hasPostsInitialLoadDone() {
+    const state = getState();
+
+    if (typeof state.hasPostsInitialLoadDone === "function") {
+      return state.hasPostsInitialLoadDone();
+    }
+
+    return false;
+  }
+
   function showStatusSafe(message, isError = false) {
     const utils = getUtils();
 
@@ -877,7 +887,7 @@
     const mode = getCurrentViewMode();
     const todayIso = getTodayLocalIso();
 
-    if (!allPosts.length && hasActivePostsLoad()) {
+    if (!allPosts.length && (!hasPostsInitialLoadDone() || hasActivePostsLoad())) {
       showStatusSafe("Загрузка объявлений...");
 
       updateMobileFilterSummary({
