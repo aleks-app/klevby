@@ -30,7 +30,7 @@
 
   function formatBelarusPhone(rawDigits) {
     const digits = String(rawDigits || "").replace(/\D/g, "").slice(0, 9);
-    if (!digits) return "";
+    if (digits.length !== 9) return "";
 
     const operator = digits.slice(0, 2);
     const part1 = digits.slice(2, 5);
@@ -54,10 +54,10 @@
     const digits = raw.replace(/\D/g, "");
     if (!digits) return "";
 
-    const localDigits = digits.startsWith("375") ? digits.slice(3) : digits;
-    const formatted = formatBelarusPhone(localDigits);
+    const localDigits = (digits.startsWith("375") ? digits.slice(3) : digits).slice(0, 9);
+    if (localDigits.length !== 9) return "";
 
-    return formatted === "+375" ? "" : formatted;
+    return formatBelarusPhone(localDigits);
   }
 
   function normalizeMessengerNumber(value) {

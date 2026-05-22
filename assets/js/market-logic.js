@@ -1831,7 +1831,7 @@
 
     function formatBelarusPhoneInput(localDigits) {
       const digits = String(localDigits || "").replace(/\D/g, "").slice(0, 9);
-      if (!digits) return "+375 ";
+      if (!digits) return "";
 
       const operator = digits.slice(0, 2);
       const part1 = digits.slice(2, 5);
@@ -1865,13 +1865,9 @@
       placeCursorAtEnd();
     });
 
-    phoneInput.addEventListener("click", function () {
-      if (phoneInput.value.startsWith("+375")) placeCursorAtEnd();
-    });
-
     phoneInput.addEventListener("blur", function () {
       const localDigits = extractBelarusLocalDigits(phoneInput.value);
-      if (!localDigits) {
+      if (localDigits.length !== 9) {
         phoneInput.value = "";
         return;
       }
