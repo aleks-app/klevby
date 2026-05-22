@@ -231,28 +231,30 @@
         position: relative;
         width: 100%;
         height: 100%;
-        background: linear-gradient(180deg, rgba(30,40,35,0.82), rgba(16,22,19,0.9));
+        background: linear-gradient(180deg, rgba(76,88,82,0.36), rgba(52,64,59,0.42));
       }
 
       .market-photo-skeleton {
         position: absolute;
         inset: 0;
+        z-index: 1;
         background:
-          linear-gradient(110deg, rgba(255,255,255,0.03) 24%, rgba(255,255,255,0.16) 42%, rgba(255,255,255,0.03) 62%),
-          linear-gradient(180deg, rgba(34,44,38,0.9), rgba(21,29,25,0.96));
+          linear-gradient(110deg, rgba(255,255,255,0.08) 24%, rgba(255,255,255,0.26) 42%, rgba(255,255,255,0.08) 62%),
+          linear-gradient(180deg, rgba(116,128,121,0.38), rgba(80,92,86,0.44));
         background-size: 220% 100%, 100% 100%;
         animation: marketPhotoPulse 1.4s ease-in-out infinite;
         transition: opacity 0.24s ease;
+        pointer-events: none;
       }
 
       .market-photo {
         position: relative;
-        z-index: 1;
+        z-index: 2;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        opacity: 0;
-        transition: opacity 0.28s ease;
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
       }
 
       .market-photo.is-loaded {
