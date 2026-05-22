@@ -634,7 +634,7 @@
         <div class="market-list-panel">
           <div class="market-view-switch" role="tablist" aria-label="Режим барахолки">
             <button id="marketViewAllBtn" class="small-btn market-view-btn is-active" type="button" onclick="switchMarketView('all')">Все объявления</button>
-            <button id="marketViewMineBtn" class="small-btn market-view-btn" type="button" onclick="switchMarketView('mine')">Мои объявления</button>
+            <button id="marketViewMineBtn" class="small-btn market-view-btn" type="button" onclick="switchMarketView('mine')"><span class="market-view-mine-long">Мои объявления</span><span class="market-view-mine-short">Мои</span></button>
           </div>
           <div id="marketOwnerTabs" class="market-owner-tabs hidden" role="tablist" aria-label="Мои объявления">
             <button id="marketOwnerTabActiveBtn" class="small-btn market-owner-tab-btn is-active" type="button" onclick="switchMarketOwnerTab('active')">Активные</button>
