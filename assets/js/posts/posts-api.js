@@ -91,6 +91,20 @@
     }
   }
 
+  function setPostsInitialLoadStarted(value) {
+    const state = getState();
+    if (typeof state.setPostsInitialLoadStarted === "function") {
+      state.setPostsInitialLoadStarted(value);
+    }
+  }
+
+  function setPostsInitialLoadDone(value) {
+    const state = getState();
+    if (typeof state.setPostsInitialLoadDone === "function") {
+      state.setPostsInitialLoadDone(value);
+    }
+  }
+
   function isAuthLockError(error) {
     const utils = getUtils();
 
@@ -524,6 +538,8 @@
     setPostsPendingForceReload(false);
 
     const nextPostsLoadPromise = (async function () {
+      setPostsInitialLoadStarted(true);
+      setPostsInitialLoadDone(false);
       showStatusSafe("Загрузка объявлений...");
 
       if (postsSection && !existingPosts.length) {
@@ -545,6 +561,7 @@
         }
 
         schedulePostsLoad(900);
+        setPostsInitialLoadDone(true);
         return;
       }
 
@@ -566,6 +583,7 @@
           }
 
           schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+          setPostsInitialLoadDone(true);
           return;
         }
 
@@ -573,6 +591,7 @@
           console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", error);
           showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
           schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+          setPostsInitialLoadDone(true);
           return;
         }
 
@@ -591,7 +610,7 @@
             </div>
           `;
         }
-
+        setPostsInitialLoadDone(true);
         return;
       }
 
@@ -600,6 +619,7 @@
           console.warn("Klevby posts: Supabase Auth занят, повторяем загрузку:", result.error);
           showStatusSafe("Supabase занят, повторяем загрузку объявлений...");
           schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+          setPostsInitialLoadDone(true);
           return;
         }
 
@@ -618,7 +638,7 @@
             </div>
           `;
         }
-
+        setPostsInitialLoadDone(true);
         return;
       }
 
@@ -630,6 +650,7 @@
       });
 
       setPostsArray(loadedPosts);
+      setPostsInitialLoadDone(true);
 
       if (typeof window.renderPosts === "function") {
         window.renderPosts();

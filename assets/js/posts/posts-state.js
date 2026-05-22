@@ -2,6 +2,8 @@
   let postsLoadPromise = null;
   let postsLoadRetryTimer = null;
   let postsPendingForceReload = false;
+  let postsInitialLoadStarted = false;
+  let postsInitialLoadDone = false;
 
   function getOwnerId() {
     const user =
@@ -149,6 +151,22 @@
     postsPendingForceReload = Boolean(value);
   }
 
+  function hasPostsInitialLoadStarted() {
+    return Boolean(postsInitialLoadStarted);
+  }
+
+  function setPostsInitialLoadStarted(value) {
+    postsInitialLoadStarted = Boolean(value);
+  }
+
+  function hasPostsInitialLoadDone() {
+    return Boolean(postsInitialLoadDone);
+  }
+
+  function setPostsInitialLoadDone(value) {
+    postsInitialLoadDone = Boolean(value);
+  }
+
   window.KlevbyPostsState = {
     getOwnerId,
     getCurrentUserSafe,
@@ -168,7 +186,11 @@
     getPostsLoadRetryTimer,
     setPostsLoadRetryTimer,
     getPostsPendingForceReload,
-    setPostsPendingForceReload
+    setPostsPendingForceReload,
+    hasPostsInitialLoadStarted,
+    setPostsInitialLoadStarted,
+    hasPostsInitialLoadDone,
+    setPostsInitialLoadDone
   };
 
   window.getOwnerId = getOwnerId;
