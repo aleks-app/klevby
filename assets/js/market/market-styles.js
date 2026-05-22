@@ -63,6 +63,65 @@
         line-height: 1.45;
         font-weight: 500;
       }
+      .market-upload-row {
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .market-file-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 120px;
+        flex: 1;
+      }
+      .market-file-status {
+        color: #d6fff2;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .market-file-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .market-file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .market-file-name {
+        color: rgba(244,251,247,0.72);
+        font-size: 12px;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .market-file-clear-btn {
+        min-height: 34px;
+        padding: 7px 10px;
+      }
+      .market-photo-preview {
+        margin-top: 6px;
+        width: 96px;
+        height: 96px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.04);
+      }
+      .market-photo-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
 
       .market-list-panel {
         width: 100%;
