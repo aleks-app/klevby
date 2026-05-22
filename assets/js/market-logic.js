@@ -24,6 +24,7 @@
   let marketPhotoInvalid = false;
   let marketSelectedPhotoFile = null;
   let marketSaveInProgress = false;
+  let marketOwnerActionsExpanded = false;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -1451,7 +1452,7 @@
       : "";
     const canResume = !isSold && isOwnerArchivedItem(item);
     const renewBtn = canManage && !isSold
-      ? `<button class="small-btn green" type="button" onclick="applyMarketOwnerAction('${safeId}', 'renew')">${canResume ? "Возобновить продажу" : "Продлить на 30 дней"}</button>`
+      ? `<button class="small-btn green" type="button" onclick="applyMarketOwnerAction('${safeId}', 'renew')">${canResume ? "Возобновить" : "Продлить"}</button>`
       : "";
     const soldBtn = canManage && !isSold
       ? `<button class="small-btn gray" type="button" onclick="applyMarketOwnerAction('${safeId}', 'sold')">Продано</button>`
@@ -1460,8 +1461,24 @@
       ? `<button class="small-btn yellow" type="button" onclick="closeMarketItemDetails(); editMarketItem('${safeId}')">Редактировать</button>`
       : "";
     const archiveBtn = canManage && !isSold && !canResume
-      ? `<button class="small-btn gray" type="button" onclick="applyMarketOwnerAction('${safeId}', 'archive')">Убрать в архив</button>`
+      ? `<button class="small-btn gray" type="button" onclick="applyMarketOwnerAction('${safeId}', 'archive')">В архив</button>`
       : "";
+    const ownerMoreActions = [renewBtn, soldBtn, archiveBtn, deleteBtn].filter(Boolean).join('');
+    const ownerActionBlock = canManage
+      ? `
+        <div class="market-owner-actions">
+          <div class="market-owner-actions-top">
+            ${contactBlock}
+            ${editBtn}
+          </div>
+          ${ownerMoreActions
+            ? `<button class="small-btn market-owner-more-toggle" type="button" onclick="toggleMarketOwnerActions()" aria-expanded="${marketOwnerActionsExpanded ? "true" : "false"}">Ещё</button>
+            <div class="market-owner-actions-more ${marketOwnerActionsExpanded ? "" : "hidden"}">
+              ${ownerMoreActions}
+            </div>`
+            : ""}
+        </div>`
+      : contactBlock;
 
     return `
       <button class="market-details-backdrop" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть карточку товара"></button>
@@ -1493,16 +1510,23 @@
           <p class="market-details-description">${escapeHtml(item.description || "Описание не указано")}</p>
 
           <div class="market-details-actions">
-            ${contactBlock}
-            ${editBtn}
-            ${renewBtn}
-            ${soldBtn}
-            ${archiveBtn}
-            ${deleteBtn}
+            ${ownerActionBlock}
           </div>
         </div>
       </section>
     `;
+  }
+
+
+  function toggleMarketOwnerActions() {
+    const overlay = document.getElementById("marketDetailsOverlay");
+    if (!overlay || !marketOpenDetailsItemId) return;
+
+    marketOwnerActionsExpanded = !marketOwnerActionsExpanded;
+    const item = getMarketItemById(marketOpenDetailsItemId);
+    if (!item) return;
+
+    overlay.innerHTML = marketDetailsHtml(item);
   }
 
   function openMarketItemDetails(id) {
@@ -1512,6 +1536,7 @@
 
     const overlay = ensureMarketDetailsOverlay();
 
+    marketOwnerActionsExpanded = false;
     overlay.innerHTML = marketDetailsHtml(item);
     overlay.classList.remove("hidden");
     marketOpenDetailsItemId = String(id);
@@ -2097,6 +2122,7 @@
       window.toggleMarketFilters = toggleMarketFilters;
       window.openMarketItemDetails = openMarketItemDetails;
       window.closeMarketItemDetails = closeMarketItemDetails;
+      window.toggleMarketOwnerActions = toggleMarketOwnerActions;
       window.handleMarketCardKeydown = handleMarketCardKeydown;
       window.applyMarketPendingNewItems = applyMarketPendingNewItems;
       window.switchMarketView = switchMarketView;

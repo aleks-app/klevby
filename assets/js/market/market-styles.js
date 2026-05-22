@@ -527,6 +527,35 @@
         border-radius: 16px;
       }
 
+      .market-owner-actions {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .market-owner-actions-top,
+      .market-owner-actions-more {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .market-owner-actions .small-btn {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+      }
+
+      .market-owner-more-toggle {
+        width: 100%;
+      }
+
+      .market-owner-actions-more.hidden {
+        display: none;
+      }
+
 
       .market-status-line {
         margin: 2px 0 10px;
