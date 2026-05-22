@@ -1325,6 +1325,37 @@
     openMarketItemDetails(id);
   }
 
+  function handleMarketImageLoad(event) {
+    const image = event && event.target ? event.target : null;
+    if (!image) return;
+    image.classList.add("is-loaded");
+    const frame = image.closest(".market-photo-frame");
+    if (frame) frame.classList.add("is-loaded");
+  }
+
+  function handleMarketImageError(event) {
+    const image = event && event.target ? event.target : null;
+    if (!image) return;
+    const frame = image.closest(".market-photo-frame");
+    if (frame) frame.classList.add("is-error");
+    image.removeAttribute("src");
+    image.classList.remove("is-loaded");
+  }
+
+  function marketPhotoHtml(image, options) {
+    const photoClass = options?.photoClass || "";
+    const frameClass = options?.frameClass || "";
+    const loading = options?.loading ? ` loading="${options.loading}"` : "";
+    const imageUrl = escapeHtml(image || "");
+
+    return `
+      <div class="market-photo-frame ${frameClass}">
+        <div class="market-photo-skeleton" aria-hidden="true"></div>
+        <img class="market-photo ${photoClass}" src="${imageUrl}" alt="Фото товара"${loading} decoding="async" onload="handleMarketImageLoad(event)" onerror="handleMarketImageError(event)" />
+      </div>
+    `;
+  }
+
   function marketCardHtml(item) {
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
@@ -1341,7 +1372,8 @@
 
     return `
       <article class="market-card" role="button" tabindex="0" onclick="openMarketItemDetails('${safeId}')" onkeydown="handleMarketCardKeydown(event, '${safeId}')">
-        <div class="market-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42)), url('${escapeHtml(image)}')">
+        <div class="market-img">
+          ${marketPhotoHtml(image, { loading: "lazy", frameClass: "market-card-photo-frame", photoClass: "market-card-photo" })}
           <span class="market-open-badge">Открыть</span>
         </div>
 
@@ -1421,7 +1453,9 @@
       <section class="market-details-panel" role="dialog" aria-modal="true" aria-label="Карточка товара">
         <button class="market-details-close" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть">×</button>
 
-        <div class="market-details-img" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.38)), url('${escapeHtml(image)}')"></div>
+        <div class="market-details-img">
+          ${marketPhotoHtml(image, { loading: "eager", frameClass: "market-details-photo-frame", photoClass: "market-details-photo" })}
+        </div>
 
         <div class="market-details-body">
           <p class="market-details-kicker">Барахолка снастей</p>
@@ -2036,6 +2070,8 @@
       };
 
       window.renderMarketItems = renderMarketItems;
+      window.handleMarketImageLoad = handleMarketImageLoad;
+      window.handleMarketImageError = handleMarketImageError;
       window.saveMarketItem = saveMarketItem;
       window.editMarketItem = editMarketItem;
       window.cancelMarketEdit = cancelMarketEdit;
