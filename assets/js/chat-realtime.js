@@ -10,6 +10,9 @@
   let presenceChannel = null;
   let presenceChannelKey = "";
   let presenceRecreatePromise = null;
+  let reconnectDebounceTimer = null;
+  let reconnectInFlightPromise = null;
+  const RECONNECT_DEBOUNCE_MS = 800;
 
   function getClient() {
     return ctx && typeof ctx.getSupabaseClient === "function"
@@ -95,6 +98,64 @@
     }
 
     return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  }
+
+  function hasMessageRow(messageType, messageId) {
+    const id = String(messageId || "").trim();
+    if (!id) return false;
+
+    const messagesContainer = getMessagesContainer();
+    if (!messagesContainer) return false;
+
+    return Boolean(
+      messagesContainer.querySelector(
+        `[data-message-id="${cssEscape(id)}"][data-message-type="${cssEscape(messageType)}"]`
+      )
+    );
+  }
+
+  function isTerminalRealtimeStatus(status) {
+    return (
+      status === "CHANNEL_ERROR" ||
+      status === "TIMED_OUT" ||
+      status === "CLOSED"
+    );
+  }
+
+  function scheduleReconnect(source) {
+    if (reconnectInFlightPromise) {
+      console.info("[KlevbyRealtime] reconnect skipped because already scheduled/running", {
+        source,
+        reason: "running"
+      });
+      return;
+    }
+
+    if (reconnectDebounceTimer) {
+      console.info("[KlevbyRealtime] reconnect skipped because already scheduled/running", {
+        source,
+        reason: "scheduled"
+      });
+      return;
+    }
+
+    console.info("[KlevbyRealtime] reconnect requested", { source });
+
+    reconnectDebounceTimer = setTimeout(() => {
+      reconnectDebounceTimer = null;
+
+      reconnectInFlightPromise = Promise.resolve()
+        .then(() => reconnectRealtimeConnections())
+        .then(() => {
+          console.info("[KlevbyRealtime] reconnect completed", { source });
+        })
+        .catch((error) => {
+          console.warn("[KlevbyRealtime] reconnect failed", { source, error });
+        })
+        .finally(() => {
+          reconnectInFlightPromise = null;
+        });
+    }, RECONNECT_DEBOUNCE_MS);
   }
 
   function getPresenceUserId() {
@@ -294,12 +355,9 @@
             trackPresence();
           }
 
-          if (
-            status === "CHANNEL_ERROR" ||
-            status === "TIMED_OUT" ||
-            status === "CLOSED"
-          ) {
+          if (isTerminalRealtimeStatus(status)) {
             await removePresenceChannel(`presence ${status}`);
+            scheduleReconnect(`presence:${status}`);
           }
         });
     } catch (error) {
@@ -338,6 +396,7 @@
               }
 
               await safeAsyncCall("loadProfilesByIds", [payload.new?.user_id]);
+              if (hasMessageRow("public", payload.new?.id)) return;
               safeCall("renderPublicMessage", payload.new);
             } catch (error) {
               console.warn("Realtime public message skipped:", error);
@@ -368,14 +427,11 @@
           userId: getPresenceUserId() || null
         });
 
-        if (
-          status === "CHANNEL_ERROR" ||
-          status === "TIMED_OUT" ||
-          status === "CLOSED"
-        ) {
+        if (isTerminalRealtimeStatus(status)) {
           if (publicSubscription === publicChannel) {
             publicSubscription = null;
           }
+          scheduleReconnect(`public:${status}`);
         }
       });
     }
@@ -479,14 +535,11 @@
           selectedPeerId: getSelectedPeer()?.id || null
         });
 
-        if (
-          status === "CHANNEL_ERROR" ||
-          status === "TIMED_OUT" ||
-          status === "CLOSED"
-        ) {
+        if (isTerminalRealtimeStatus(status)) {
           if (privateSubscription === privateChannel) {
             privateSubscription = null;
           }
+          scheduleReconnect(`private:${status}`);
         }
       });
     }
