@@ -9,7 +9,10 @@
     "test:e2e:debug": "playwright test --debug",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
-    "cap:ios": "cap open ios"
+    "cap:ios": "cap open ios",
+    "sync:www": "node scripts/sync-www.mjs",
+    "prepare:android": "npm run sync:www && npx cap sync android",
+    "prepare:ios": "npm run sync:www && npx cap sync ios"
   },
   "dependencies": {
     "@capacitor/core": "^7.4.2"
