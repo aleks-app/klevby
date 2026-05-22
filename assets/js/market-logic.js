@@ -16,6 +16,7 @@
   let marketHasPendingNewItems = false;
   let marketOpenDetailsItemId = null;
   let marketLastResumeRecoverAt = 0;
+  let marketLastSuccessfulLoadAt = 0;
   let marketViewMode = "all";
   let marketOwnerTab = "active";
   let marketPreparedPhotoFile = null;
@@ -30,6 +31,7 @@
   const MARKET_LOAD_TIMEOUT_MS = 9000;
   const MARKET_STALE_LOAD_MS = 12000;
   const MARKET_RESUME_RECOVER_THROTTLE_MS = 1500;
+  const MARKET_RESUME_RELOAD_COOLDOWN_MS = 90000;
 
   function getMainSupabaseClient() {
     return (
@@ -884,7 +886,12 @@
 
     await refreshMarketUser();
     subscribeMarketRealtime();
-    await loadMarketItems({ force: true });
+
+    const isLoaded = Array.isArray(marketItems) && marketItems.length > 0;
+    const isFresh = marketLastSuccessfulLoadAt > 0 && now - marketLastSuccessfulLoadAt < MARKET_RESUME_RELOAD_COOLDOWN_MS;
+    const shouldForceReload = !(isLoaded && isFresh);
+
+    await loadMarketItems({ force: shouldForceReload });
   }
 
   function applyMarketPendingNewItems() {
@@ -1151,6 +1158,7 @@
       }
 
       marketItems = result.data || [];
+      marketLastSuccessfulLoadAt = Date.now();
       if (marketViewMode === "mine") {
         await loadOwnerMarketItems();
       }
@@ -1229,7 +1237,9 @@
       return;
     }
 
-    grid.innerHTML = filtered.map(marketCardHtml).join("");
+    grid.innerHTML = filtered.map(function (item, index) {
+      return marketCardHtml(item, index);
+    }).join("");
   }
 
   function isOwnerArchivedItem(item) {
@@ -1346,17 +1356,18 @@
     const photoClass = options?.photoClass || "";
     const frameClass = options?.frameClass || "";
     const loading = options?.loading ? ` loading="${options.loading}"` : "";
+    const fetchPriority = options?.fetchPriority ? ` fetchpriority="${options.fetchPriority}"` : "";
     const imageUrl = escapeHtml(image || "");
 
     return `
       <div class="market-photo-frame ${frameClass}">
         <div class="market-photo-skeleton" aria-hidden="true"></div>
-        <img class="market-photo ${photoClass}" src="${imageUrl}" alt="Фото товара"${loading} decoding="async" onload="handleMarketImageLoad(event)" onerror="handleMarketImageError(event)" />
+        <img class="market-photo ${photoClass}" src="${imageUrl}" alt="Фото товара"${loading}${fetchPriority} decoding="async" onload="handleMarketImageLoad(event)" onerror="handleMarketImageError(event)" />
       </div>
     `;
   }
 
-  function marketCardHtml(item) {
+  function marketCardHtml(item, index) {
     const image = getMarketImage(item);
     const safeId = escapeHtml(item.id);
     const status = String(item.status || "").trim().toLowerCase();
@@ -1370,10 +1381,15 @@
       else ownerStatusBadge = "Активно";
     }
 
+    const cardIndex = Number(index) || 0;
+    const shouldEagerLoad = cardIndex < 4;
+    const loadingMode = shouldEagerLoad ? "eager" : "lazy";
+    const fetchPriority = shouldEagerLoad ? "high" : "auto";
+
     return `
       <article class="market-card" role="button" tabindex="0" onclick="openMarketItemDetails('${safeId}')" onkeydown="handleMarketCardKeydown(event, '${safeId}')">
         <div class="market-img">
-          ${marketPhotoHtml(image, { loading: "lazy", frameClass: "market-card-photo-frame", photoClass: "market-card-photo" })}
+          ${marketPhotoHtml(image, { loading: loadingMode, fetchPriority, frameClass: "market-card-photo-frame", photoClass: "market-card-photo" })}
           <span class="market-open-badge">Открыть</span>
         </div>
 
@@ -1454,7 +1470,7 @@
         <button class="market-details-close" type="button" onclick="closeMarketItemDetails()" aria-label="Закрыть">×</button>
 
         <div class="market-details-img">
-          ${marketPhotoHtml(image, { loading: "eager", frameClass: "market-details-photo-frame", photoClass: "market-details-photo" })}
+          ${marketPhotoHtml(image, { loading: "eager", fetchPriority: "high", frameClass: "market-details-photo-frame", photoClass: "market-details-photo" })}
         </div>
 
         <div class="market-details-body">
