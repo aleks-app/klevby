@@ -599,6 +599,11 @@
             <input id="marketViberInput" placeholder="Viber: номер" />
             <input id="marketImageInput" placeholder="Ссылка на фото товара, можно оставить пустым" />
           </div>
+          <div class="form-row market-upload-row">
+            <label class="small-btn gray market-file-label" for="marketPhotoFileInput">Выбрать фото</label>
+            <input id="marketPhotoFileInput" class="market-file-input" type="file" accept="image/jpeg,image/png,image/webp" />
+            <span id="marketPhotoFileName" class="market-file-name">Файл не выбран</span>
+          </div>
 
           <div class="actions">
             <button class="small-btn green" type="button" onclick="saveMarketItem()">Сохранить</button>
@@ -1491,10 +1496,54 @@
     const contactWhatsapp = typeof marketContacts.normalizeMarketWhatsapp === "function" ? marketContacts.normalizeMarketWhatsapp(whatsappRaw) : String(whatsappRaw || "").trim();
     const contactViber = typeof marketContacts.normalizeMarketViber === "function" ? marketContacts.normalizeMarketViber(viberRaw) : String(viberRaw || "").trim();
     const imageUrl = document.getElementById("marketImageInput").value.trim();
+    const photoFileInput = document.getElementById("marketPhotoFileInput");
+    const selectedPhotoFile = photoFileInput?.files?.[0] || null;
 
     if (!title || !price || !city || !description) {
       showMarketMessage("Заполни название, цену, город и описание.", true);
       return;
+    }
+
+    let resolvedImageUrl = imageUrl;
+    if (selectedPhotoFile) {
+      const uploader = window.KlevbyMarket || {};
+      if (typeof uploader.uploadMarketPhotoFile !== "function") {
+        showMarketMessage("Не удалось подготовить загрузку фото. Обнови страницу и попробуй снова.", true);
+        return;
+      }
+      const accessToken = await getMarketAccessToken();
+      if (!accessToken) {
+        showMarketMessage("Нужен вход в аккаунт для загрузки фото.", true);
+        return;
+      }
+
+      showMarketMessage("Загружаем фото…");
+
+      try {
+        const uploadResult = await uploader.uploadMarketPhotoFile({
+          userId: safeUser.id,
+          file: selectedPhotoFile,
+          accessToken
+        });
+        resolvedImageUrl = String(uploadResult?.publicUrl || "").trim();
+      } catch (error) {
+        const msg = String(error?.message || "");
+        if (msg.includes("MARKET_UPLOAD_AUTH_REQUIRED")) {
+          showMarketMessage("Нужен вход в аккаунт для загрузки фото.", true);
+          return;
+        }
+        if (msg.includes("MARKET_UPLOAD_TYPE_INVALID")) {
+          showMarketMessage("Поддерживаются только JPEG, PNG или WEBP.", true);
+          return;
+        }
+        if (msg.includes("MARKET_UPLOAD_TOO_LARGE")) {
+          showMarketMessage("Фото должно быть не больше 5 МБ.", true);
+          return;
+        }
+        console.error("Klevby барахолка: загрузка фото не удалась:", error);
+        showMarketMessage("Не удалось загрузить фото. Попробуй другой файл или повтори позже.", true);
+        return;
+      }
     }
 
     const payload = {
@@ -1510,7 +1559,7 @@
       contact_phone: contactPhone,
       contact_whatsapp: contactWhatsapp,
       contact_viber: contactViber,
-      image_url: imageUrl,
+      image_url: resolvedImageUrl,
       owner_id: safeUser.id
     };
 
@@ -1618,6 +1667,22 @@
     document.getElementById("marketWhatsAppInput").value = "";
     document.getElementById("marketViberInput").value = "";
     document.getElementById("marketImageInput").value = "";
+    const fileInput = document.getElementById("marketPhotoFileInput");
+    const fileName = document.getElementById("marketPhotoFileName");
+    if (fileInput) fileInput.value = "";
+    if (fileName) fileName.textContent = "Файл не выбран";
+  }
+
+  function bindMarketPhotoInput() {
+    const fileInput = document.getElementById("marketPhotoFileInput");
+    const fileName = document.getElementById("marketPhotoFileName");
+    if (!fileInput || !fileName || fileInput.dataset.marketBound === "1") return;
+
+    fileInput.dataset.marketBound = "1";
+    fileInput.addEventListener("change", function () {
+      const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+      fileName.textContent = file ? file.name : "Файл не выбран";
+    });
   }
 
   async function deleteMarketItem(id) {
@@ -1766,6 +1831,7 @@
     try {
       injectMarketStyles();
       renderMarketBase();
+      bindMarketPhotoInput();
 
       refreshMarketDbBinding();
 

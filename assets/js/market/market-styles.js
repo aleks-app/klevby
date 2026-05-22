@@ -63,6 +63,33 @@
         line-height: 1.45;
         font-weight: 500;
       }
+      .market-upload-row {
+        align-items: center;
+        gap: 8px;
+      }
+      .market-file-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .market-file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .market-file-name {
+        color: rgba(244,251,247,0.72);
+        font-size: 13px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       .market-list-panel {
         width: 100%;
