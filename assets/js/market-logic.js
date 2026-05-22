@@ -18,6 +18,10 @@
   let marketLastResumeRecoverAt = 0;
   let marketViewMode = "all";
   let marketOwnerTab = "active";
+  let marketPreparedPhotoFile = null;
+  let marketPreparedPhotoPreviewUrl = "";
+  let marketPhotoInvalid = false;
+  let marketSelectedPhotoFile = null;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -598,6 +602,20 @@
           <div class="form-row">
             <input id="marketViberInput" placeholder="Viber: номер" />
             <input id="marketImageInput" placeholder="Ссылка на фото товара, можно оставить пустым" />
+          </div>
+          <div class="form-row market-upload-row">
+            <label class="small-btn gray market-file-label" for="marketPhotoFileInput">Выбрать фото</label>
+            <input id="marketPhotoFileInput" class="market-file-input" type="file" accept="image/*" />
+            <label class="small-btn gray market-file-label" for="marketPhotoCameraInput">Сделать фото</label>
+            <input id="marketPhotoCameraInput" class="market-file-input" type="file" accept="image/*" capture="environment" />
+            <div class="market-file-meta">
+              <div id="marketPhotoSelectedStatus" class="market-file-status">Фото не выбрано</div>
+              <span id="marketPhotoFileName" class="market-file-name">Файл не выбран</span>
+            </div>
+            <button id="marketPhotoClearBtn" class="small-btn gray market-file-clear-btn hidden" type="button">Очистить фото</button>
+          </div>
+          <div id="marketPhotoPreviewWrap" class="market-photo-preview hidden">
+            <img id="marketPhotoPreviewImage" alt="Предпросмотр фото товара" />
           </div>
 
           <div class="actions">
@@ -1491,10 +1509,66 @@
     const contactWhatsapp = typeof marketContacts.normalizeMarketWhatsapp === "function" ? marketContacts.normalizeMarketWhatsapp(whatsappRaw) : String(whatsappRaw || "").trim();
     const contactViber = typeof marketContacts.normalizeMarketViber === "function" ? marketContacts.normalizeMarketViber(viberRaw) : String(viberRaw || "").trim();
     const imageUrl = document.getElementById("marketImageInput").value.trim();
+    const selectedPhotoFile = marketSelectedPhotoFile;
 
     if (!title || !price || !city || !description) {
       showMarketMessage("Заполни название, цену, город и описание.", true);
       return;
+    }
+
+    let resolvedImageUrl = imageUrl;
+    if (selectedPhotoFile) {
+      if (marketPhotoInvalid || !marketPreparedPhotoFile) {
+        showMarketMessage("Это фото не удалось открыть. Попробуй выбрать другое фото.", true);
+        return;
+      }
+      const uploader = window.KlevbyMarket || {};
+      if (typeof uploader.uploadMarketPhotoFile !== "function") {
+        showMarketMessage("Не удалось подготовить загрузку фото. Обнови страницу и попробуй снова.", true);
+        return;
+      }
+      const accessToken = await getMarketAccessToken();
+      if (!accessToken) {
+        showMarketMessage("Нужен вход в аккаунт для загрузки фото.", true);
+        return;
+      }
+
+      showMarketMessage("Загружаем фото…");
+
+      try {
+        const uploadResult = await uploader.uploadMarketPhotoFile({
+          userId: safeUser.id,
+          file: selectedPhotoFile,
+          preparedFile: marketPreparedPhotoFile,
+          accessToken
+        });
+        resolvedImageUrl = String(uploadResult?.publicUrl || "").trim();
+      } catch (error) {
+        const msg = String(error?.message || "");
+        if (msg.includes("MARKET_UPLOAD_AUTH_REQUIRED")) {
+          showMarketMessage("Нужен вход в аккаунт для загрузки фото.", true);
+          return;
+        }
+        if (msg.includes("MARKET_UPLOAD_TYPE_INVALID")) {
+          showMarketMessage("Поддерживаются только JPEG, PNG или WEBP.", true);
+          return;
+        }
+        if (msg.includes("MARKET_UPLOAD_TOO_LARGE")) {
+          showMarketMessage("Фото должно быть не больше 5 МБ.", true);
+          return;
+        }
+        if (msg.includes("MARKET_HEIC_UNSUPPORTED")) {
+          showMarketMessage("HEIC/HEIF пока не поддерживается. Выбери JPEG/PNG/WEBP.", true);
+          return;
+        }
+        if (msg.includes("MARKET_IMAGE_PROCESS_FAILED")) {
+          showMarketMessage("Не удалось обработать это фото. Попробуй выбрать другое фото.", true);
+          return;
+        }
+        console.error("Klevby барахолка: загрузка фото не удалась:", error);
+        showMarketMessage("Не удалось загрузить фото. Попробуй другой файл или повтори позже.", true);
+        return;
+      }
     }
 
     const payload = {
@@ -1510,7 +1584,7 @@
       contact_phone: contactPhone,
       contact_whatsapp: contactWhatsapp,
       contact_viber: contactViber,
-      image_url: imageUrl,
+      image_url: resolvedImageUrl,
       owner_id: safeUser.id
     };
 
@@ -1618,6 +1692,107 @@
     document.getElementById("marketWhatsAppInput").value = "";
     document.getElementById("marketViberInput").value = "";
     document.getElementById("marketImageInput").value = "";
+    clearSelectedMarketPhoto();
+  }
+
+  function clearSelectedMarketPhoto() {
+    const fileInput = document.getElementById("marketPhotoFileInput");
+    const cameraInput = document.getElementById("marketPhotoCameraInput");
+    const fileName = document.getElementById("marketPhotoFileName");
+    const fileStatus = document.getElementById("marketPhotoSelectedStatus");
+    const previewWrap = document.getElementById("marketPhotoPreviewWrap");
+    const previewImage = document.getElementById("marketPhotoPreviewImage");
+    const clearBtn = document.getElementById("marketPhotoClearBtn");
+
+    if (fileInput) fileInput.value = "";
+    if (cameraInput) cameraInput.value = "";
+    if (marketPreparedPhotoPreviewUrl) URL.revokeObjectURL(marketPreparedPhotoPreviewUrl);
+    marketPreparedPhotoPreviewUrl = "";
+    marketPreparedPhotoFile = null;
+    marketSelectedPhotoFile = null;
+    marketPhotoInvalid = false;
+    if (fileName) fileName.textContent = "Файл не выбран";
+    if (fileStatus) fileStatus.textContent = "Фото не выбрано";
+    if (previewImage) previewImage.removeAttribute("src");
+    if (previewWrap) previewWrap.classList.add("hidden");
+    if (clearBtn) clearBtn.classList.add("hidden");
+  }
+
+  function showMarketPhotoPreview(file) {
+    const fileName = document.getElementById("marketPhotoFileName");
+    const fileStatus = document.getElementById("marketPhotoSelectedStatus");
+    const previewWrap = document.getElementById("marketPhotoPreviewWrap");
+    const previewImage = document.getElementById("marketPhotoPreviewImage");
+    const clearBtn = document.getElementById("marketPhotoClearBtn");
+    if (!file || !previewImage || !previewWrap) {
+      clearSelectedMarketPhoto();
+      return;
+    }
+
+    const uploader = window.KlevbyMarket || {};
+    const canPrepare = typeof uploader.prepareMarketPhotoFile === "function";
+    if (!canPrepare) {
+      if (fileStatus) fileStatus.textContent = "Это фото не удалось открыть. Попробуй выбрать другое фото.";
+      marketSelectedPhotoFile = file;
+      marketPhotoInvalid = true;
+      return;
+    }
+    if (fileName) fileName.textContent = file.name || "Файл выбран";
+    marketSelectedPhotoFile = file;
+    if (clearBtn) clearBtn.classList.remove("hidden");
+    uploader.prepareMarketPhotoFile(file).then(function (prepared) {
+      if (!prepared || !prepared.file || !prepared.previewUrl) throw new Error("MARKET_IMAGE_PROCESS_FAILED");
+      if (marketPreparedPhotoPreviewUrl) URL.revokeObjectURL(marketPreparedPhotoPreviewUrl);
+      marketPreparedPhotoPreviewUrl = prepared.previewUrl;
+      marketPreparedPhotoFile = prepared.file;
+      marketPhotoInvalid = false;
+      if (fileStatus) fileStatus.textContent = "Фото готово";
+      previewImage.src = prepared.previewUrl;
+      previewWrap.classList.remove("hidden");
+    }).catch(function (error) {
+      const msg = String(error?.message || "");
+      marketPreparedPhotoFile = null;
+      marketSelectedPhotoFile = file;
+      marketPhotoInvalid = true;
+      previewImage.removeAttribute("src");
+      previewWrap.classList.add("hidden");
+      if (fileStatus) {
+        fileStatus.textContent = msg.includes("MARKET_HEIC_UNSUPPORTED")
+          ? "HEIC/HEIF пока не поддерживается. Выбери JPEG/PNG/WEBP."
+          : "Это фото не удалось открыть. Попробуй выбрать другое фото.";
+      }
+    });
+  }
+
+  function bindMarketPhotoInput() {
+    const fileInput = document.getElementById("marketPhotoFileInput");
+    const cameraInput = document.getElementById("marketPhotoCameraInput");
+    const fileName = document.getElementById("marketPhotoFileName");
+    const fileStatus = document.getElementById("marketPhotoSelectedStatus");
+    const clearBtn = document.getElementById("marketPhotoClearBtn");
+    if (!fileInput || !cameraInput || !fileName || !fileStatus || !clearBtn || fileInput.dataset.marketBound === "1") return;
+
+    fileInput.dataset.marketBound = "1";
+    fileInput.addEventListener("change", function () {
+      const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+      if (!file) {
+        clearSelectedMarketPhoto();
+        return;
+      }
+      showMarketPhotoPreview(file);
+    });
+    cameraInput.addEventListener("change", function () {
+      const file = cameraInput.files && cameraInput.files[0] ? cameraInput.files[0] : null;
+      if (!file) {
+        clearSelectedMarketPhoto();
+        return;
+      }
+      showMarketPhotoPreview(file);
+    });
+
+    clearBtn.addEventListener("click", function () {
+      clearSelectedMarketPhoto();
+    });
   }
 
   async function deleteMarketItem(id) {
@@ -1766,6 +1941,7 @@
     try {
       injectMarketStyles();
       renderMarketBase();
+      bindMarketPhotoInput();
 
       refreshMarketDbBinding();
 
