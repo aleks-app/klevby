@@ -1680,7 +1680,11 @@
     document.getElementById("marketConditionInput").value = item.condition || "";
     document.getElementById("marketDescriptionInput").value = item.description || "";
     document.getElementById("marketContactInput").value = item.contact_telegram || item.contact || item.telegram || "";
-    document.getElementById("marketPhoneInput").value = item.contact_phone || "";
+    const marketContacts = window.KlevbyMarket || {};
+    const normalizedEditPhone = typeof marketContacts.normalizeMarketPhone === "function"
+      ? marketContacts.normalizeMarketPhone(item.contact_phone || "")
+      : String(item.contact_phone || "").trim();
+    document.getElementById("marketPhoneInput").value = normalizedEditPhone;
     document.getElementById("marketWhatsAppInput").value = item.contact_whatsapp || "";
     document.getElementById("marketViberInput").value = item.contact_viber || "";
     document.getElementById("marketImageInput").value = item.image_url || "";
@@ -1819,12 +1823,59 @@
     const phoneInput = document.getElementById("marketPhoneInput");
     if (!phoneInput || phoneInput.dataset.marketBound === "1") return;
 
+    function extractBelarusLocalDigits(value) {
+      const digits = String(value || "").replace(/\D/g, "");
+      if (!digits) return "";
+      return (digits.startsWith("375") ? digits.slice(3) : digits).slice(0, 9);
+    }
+
+    function formatBelarusPhoneInput(localDigits) {
+      const digits = String(localDigits || "").replace(/\D/g, "").slice(0, 9);
+      if (!digits) return "+375 ";
+
+      const operator = digits.slice(0, 2);
+      const part1 = digits.slice(2, 5);
+      const part2 = digits.slice(5, 7);
+      const part3 = digits.slice(7, 9);
+
+      let formatted = "+375";
+      if (operator) formatted += ` (${operator}`;
+      if (operator.length === 2) formatted += ")";
+      if (part1) formatted += ` ${part1}`;
+      if (part2) formatted += `-${part2}`;
+      if (part3) formatted += `-${part3}`;
+      return formatted;
+    }
+
+    function placeCursorAtEnd() {
+      const cursorPos = phoneInput.value.length;
+      phoneInput.setSelectionRange(cursorPos, cursorPos);
+    }
+
     phoneInput.dataset.marketBound = "1";
     phoneInput.addEventListener("focus", function () {
       if (phoneInput.value !== "") return;
       phoneInput.value = "+375 ";
-      const cursorPos = phoneInput.value.length;
-      phoneInput.setSelectionRange(cursorPos, cursorPos);
+      placeCursorAtEnd();
+    });
+
+    phoneInput.addEventListener("input", function () {
+      const localDigits = extractBelarusLocalDigits(phoneInput.value);
+      phoneInput.value = formatBelarusPhoneInput(localDigits);
+      placeCursorAtEnd();
+    });
+
+    phoneInput.addEventListener("click", function () {
+      if (phoneInput.value.startsWith("+375")) placeCursorAtEnd();
+    });
+
+    phoneInput.addEventListener("blur", function () {
+      const localDigits = extractBelarusLocalDigits(phoneInput.value);
+      if (!localDigits) {
+        phoneInput.value = "";
+        return;
+      }
+      phoneInput.value = formatBelarusPhoneInput(localDigits);
     });
   }
 

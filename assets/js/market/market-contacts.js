@@ -28,21 +28,36 @@
     return v;
   }
 
+  function formatBelarusPhone(rawDigits) {
+    const digits = String(rawDigits || "").replace(/\D/g, "").slice(0, 9);
+    if (!digits) return "";
+
+    const operator = digits.slice(0, 2);
+    const part1 = digits.slice(2, 5);
+    const part2 = digits.slice(5, 7);
+    const part3 = digits.slice(7, 9);
+
+    let formatted = "+375";
+    if (operator) formatted += ` (${operator}`;
+    if (operator.length === 2) formatted += ")";
+    if (part1) formatted += ` ${part1}`;
+    if (part2) formatted += `-${part2}`;
+    if (part3) formatted += `-${part3}`;
+
+    return formatted;
+  }
+
   function normalizePhone(value) {
-    let v = String(value || "").trim();
+    const raw = String(value || "").trim();
+    if (!raw) return "";
 
-    if (!v) return "";
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
 
-    const hasPlus = /^\+/.test(v);
-    v = v.replace(/[^\d+]/g, "");
+    const localDigits = digits.startsWith("375") ? digits.slice(3) : digits;
+    const formatted = formatBelarusPhone(localDigits);
 
-    if (hasPlus) {
-      v = `+${v.replace(/\+/g, "")}`;
-    } else {
-      v = v.replace(/\+/g, "");
-    }
-
-    return v;
+    return formatted === "+375" ? "" : formatted;
   }
 
   function normalizeMessengerNumber(value) {
@@ -80,7 +95,10 @@
   }
 
   function marketTelLink(phone) {
-    return phone ? `tel:${phone}` : "";
+    if (!phone) return "";
+    const normalized = normalizePhone(phone);
+    if (!normalized) return "";
+    return `tel:${normalized.replace(/[^\d+]/g, "")}`;
   }
 
   function marketWhatsAppLink(whatsapp) {
