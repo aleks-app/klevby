@@ -93,6 +93,12 @@ function updateHomeFloatButton() {
     return;
   }
 
+  if (visibleSection === "market") {
+    setHomeFloatButtonMode(btn, "");
+    btn.classList.remove("show");
+    return;
+  }
+
   setHomeFloatButtonMode(btn, "back");
   btn.classList.add("show");
 }

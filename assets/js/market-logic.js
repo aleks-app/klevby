@@ -471,7 +471,7 @@
     }
 
     if (filtersBtn) {
-      filtersBtn.textContent = marketUiState.marketFiltersOpen ? "Скрыть фильтры" : "Фильтры";
+      filtersBtn.textContent = marketUiState.marketFiltersOpen ? "Скрыть фильтры" : "Фильтр";
       filtersBtn.setAttribute("aria-expanded", String(marketUiState.marketFiltersOpen));
     }
   }
@@ -561,7 +561,7 @@
             </button>
 
             <button id="marketToggleFiltersBtn" class="small-btn gray market-toolbar-btn" type="button" onclick="toggleMarketFilters()" aria-expanded="false">
-              Фильтры
+              Фильтр
             </button>
           </div>
         </div>
@@ -668,7 +668,7 @@
             </select>
           </div>
 
-          <div id="marketStatusLine" class="info-line">Загрузка барахолки...</div>
+          <div id="marketStatusLine" class="info-line market-status-line">Загрузка барахолки...</div>
           <button id="marketNewItemsNotice" class="market-new-items-notice hidden" type="button" onclick="applyMarketPendingNewItems()">
             Появились новые товары — показать
           </button>
@@ -1219,13 +1219,13 @@
     }
 
     if (marketViewMode === "mine") {
-      showMarketStatus(hasUser ? `Мои объявления: ${filtered.length}` : "Войдите в аккаунт, чтобы смотреть свои объявления.");
+      showMarketStatus(hasUser ? `${filtered.length} товаров` : "Войдите в аккаунт, чтобы смотреть свои объявления.");
     } else {
-      showMarketStatus(`Товаров в барахолке: ${filtered.length}`);
+      showMarketStatus(`${filtered.length} товаров`);
     }
 
     if (!filtered.length) {
-      grid.innerHTML = `<div class="info-line">Пока товаров нет. Добавь первый товар.</div>`;
+      grid.innerHTML = `<div class="market-empty-state"><strong>Пока товаров нет</strong><span>Добавь первый товар</span></div>`;
       return;
     }
 
