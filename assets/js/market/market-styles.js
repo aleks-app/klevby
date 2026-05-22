@@ -134,8 +134,6 @@
 
       .market-view-switch,
       .market-owner-tabs {
-        display: inline-flex;
-        flex-wrap: nowrap;
         gap: 6px;
         margin: 0 0 8px;
         padding: 4px;
@@ -144,13 +142,37 @@
         background: rgba(7,15,12,0.72);
       }
 
+      .market-view-switch,
+      .market-owner-tabs {
+        display: grid;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .market-view-switch {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .market-owner-tabs {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .market-view-btn,
       .market-owner-tab-btn {
-        min-height: 34px;
-        padding: 7px 12px;
+        width: 100%;
+        min-width: 0;
+        min-height: 36px;
+        padding: 8px 10px;
         border-radius: 10px;
         border-color: transparent;
         background: transparent;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .market-view-mine-short {
+        display: none;
       }
 
       .market-view-btn.is-active,
@@ -454,6 +476,9 @@
       }
 
       .market-empty-state {
+        width: 100%;
+        grid-column: 1 / -1;
+        box-sizing: border-box;
         padding: 20px 14px;
         border-radius: 18px;
         border: 1px solid rgba(255,255,255,0.08);
@@ -491,6 +516,11 @@
       }
 
       @media (max-width: 900px) {
+        .market-view-btn,
+        .market-owner-tab-btn {
+          font-size: 12px;
+          padding: 8px 8px;
+        }
         .market-layout {
           gap: 12px;
         }
@@ -623,7 +653,26 @@
         }
       }
 
+      @media (max-width: 520px) {
+        .market-view-mine-long {
+          display: none;
+        }
+
+        .market-view-mine-short {
+          display: inline;
+        }
+      }
+
       @media (max-width: 430px) {
+        .market-toolbar-left {
+          grid-template-columns: 1fr;
+        }
+
+        .market-view-btn,
+        .market-owner-tab-btn {
+          font-size: 11px;
+          padding: 8px 6px;
+        }
         .market-grid {
           grid-template-columns: 1fr;
         }
