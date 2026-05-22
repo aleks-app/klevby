@@ -2,6 +2,10 @@
   const POSTS_LOAD_RETRY_DELAY_MS = 900;
   const POSTS_MAX_RETRIES = 3;
   const POSTS_LOAD_TIMEOUT_MS = 9000;
+  const POSTS_REALTIME_RELOAD_DEBOUNCE_MS = 350;
+  const POSTS_REALTIME_CHANNEL_NAME = "klevby-posts-live";
+  let postsRealtimeChannel = null;
+  let postsRealtimeReloadTimer = null;
 
   function getState() {
     return window.KlevbyPostsState || {};
@@ -276,6 +280,67 @@
     }, delay);
 
     setPostsLoadRetryTimer(timer);
+  }
+
+  function clearPostsRealtimeReloadTimer() {
+    if (postsRealtimeReloadTimer) {
+      clearTimeout(postsRealtimeReloadTimer);
+      postsRealtimeReloadTimer = null;
+    }
+  }
+
+  function schedulePostsRealtimeReload(reason = "realtime_change") {
+    clearPostsRealtimeReloadTimer();
+
+    postsRealtimeReloadTimer = setTimeout(() => {
+      loadPosts({ force: true }).catch((error) => {
+        console.warn("Klevby posts realtime: background reload failed", {
+          reason,
+          error: String(error?.message || error)
+        });
+      });
+    }, POSTS_REALTIME_RELOAD_DEBOUNCE_MS);
+  }
+
+  async function removePostsRealtimeChannel() {
+    if (!postsRealtimeChannel) return;
+
+    const db = getSupabaseClientSafe();
+    const channel = postsRealtimeChannel;
+    postsRealtimeChannel = null;
+
+    try {
+      if (db && typeof db.removeChannel === "function") {
+        await db.removeChannel(channel);
+      } else if (typeof channel.unsubscribe === "function") {
+        channel.unsubscribe();
+      }
+    } catch (error) {
+      console.warn("Klevby posts realtime: removeChannel failed", error);
+    }
+  }
+
+  async function ensurePostsRealtimeSync() {
+    const db = getSupabaseClientSafe();
+    if (!db || typeof db.channel !== "function") return;
+
+    await removePostsRealtimeChannel();
+
+    postsRealtimeChannel = db
+      .channel(POSTS_REALTIME_CHANNEL_NAME)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "posts"
+      }, (payload) => {
+        schedulePostsRealtimeReload(payload?.eventType || "posts_changed");
+      });
+
+    postsRealtimeChannel.subscribe((status) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
+      }
+    });
   }
 
   async function queryPostsViaRest(includeFishingType = true, includeTripDate = true) {
@@ -683,8 +748,28 @@
     queryPostsRestSafe,
     queryPostsSdkSafe,
     queryPostsSafe,
-    loadPosts
+    loadPosts,
+    ensurePostsRealtimeSync,
+    removePostsRealtimeChannel
   };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      ensurePostsRealtimeSync().catch((error) => {
+        console.warn("Klevby posts realtime: init failed on DOMContentLoaded", error);
+      });
+    }, { once: true });
+  } else {
+    ensurePostsRealtimeSync().catch((error) => {
+      console.warn("Klevby posts realtime: init failed", error);
+    });
+  }
+
+  window.addEventListener("pageshow", () => {
+    ensurePostsRealtimeSync().catch((error) => {
+      console.warn("Klevby posts realtime: re-init on pageshow failed", error);
+    });
+  });
 
   console.log("Klevby posts api loaded", {
     version: "20260515-posts-api-trip-date-1"
