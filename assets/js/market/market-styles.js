@@ -224,8 +224,78 @@
       .market-img {
         position: relative;
         height: 150px;
-        background-size: cover;
-        background-position: center;
+        overflow: hidden;
+      }
+
+      .market-photo-frame {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(180deg, rgba(30,40,35,0.82), rgba(16,22,19,0.9));
+      }
+
+      .market-photo-skeleton {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(110deg, rgba(255,255,255,0.03) 24%, rgba(255,255,255,0.16) 42%, rgba(255,255,255,0.03) 62%),
+          linear-gradient(180deg, rgba(34,44,38,0.9), rgba(21,29,25,0.96));
+        background-size: 220% 100%, 100% 100%;
+        animation: marketPhotoPulse 1.4s ease-in-out infinite;
+        transition: opacity 0.24s ease;
+      }
+
+      .market-photo {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0;
+        transition: opacity 0.28s ease;
+      }
+
+      .market-photo.is-loaded {
+        opacity: 1;
+      }
+
+      .market-photo-frame.is-loaded .market-photo-skeleton {
+        opacity: 0;
+      }
+
+      .market-photo-frame.is-error .market-photo-skeleton {
+        animation: none;
+        opacity: 1;
+        background:
+          linear-gradient(180deg, rgba(36,44,40,0.95), rgba(18,26,23,0.96)),
+          radial-gradient(circle at 50% 40%, rgba(255,180,82,0.22), rgba(0,0,0,0) 48%);
+      }
+
+      .market-card-photo-frame::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.42));
+      }
+
+      .market-details-img {
+        min-height: 330px;
+        border-radius: 28px 28px 0 0;
+        overflow: hidden;
+      }
+
+      .market-details-photo-frame::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.38));
+      }
+
+      @keyframes marketPhotoPulse {
+        0% { background-position: 100% 0, 0 0; }
+        100% { background-position: -100% 0, 0 0; }
       }
 
       .market-open-badge {
@@ -394,13 +464,6 @@
         cursor: pointer;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-      }
-
-      .market-details-img {
-        min-height: 330px;
-        background-size: cover;
-        background-position: center;
-        border-radius: 28px 28px 0 0;
       }
 
       .market-details-body {
