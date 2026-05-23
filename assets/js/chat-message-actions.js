@@ -144,6 +144,7 @@
     const elements = getElements();
     const messageContextMenu = elements.messageContextMenu || null;
     const contextDeleteBtn = elements.contextDeleteBtn || null;
+    const contextReplyBtn = elements.contextReplyBtn || null;
     const chatWindow = elements.chatWindow || document.getElementById("chat-window") || null;
 
     if (!messageContextMenu || !row) return;
@@ -154,9 +155,18 @@
 
     contextMessageData = data;
 
+    const canDeleteOwn = Boolean(data.isMine && data.id);
+    const canReplyOther = Boolean(!data.isMine);
+
     if (contextDeleteBtn) {
-      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
+      contextDeleteBtn.classList.toggle("hidden", !canDeleteOwn);
     }
+
+    if (contextReplyBtn) {
+      contextReplyBtn.classList.toggle("hidden", !canReplyOther);
+    }
+
+    if (!canDeleteOwn && !canReplyOther) return;
 
     messageContextMenu.classList.remove("hidden");
     const rect = row.getBoundingClientRect();
@@ -171,7 +181,9 @@
     const menuHeight = Math.max(84, menuRect.height || 92);
     const edgeOffset = 10;
 
-    let left = rect.left + rect.width / 2 - menuWidth / 2;
+    const isMine = data.isMine;
+    const anchorX = isMine ? rect.right - menuWidth : rect.left;
+    let left = anchorX;
     const minLeft = bounds.left + edgeOffset;
     const maxLeft = bounds.right - menuWidth - edgeOffset;
     left = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft));
@@ -252,10 +264,12 @@
     }
 
     if (result.error) {
-      console.error("Ошибка удаления сообщения:", result.error);
-      alert("Не получилось удалить сообщение. Проверь RLS delete.");
+      console.error("[KlevbyDelete] delete failed", { id, type, isMine: contextMessageData?.isMine, error: result.error });
+      alert(`Не получилось удалить сообщение: ${result.error.message || "ошибка RLS/бэкенда"}`);
       return;
     }
+
+    console.info("[KlevbyDelete] delete success", { id, type });
 
     if (messagesContainer) {
       const row = messagesContainer.querySelector(

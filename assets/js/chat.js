@@ -400,7 +400,8 @@
         elements: {
           messagesContainer,
           messageContextMenu,
-          contextDeleteBtn
+          contextDeleteBtn,
+          contextReplyBtn
         },
 
         getCurrentUser: () => currentChatUser,
@@ -443,7 +444,8 @@
         elements: {
           messagesContainer,
           messageContextMenu,
-          contextDeleteBtn
+          contextDeleteBtn,
+          contextReplyBtn
         },
 
         getCurrentUser: () => currentChatUser,
