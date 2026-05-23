@@ -1,3 +1,4 @@
+/* In-message quoted reply block */
 .klevby-message-reply {
   display: flex !important;
   flex-direction: column !important;
@@ -27,7 +28,7 @@
   text-overflow: ellipsis !important;
 }
 
-
+/* Composer reply preview */
 #replyPreview.hidden,
 .klevby-reply-preview.hidden {
   display: none !important;
