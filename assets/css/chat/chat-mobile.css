@@ -180,7 +180,7 @@
     min-height: 0 !important;
     padding: 6px 10px 5px !important;
     border-radius: 14px !important;
-    border: 1px solid rgba(255, 255, 255, .06) !important;
+    border: 1px solid var(--klevby-chat-border-faint) !important;
     box-shadow: 0 8px 20px rgba(0, 0, 0, .16) !important;
     word-break: normal !important;
     overflow-wrap: break-word !important;
@@ -308,8 +308,8 @@
     font-size: 16px !important;
     line-height: 44px !important;
     background: linear-gradient(180deg, #202e2a, #1b2824) !important;
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
+    color: var(--klevby-chat-text-primary) !important;
+    -webkit-text-fill-color: var(--klevby-chat-text-primary) !important;
     caret-color: #83d9b7 !important;
     padding: 0 16px !important;
   }

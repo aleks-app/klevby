@@ -31,7 +31,7 @@
 
 .klevby-message-menu button:hover,
 .klevby-message-menu button:active {
-  background: rgba(110, 210, 165, .16) !important;
+  background: var(--klevby-chat-accent-mint-soft) !important;
 }
 
 
