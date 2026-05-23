@@ -1,3 +1,6 @@
+/* ========================================
+   CHAT COMPOSER: INPUT AREA
+======================================== */
 #chat-input-area,
 .klevby-chat-inputbar {
   position: relative !important;
@@ -19,6 +22,9 @@
   z-index: 20 !important;
 }
 
+/* ========================================
+   CHAT COMPOSER: MESSAGE INPUT
+======================================== */
 #message-input,
 .klevby-chat-input {
   flex: 1 1 auto !important;
@@ -62,6 +68,9 @@
   box-shadow: none !important;
 }
 
+/* ========================================
+   CHAT COMPOSER: SEND BUTTON
+======================================== */
 #send-btn,
 .klevby-chat-send {
   width: 33px !important;
@@ -81,12 +90,16 @@
   cursor: pointer !important;
 }
 
+/* Hide composer while private list screen is active. */
 .klevby-private-list-screen #chat-input-area,
 .klevby-private-list-screen .klevby-chat-inputbar,
 .klevby-private-list-screen #replyPreview {
   display: none !important;
 }
 
+/* ========================================
+   PRIVATE DIALOG LIST: LAYOUT
+======================================== */
 .klevby-private-dialog-list {
   width: 100% !important;
   display: flex !important;
@@ -123,6 +136,9 @@
   background: var(--klevby-chat-danger-soft) !important;
 }
 
+/* ========================================
+   PRIVATE DIALOG LIST: AVATARS
+======================================== */
 .klevby-private-dialog-avatar {
   width: 48px !important;
   height: 48px !important;
@@ -198,6 +214,9 @@
   font-weight: 800 !important;
 }
 
+/* ========================================
+   PRIVATE DIALOG LIST: UNREAD / STATUS
+======================================== */
 .klevby-private-unread-dot {
   min-width: 18px !important;
   height: 18px !important;
