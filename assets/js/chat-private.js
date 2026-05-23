@@ -207,18 +207,6 @@
       .replaceAll("'", "&#039;");
   }
 
-  function escapeCssUrl(value) {
-    if (privateUtils?.escapeCssUrl) return privateUtils.escapeCssUrl(value);
-
-    return String(value || "")
-      .replaceAll("\\", "\\\\")
-      .replaceAll("\n", "")
-      .replaceAll("\r", "")
-      .replaceAll('"', "%22")
-      .replaceAll("'", "%27")
-      .trim();
-  }
-
   function normalizePrivateAvatarUrl(value) {
     if (privateUtils?.normalizePrivateAvatarUrl) return privateUtils.normalizePrivateAvatarUrl(value);
 
@@ -486,15 +474,6 @@
   const PRIVATE_STEP_TIMEOUT_MS = 7000;
   const PRIVATE_OPTIONAL_STEP_TIMEOUT_MS = 3000;
   const PRIVATE_FALLBACK_MESSAGE = "Личка временно недоступна. Закрой и открой чат ещё раз.";
-
-  function createPrivateTimeoutError(step, timeoutMs) {
-    const error = new Error(`Klevby private: step "${step}" timed out after ${timeoutMs}ms.`);
-    error.name = "KlevbyPrivateTimeoutError";
-    error.code = "PRIVATE_STEP_TIMEOUT";
-    error.step = step;
-    error.timeoutMs = timeoutMs;
-    return error;
-  }
 
   async function withPrivateStepTimeout(step, runner, timeoutMs = PRIVATE_STEP_TIMEOUT_MS, options = {}) {
     if (privateUtils?.withPrivateStepTimeout) {
