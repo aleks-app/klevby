@@ -144,6 +144,7 @@
     const elements = getElements();
     const messageContextMenu = elements.messageContextMenu || null;
     const contextDeleteBtn = elements.contextDeleteBtn || null;
+    const chatWindow = elements.chatWindow || document.getElementById("chat-window") || null;
 
     if (!messageContextMenu || !row) return;
 
@@ -158,21 +159,29 @@
     }
 
     messageContextMenu.classList.remove("hidden");
-
     const rect = row.getBoundingClientRect();
-    const menuWidth = 170;
-    const menuHeight = 92;
+    const bounds = chatWindow?.getBoundingClientRect?.() || {
+      top: 0,
+      left: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight
+    };
+    const menuRect = messageContextMenu.getBoundingClientRect();
+    const menuWidth = Math.max(148, menuRect.width || 170);
+    const menuHeight = Math.max(84, menuRect.height || 92);
+    const edgeOffset = 10;
 
-    let left = Math.min(
-      Math.max(12, rect.left + rect.width / 2 - menuWidth / 2),
-      window.innerWidth - menuWidth - 12
-    );
+    let left = rect.left + rect.width / 2 - menuWidth / 2;
+    const minLeft = bounds.left + edgeOffset;
+    const maxLeft = bounds.right - menuWidth - edgeOffset;
+    left = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft));
 
-    let top = rect.top - menuHeight - 8;
-
-    if (top < 12) {
-      top = rect.bottom + 8;
-    }
+    const topAbove = rect.top - menuHeight - 8;
+    const topBelow = rect.bottom + 8;
+    const minTop = bounds.top + edgeOffset;
+    const maxTop = bounds.bottom - menuHeight - edgeOffset;
+    let top = topAbove >= minTop ? topAbove : topBelow;
+    top = Math.min(Math.max(top, minTop), Math.max(minTop, maxTop));
 
     messageContextMenu.style.left = `${left}px`;
     messageContextMenu.style.top = `${top}px`;
