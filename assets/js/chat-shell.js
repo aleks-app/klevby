@@ -36,6 +36,7 @@
 
         <div id="messageContextMenu" class="klevby-message-menu hidden">
           <button id="contextReplyBtn" type="button">Ответить</button>
+          <button id="contextCopyBtn" type="button">Скопировать</button>
           <button id="contextDeleteBtn" type="button">Удалить</button>
         </div>
 
@@ -99,6 +100,7 @@
 
       messageContextMenu: getElement("messageContextMenu"),
       contextReplyBtn: getElement("contextReplyBtn"),
+      contextCopyBtn: getElement("contextCopyBtn"),
       contextDeleteBtn: getElement("contextDeleteBtn")
     };
   }

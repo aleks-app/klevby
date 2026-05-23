@@ -83,6 +83,8 @@
     const replyText = shell.replyText;
 
     const messageContextMenu = shell.messageContextMenu;
+    const contextReplyBtn = shell.contextReplyBtn;
+    const contextCopyBtn = shell.contextCopyBtn;
     const contextDeleteBtn = shell.contextDeleteBtn;
 
     initChatStateBridge();
@@ -360,6 +362,7 @@
         findMessageDataFromRow,
         hideMessageMenu,
         showMessageMenu,
+        copyMessageText,
         send,
         updateViewportVars,
         scrollChatToBottom,
@@ -401,7 +404,9 @@
           messagesContainer,
           messageContextMenu,
           contextDeleteBtn,
-          contextReplyBtn
+          contextReplyBtn,
+          contextCopyBtn,
+          contextCopyBtn
         },
 
         getCurrentUser: () => currentChatUser,
@@ -445,7 +450,8 @@
           messagesContainer,
           messageContextMenu,
           contextDeleteBtn,
-          contextReplyBtn
+          contextReplyBtn,
+          contextCopyBtn
         },
 
         getCurrentUser: () => currentChatUser,
@@ -1040,6 +1046,10 @@
 
     function hideMessageMenu() {
       callChatMessageActions("hideMessageMenu");
+    }
+
+    async function copyMessageText() {
+      return await callChatMessageActions("copyMessageText", null);
     }
 
     function getContextMessageData() {

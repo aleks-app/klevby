@@ -126,6 +126,11 @@
         ? options.showMessageMenu
         : () => {};
 
+    const copyMessageText =
+      typeof options.copyMessageText === "function"
+        ? options.copyMessageText
+        : async () => {};
+
     const send =
       typeof options.send === "function"
         ? options.send
@@ -208,11 +213,13 @@
         ) {
           event.preventDefault();
           event.stopPropagation();
+          hideMessageMenu();
           closeChat();
           return;
         }
 
         if (modal && event.target === modal) {
+          hideMessageMenu();
           closeChat();
           return;
         }
@@ -227,11 +234,13 @@
         }
 
         if (getClosest(event, "#publicChatTab")) {
+          hideMessageMenu();
           await loadPublicMessages();
           return;
         }
 
         if (getClosest(event, "#privateChatTab")) {
+          hideMessageMenu();
           console.info("[KlevbyPrivate] private tab click start", {
             activeModeBefore: getActiveMode(),
             selectedPeerBefore: getSelectedPeer()
@@ -245,6 +254,7 @@
         }
 
         if (getClosest(event, "#back-chat")) {
+          hideMessageMenu();
           await loadPrivatePeople();
           return;
         }
@@ -261,6 +271,11 @@
             setReplyTarget(data);
           }
 
+          return;
+        }
+
+        if (getClosest(event, "#contextCopyBtn")) {
+          await copyMessageText();
           return;
         }
 
@@ -352,9 +367,31 @@
     addListener(messagesContainer, "contextmenu", (event) => {
       const row = getClosest(event, ".chat-message-row");
       if (!row) return;
-
       event.preventDefault();
+      event.stopPropagation();
       showMessageMenu(row);
+    });
+
+    addListener(messagesContainer, "selectstart", (event) => {
+      const row = getClosest(event, ".chat-message-row");
+      if (!row) return;
+      event.preventDefault();
+    });
+
+    addListener(messagesContainer, "scroll", () => {
+      hideMessageMenu();
+    }, { passive: true });
+
+    addListener(window, "scroll", () => hideMessageMenu(), { passive: true });
+    addListener(window, "pagehide", () => hideMessageMenu());
+    addListener(window, "pageshow", () => hideMessageMenu());
+    addListener(window, "focus", () => hideMessageMenu());
+    addListener(document, "visibilitychange", () => {
+      if (document.visibilityState !== "visible") {
+        hideMessageMenu();
+        return;
+      }
+      hideMessageMenu();
     });
 
     addListener(sendBtn, "click", () => {
@@ -369,6 +406,7 @@
     });
 
     addListener(input, "focus", () => {
+      hideMessageMenu();
       updateViewportVars();
 
       setTimeout(() => {
