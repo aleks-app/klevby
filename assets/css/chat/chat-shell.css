@@ -25,14 +25,14 @@ body .klevby-chat-launcher {
   width: 56px !important;
   height: 56px !important;
   border-radius: 50% !important;
-  border: 1px solid rgba(72, 214, 150, .35) !important;
+  border: 1px solid var(--klevby-chat-accent-mint-border) !important;
   background: #10201c !important;
-  color: #fff !important;
+  color: var(--klevby-chat-text-primary) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   z-index: 999998 !important;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .45) !important;
+  box-shadow: var(--klevby-chat-shadow-soft) !important;
 }
 
 body #klevby-chat-modal {
@@ -42,7 +42,7 @@ body #klevby-chat-modal {
   display: none !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(0, 0, 0, .6) !important;
+  background: var(--klevby-chat-bg-overlay) !important;
   padding: 14px !important;
 }
 
@@ -58,9 +58,9 @@ body #klevby-chat-modal.open {
   flex-direction: column !important;
   overflow: hidden !important;
   border-radius: 16px !important;
-  background: #0f1917 !important;
-  border: 1px solid rgba(202, 231, 220, .12) !important;
-  box-shadow: 0 24px 62px rgba(0, 0, 0, .45) !important;
+  background: var(--klevby-chat-bg-app) !important;
+  border: 1px solid var(--klevby-chat-border-soft) !important;
+  box-shadow: var(--klevby-chat-shadow-panel) !important;
 }
 
 #chat-header,
@@ -128,7 +128,7 @@ body #klevby-chat-modal.open {
 .klevby-chat-title {
   font-size: 15px !important;
   line-height: 1.15 !important;
-  color: #fff !important;
+  color: var(--klevby-chat-text-primary) !important;
   font-weight: 800 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -166,15 +166,15 @@ body #klevby-chat-modal.open {
 
 #back-chat:hover,
 #close-chat:hover {
-  background: rgba(255, 255, 255, .06) !important;
-  color: #fff !important;
+  background: var(--klevby-chat-border-faint) !important;
+  color: var(--klevby-chat-text-primary) !important;
 }
 
 .klevby-chat-tabs {
   height: 42px !important;
   min-height: 42px !important;
   padding: 6px 8px !important;
-  background: rgba(15, 24, 22, .88) !important;
+  background: var(--klevby-chat-bg-panel) !important;
   border-bottom: 1px solid rgba(214, 237, 228, .06) !important;
   display: flex !important;
   gap: 6px !important;
@@ -210,8 +210,8 @@ body #klevby-chat-modal.open {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: #d84d4d !important;
-  color: #fff !important;
+  background: var(--klevby-chat-danger) !important;
+  color: var(--klevby-chat-text-primary) !important;
   font-size: 10px !important;
   line-height: 17px !important;
   font-weight: 900 !important;

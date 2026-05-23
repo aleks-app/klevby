@@ -83,7 +83,7 @@
   max-width: 78% !important;
   display: flex !important;
   flex-direction: column !important;
-  background: linear-gradient(180deg, #2b3a35, #24302d) !important;
+  background: linear-gradient(180deg, var(--klevby-chat-bubble-other-start), var(--klevby-chat-bubble-other-end)) !important;
   color: #f0f7f4 !important;
   border-color: rgba(221, 236, 230, .12) !important;
   border-radius: 20px 20px 20px 10px !important;
@@ -96,7 +96,7 @@
   flex-direction: column !important;
   padding-top: 13px !important;
   padding-bottom: 10px !important;
-  background: linear-gradient(180deg, #447f6f, #3a6f61) !important;
+  background: linear-gradient(180deg, var(--klevby-chat-bubble-mine-start), var(--klevby-chat-bubble-mine-end)) !important;
   color: #f2f9f6 !important;
   border-color: rgba(172, 216, 196, .24) !important;
   border-radius: 20px 20px 10px 20px !important;
@@ -147,7 +147,7 @@
   padding: 5px 10px !important;
   border-radius: 999px !important;
   background: rgba(255, 255, 255, .07) !important;
-  color: rgba(255, 255, 255, .52) !important;
+  color: var(--klevby-chat-text-secondary) !important;
   font-size: 10px !important;
   font-weight: 800 !important;
 }
@@ -157,7 +157,7 @@
   margin: auto !important;
   max-width: 280px !important;
   text-align: center !important;
-  color: rgba(244, 247, 245, .46) !important;
+  color: var(--klevby-chat-text-soft) !important;
   font-size: 13px !important;
   line-height: 1.45 !important;
 }
