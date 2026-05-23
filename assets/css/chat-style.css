@@ -6,6 +6,17 @@
   display: none !important;
 }
 
+#klevby-chat-modal,
+#klevby-chat-modal *,
+.klevby-chat-modal,
+.klevby-chat-modal *,
+#chat-window,
+#chat-window *,
+.klevby-chat-window,
+.klevby-chat-window * {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
 body #chat-desktop-btn,
 body .klevby-chat-launcher {
   position: fixed !important;
@@ -303,7 +314,7 @@ body #klevby-chat-modal.open {
   margin-bottom: 2px !important;
   font-size: 10px !important;
   line-height: 1.2 !important;
-  color: #98ddbe !important;
+  color: #9fdcbc !important;
   font-weight: 800 !important;
   letter-spacing: .01em !important;
 }
