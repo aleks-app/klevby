@@ -282,8 +282,7 @@ body #klevby-chat-modal.open {
 
 .chat-message-bubble {
   width: fit-content !important;
-  min-width: clamp(210px, 58vw, 270px) !important;
-  max-width: 82% !important;
+  max-width: 78% !important;
   min-height: 0 !important;
   padding: 12px 15px 9px !important;
   border-radius: 20px !important;
@@ -294,6 +293,10 @@ body #klevby-chat-modal.open {
 }
 
 .other-message {
+  min-width: clamp(220px, 61vw, 250px) !important;
+  max-width: 78% !important;
+  display: flex !important;
+  flex-direction: column !important;
   background: linear-gradient(180deg, #2b3a35, #24302d) !important;
   color: #f0f7f4 !important;
   border-color: rgba(221, 236, 230, .12) !important;
@@ -301,6 +304,10 @@ body #klevby-chat-modal.open {
 }
 
 .my-message {
+  min-width: clamp(210px, 58vw, 240px) !important;
+  max-width: 76% !important;
+  display: flex !important;
+  flex-direction: column !important;
   padding-top: 13px !important;
   padding-bottom: 10px !important;
   background: linear-gradient(180deg, #447f6f, #3a6f61) !important;
@@ -320,6 +327,8 @@ body #klevby-chat-modal.open {
 }
 
 .chat-message-text {
+  display: block !important;
+  min-width: 0 !important;
   font-size: 15px !important;
   line-height: 1.33 !important;
   white-space: pre-wrap !important;
