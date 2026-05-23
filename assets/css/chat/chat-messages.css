@@ -1,3 +1,4 @@
+/* Messages surface */
 #chat-messages,
 .klevby-chat-messages {
   flex: 1 1 auto !important;
@@ -18,6 +19,7 @@
   -webkit-overflow-scrolling: touch !important;
 }
 
+/* Base dim layer */
 #chat-messages::before,
 .klevby-chat-messages::before {
   content: "" !important;
@@ -162,6 +164,7 @@
   line-height: 1.45 !important;
 }
 
+/* Intentional later override for textured overlay */
 #chat-messages::before,
 .klevby-chat-messages::before {
   content: "" !important;
@@ -187,16 +190,3 @@ opacity: .38 !important;
   content: none !important;
 }
 
-@media (max-width: 480px) {
-  .other-message-row {
-    padding-right: 28px !important;
-  }
-
-  .my-message-row {
-    padding-left: 28px !important;
-  }
-
-  .chat-message-text {
-    font-size: 14.5px !important;
-  }
-}

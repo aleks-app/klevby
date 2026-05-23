@@ -393,4 +393,22 @@
     color: var(--green) !important;
     text-shadow: 0 0 18px rgba(87, 230, 178, 0.42) !important;
   }
+
+
+}
+
+
+/* Narrow phone refinements */
+@media (max-width: 480px) {
+  .other-message-row {
+    padding-right: 28px !important;
+  }
+
+  .my-message-row {
+    padding-left: 28px !important;
+  }
+
+  .chat-message-text {
+    font-size: 14.5px !important;
+  }
 }
