@@ -96,10 +96,6 @@
         ? options.clearReply
         : () => {};
 
-    const getContextMessageData =
-      typeof options.getContextMessageData === "function"
-        ? options.getContextMessageData
-        : () => null;
 
     const setReplyTarget =
       typeof options.setReplyTarget === "function"
@@ -120,6 +116,11 @@
       typeof options.hideMessageMenu === "function"
         ? options.hideMessageMenu
         : () => {};
+
+    const resolveActionContext =
+      typeof options.resolveActionContext === "function"
+        ? options.resolveActionContext
+        : () => null;
 
     const showMessageMenu =
       typeof options.showMessageMenu === "function"
@@ -213,13 +214,13 @@
         ) {
           event.preventDefault();
           event.stopPropagation();
-          hideMessageMenu();
+          hideMessageMenu("close_chat");
           closeChat();
           return;
         }
 
         if (modal && event.target === modal) {
-          hideMessageMenu();
+          hideMessageMenu("outside_tap");
           closeChat();
           return;
         }
@@ -234,13 +235,13 @@
         }
 
         if (getClosest(event, "#publicChatTab")) {
-          hideMessageMenu();
+          hideMessageMenu("tab_public");
           await loadPublicMessages();
           return;
         }
 
         if (getClosest(event, "#privateChatTab")) {
-          hideMessageMenu();
+          hideMessageMenu("tab_private");
           console.info("[KlevbyPrivate] private tab click start", {
             activeModeBefore: getActiveMode(),
             selectedPeerBefore: getSelectedPeer()
@@ -254,7 +255,7 @@
         }
 
         if (getClosest(event, "#back-chat")) {
-          hideMessageMenu();
+          hideMessageMenu("back_chat");
           await loadPrivatePeople();
           return;
         }
@@ -265,12 +266,11 @@
         }
 
         if (getClosest(event, "#contextReplyBtn")) {
-          const data = getContextMessageData();
-
-          if (data) {
-            setReplyTarget(data);
+          const resolved = resolveActionContext("reply");
+          if (resolved?.data) {
+            setReplyTarget(resolved.data);
+            hideMessageMenu("reply_selected");
           }
-
           return;
         }
 
@@ -280,16 +280,7 @@
         }
 
         if (getClosest(event, "#contextDeleteBtn")) {
-          const data = getContextMessageData();
-
-          if (!data || !data.id) {
-            console.error("[KlevbyDelete] missing message context/id", data);
-            alert("Нельзя удалить: у сообщения отсутствует id.");
-            return;
-          }
-
-          console.info("[KlevbyDelete] trigger", { id: data.id, type: data.type, isMine: data.isMine });
-          await deleteMessage(data.type, data.id);
+          await deleteMessage();
           return;
         }
 
@@ -321,7 +312,7 @@
         }
 
         if (!getClosest(event, ".klevby-message-menu") && !getClosest(event, ".chat-message-row")) {
-          hideMessageMenu();
+          hideMessageMenu("outside_tap");
         }
       } catch (error) {
         console.error("Klevby chat: ошибка клика:", error);
@@ -379,19 +370,19 @@
     });
 
     addListener(messagesContainer, "scroll", () => {
-      hideMessageMenu();
+      hideMessageMenu("scroll_messages");
     }, { passive: true });
 
-    addListener(window, "scroll", () => hideMessageMenu(), { passive: true });
-    addListener(window, "pagehide", () => hideMessageMenu());
-    addListener(window, "pageshow", () => hideMessageMenu());
-    addListener(window, "focus", () => hideMessageMenu());
+    addListener(window, "scroll", () => hideMessageMenu("scroll_window"), { passive: true });
+    addListener(window, "pagehide", () => hideMessageMenu("pagehide"));
+    addListener(window, "pageshow", () => hideMessageMenu("pageshow_before_resume"));
+    addListener(window, "focus", () => hideMessageMenu("focus_after_background"));
     addListener(document, "visibilitychange", () => {
       if (document.visibilityState !== "visible") {
-        hideMessageMenu();
+        hideMessageMenu("visibility_hidden");
         return;
       }
-      hideMessageMenu();
+      hideMessageMenu("visibility_visible_before_resume");
     });
 
     addListener(sendBtn, "click", () => {
@@ -406,7 +397,7 @@
     });
 
     addListener(input, "focus", () => {
-      hideMessageMenu();
+      hideMessageMenu("input_focus");
       updateViewportVars();
 
       setTimeout(() => {

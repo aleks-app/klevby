@@ -356,9 +356,9 @@
         loadPrivatePeople,
         openPrivateDialog,
         clearReply,
-        getContextMessageData,
         setReplyTarget,
         deleteMessage,
+        resolveActionContext,
         findMessageDataFromRow,
         hideMessageMenu,
         showMessageMenu,
@@ -1052,10 +1052,6 @@
       return await callChatMessageActions("copyMessageText", null);
     }
 
-    function getContextMessageData() {
-      return callChatMessageActions("getContextMessageData", null);
-    }
-
     function clearReply() {
       callChatReply("clearReply");
     }
@@ -1086,6 +1082,10 @@
       } else {
         await sendPublicMessage();
       }
+    }
+
+    function resolveActionContext(actionName) {
+      return callChatMessageActions("resolveActionContext", null, actionName);
     }
 
     async function deleteMessage(type, id) {
