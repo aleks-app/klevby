@@ -7,6 +7,7 @@
 
   const privateUtils = window.KlevbyChatPrivateUtils || null;
   const privateList = window.KlevbyChatPrivateList || null;
+  const privateDialog = window.KlevbyChatPrivateDialog || null;
   const privateProfileAvatarCache = new Map();
 
   function init(options = {}) {
@@ -260,7 +261,22 @@
     `;
   }
 
+
   function renderPrivateHeaderAvatar(peer) {
+    if (privateDialog?.renderPrivateHeaderAvatar) {
+      const safePeer = {
+        ...(peer || {}),
+        avatarUrl: peer?.avatarUrl || getPrivateProfileAvatar(peer?.id) || ""
+      };
+
+      privateDialog.renderPrivateHeaderAvatar(safePeer, {
+        getElement: (name) => getElement(name),
+        normalizePrivateAvatarUrl: (value) => normalizePrivateAvatarUrl(value),
+        getInitials: (value) => getInitials(value)
+      });
+      return;
+    }
+
     const chatAvatar = getElement("chatAvatar");
     if (!chatAvatar) return;
 
@@ -293,12 +309,43 @@
   }
 
   function resetPrivateHeaderAvatar(value = "✉") {
+    if (privateDialog?.resetPrivateHeaderAvatar) {
+      privateDialog.resetPrivateHeaderAvatar(value, {
+        getElement: (name) => getElement(name)
+      });
+      return;
+    }
+
     const chatAvatar = getElement("chatAvatar");
     if (!chatAvatar) return;
 
     chatAvatar.classList.remove("klevby-chat-avatar-image");
     chatAvatar.innerHTML = "";
     chatAvatar.textContent = value;
+  }
+
+  function createSelectedPeerState(peerId, peerName) {
+    if (privateDialog?.createSelectedPeerState) {
+      return privateDialog.createSelectedPeerState(peerId, peerName, {
+        getProfileName: (id, fallback) => getProfileName(id, fallback),
+        getPrivateProfileAvatar: (id) => getPrivateProfileAvatar(id)
+      });
+    }
+
+    const safePeerId = String(peerId || "").trim();
+    return {
+      id: safePeerId,
+      name: getProfileName(safePeerId, peerName || "Рыбак"),
+      avatarUrl: getPrivateProfileAvatar(safePeerId)
+    };
+  }
+
+  function normalizePrivateDialogMessages(data) {
+    if (privateDialog?.normalizePrivateDialogMessages) {
+      return privateDialog.normalizePrivateDialogMessages(data);
+    }
+
+    return Array.isArray(data) ? data : [];
   }
 
   async function loadPrivateProfileAvatarsByIds(ids = []) {
@@ -899,11 +946,7 @@
           logPrivateOptionalSkip("profiles select for selected peer");
         });
 
-      const nextPeer = {
-        id: safePeerId,
-        name: getProfileName(safePeerId, peerName || "Рыбак"),
-        avatarUrl: getPrivateProfileAvatar(safePeerId)
-      };
+      const nextPeer = createSelectedPeerState(safePeerId, peerName);
 
       setSelectedPeer(nextPeer);
       setActiveMode("private");
@@ -953,7 +996,7 @@
         `&or=(and(sender_id.eq.${encodeURIComponent(currentUserId)},receiver_id.eq.${encodeURIComponent(safePeerId)}),and(sender_id.eq.${encodeURIComponent(safePeerId)},receiver_id.eq.${encodeURIComponent(currentUserId)}))` +
         `&order=created_at.asc`;
 
-      const { data, error } = await withPrivateStepTimeout("private_messages dialog REST", async () => {
+      const { data: rawData, error } = await withPrivateStepTimeout("private_messages dialog REST", async () => {
         const startedAt = Date.now();
         console.info("[KlevbyPrivate] private_messages dialog REST start", { endpoint });
         const response = await fetch(endpoint, {
@@ -981,6 +1024,8 @@
         showEmptyState("Не удалось загрузить личку. Проверь private_messages и RLS.");
         return;
       }
+
+      const data = normalizePrivateDialogMessages(rawData);
 
       (data || []).forEach((message) => {
         if (message.sender_id && message.sender_name) {
