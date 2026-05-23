@@ -122,11 +122,6 @@
         ? options.hideMessageMenu
         : () => {};
 
-    const resolveActionContext =
-      typeof options.resolveActionContext === "function"
-        ? options.resolveActionContext
-        : () => null;
-
     const showMessageMenu =
       typeof options.showMessageMenu === "function"
         ? options.showMessageMenu
@@ -136,6 +131,11 @@
       typeof options.copyMessageText === "function"
         ? options.copyMessageText
         : async () => {};
+
+    const replyToSelectedMessage =
+      typeof options.replyToSelectedMessage === "function"
+        ? options.replyToSelectedMessage
+        : () => null;
 
     const send =
       typeof options.send === "function"
@@ -271,10 +271,9 @@
         }
 
         if (getClosest(event, "#contextReplyBtn")) {
-          const resolved = resolveActionContext("reply");
-          if (resolved?.data) {
-            setReplyTarget(resolved.data);
-            hideMessageMenu("reply_selected");
+          const selectedMessage = replyToSelectedMessage();
+          if (selectedMessage) {
+            setReplyTarget(selectedMessage);
           }
           return;
         }
