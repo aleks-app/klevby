@@ -219,11 +219,13 @@ body #klevby-chat-modal.open {
   overflow-y: auto !important;
   overflow-x: hidden !important;
   padding: 12px 12px 14px !important;
-  background-image: url("../img/chat-bg-sunset.webp") !important;
+  background-image:
+    linear-gradient(180deg, rgba(10, 24, 20, .42) 0%, rgba(8, 20, 18, .36) 55%, rgba(8, 19, 17, .42) 100%),
+    url("../img/chat-bg-sunset.webp") !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  background-color: #0d1615 !important;
+  background-color: #0c1513 !important;
   position: relative !important;
   isolation: isolate !important;
   -webkit-overflow-scrolling: touch !important;
@@ -784,11 +786,13 @@ body #klevby-chat-modal.open {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding: 12px 10px 14px !important;
-    background-image: url("../img/chat-bg-sunset.webp") !important;
+    background-image:
+      linear-gradient(180deg, rgba(10, 24, 20, .42) 0%, rgba(8, 20, 18, .36) 55%, rgba(8, 19, 17, .42) 100%),
+      url("../img/chat-bg-sunset.webp") !important;
     background-size: cover !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
-    background-color: #0d1615 !important;
+    background-color: #0c1513 !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
     touch-action: pan-y !important;
@@ -1044,9 +1048,9 @@ body #klevby-chat-modal.open {
   z-index: 0 !important;
   background: linear-gradient(
     180deg,
-    rgba(6, 10, 12, .78) 0%,
-    rgba(8, 12, 14, .82) 38%,
-    rgba(7, 11, 13, .86) 100%
+    rgba(5, 18, 14, .36) 0%,
+    rgba(5, 18, 14, .27) 42%,
+    rgba(4, 12, 10, .34) 100%
   ) !important;
 }
 
