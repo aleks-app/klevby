@@ -318,10 +318,25 @@
 
     const bubble = document.createElement("div");
     bubble.className = `chat-message-bubble ${isMine ? "my-message" : "other-message"}`;
+    let replyHtml = "";
+    if (parsed.reply) {
+      const rawReply = String(parsed.reply || "").trim();
+      const delimiterIdx = rawReply.indexOf(":");
+      const replyAuthor = delimiterIdx > 0 ? rawReply.slice(0, delimiterIdx).trim() : "";
+      const replyText = delimiterIdx > 0 ? rawReply.slice(delimiterIdx + 1).trim() : rawReply;
+      const replyAuthorLabel = replyAuthor ? `Ответ ${replyAuthor}` : "Ответ";
+
+      replyHtml = `
+        <div class="klevby-message-reply">
+          <span class="klevby-message-reply-author">${escapeHtml(replyAuthorLabel)}</span>
+          <span class="klevby-message-reply-text">${escapeHtml(replyText || rawReply)}</span>
+        </div>
+      `;
+    }
 
     bubble.innerHTML = `
       ${!groupedWithPrevious && !isMine ? `<span class="chat-message-author">${escapeHtml(author)}</span>` : ""}
-      ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
+      ${replyHtml}
       <span class="chat-message-text">${escapeHtml(parsed.mainText || "")}</span>
       <div class="klevby-message-footer">
         ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
