@@ -219,11 +219,11 @@ body #klevby-chat-modal.open {
   overflow-y: auto !important;
   overflow-x: hidden !important;
   padding: 12px 12px 14px !important;
-  background:
-    radial-gradient(circle at 50% 52%, rgba(122, 171, 149, .055), transparent 46%),
-    radial-gradient(circle at 82% 12%, rgba(108, 154, 137, .06), transparent 35%),
-    linear-gradient(180deg, #172524 0%, #101917 62%, #0d1615 100%) !important;
-  background-blend-mode: screen, normal, normal !important;
+  background-image: url("../img/chat-bg-sunset.webp") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-color: #0d1615 !important;
   position: relative !important;
   isolation: isolate !important;
   -webkit-overflow-scrolling: touch !important;
@@ -260,11 +260,11 @@ body #klevby-chat-modal.open {
 
 .chat-message-bubble {
   width: fit-content !important;
-  min-width: 92px !important;
+  min-width: 0 !important;
   max-width: 79% !important;
-  min-height: 38px !important;
-  padding: 8px 12px 6px !important;
-  border-radius: 16px !important;
+  min-height: 0 !important;
+  padding: 6px 10px 5px !important;
+  border-radius: 14px !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
   border: 1px solid rgba(255, 255, 255, .06) !important;
@@ -287,9 +287,9 @@ body #klevby-chat-modal.open {
 
 .chat-message-author {
   display: block !important;
-  margin-bottom: 4px !important;
-  font-size: 11px !important;
-  color: #9ad9bf !important;
+  margin-bottom: 3px !important;
+  font-size: 10.5px !important;
+  color: #a9ddc7 !important;
   font-weight: 800 !important;
 }
 
@@ -301,7 +301,7 @@ body #klevby-chat-modal.open {
 }
 
 .klevby-message-footer {
-  margin-top: 2px !important;
+  margin-top: 1px !important;
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
@@ -309,8 +309,8 @@ body #klevby-chat-modal.open {
 }
 
 .chat-message-time {
-  font-size: 10px !important;
-  color: rgba(241, 251, 247, .5) !important;
+  font-size: 9px !important;
+  color: rgba(241, 251, 247, .42) !important;
 }
 
 .klevby-checks {
@@ -462,10 +462,10 @@ body #klevby-chat-modal.open {
 
 #send-btn,
 .klevby-chat-send {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  min-height: 36px !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
   border-radius: 50% !important;
   border: 0 !important;
   background: linear-gradient(180deg, #4f8d77, #3f7765) !important;
@@ -770,11 +770,11 @@ body #klevby-chat-modal.open {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding: 12px 10px 14px !important;
-    background:
-      radial-gradient(circle at 50% 52%, rgba(122, 171, 149, .055), transparent 46%),
-      radial-gradient(circle at 82% 12%, rgba(108, 154, 137, .06), transparent 35%),
-      linear-gradient(180deg, #172524 0%, #101917 62%, #0d1615 100%) !important;
-    background-blend-mode: screen, normal, normal !important;
+    background-image: url("../img/chat-bg-sunset.webp") !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-color: #0d1615 !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
     touch-action: pan-y !important;
@@ -800,11 +800,11 @@ body #klevby-chat-modal.open {
 
   .chat-message-bubble {
     width: fit-content !important;
-    min-width: 92px !important;
+    min-width: 0 !important;
     max-width: 79% !important;
-    min-height: 38px !important;
-    padding: 8px 12px 6px !important;
-    border-radius: 16px !important;
+    min-height: 0 !important;
+    padding: 6px 10px 5px !important;
+    border-radius: 14px !important;
     border: 1px solid rgba(255, 255, 255, .06) !important;
     box-shadow: 0 8px 20px rgba(0, 0, 0, .16) !important;
     word-break: normal !important;
@@ -837,18 +837,18 @@ body #klevby-chat-modal.open {
   }
 
   .klevby-message-footer {
-    margin-top: 2px !important;
+    margin-top: 1px !important;
     display: flex !important;
     justify-content: flex-end !important;
     align-items: center !important;
     gap: 3px !important;
-    min-height: 13px !important;
+    min-height: 11px !important;
   }
 
   .chat-message-time {
-    font-size: 10px !important;
+    font-size: 9px !important;
     line-height: 1 !important;
-    color: rgba(241, 251, 247, .5) !important;
+    color: rgba(241, 251, 247, .42) !important;
   }
 
   .klevby-checks {
@@ -941,10 +941,10 @@ body #klevby-chat-modal.open {
 
   #send-btn,
   .klevby-chat-send {
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
-    min-height: 40px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     font-size: 14px !important;
   }
 
@@ -1028,30 +1028,17 @@ body #klevby-chat-modal.open {
   inset: 0 !important;
   pointer-events: none !important;
   z-index: 0 !important;
-  opacity: .16 !important;
-  background-image:
-    radial-gradient(ellipse at 20% 18%, rgba(168, 200, 184, .18) 0 1px, transparent 1px),
-    radial-gradient(ellipse at 72% 31%, rgba(141, 179, 162, .16) 0 1px, transparent 1px),
-    radial-gradient(ellipse at 40% 77%, rgba(136, 169, 154, .15) 0 1px, transparent 1px),
-    repeating-linear-gradient(165deg, transparent 0 24px, rgba(188, 219, 205, .05) 24px 25px, transparent 25px 44px);
-  background-size: 200px 160px, 180px 160px, 220px 200px, 240px 240px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 10, 12, .78) 0%,
+    rgba(8, 12, 14, .82) 38%,
+    rgba(7, 11, 13, .86) 100%
+  ) !important;
 }
 
 #chat-messages::after,
 .klevby-chat-messages::after {
-  content: "Klevby" !important;
-  position: absolute !important;
-  left: 50% !important;
-  top: 49% !important;
-  transform: translate(-50%, -50%) !important;
-  font-size: clamp(38px, 10vw, 56px) !important;
-  letter-spacing: .16em !important;
-  font-weight: 700 !important;
-  color: rgba(198, 225, 212, .06) !important;
-  text-transform: uppercase !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
-  text-shadow: 0 0 24px rgba(176, 217, 199, .08) !important;
+  content: none !important;
 }
 
 @media (max-width: 480px) {
