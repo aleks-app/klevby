@@ -260,8 +260,8 @@ body #klevby-chat-modal.open {
 
 .chat-message-bubble {
   width: fit-content !important;
-  min-width: 145px !important;
-  max-width: 80% !important;
+  min-width: clamp(210px, 58vw, 270px) !important;
+  max-width: 82% !important;
   min-height: 0 !important;
   padding: 11px 14px 8px !important;
   border-radius: 20px !important;
@@ -803,8 +803,8 @@ body #klevby-chat-modal.open {
 
   .chat-message-bubble {
     width: fit-content !important;
-    min-width: 0 !important;
-    max-width: 79% !important;
+    min-width: clamp(210px, 58vw, 270px) !important;
+    max-width: 82% !important;
     min-height: 0 !important;
     padding: 6px 10px 5px !important;
     border-radius: 14px !important;
