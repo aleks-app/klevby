@@ -5,6 +5,7 @@
 
   let ctx = null;
 
+  const privateUtils = window.KlevbyChatPrivateUtils || null;
   const privateProfileAvatarCache = new Map();
 
   function init(options = {}) {
@@ -176,6 +177,8 @@
   }
 
   function escapeCssUrl(value) {
+    if (privateUtils?.escapeCssUrl) return privateUtils.escapeCssUrl(value);
+
     return String(value || "")
       .replaceAll("\\", "\\\\")
       .replaceAll("\n", "")
@@ -186,6 +189,8 @@
   }
 
   function normalizePrivateAvatarUrl(value) {
+    if (privateUtils?.normalizePrivateAvatarUrl) return privateUtils.normalizePrivateAvatarUrl(value);
+
     const url = String(value || "").trim();
 
     if (!url) return "";
@@ -398,42 +403,10 @@
   }
 
   async function withPrivateStepTimeout(step, runner, timeoutMs = PRIVATE_STEP_TIMEOUT_MS, options = {}) {
-    const startedAt = Date.now();
-    const silent = options?.silent === true;
-
-    if (!silent) {
-      console.info("[KlevbyPrivate] step start", { step, timeoutMs });
+    if (privateUtils?.withPrivateStepTimeout) {
+      return privateUtils.withPrivateStepTimeout(step, runner, timeoutMs, options);
     }
-
-    let timer = null;
-    try {
-      const result = await Promise.race([
-        Promise.resolve().then(runner),
-        new Promise((_, reject) => {
-          timer = setTimeout(() => reject(createPrivateTimeoutError(step, timeoutMs)), timeoutMs);
-        })
-      ]);
-
-      if (!silent) {
-        console.info("[KlevbyPrivate] step end", { step, durationMs: Date.now() - startedAt });
-      }
-
-      return result;
-    } catch (error) {
-      if (!silent) {
-        const level = error?.code === "PRIVATE_STEP_TIMEOUT" ? "warn" : "error";
-        console[level]("[KlevbyPrivate] step fail", {
-          step,
-          durationMs: Date.now() - startedAt,
-          error: String(error?.message || error),
-          code: error?.code || null
-        });
-      }
-
-      throw error;
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
+    return await Promise.resolve().then(() => runner());
   }
 
   const privateOptionalSkipLogState = {
@@ -463,6 +436,10 @@
   }
 
   async function runPrivateStepTimeout(step, timeoutMs, runner) {
+    if (privateUtils?.runPrivateStepTimeout) {
+      return privateUtils.runPrivateStepTimeout(step, timeoutMs, runner);
+    }
+
     const controller = new AbortController();
     try {
       return await withPrivateStepTimeout(step, () => runner(controller.signal), timeoutMs);
@@ -472,48 +449,23 @@
   }
 
   function getPrivateAccessTokenQuick() {
-    try {
-      const client = getMainSupabaseClient();
-      const session = client?.auth?.session?.();
-      const accessToken = session?.access_token;
-      if (accessToken) return String(accessToken);
-    } catch (_) {}
-
-    try {
-      const config = window.KLEVB_CONFIG || {};
-      const storageKey = String(
-        config.SUPABASE_STORAGE_KEY ||
-        window.SUPABASE_STORAGE_KEY ||
-        "sb-oecdshvozssadztcokog-auth-token"
-      ).trim();
-      if (!storageKey) return "";
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return "";
-      const parsed = JSON.parse(raw);
-      const accessToken = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token;
-      return accessToken ? String(accessToken) : "";
-    } catch (_) {
-      return "";
+    if (privateUtils?.getPrivateAccessTokenQuick) {
+      return privateUtils.getPrivateAccessTokenQuick({ getMainSupabaseClient });
     }
+
+    return "";
   }
 
   function getCurrentUserIdQuick() {
-    const directId = String(getCurrentUser()?.id || "").trim();
-    if (isValidSupabaseUuid(directId)) return directId;
-
-    const accessToken = getPrivateAccessTokenQuick();
-    if (!accessToken) return "";
-
-    try {
-      const payloadPart = accessToken.split(".")[1] || "";
-      const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-      const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
-      const parsed = JSON.parse(decoded);
-      const sub = String(parsed?.sub || "").trim();
-      return isValidSupabaseUuid(sub) ? sub : "";
-    } catch (_) {
-      return "";
+    if (privateUtils?.getCurrentUserIdQuick) {
+      return privateUtils.getCurrentUserIdQuick({
+        getCurrentUser,
+        isValidSupabaseUuid,
+        getPrivateAccessTokenQuickFn: getPrivateAccessTokenQuick
+      });
     }
+
+    return "";
   }
 
   function scrollChatToBottom() {
