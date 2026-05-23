@@ -2,6 +2,10 @@
   let lifecycleApi = null;
 
   function init(options = {}) {
+    // Lifecycle/resume ownership:
+    // - open/close sequencing
+    // - resume debouncing/recovery after background/foreground
+    // - lightweight timeout guards around chat steps
     const elements = options.elements || {};
     const modal = elements.modal || null;
 

@@ -144,6 +144,10 @@
     const elements=getElements(); const messagesContainer=elements.messagesContainer||null; if(!confirm("Удалить сообщение?")) return; await refreshCurrentUser({force:true}); const currentChatUser=getCurrentUser(); const client=getMainSupabaseClient(); if(!client||typeof client.from!=="function"){alert("Нет подключения к Supabase."); return;} let result; if(liveType==="private"){ if(!currentChatUser||!isValidSupabaseUuid(currentChatUser.id)){alert("Удалять личные сообщения можно только после входа."); return;} result=await client.from("private_messages").delete().eq("id",liveId).eq("sender_id",currentChatUser.id);} else { if(currentChatUser&&isValidSupabaseUuid(currentChatUser.id)){ result=await client.from("messages").delete().eq("id",liveId).eq("user_id",currentChatUser.id);} else { result=await client.from("messages").delete().delete().eq("id",liveId).eq("user_name",getCurrentChatName()); } } if(result.error){console.error("[KlevbyDelete] delete failed",{id:liveId,type:liveType,isMine:liveIsMine,error:result.error}); alert(`Не получилось удалить сообщение: ${result.error.message||"ошибка RLS/бэкенда"}`); return;} console.info("[KlevbyDelete] delete success",{id:liveId,type:liveType}); if(messagesContainer){ const row=messagesContainer.querySelector(`[data-message-id="${cssEscape(liveId)}"][data-message-type="${liveType}"]`); if(row){ row.remove(); } } cleanupMenuState("delete_success"); }
 
   function init(options = {}) { optionsRef = options || {}; cleanupMenuState("init"); }
+  // Action menu ownership:
+  // - context message resolution
+  // - selection/menu visibility state
+  // - copy/reply/delete action handlers
 
   window.KlevbyChatMessageActions = { init, findMessageDataFromRow, showMessageMenu, hideMessageMenu, getContextMessageData, deleteMessage, copyMessageText, resolveActionContext, cleanupMenuState };
 })();

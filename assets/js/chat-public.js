@@ -7,6 +7,9 @@
   const sentLocalMessages = new Set();
 
   function init(options = {}) {
+    // Public chat ownership:
+    // - public timeline loading/sending orchestration
+    // - optional enrichment/profile hydration
     ctx = options || {};
   }
 

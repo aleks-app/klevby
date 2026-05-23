@@ -115,6 +115,9 @@
       refreshPushButtonState();
     });
 
+    // ---------------------------------------------------------------------------
+    // Bridge helpers (chat.js is orchestration-only and delegates to feature APIs)
+    // ---------------------------------------------------------------------------
     function callApi(getApi, name, fallback, ...args) {
       const api = getApi();
 
@@ -213,6 +216,9 @@
       return callApi(getChatPrivateApi, name, fallback, ...args);
     }
 
+    // ---------------------------------------------------------------------------
+    // Lifecycle / auth / state / events bridges
+    // ---------------------------------------------------------------------------
     function initChatAuthEventsBridge() {
       const api = getChatAuthEventsApi();
 
@@ -391,6 +397,9 @@
       });
     }
 
+    // ---------------------------------------------------------------------------
+    // Render helpers bridge (render-only responsibilities live in chat-render.js)
+    // ---------------------------------------------------------------------------
     function initChatRenderBridge() {
       const api = getChatRenderApi();
 
@@ -405,7 +414,6 @@
           messageContextMenu,
           contextDeleteBtn,
           contextReplyBtn,
-          contextCopyBtn,
           contextCopyBtn
         },
 
@@ -437,6 +445,9 @@
       });
     }
 
+    // ---------------------------------------------------------------------------
+    // Action menu bridge (copy / reply / delete menu state)
+    // ---------------------------------------------------------------------------
     function initChatMessageActionsBridge() {
       const api = getChatMessageActionsApi();
 
@@ -485,6 +496,9 @@
       });
     }
 
+    // ---------------------------------------------------------------------------
+    // Public/private bridges
+    // ---------------------------------------------------------------------------
     function initChatPublicBridge() {
       const api = getChatPublicApi();
 
@@ -602,6 +616,9 @@
       });
     }
 
+    // ---------------------------------------------------------------------------
+    // Realtime hooks bridge
+    // ---------------------------------------------------------------------------
     function initChatRealtimeBridge() {
       const api = getChatRealtimeApi();
 

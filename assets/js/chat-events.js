@@ -43,6 +43,11 @@
   }
 
   function init(options = {}) {
+    // DOM/user events only:
+    // - chat open/close clicks
+    // - tab/dialog navigation clicks
+    // - message row interactions (long press / context menu trigger)
+    // - resume/focus/page visibility event wiring
     clearOldListeners();
 
     const elements = options.elements || {};

@@ -602,6 +602,10 @@
   }
 
   function init(context) {
+    // Realtime ownership:
+    // - channel subscription lifecycle
+    // - reconnect/presence hooks
+    // - incoming event fan-out to render/load modules
     ctx = context || null;
   }
 

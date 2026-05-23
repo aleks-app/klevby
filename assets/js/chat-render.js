@@ -9,6 +9,8 @@
   let contextMessageData = null;
 
   function init(options = {}) {
+    // Rendering ownership only: DOM output, grouping, date dividers, empty states.
+    // Data loading/realtime/event wiring stays outside this module.
     ctx = options || {};
     resetRenderState();
     contextMessageData = null;
