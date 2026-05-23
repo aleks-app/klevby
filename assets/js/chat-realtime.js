@@ -381,25 +381,8 @@
               const activeMode = getActiveMode();
               const messagesContainer = getMessagesContainer();
               const messageId = payload.new?.id;
-              const messageUserId = payload.new?.user_id;
-
-              console.info("[KlevbyRealtimeDebug] public INSERT callback fired", {
-                messageId,
-                userId: messageUserId,
-                activeMode,
-                hasMessagesContainer: Boolean(messagesContainer),
-                href: window.location?.href || null,
-                appVersion:
-                  window.KlevbyApp?.version ||
-                  document.documentElement?.dataset?.version ||
-                  null
-              });
 
               if (activeMode !== "public") {
-                console.info("[KlevbyRealtimeDebug] public INSERT skipped: activeMode is not public", {
-                  messageId,
-                  activeMode
-                });
                 return;
               }
 
@@ -411,32 +394,26 @@
                 safeCall("clearMessages");
               }
 
-              await safeAsyncCall("refreshCurrentUser");
-
-              if (payload.new?.user_id && payload.new?.user_name) {
-                safeCall("rememberFallbackProfile", payload.new.user_id, payload.new.user_name);
-              }
-
-              await safeAsyncCall("loadProfilesByIds", [payload.new?.user_id]);
-
               const isDuplicate = hasMessageRow("public", messageId);
               if (isDuplicate) {
-                console.info("[KlevbyRealtimeDebug] public INSERT skipped: duplicate row detected", {
-                  messageId,
-                  activeMode
-                });
                 return;
               }
 
-              console.info("[KlevbyRealtimeDebug] public INSERT render about to run", {
-                messageId,
-                activeMode
-              });
               safeCall("renderPublicMessage", payload.new);
-              console.info("[KlevbyRealtimeDebug] public INSERT render called", {
-                messageId,
-                rowExistsAfterRender: hasMessageRow("public", messageId)
-              });
+
+              Promise.resolve()
+                .then(async () => {
+                  await safeAsyncCall("refreshCurrentUser");
+
+                  if (payload.new?.user_id && payload.new?.user_name) {
+                    safeCall("rememberFallbackProfile", payload.new.user_id, payload.new.user_name);
+                  }
+
+                  await safeAsyncCall("loadProfilesByIds", [payload.new?.user_id]);
+                })
+                .catch((error) => {
+                  console.warn("Realtime public message post-render sync skipped:", error);
+                });
             } catch (error) {
               console.warn("Realtime public message skipped:", error);
             }
