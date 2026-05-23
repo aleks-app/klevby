@@ -8,6 +8,10 @@
   const privateProfileAvatarCache = new Map();
 
   function init(options = {}) {
+    // Private chat ownership:
+    // - people/dialog list
+    // - private dialog header state
+    // - private message loading/render orchestration
     ctx = options || {};
   }
 
