@@ -6,6 +6,7 @@
   display: none !important;
 }
 
+/* Base chat typography scope */
 #klevby-chat-modal,
 #klevby-chat-modal *,
 .klevby-chat-modal,
@@ -17,6 +18,7 @@
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
+/* Launcher */
 body #chat-desktop-btn,
 body .klevby-chat-launcher {
   position: fixed !important;
@@ -35,6 +37,7 @@ body .klevby-chat-launcher {
   box-shadow: var(--klevby-chat-shadow-soft) !important;
 }
 
+/* Modal + window container */
 body #klevby-chat-modal {
   position: fixed !important;
   inset: 0 !important;
@@ -63,6 +66,7 @@ body #klevby-chat-modal.open {
   box-shadow: var(--klevby-chat-shadow-panel) !important;
 }
 
+/* Header */
 #chat-header,
 .klevby-chat-header {
   height: 56px !important;
@@ -77,6 +81,7 @@ body #klevby-chat-modal.open {
   flex: 0 0 auto !important;
 }
 
+/* Disabled shell elements (intentionally hidden) */
 .klevby-chat-pinned,
 #attach-btn,
 .klevby-chat-attach,
@@ -89,6 +94,7 @@ body #klevby-chat-modal.open {
   display: none !important;
 }
 
+/* Header: avatar + title/subtitle */
 .klevby-chat-head-main {
   display: flex !important;
   align-items: center !important;
@@ -146,6 +152,7 @@ body #klevby-chat-modal.open {
   text-overflow: ellipsis !important;
 }
 
+/* Header actions */
 #back-chat,
 #close-chat {
   width: 34px !important;
@@ -170,6 +177,7 @@ body #klevby-chat-modal.open {
   color: var(--klevby-chat-text-primary) !important;
 }
 
+/* Tabs */
 .klevby-chat-tabs {
   height: 42px !important;
   min-height: 42px !important;
@@ -201,6 +209,7 @@ body #klevby-chat-modal.open {
   box-shadow: 0 5px 16px rgba(0, 0, 0, .2) !important;
 }
 
+/* Unread badge */
 .klevby-unread-badge {
   min-width: 17px !important;
   height: 17px !important;
@@ -217,6 +226,7 @@ body #klevby-chat-modal.open {
   font-weight: 900 !important;
 }
 
+/* People panel is intentionally hidden in this shell */
 #privateChatPeople,
 .klevby-private-people {
   display: none !important;

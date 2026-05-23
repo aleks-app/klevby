@@ -1,31 +1,38 @@
 :root {
+  /* Text */
   --klevby-chat-text-primary: #ffffff;
   --klevby-chat-text-secondary: rgba(255, 255, 255, .52);
   --klevby-chat-text-muted: rgba(255, 255, 255, .42);
   --klevby-chat-text-soft: rgba(244, 247, 245, .46);
 
+  /* Status */
   --klevby-chat-danger: #d84d4d;
   --klevby-chat-danger-soft: rgba(216, 77, 77, .10);
   --klevby-chat-danger-glow: rgba(216, 77, 77, .28);
 
+  /* Accent */
   --klevby-chat-accent-mint: #49d69b;
   --klevby-chat-accent-mint-soft: rgba(110, 210, 165, .16);
   --klevby-chat-accent-mint-border: rgba(72, 214, 150, .35);
 
+  /* Surfaces */
   --klevby-chat-bg-app: #0f1917;
   --klevby-chat-bg-overlay: rgba(0, 0, 0, .6);
   --klevby-chat-bg-input-focus: #263633;
   --klevby-chat-bg-panel: rgba(15, 24, 22, .88);
 
+  /* Borders */
   --klevby-chat-border-soft: rgba(202, 231, 220, .12);
   --klevby-chat-border-subtle: rgba(214, 237, 228, .1);
   --klevby-chat-border-faint: rgba(255, 255, 255, .06);
 
+  /* Message bubbles */
   --klevby-chat-bubble-other-start: #2b3a35;
   --klevby-chat-bubble-other-end: #24302d;
   --klevby-chat-bubble-mine-start: #447f6f;
   --klevby-chat-bubble-mine-end: #3a6f61;
 
+  /* Elevation */
   --klevby-chat-shadow-panel: 0 24px 62px rgba(0, 0, 0, .45);
   --klevby-chat-shadow-soft: 0 12px 30px rgba(0, 0, 0, .45);
 }
