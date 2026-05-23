@@ -2,6 +2,7 @@
   let optionsRef = {};
   let contextMessageData = null;
   let selectedMessageRow = null;
+  let isMenuOpen = false;
 
   function getOptions() { return optionsRef || {}; }
   function getElements() { return getOptions().elements || {}; }
@@ -40,6 +41,7 @@
     const messageContextMenu = elements.messageContextMenu || null;
     log("cleanup", { reason });
     contextMessageData = null;
+    isMenuOpen = false;
     setSelectedMessageRow(null);
     if (!messageContextMenu) return;
     messageContextMenu.classList.add("hidden");
@@ -84,7 +86,9 @@
     const chatWindow = elements.chatWindow || document.getElementById("chat-window") || null;
     if (!messageContextMenu || !row) return;
     const data = findMessageDataFromRow(row); if (!data) return;
+    cleanupMenuState("before_open");
     contextMessageData = data;
+    isMenuOpen = true;
     log("open", { id: data.id, type: data.type, isMine: data.isMine });
 
     const canDeleteOwn = Boolean(data.isMine && data.id);
@@ -120,6 +124,13 @@
 
   function hideMessageMenu(reason = "manual") { cleanupMenuState(reason); }
 
+  function replyToSelectedMessage() {
+    const resolved = resolveActionContext("reply");
+    if (!resolved?.data) return null;
+    cleanupMenuState("reply_selected");
+    return resolved.data;
+  }
+
   function showCopyToast(message) { const toastId = "klevby-chat-copy-toast"; let toast = document.getElementById(toastId); if (!toast) { toast = document.createElement("div"); toast.id = toastId; toast.className = "klevby-chat-copy-toast"; document.body.appendChild(toast);} toast.textContent = message; toast.classList.add("show"); clearTimeout(toast.__hideTimer); toast.__hideTimer = setTimeout(() => toast.classList.remove("show"), 1300); }
 
   async function copyMessageText() {
@@ -149,5 +160,5 @@
   // - selection/menu visibility state
   // - copy/reply/delete action handlers
 
-  window.KlevbyChatMessageActions = { init, findMessageDataFromRow, showMessageMenu, hideMessageMenu, getContextMessageData, deleteMessage, copyMessageText, resolveActionContext, cleanupMenuState };
+  window.KlevbyChatMessageActions = { init, findMessageDataFromRow, showMessageMenu, hideMessageMenu, getContextMessageData, deleteMessage, copyMessageText, resolveActionContext, cleanupMenuState, replyToSelectedMessage };
 })();

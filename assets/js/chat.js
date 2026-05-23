@@ -364,11 +364,11 @@
         clearReply,
         setReplyTarget,
         deleteMessage,
-        resolveActionContext,
         findMessageDataFromRow,
         hideMessageMenu,
         showMessageMenu,
         copyMessageText,
+        replyToSelectedMessage,
         send,
         updateViewportVars,
         scrollChatToBottom,
@@ -1061,12 +1061,16 @@
       callChatMessageActions("showMessageMenu", undefined, row);
     }
 
-    function hideMessageMenu() {
-      callChatMessageActions("hideMessageMenu");
+    function hideMessageMenu(reason) {
+      callChatMessageActions("hideMessageMenu", undefined, reason);
     }
 
     async function copyMessageText() {
       return await callChatMessageActions("copyMessageText", null);
+    }
+
+    function replyToSelectedMessage() {
+      return callChatMessageActions("replyToSelectedMessage", null);
     }
 
     function clearReply() {
@@ -1099,10 +1103,6 @@
       } else {
         await sendPublicMessage();
       }
-    }
-
-    function resolveActionContext(actionName) {
-      return callChatMessageActions("resolveActionContext", null, actionName);
     }
 
     async function deleteMessage(type, id) {

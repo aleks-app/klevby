@@ -6,14 +6,12 @@
   let ctx = null;
   let lastRenderedDateKey = "";
   let lastRenderedMessageMeta = null;
-  let contextMessageData = null;
 
   function init(options = {}) {
     // Rendering ownership only: DOM output, grouping, date dividers, empty states.
     // Data loading/realtime/event wiring stays outside this module.
     ctx = options || {};
     resetRenderState();
-    contextMessageData = null;
   }
 
   function getCtx() {
@@ -38,6 +36,12 @@
 
   function getContextDeleteBtn() {
     return getElement("contextDeleteBtn");
+  }
+
+  function hideMessageMenu(reason) {
+    if (getCtx().hideMessageMenu) {
+      getCtx().hideMessageMenu(reason);
+    }
   }
 
   function getCurrentUser() {
@@ -437,57 +441,9 @@
     };
   }
 
-  function showMessageMenu(row) {
-    const messageContextMenu = getMessageContextMenu();
-    const contextDeleteBtn = getContextDeleteBtn();
-
-    if (!messageContextMenu) return;
-
-    const data = findMessageDataFromRow(row);
-    if (!data) return;
-
-    contextMessageData = data;
-
-    if (contextDeleteBtn) {
-      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
-    }
-
-    messageContextMenu.classList.remove("hidden");
-
-    const rect = row.getBoundingClientRect();
-    const menuWidth = 170;
-    const menuHeight = 92;
-
-    let left = Math.min(
-      Math.max(12, rect.left + rect.width / 2 - menuWidth / 2),
-      window.innerWidth - menuWidth - 12
-    );
-
-    let top = rect.top - menuHeight - 8;
-
-    if (top < 12) {
-      top = rect.bottom + 8;
-    }
-
-    messageContextMenu.style.left = `${left}px`;
-    messageContextMenu.style.top = `${top}px`;
-  }
-
-  function hideMessageMenu() {
-    const messageContextMenu = getMessageContextMenu();
-
-    contextMessageData = null;
-
-    if (!messageContextMenu) return;
-
-    messageContextMenu.classList.add("hidden");
-    messageContextMenu.style.left = "";
-    messageContextMenu.style.top = "";
-  }
-
-  function getContextMessageData() {
-    return contextMessageData;
-  }
+  // Compatibility bridge note:
+  // Message action menu lifecycle (open/close/context/selection state) lives in
+  // assets/js/chat-message-actions.js. chat-render keeps message parsing helpers only.
 
   window.KlevbyChatRender = {
     init,
@@ -502,9 +458,6 @@
     renderPublicMessage,
     renderPrivateMessage,
     renderMessageList,
-    findMessageDataFromRow,
-    showMessageMenu,
-    hideMessageMenu,
-    getContextMessageData
+    findMessageDataFromRow
   };
 })();
