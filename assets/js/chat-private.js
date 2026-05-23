@@ -8,6 +8,7 @@
   const privateUtils = window.KlevbyChatPrivateUtils || null;
   const privateList = window.KlevbyChatPrivateList || null;
   const privateDialog = window.KlevbyChatPrivateDialog || null;
+  const privateMessages = window.KlevbyChatPrivateMessages || null;
   const privateProfileAvatarCache = new Map();
 
   function init(options = {}) {
@@ -341,6 +342,10 @@
   }
 
   function normalizePrivateDialogMessages(data) {
+    if (privateMessages?.normalizePrivateDialogMessages) {
+      return privateMessages.normalizePrivateDialogMessages(data);
+    }
+
     if (privateDialog?.normalizePrivateDialogMessages) {
       return privateDialog.normalizePrivateDialogMessages(data);
     }
@@ -991,12 +996,26 @@
         showEmptyState("Войди в аккаунт, чтобы открыть личные сообщения.");
         return;
       }
-      const endpoint =
-        `${supabaseUrl}/rest/v1/private_messages?select=*` +
-        `&or=(and(sender_id.eq.${encodeURIComponent(currentUserId)},receiver_id.eq.${encodeURIComponent(safePeerId)}),and(sender_id.eq.${encodeURIComponent(safePeerId)},receiver_id.eq.${encodeURIComponent(currentUserId)}))` +
-        `&order=created_at.asc`;
+      const endpoint = privateMessages?.buildPrivateMessagesEndpoint
+        ? privateMessages.buildPrivateMessagesEndpoint({
+            supabaseUrl,
+            currentUserId,
+            peerId: safePeerId
+          })
+        : `${supabaseUrl}/rest/v1/private_messages?select=*` +
+          `&or=(and(sender_id.eq.${encodeURIComponent(currentUserId)},receiver_id.eq.${encodeURIComponent(safePeerId)}),and(sender_id.eq.${encodeURIComponent(safePeerId)},receiver_id.eq.${encodeURIComponent(currentUserId)}))` +
+          `&order=created_at.asc`;
 
       const { data: rawData, error } = await withPrivateStepTimeout("private_messages dialog REST", async () => {
+        if (privateMessages?.fetchPrivateDialogMessages) {
+          return privateMessages.fetchPrivateDialogMessages({
+            endpoint,
+            supabaseAnonKey,
+            accessToken,
+            fetchFn: fetch
+          });
+        }
+
         const startedAt = Date.now();
         console.info("[KlevbyPrivate] private_messages dialog REST start", { endpoint });
         const response = await fetch(endpoint, {
@@ -1126,29 +1145,52 @@
       const senderName = getCurrentChatName();
       const messageContent = buildMessageContent(rawVal);
 
-      const payload = {
-        sender_id: currentUserId,
-        receiver_id: selectedPeer.id,
-        sender_name: senderName,
-        content: messageContent
-      };
-      const endpoint = `${supabaseUrl}/rest/v1/private_messages`;
-      const startedAt = Date.now();
-      console.info("[KlevbyPrivate] send REST start", { endpoint, peerId: selectedPeer.id });
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${accessToken}`,
-          Prefer: "return=representation"
-        },
-        body: JSON.stringify(payload)
-      });
-      const durationMs = Date.now() - startedAt;
-      let responseBody = null;
-      try { responseBody = await response.json(); } catch (_) { responseBody = null; }
-      console.info("[KlevbyPrivate] send REST end", { status: response.status, durationMs });
+      const payload = privateMessages?.buildPrivateMessagePayload
+        ? privateMessages.buildPrivateMessagePayload({
+            currentUserId,
+            peerId: selectedPeer.id,
+            senderName,
+            content: messageContent
+          })
+        : {
+            sender_id: currentUserId,
+            receiver_id: selectedPeer.id,
+            sender_name: senderName,
+            content: messageContent
+          };
+
+      const {
+        response,
+        responseBody,
+        durationMs
+      } = privateMessages?.sendPrivateMessageRest
+        ? await privateMessages.sendPrivateMessageRest({
+            supabaseUrl,
+            supabaseAnonKey,
+            accessToken,
+            payload,
+            fetchFn: fetch
+          })
+        : await (async () => {
+            const endpoint = `${supabaseUrl}/rest/v1/private_messages`;
+            const startedAt = Date.now();
+            console.info("[KlevbyPrivate] send REST start", { endpoint, peerId: selectedPeer.id });
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${accessToken}`,
+                Prefer: "return=representation"
+              },
+              body: JSON.stringify(payload)
+            });
+            const durationMs = Date.now() - startedAt;
+            let responseBody = null;
+            try { responseBody = await response.json(); } catch (_) { responseBody = null; }
+            console.info("[KlevbyPrivate] send REST end", { status: response.status, durationMs });
+            return { response, responseBody, durationMs };
+          })();
 
       if (!response.ok) {
         console.error("Ошибка отправки личного сообщения:", { status: response.status, durationMs, responseBody });
