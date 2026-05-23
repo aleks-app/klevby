@@ -538,7 +538,7 @@
     if (!isValidSupabaseUuid(myId)) {
       return { data: null, error: { code: "AUTH_REQUIRED", message: "current_user_id missing" }, status: 401 };
     }
-    const endpoint = `${supabaseUrl}/rest/v1/private_messages?select=sender_id,receiver_id,sender_name,content,created_at&or=(sender_id.eq.${encodeURIComponent(myId)},receiver_id.eq.${encodeURIComponent(myId)})&order=created_at.desc&limit=150`;
+    const endpoint = `${supabaseUrl}/rest/v1/private_messages?select=id,sender_id,receiver_id,sender_name,content,created_at&or=(sender_id.eq.${encodeURIComponent(myId)},receiver_id.eq.${encodeURIComponent(myId)})&order=created_at.desc&limit=150`;
 
     console.info("[KlevbyPrivate] private_messages REST start", { endpoint, hasAccessToken: Boolean(accessToken) });
     const startedAt = Date.now();

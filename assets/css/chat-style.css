@@ -377,7 +377,18 @@ body #klevby-chat-modal.open {
 }
 
 .klevby-message-reply {
-  display: none !important;
+  display: block !important;
+  margin: 0 0 8px !important;
+  padding: 6px 8px !important;
+  border-radius: 10px !important;
+  border-left: 2px solid rgba(117, 230, 176, .65) !important;
+  background: rgba(9, 22, 20, .5) !important;
+  color: rgba(225, 245, 236, .88) !important;
+  font-size: 11px !important;
+  line-height: 1.28 !important;
+  max-height: 48px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .klevby-message-actions {
@@ -387,28 +398,33 @@ body #klevby-chat-modal.open {
 .klevby-message-menu {
   position: fixed !important;
   z-index: 1000001 !important;
-  width: 170px !important;
-  padding: 6px !important;
-  border-radius: 16px !important;
-  background: rgba(12, 24, 27, .96) !important;
-  border: 1px solid rgba(255, 255, 255, .10) !important;
-  box-shadow: 0 18px 46px rgba(0, 0, 0, .42) !important;
+  width: 154px !important;
+  padding: 5px !important;
+  border-radius: 12px !important;
+  background: rgba(13, 26, 24, .96) !important;
+  border: 1px solid rgba(171, 212, 194, .18) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .34) !important;
   backdrop-filter: blur(18px) !important;
   -webkit-backdrop-filter: blur(18px) !important;
 }
 
 .klevby-message-menu button {
   width: 100% !important;
-  min-height: 38px !important;
+  min-height: 36px !important;
   border: 0 !important;
-  border-radius: 11px !important;
+  border-radius: 9px !important;
   background: transparent !important;
   color: #f4fbf7 !important;
-  font-size: 14px !important;
-  font-weight: 800 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
   text-align: left !important;
   padding: 0 10px !important;
   cursor: pointer !important;
+}
+
+.klevby-message-menu button:hover,
+.klevby-message-menu button:active {
+  background: rgba(110, 210, 165, .16) !important;
 }
 
 .chat-empty-state {
@@ -420,26 +436,67 @@ body #klevby-chat-modal.open {
   line-height: 1.45 !important;
 }
 
-#replyPreview,
 #replyPreview.hidden,
-.klevby-reply-preview,
-.klevby-reply-preview.hidden,
-.klevby-reply-line,
-.klevby-reply-body,
-.klevby-reply-author,
-.klevby-reply-text,
-.klevby-reply-cancel {
+.klevby-reply-preview.hidden {
   display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  max-height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
+}
+
+#replyPreview,
+.klevby-reply-preview {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 7px !important;
+  margin: 0 0 8px !important;
+  padding: 7px 9px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(168, 215, 196, .26) !important;
+  border-left: 3px solid rgba(117, 230, 176, .78) !important;
+  background: rgba(16, 34, 30, .95) !important;
+}
+
+.klevby-reply-line {
+  width: 0 !important;
+  display: none !important;
+}
+
+.klevby-reply-body {
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.klevby-reply-author {
+  display: block !important;
+  color: #83e3b7 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+.klevby-reply-text {
+  display: block !important;
+  margin-top: 2px !important;
+  color: rgba(235, 248, 242, .82) !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  max-height: 30px !important;
   overflow: hidden !important;
-  pointer-events: none !important;
+}
+
+.klevby-reply-cancel {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: rgba(236, 248, 242, .86) !important;
+  background: rgba(255, 255, 255, .08) !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
 }
 
 #chat-input-area,
