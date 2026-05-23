@@ -140,10 +140,12 @@
     };
   }
 
-  function showMessageMenu(row) {
+  function showMessageMenu(row, anchor = null) {
     const elements = getElements();
     const messageContextMenu = elements.messageContextMenu || null;
+    const contextReplyBtn = elements.contextReplyBtn || null;
     const contextDeleteBtn = elements.contextDeleteBtn || null;
+    const chatWindow = elements.chatWindow || document.getElementById("chat-window") || null;
 
     if (!messageContextMenu || !row) return;
 
@@ -153,26 +155,52 @@
 
     contextMessageData = data;
 
+    const canDeleteOwn = Boolean(data.isMine && data.id);
+
+    if (contextReplyBtn) {
+      contextReplyBtn.classList.toggle("hidden", Boolean(data.isMine));
+    }
+
     if (contextDeleteBtn) {
-      contextDeleteBtn.classList.toggle("hidden", !data.isMine || !data.id);
+      contextDeleteBtn.classList.toggle("hidden", !canDeleteOwn);
+    }
+
+    if (data.isMine && !data.id) {
+      console.warn("[KlevbyChat] delete disabled: own message has no id", data);
     }
 
     messageContextMenu.classList.remove("hidden");
+    const rowRect = row.getBoundingClientRect();
+    const bubble = row.querySelector(".chat-message-bubble");
+    const rect = bubble?.getBoundingClientRect?.() || rowRect;
+    const bounds = chatWindow?.getBoundingClientRect?.() || {
+      top: 0,
+      left: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight
+    };
+    const menuRect = messageContextMenu.getBoundingClientRect();
+    const menuWidth = Math.max(148, menuRect.width || 170);
+    const menuHeight = Math.max(84, menuRect.height || 92);
+    const edgeOffset = 10;
 
-    const rect = row.getBoundingClientRect();
-    const menuWidth = 170;
-    const menuHeight = 92;
+    const anchorX = Number(anchor?.clientX);
+    const pointerX = Number.isFinite(anchorX) ? anchorX : null;
+    const sideAnchorX = data.isMine ? rect.right - 8 : rect.left + 8;
+    const targetX = pointerX !== null ? (pointerX + sideAnchorX) / 2 : sideAnchorX;
+    let left = data.isMine ? targetX - menuWidth : targetX;
+    const minLeft = bounds.left + edgeOffset;
+    const maxLeft = bounds.right - menuWidth - edgeOffset;
+    left = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft));
 
-    let left = Math.min(
-      Math.max(12, rect.left + rect.width / 2 - menuWidth / 2),
-      window.innerWidth - menuWidth - 12
-    );
-
-    let top = rect.top - menuHeight - 8;
-
-    if (top < 12) {
-      top = rect.bottom + 8;
-    }
+    const topAbove = rect.top - menuHeight - 6;
+    const topBelow = rect.bottom + 6;
+    const minTop = bounds.top + edgeOffset;
+    const maxTop = bounds.bottom - menuHeight - edgeOffset;
+    const preferBelow = topBelow <= maxTop;
+    let top = preferBelow ? topBelow : topAbove;
+    if (top < minTop) top = topBelow;
+    top = Math.min(Math.max(top, minTop), Math.max(minTop, maxTop));
 
     messageContextMenu.style.left = `${left}px`;
     messageContextMenu.style.top = `${top}px`;
@@ -199,7 +227,11 @@
     const elements = getElements();
     const messagesContainer = elements.messagesContainer || null;
 
-    if (!id) return;
+    if (!id) {
+      console.error("Ошибка удаления сообщения: отсутствует id", { type, id });
+      alert("Не удалось удалить сообщение. Проверь права удаления.");
+      return;
+    }
 
     if (!confirm("Удалить сообщение?")) return;
 
@@ -244,7 +276,7 @@
 
     if (result.error) {
       console.error("Ошибка удаления сообщения:", result.error);
-      alert("Не получилось удалить сообщение. Проверь RLS delete.");
+      alert("Не удалось удалить сообщение. Проверь права удаления.");
       return;
     }
 

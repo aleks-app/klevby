@@ -333,7 +333,7 @@
       clearTimeout(longPressTimer);
 
       longPressTimer = setTimeout(() => {
-        showMessageMenu(row);
+        showMessageMenu(row, event);
       }, 520);
     });
 
@@ -350,7 +350,7 @@
       if (!row) return;
 
       event.preventDefault();
-      showMessageMenu(row);
+      showMessageMenu(row, event);
     });
 
     addListener(sendBtn, "click", () => {
