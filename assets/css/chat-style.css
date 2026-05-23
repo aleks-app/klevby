@@ -242,7 +242,17 @@ body #klevby-chat-modal.open {
   -webkit-overflow-scrolling: touch !important;
 }
 
-#chat-messages > *,
+#chat-messages::before,
+.klevby-chat-messages::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, .2) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+#chat-messages > *, 
 .klevby-chat-messages > * {
   position: relative !important;
   z-index: 2 !important;
@@ -304,8 +314,8 @@ body #klevby-chat-modal.open {
 }
 
 .my-message {
-  min-width: clamp(210px, 58vw, 240px) !important;
-  max-width: 76% !important;
+  min-width: clamp(180px, 50vw, 210px) !important;
+  max-width: 70% !important;
   display: flex !important;
   flex-direction: column !important;
   padding-top: 13px !important;
