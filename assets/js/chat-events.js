@@ -267,10 +267,14 @@
         if (getClosest(event, "#contextDeleteBtn")) {
           const data = getContextMessageData();
 
-          if (data) {
-            await deleteMessage(data.type, data.id);
+          if (!data || !data.id) {
+            console.error("[KlevbyDelete] missing message context/id", data);
+            alert("Нельзя удалить: у сообщения отсутствует id.");
+            return;
           }
 
+          console.info("[KlevbyDelete] trigger", { id: data.id, type: data.type, isMine: data.isMine });
+          await deleteMessage(data.type, data.id);
           return;
         }
 

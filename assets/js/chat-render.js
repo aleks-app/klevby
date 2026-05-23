@@ -241,8 +241,16 @@
       };
     }
 
+    const firstLine = parts[0].replace("↩ Ответ ", "").trim();
+    const splitIndex = firstLine.indexOf(":");
+    const replyAuthor = splitIndex >= 0 ? firstLine.slice(0, splitIndex).trim() : "Рыбак";
+    const replyText = splitIndex >= 0 ? firstLine.slice(splitIndex + 1).trim() : firstLine;
+
     return {
-      reply: parts[0].replace("↩ Ответ ", ""),
+      reply: {
+        author: replyAuthor || "Рыбак",
+        text: replyText || ""
+      },
       mainText: parts.slice(1).join("\n")
     };
   }
@@ -321,7 +329,7 @@
 
     bubble.innerHTML = `
       ${!groupedWithPrevious && !isMine ? `<span class="chat-message-author">${escapeHtml(author)}</span>` : ""}
-      ${parsed.reply ? `<div class="klevby-message-reply">${escapeHtml(parsed.reply)}</div>` : ""}
+      ${parsed.reply ? `<div class="klevby-message-reply"><span class="klevby-message-reply-author">${escapeHtml(parsed.reply.author)}</span><span class="klevby-message-reply-text">${escapeHtml(parsed.reply.text)}</span></div>` : ""}
       <span class="chat-message-text">${escapeHtml(parsed.mainText || "")}</span>
       <div class="klevby-message-footer">
         ${time ? `<span class="chat-message-time">${escapeHtml(time)}</span>` : ""}
