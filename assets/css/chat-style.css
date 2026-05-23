@@ -1046,12 +1046,17 @@ body #klevby-chat-modal.open {
   inset: 0 !important;
   pointer-events: none !important;
   z-index: 0 !important;
-  background: linear-gradient(
-    180deg,
-    rgba(5, 18, 14, .36) 0%,
-    rgba(5, 18, 14, .27) 42%,
-    rgba(4, 12, 10, .34) 100%
-  ) !important;
+opacity: .38 !important;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(5, 18, 14, .36) 0%,
+            rgba(5, 18, 14, .27) 42%,
+            rgba(4, 12, 10, .34) 100%
+        ),
+        url("../img/chat-bg-pattern.jpeg") !important;
+    background-size: cover !important;
+    background-position: center !important;
 }
 
 #chat-messages::after,
