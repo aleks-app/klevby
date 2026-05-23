@@ -6,6 +6,11 @@
   display: none !important;
 }
 
+
+:root {
+  --klevby-chat-wallpaper-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%2396b7a9' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round' opacity='0.34'%3E%3Cellipse cx='18' cy='24' rx='6.6' ry='3.8'/%3E%3Cpath d='M12 24l-2.8-1.9M12 24l-2.8 1.9M24.2 24h2.2'/%3E%3Cpath d='M70 17c0 4.1 0 7.5-2.4 10.2M67.6 27.2c2.1-.2 4.3.4 5.8 1.5M67.6 27.2c-1.9-.5-3.7-1.8-4.6-3.8'/%3E%3Ccircle cx='45' cy='53' r='4.6'/%3E%3Cpath d='M45 48.4v-3.2M41.5 53h-2.3M48.5 53h2.3'/%3E%3Cellipse cx='76' cy='68' rx='6.1' ry='3.4'/%3E%3Cpath d='M70.1 68l-2.6-1.7M70.1 68l-2.6 1.7M82 68h2.1'/%3E%3Cpath d='M25 76c0 3.6 0 6.2-1.9 8.5M23.1 84.5c1.7 0 3.5.5 4.8 1.5M23.1 84.5c-1.4-.4-3-1.4-3.9-3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 body #chat-desktop-btn,
 body .klevby-chat-launcher {
   position: fixed !important;
@@ -220,13 +225,33 @@ body #klevby-chat-modal.open {
   overflow-x: hidden !important;
   padding: 12px 12px 14px !important;
   background:
-    radial-gradient(circle at 50% 52%, rgba(122, 171, 149, .055), transparent 46%),
-    radial-gradient(circle at 82% 12%, rgba(108, 154, 137, .06), transparent 35%),
-    linear-gradient(180deg, #172524 0%, #101917 62%, #0d1615 100%) !important;
-  background-blend-mode: screen, normal, normal !important;
+    radial-gradient(circle at 16% 14%, rgba(143, 194, 170, .14), transparent 33%),
+    radial-gradient(circle at 84% 18%, rgba(122, 171, 149, .11), transparent 31%),
+    radial-gradient(circle at 56% 72%, rgba(110, 158, 139, .08), transparent 44%),
+    var(--klevby-chat-wallpaper-svg),
+    linear-gradient(180deg, #1d2d2a 0%, #172523 54%, #12201e 100%) !important;
+  background-size: auto, auto, auto, 96px 96px, auto !important;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat !important;
+  background-attachment: scroll, scroll, scroll, scroll, scroll !important;
+  background-blend-mode: screen, soft-light, normal, normal, normal !important;
   position: relative !important;
   isolation: isolate !important;
   -webkit-overflow-scrolling: touch !important;
+}
+
+#chat-messages::before,
+.klevby-chat-messages::before {
+  content: "Klevby" !important;
+  position: absolute !important;
+  inset: 50% auto auto 50% !important;
+  transform: translate(-50%, -50%) !important;
+  font-size: clamp(42px, 8.5vw, 58px) !important;
+  letter-spacing: .06em !important;
+  font-weight: 600 !important;
+  color: rgba(210, 235, 224, .035) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  white-space: nowrap !important;
 }
 
 #chat-messages > *,
@@ -417,6 +442,25 @@ body #klevby-chat-modal.open {
   z-index: 20 !important;
 }
 
+#chat-input-area::before,
+.klevby-chat-inputbar::before {
+  content: "☺" !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(180deg, rgba(236, 255, 247, .14), rgba(203, 235, 219, .06)) !important;
+  border: 1px solid rgba(191, 227, 210, .22) !important;
+  color: rgba(226, 245, 236, .72) !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15) !important;
+}
+
 #message-input,
 .klevby-chat-input {
   flex: 1 1 auto !important;
@@ -491,6 +535,16 @@ body #klevby-chat-modal.open {
   flex-direction: column !important;
   gap: 0 !important;
   padding: 4px 0 !important;
+}
+
+.klevby-private-list-screen #chat-messages::before,
+.klevby-private-list-screen .klevby-chat-messages::before {
+  content: "Klevby Chat" !important;
+  font-size: clamp(30px, 7vw, 44px) !important;
+  letter-spacing: .03em !important;
+  font-weight: 500 !important;
+  color: rgba(218, 239, 229, .05) !important;
+  transform: translate(-50%, -58%) !important;
 }
 
 .klevby-private-dialog-item {
@@ -771,10 +825,14 @@ body #klevby-chat-modal.open {
     overflow-x: hidden !important;
     padding: 12px 10px 14px !important;
     background:
-      radial-gradient(circle at 50% 52%, rgba(122, 171, 149, .055), transparent 46%),
-      radial-gradient(circle at 82% 12%, rgba(108, 154, 137, .06), transparent 35%),
-      linear-gradient(180deg, #172524 0%, #101917 62%, #0d1615 100%) !important;
-    background-blend-mode: screen, normal, normal !important;
+      radial-gradient(circle at 14% 12%, rgba(143, 194, 170, .16), transparent 33%),
+      radial-gradient(circle at 86% 14%, rgba(122, 171, 149, .12), transparent 30%),
+      radial-gradient(circle at 54% 74%, rgba(110, 158, 139, .09), transparent 45%),
+      var(--klevby-chat-wallpaper-svg),
+      linear-gradient(180deg, #1d2d2a 0%, #172523 54%, #12201e 100%) !important;
+    background-size: auto, auto, auto, 96px 96px, auto !important;
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat !important;
+    background-blend-mode: screen, soft-light, normal, normal, normal !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
     touch-action: pan-y !important;
