@@ -6,6 +6,7 @@
   let ctx = null;
 
   const privateUtils = window.KlevbyChatPrivateUtils || null;
+  const privateList = window.KlevbyChatPrivateList || null;
   const privateProfileAvatarCache = new Map();
 
   function init(options = {}) {
@@ -219,6 +220,19 @@
   }
 
   function renderPrivateDialogAvatar(peer) {
+    if (privateList?.renderPrivateDialogAvatar) {
+      const safePeer = {
+        ...(peer || {}),
+        avatarUrl: peer?.avatarUrl || getPrivateProfileAvatar(peer?.id) || ""
+      };
+
+      return privateList.renderPrivateDialogAvatar(safePeer, {
+        normalizePrivateAvatarUrl: (value) => normalizePrivateAvatarUrl(value),
+        getInitials: (value) => getInitials(value),
+        escapeHtml: (value) => escapeHtml(value)
+      });
+    }
+
     const peerName = String(peer?.name || "Рыбак");
     const avatarUrl = normalizePrivateAvatarUrl(peer?.avatarUrl || getPrivateProfileAvatar(peer?.id));
     const initials = escapeHtml(getInitials(peerName));
@@ -730,33 +744,40 @@
         }
 
         const list = document.createElement("div");
-        list.className = "klevby-private-dialog-list";
+        if (privateList?.renderPrivateDialogList) {
+          const rendered = privateList.renderPrivateDialogList(peers, {
+            renderPrivateDialogAvatar: (peer) => renderPrivateDialogAvatar(peer),
+            parseReplyContent: (value) => parseReplyContent(value),
+            escapeHtml: (value) => escapeHtml(value),
+            isOnline: (value) => isOnline(value)
+          });
+          list.className = rendered.className;
+          list.innerHTML = rendered.innerHTML;
+        } else {
+          list.className = "klevby-private-dialog-list";
+          list.innerHTML = peers.map((peer) => {
+            const preview = peer.lastMessage
+              ? parseReplyContent(peer.lastMessage).mainText
+              : "Нажми, чтобы открыть переписку";
 
-        list.innerHTML = peers.map((peer) => {
-          const preview = peer.lastMessage
-            ? parseReplyContent(peer.lastMessage).mainText
-            : "Нажми, чтобы открыть переписку";
-
-          return `
-          <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
-            ${renderPrivateDialogAvatar(peer)}
-
-            <span class="klevby-private-dialog-main">
-              <span class="klevby-private-dialog-top">
-                <span class="klevby-private-dialog-name">${escapeHtml(peer.name)}</span>
-                <span class="klevby-private-dialog-time">${escapeHtml(peer.lastTime || "")}</span>
+            return `
+            <button class="klevby-private-dialog-item ${peer.unreadCount > 0 ? "has-unread" : ""}" type="button" data-peer-id="${escapeHtml(peer.id)}" data-peer-name="${escapeHtml(peer.name)}">
+              ${renderPrivateDialogAvatar(peer)}
+              <span class="klevby-private-dialog-main">
+                <span class="klevby-private-dialog-top">
+                  <span class="klevby-private-dialog-name">${escapeHtml(peer.name)}</span>
+                  <span class="klevby-private-dialog-time">${escapeHtml(peer.lastTime || "")}</span>
+                </span>
+                <span class="klevby-private-dialog-bottom">
+                  <span class="klevby-private-dialog-preview">${escapeHtml(preview)}</span>
+                  ${peer.unreadCount > 0 ? `<span class="klevby-private-unread-dot">${escapeHtml(peer.unreadCount)}</span>` : ""}
+                </span>
               </span>
-
-              <span class="klevby-private-dialog-bottom">
-                <span class="klevby-private-dialog-preview">${escapeHtml(preview)}</span>
-                ${peer.unreadCount > 0 ? `<span class="klevby-private-unread-dot">${escapeHtml(peer.unreadCount)}</span>` : ""}
-              </span>
-            </span>
-
-            <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
-          </button>
-        `;
-        }).join("");
+              <span class="klevby-private-status ${isOnline(peer.id) ? "online" : ""}"></span>
+            </button>
+          `;
+          }).join("");
+        }
 
         clearMessages();
         if (messagesContainer) {
