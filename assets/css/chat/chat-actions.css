@@ -1,0 +1,108 @@
+.klevby-message-actions {
+  display: none !important;
+}
+
+.klevby-message-menu {
+  position: fixed !important;
+  z-index: 1000001 !important;
+  width: 154px !important;
+  padding: 5px !important;
+  border-radius: 12px !important;
+  background: rgba(13, 26, 24, .96) !important;
+  border: 1px solid rgba(171, 212, 194, .18) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .34) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+.klevby-message-menu button {
+  width: 100% !important;
+  min-height: 36px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: #f4fbf7 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  padding: 0 10px !important;
+  cursor: pointer !important;
+}
+
+.klevby-message-menu button:hover,
+.klevby-message-menu button:active {
+  background: rgba(110, 210, 165, .16) !important;
+}
+
+
+.chat-message-row,
+.chat-message-bubble,
+.chat-message-text,
+.chat-message-author,
+.klevby-message-reply,
+.klevby-message-menu,
+.klevby-message-menu button {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+#chat-messages.klevby-message-mode-active::before,
+.klevby-chat-messages.klevby-message-mode-active::before {
+  background: rgba(6, 9, 10, .56) !important;
+  backdrop-filter: blur(1.5px) !important;
+}
+
+.chat-message-row.klevby-message-selected {
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+.chat-message-row.klevby-message-selected .chat-message-bubble {
+  box-shadow: 0 16px 30px rgba(0, 0, 0, .44) !important;
+  border-color: rgba(242, 155, 61, .42) !important;
+}
+
+.klevby-message-menu {
+  width: 172px !important;
+  border-radius: 13px !important;
+  background: rgba(24, 27, 31, .98) !important;
+  border: 1px solid rgba(255, 255, 255, .14) !important;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .5) !important;
+}
+
+.klevby-message-menu button {
+  min-height: 38px !important;
+  color: #f2ece1 !important;
+}
+
+.klevby-message-menu button:hover,
+.klevby-message-menu button:active {
+  background: rgba(242, 155, 61, .2) !important;
+}
+
+#contextDeleteBtn {
+  color: #ff7e7e !important;
+}
+
+.klevby-chat-copy-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(22, 24, 29, .95);
+  color: #f2ece1;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  z-index: 1000003;
+  opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events: none;
+}
+
+.klevby-chat-copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

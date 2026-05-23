@@ -1,0 +1,92 @@
+.klevby-message-reply {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  margin: 0 0 8px !important;
+  padding: 6px 8px !important;
+  border-radius: 10px !important;
+  border-left: 2px solid rgba(117, 230, 176, .65) !important;
+  background: rgba(9, 22, 20, .62) !important;
+  max-height: 52px !important;
+  overflow: hidden !important;
+}
+
+.klevby-message-reply-author {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+  color: #8be3ba !important;
+}
+
+.klevby-message-reply-text {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  color: rgba(228, 245, 238, .86) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+
+#replyPreview.hidden,
+.klevby-reply-preview.hidden {
+  display: none !important;
+}
+
+#replyPreview,
+.klevby-reply-preview {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 7px !important;
+  margin: 0 0 8px !important;
+  padding: 7px 9px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(168, 215, 196, .26) !important;
+  border-left: 3px solid rgba(117, 230, 176, .78) !important;
+  background: rgba(16, 34, 30, .95) !important;
+}
+
+.klevby-reply-line {
+  width: 0 !important;
+  display: none !important;
+}
+
+.klevby-reply-body {
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.klevby-reply-author {
+  display: block !important;
+  color: #83e3b7 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+.klevby-reply-text {
+  display: block !important;
+  margin-top: 2px !important;
+  color: rgba(235, 248, 242, .82) !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  max-height: 30px !important;
+  overflow: hidden !important;
+}
+
+.klevby-reply-cancel {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: rgba(236, 248, 242, .86) !important;
+  background: rgba(255, 255, 255, .08) !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+}
