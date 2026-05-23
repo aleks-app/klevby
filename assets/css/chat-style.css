@@ -238,7 +238,7 @@ body #klevby-chat-modal.open {
 .chat-message-row {
   display: flex !important;
   width: 100% !important;
-  margin-top: 7px !important;
+  margin-top: 10px !important;
   align-items: flex-end !important;
 }
 
@@ -258,12 +258,21 @@ body #klevby-chat-modal.open {
   display: none !important;
 }
 
+.chat-message-row + .chat-message-row {
+  margin-top: 9px !important;
+}
+
+.other-message-row + .my-message-row,
+.my-message-row + .other-message-row {
+  margin-top: 18px !important;
+}
+
 .chat-message-bubble {
   width: fit-content !important;
   min-width: clamp(210px, 58vw, 270px) !important;
   max-width: 82% !important;
   min-height: 0 !important;
-  padding: 11px 14px 8px !important;
+  padding: 12px 15px 9px !important;
   border-radius: 20px !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
@@ -279,6 +288,8 @@ body #klevby-chat-modal.open {
 }
 
 .my-message {
+  padding-top: 13px !important;
+  padding-bottom: 10px !important;
   background: linear-gradient(180deg, #447f6f, #3a6f61) !important;
   color: #f2f9f6 !important;
   border-color: rgba(172, 216, 196, .24) !important;
@@ -303,7 +314,7 @@ body #klevby-chat-modal.open {
 }
 
 .klevby-message-footer {
-  margin-top: 2px !important;
+  margin-top: 6px !important;
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
