@@ -1,0 +1,223 @@
+* {
+  box-sizing: border-box;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#klevby-chat-modal,
+#klevby-chat-modal *,
+.klevby-chat-modal,
+.klevby-chat-modal *,
+#chat-window,
+#chat-window *,
+.klevby-chat-window,
+.klevby-chat-window * {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+body #chat-desktop-btn,
+body .klevby-chat-launcher {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: 20px !important;
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(72, 214, 150, .35) !important;
+  background: #10201c !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999998 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .45) !important;
+}
+
+body #klevby-chat-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, .6) !important;
+  padding: 14px !important;
+}
+
+body #klevby-chat-modal.open {
+  display: flex !important;
+}
+
+#chat-window,
+.klevby-chat-window {
+  width: min(96vw, 430px) !important;
+  height: min(88vh, 760px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  background: #0f1917 !important;
+  border: 1px solid rgba(202, 231, 220, .12) !important;
+  box-shadow: 0 24px 62px rgba(0, 0, 0, .45) !important;
+}
+
+#chat-header,
+.klevby-chat-header {
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 8px 10px !important;
+  background: linear-gradient(180deg, rgba(21, 34, 30, .98), rgba(17, 28, 25, .94)) !important;
+  border-bottom: 1px solid rgba(214, 237, 228, .09) !important;
+  backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 0 0 auto !important;
+}
+
+.klevby-chat-pinned,
+#attach-btn,
+.klevby-chat-attach,
+#call-chat,
+.klevby-chat-call,
+#callStatusBar,
+.klevby-call-status-bar,
+#incomingCallPanel,
+.klevby-incoming-call {
+  display: none !important;
+}
+
+.klevby-chat-head-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.klevby-chat-avatar {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 50% !important;
+  background: #1c2d29 !important;
+  color: #b8f5d6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 800 !important;
+  overflow: hidden !important;
+}
+
+.klevby-chat-avatar img,
+.klevby-chat-avatar.klevby-chat-avatar-image img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: inherit !important;
+}
+
+.klevby-chat-title-wrap {
+  min-width: 0 !important;
+}
+
+.klevby-chat-title {
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.klevby-chat-subtitle {
+  margin-top: 2px !important;
+  font-size: 11px !important;
+  letter-spacing: .01em !important;
+  line-height: 1.15 !important;
+  color: rgba(255, 255, 255, .5) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#back-chat,
+#close-chat {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, .75) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 24px !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+}
+
+#back-chat:hover,
+#close-chat:hover {
+  background: rgba(255, 255, 255, .06) !important;
+  color: #fff !important;
+}
+
+.klevby-chat-tabs {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 6px 8px !important;
+  background: rgba(15, 24, 22, .88) !important;
+  border-bottom: 1px solid rgba(214, 237, 228, .06) !important;
+  display: flex !important;
+  gap: 6px !important;
+  flex: 0 0 auto !important;
+}
+
+.klevby-chat-tab {
+  flex: 1 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(245, 255, 250, .02) !important;
+  color: rgba(231, 242, 238, .64) !important;
+  border: 1px solid rgba(187, 216, 205, .09) !important;
+  transition: all .18s ease !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+
+.klevby-chat-tab.active {
+  background: linear-gradient(180deg, rgba(44, 70, 62, .9), rgba(30, 50, 45, .95)) !important;
+  color: #ebfff4 !important;
+  border-color: rgba(167, 211, 193, .28) !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .2) !important;
+}
+
+.klevby-unread-badge {
+  min-width: 17px !important;
+  height: 17px !important;
+  padding: 0 5px !important;
+  margin-left: 4px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #d84d4d !important;
+  color: #fff !important;
+  font-size: 10px !important;
+  line-height: 17px !important;
+  font-weight: 900 !important;
+}
+
+#privateChatPeople,
+.klevby-private-people {
+  display: none !important;
+}
