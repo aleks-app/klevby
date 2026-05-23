@@ -9,6 +9,7 @@
   const privateList = window.KlevbyChatPrivateList || null;
   const privateDialog = window.KlevbyChatPrivateDialog || null;
   const privateMessages = window.KlevbyChatPrivateMessages || null;
+  const privateState = window.KlevbyChatPrivateState || null;
   const privateProfileAvatarCache = new Map();
 
   function init(options = {}) {
@@ -52,25 +53,52 @@
   }
 
   function getUnreadPrivateCount() {
+    if (privateState?.getUnreadPrivateCount) {
+      return privateState.getUnreadPrivateCount({
+        getUnreadPrivateCount: getCtx().getUnreadPrivateCount
+      });
+    }
     return Number(getCtx().getUnreadPrivateCount ? getCtx().getUnreadPrivateCount() : 0) || 0;
   }
 
   function setUnreadPrivateCount(value) {
+    if (privateState?.setUnreadPrivateCount) {
+      privateState.setUnreadPrivateCount(value, {
+        setUnreadPrivateCount: getCtx().setUnreadPrivateCount
+      });
+      return;
+    }
     if (getCtx().setUnreadPrivateCount) {
       getCtx().setUnreadPrivateCount(Math.max(0, Number(value) || 0));
     }
   }
 
   function beginNavigationIfNeeded(navToken) {
+    if (privateState?.beginNavigationIfNeeded) {
+      return privateState.beginNavigationIfNeeded(navToken, {
+        beginChatNavigation: getCtx().beginChatNavigation
+      });
+    }
     if (navToken) return navToken;
     return getCtx().beginChatNavigation ? getCtx().beginChatNavigation() : Date.now();
   }
 
   function isStaleNavigation(navToken) {
+    if (privateState?.isStaleNavigation) {
+      return privateState.isStaleNavigation(navToken, {
+        isStaleNavigation: getCtx().isStaleNavigation
+      });
+    }
     return getCtx().isStaleNavigation ? getCtx().isStaleNavigation(navToken) : false;
   }
 
   function finishChatNavigation(navToken) {
+    if (privateState?.finishChatNavigation) {
+      privateState.finishChatNavigation(navToken, {
+        finishChatNavigation: getCtx().finishChatNavigation
+      });
+      return;
+    }
     if (getCtx().finishChatNavigation) {
       getCtx().finishChatNavigation(navToken);
     }
@@ -594,24 +622,29 @@
     }
   }
 
-  function getReadStorageKey(peerId) {
-    const myId = getCurrentUser()?.id || "guest";
-    return `klevby_private_read_${myId}_${peerId}`;
-  }
-
   function getPeerReadTime(peerId) {
+    if (privateState?.getPeerReadTime) {
+      return privateState.getPeerReadTime(peerId, getCurrentUser()?.id || "guest");
+    }
     try {
-      return Number(localStorage.getItem(getReadStorageKey(peerId)) || "0");
+      return Number(localStorage.getItem(`klevby_private_read_${getCurrentUser()?.id || "guest"}_${peerId}`) || "0");
     } catch {
       return 0;
     }
   }
 
   function markPeerAsRead(peerId) {
+    if (privateState?.markPeerAsRead) {
+      privateState.markPeerAsRead(peerId, {
+        isValidSupabaseUuid: (value) => isValidSupabaseUuid(value),
+        getCurrentUser: () => getCurrentUser()
+      });
+      return;
+    }
     if (!isValidSupabaseUuid(peerId)) return;
 
     try {
-      localStorage.setItem(getReadStorageKey(peerId), String(Date.now()));
+      localStorage.setItem(`klevby_private_read_${getCurrentUser()?.id || "guest"}_${peerId}`, String(Date.now()));
     } catch (error) {
       console.warn("Klevby private: не удалось сохранить статус прочтения:", error);
     }
