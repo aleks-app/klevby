@@ -216,13 +216,6 @@
         if (visibleSection === "ponds") deps.reloadPondsIfReady?.({ force: true, delay: 250 });
         if (visibleSection === "map" && typeof window.klevbyReloadMap === "function") window.klevbyReloadMap();
 
-        if (!isBurst && window.KlevbyChatLifecycle && typeof window.KlevbyChatLifecycle.scheduleChatResume === "function") {
-          window.KlevbyChatLifecycle.scheduleChatResume(reason);
-        }
-
-        if (!isBurst && typeof window.klevbyReloadChatAfterResume === "function") {
-          window.klevbyReloadChatAfterResume(reason);
-        }
       } catch (error) {
         console.warn("Klevby: текущий экран не обновился после возврата:", error);
       }
