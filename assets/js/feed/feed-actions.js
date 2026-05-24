@@ -1333,10 +1333,15 @@
     const detail = event?.detail || {};
     const changedPostId = String(detail?.postId || detail?.post_id || extractPostIdFromDetail(detail) || "");
     const action = String(detail?.action || detail?.type || "").trim();
+    const feedEventsApi = window.KlevbyFeedEvents || {};
     const isRealtimeLikeOrCommentChange =
       action === "feed_like_changed" || action === "feed_comment_changed";
+    const isCounterOnlyPostChange =
+      action === "feed_post_changed" &&
+      typeof feedEventsApi.isCounterOnlyFeedPostChanged === "function" &&
+      feedEventsApi.isCounterOnlyFeedPostChanged(detail);
 
-    if (!isRealtimeLikeOrCommentChange) {
+    if (!isRealtimeLikeOrCommentChange && !isCounterOnlyPostChange) {
       if (shouldDelayRenderForLikeUpdate(detail)) {
         scheduleLikeRefresh(700);
         return;
