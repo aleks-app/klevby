@@ -43,6 +43,102 @@
   const KLEVB_FEED_MAIN_PENDING_AFTER_MS = 1100;
   const KLEVB_FEED_MAIN_COALESCE_MS = 280;
 
+
+
+  const KLEVB_FEED_MAIN_DEBUG_EVENTS_LIMIT = 180;
+
+  function createFeedMainDebug() {
+    const state = {
+      refreshReasons: Object.create(null),
+      fullRenderExecutions: 0,
+      suppressedReasons: Object.create(null),
+      events: []
+    };
+
+    const addCount = (bucket, key) => {
+      const safeKey = String(key || "unknown");
+      bucket[safeKey] = Number(bucket[safeKey] || 0) + 1;
+    };
+
+    const cloneCounts = (bucket) => ({ ...bucket });
+
+    const pushEvent = (type, reason, detail = {}) => {
+      const payload = {
+        at: new Date().toISOString(),
+        ts: Date.now(),
+        type: String(type || "event"),
+        reason: String(reason || ""),
+        detail
+      };
+
+      state.events.push(payload);
+
+      if (state.events.length > KLEVB_FEED_MAIN_DEBUG_EVENTS_LIMIT) {
+        state.events.splice(0, state.events.length - KLEVB_FEED_MAIN_DEBUG_EVENTS_LIMIT);
+      }
+
+      return payload;
+    };
+
+    return {
+      trackRefresh(reason, detail = {}) {
+        addCount(state.refreshReasons, reason);
+        pushEvent("refresh_request", reason, detail);
+      },
+      trackRenderExecution(reason, detail = {}) {
+        state.fullRenderExecutions += 1;
+        pushEvent("full_render_execution", reason, detail);
+      },
+      trackSuppressed(kind, reason, detail = {}) {
+        const key = `${String(kind || "suppressed")}:${String(reason || "")}`;
+        addCount(state.suppressedReasons, key);
+        pushEvent("suppressed", reason, {
+          kind: String(kind || "suppressed"),
+          ...detail
+        });
+      },
+      log(type, reason, detail = {}) {
+        pushEvent(type, reason, detail);
+      },
+      summary() {
+        return {
+          refreshReasons: cloneCounts(state.refreshReasons),
+          fullRenderExecutions: state.fullRenderExecutions,
+          suppressedReasons: cloneCounts(state.suppressedReasons),
+          eventsStored: state.events.length,
+          lastEvent: state.events.length ? state.events[state.events.length - 1] : null
+        };
+      },
+      getEvents() {
+        return state.events.slice();
+      },
+      reset() {
+        state.refreshReasons = Object.create(null);
+        state.fullRenderExecutions = 0;
+        state.suppressedReasons = Object.create(null);
+        state.events = [];
+      }
+    };
+  }
+
+  const feedMainDebug = window.KlevbyFeedMainDebug || createFeedMainDebug();
+  window.KlevbyFeedMainDebug = feedMainDebug;
+
+  function feedMainDebugLog(type, reason, detail = {}) {
+    if (!feedMainDebug || typeof feedMainDebug.log !== "function") return;
+
+    try {
+      feedMainDebug.log(type, reason, detail);
+      console.debug("Klevby feed main debug", {
+        type,
+        reason,
+        ...detail
+      });
+    } catch (error) {
+      return;
+    }
+  }
+
   const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
     0,
     1400
@@ -438,15 +534,27 @@
 
     if (shouldDeferRender(cleanReason, force)) {
       scheduleDeferredRender(cleanReason + "_deferred");
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("deferred", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "deferred", force });
       return false;
     }
 
     if (!force && !isPageVisible()) {
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("page_hidden", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "page_hidden", force });
       return false;
     }
 
     if (!hasFeedDom()) {
       startFeedDomWatcher();
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("missing_dom", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "missing_dom", force });
       return false;
     }
 
@@ -459,6 +567,10 @@
         });
       }
 
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("render_not_ready", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "render_not_ready", force });
       return false;
     }
 
@@ -472,6 +584,10 @@
         clearMainResumeTimers();
       }
 
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("duplicate_skip", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "duplicate_skip", force });
       return false;
     }
 
@@ -482,6 +598,10 @@
         });
       }
 
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("min_gap", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "min_gap", force });
       return false;
     }
 
@@ -490,10 +610,18 @@
         console.debug("Klevby feed main: duplicate refresh skipped", {
           reason: cleanReason
         });
+        if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+          feedMainDebug.trackSuppressed("in_progress_critical_skip", cleanReason, { force });
+        }
+        feedMainDebugLog("suppressed", cleanReason, { kind: "in_progress_critical_skip", force });
         return false;
       }
 
       klevbyFeedMainRefreshPending = true;
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("in_progress_pending", cleanReason, { force });
+      }
+      feedMainDebugLog("suppressed", cleanReason, { kind: "in_progress_pending", force });
       return false;
     }
 
@@ -501,6 +629,10 @@
     klevbyFeedMainLastRefreshStartedAt = Date.now();
 
     try {
+      if (feedMainDebug && typeof feedMainDebug.trackRenderExecution === "function") {
+        feedMainDebug.trackRenderExecution(cleanReason, { force });
+      }
+      feedMainDebugLog("full_render_execution", cleanReason, { force });
       await Promise.resolve(renderProfileFeed());
 
       klevbyFeedMainLastRefreshFinishedAt = Date.now();
@@ -547,6 +679,23 @@
     const cleanReason = String(reason || "scheduled");
     const force = Boolean(options.force);
     const nextDueAt = Date.now() + Math.max(safeDelay, KLEVB_FEED_MAIN_COALESCE_MS);
+
+    if (feedMainDebug && typeof feedMainDebug.trackRefresh === "function") {
+      try {
+        feedMainDebug.trackRefresh(cleanReason, {
+          source: "scheduleMainFeedRefresh",
+          delay: safeDelay,
+          force
+        });
+      } catch (error) {
+        // noop
+      }
+    }
+
+    feedMainDebugLog("schedule_refresh", cleanReason, {
+      delay: safeDelay,
+      force
+    });
 
     const runCoalescedRefresh = () => {
       const mergedReason = klevbyFeedMainCoalescedRefreshReason || cleanReason;
@@ -601,8 +750,14 @@
     const now = Date.now();
 
     if (now - Number(klevbyFeedMainLastResumeAt || 0) < KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS) {
+      if (feedMainDebug && typeof feedMainDebug.trackSuppressed === "function") {
+        feedMainDebug.trackSuppressed("resume_duplicate_gap", reason);
+      }
+      feedMainDebugLog("suppressed", reason, { kind: "resume_duplicate_gap" });
       return;
     }
+
+    feedMainDebugLog("resume_burst", reason, { phase: "accepted" });
 
     klevbyFeedMainLastResumeAt = now;
 
@@ -723,6 +878,7 @@
 
       if (isLikeUpdateAction(action)) {
         markFeedQuiet(action, KLEVB_FEED_MAIN_LIKE_QUIET_MS);
+        feedMainDebugLog("quiet_window", action, { duration: KLEVB_FEED_MAIN_LIKE_QUIET_MS });
         return;
       }
 
@@ -744,6 +900,7 @@
     });
 
     window.addEventListener("klevby-auth-changed", () => {
+      feedMainDebugLog("trigger", "auth_changed", { source: "klevby-auth-changed" });
       runMainResumeBurst("auth_changed");
     });
 
@@ -755,6 +912,7 @@
         key.includes("klevby_profile") ||
         key.includes("sb-")
       ) {
+        feedMainDebugLog("trigger", "storage_changed", { key });
         scheduleMainFeedRefresh("storage_changed", 700, {
           force: false
         });
@@ -778,6 +936,7 @@
         text.includes("лента") ||
         text.includes("главная")
       ) {
+        feedMainDebugLog("trigger", "navigation_home_click", { section, text });
         scheduleMainFeedRefresh("navigation_home_click", 320, {
           force: true
         });
