@@ -42,6 +42,29 @@
     return element.closest(selector);
   }
 
+  function getMenuActionFromEvent(event) {
+    const actionButton = getClosest(event, ".klevby-message-menu button");
+    if (!actionButton) return null;
+
+    const actionId = String(actionButton.id || "").trim();
+    const explicitAction = String(actionButton.dataset?.action || "").trim();
+    const className = String(actionButton.className || "");
+    const label = String(actionButton.textContent || "").trim().toLowerCase();
+
+    if (explicitAction) return explicitAction;
+    if (actionId === "contextReplyBtn") return "reply";
+    if (actionId === "contextCopyBtn") return "copy";
+    if (actionId === "contextDeleteBtn") return "delete";
+    if (className.includes("delete")) return "delete";
+    if (className.includes("reply")) return "reply";
+    if (className.includes("copy")) return "copy";
+    if (label.includes("удал")) return "delete";
+    if (label.includes("ответ")) return "reply";
+    if (label.includes("скоп")) return "copy";
+
+    return null;
+  }
+
   function init(options = {}) {
     // DOM/user events only:
     // - chat open/close clicks
@@ -270,7 +293,9 @@
           return;
         }
 
-        if (getClosest(event, "#contextReplyBtn")) {
+        const menuAction = getMenuActionFromEvent(event);
+
+        if (menuAction === "reply") {
           const selectedMessage = replyToSelectedMessage();
           if (selectedMessage) {
             setReplyTarget(selectedMessage);
@@ -278,12 +303,12 @@
           return;
         }
 
-        if (getClosest(event, "#contextCopyBtn")) {
+        if (menuAction === "copy") {
           await copyMessageText();
           return;
         }
 
-        if (getClosest(event, "#contextDeleteBtn")) {
+        if (menuAction === "delete") {
           await deleteMessage();
           return;
         }
