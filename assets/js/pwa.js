@@ -1,5 +1,7 @@
 let deferredInstallPrompt = null;
 let installBannerShown = false;
+let updateBannerShown = false;
+let pendingServiceWorker = null;
 
 function isStandaloneMode() {
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -141,6 +143,68 @@ function initInstallPrompt() {
   }
 }
 
+
+function getAppBuildVersion() {
+  return String(window.KLEVB_APP_BUILD_VERSION || "unknown-build");
+}
+
+function ensurePwaUpdateBanner() {
+  let banner = document.getElementById("pwaUpdateBanner");
+  if (banner) return banner;
+
+  banner = document.createElement("div");
+  banner.id = "pwaUpdateBanner";
+  banner.setAttribute("role", "status");
+  banner.setAttribute("aria-live", "polite");
+  banner.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#111;color:#fff;padding:10px 12px;border-radius:12px;display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;";
+
+  const text = document.createElement("span");
+  text.textContent = "Доступно обновление приложения";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = "Обновить";
+  button.style.cssText = "background:#2f80ed;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;";
+  button.addEventListener("click", () => {
+    console.log("[PWA] update accepted", { appBuild: getAppBuildVersion() });
+
+    if (pendingServiceWorker) {
+      pendingServiceWorker.postMessage({ type: "SKIP_WAITING" });
+    }
+
+    forceAppUpdate();
+  });
+
+  banner.append(text, button);
+  document.body.appendChild(banner);
+
+  return banner;
+}
+
+function showPwaUpdatePrompt() {
+  const banner = ensurePwaUpdateBanner();
+  if (updateBannerShown) return;
+
+  updateBannerShown = true;
+  banner.style.display = "flex";
+  console.log("[PWA] update prompt shown", { appBuild: getAppBuildVersion() });
+}
+
+function bindServiceWorkerVersionLogging() {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    const data = event.data || {};
+    if (data.type === "KLEVB_SW_VERSION" || data.type === "KLEVB_SW_ACTIVATED") {
+      console.log("[PWA] service worker build/version", {
+        appBuild: getAppBuildVersion(),
+        swBuild: data.buildVersion || "unknown-sw-build",
+        cacheName: data.cacheName || "unknown-cache"
+      });
+    }
+  });
+}
+
 async function forceAppUpdate() {
   const softReload = () => {
     window.location.reload();
@@ -214,14 +278,37 @@ async function registerPwaServiceWorker() {
   if (!window.isSecureContext) return;
 
   try {
+    console.log("[PWA] current app build", { appBuild: getAppBuildVersion() });
+    bindServiceWorkerVersionLogging();
+
     const registration = await navigator.serviceWorker.register("/sw.js", {
       updateViaCache: "none"
     });
 
     await registration.update();
 
-    if (registration.waiting) {
-      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    const reportWaitingWorker = (worker) => {
+      if (!worker) return;
+      pendingServiceWorker = worker;
+      console.log("[PWA] service worker update found", { appBuild: getAppBuildVersion() });
+      showPwaUpdatePrompt();
+    };
+
+    reportWaitingWorker(registration.waiting);
+
+    registration.addEventListener("updatefound", () => {
+      const installingWorker = registration.installing;
+      if (!installingWorker) return;
+
+      installingWorker.addEventListener("statechange", () => {
+        if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+          reportWaitingWorker(registration.waiting || installingWorker);
+        }
+      });
+    });
+
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: "KLEVB_GET_BUILD_VERSION" });
     }
 
     navigator.serviceWorker.addEventListener("controllerchange", function () {
