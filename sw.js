@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v13-min-shell-precache-2026-05-24-pr8";
-const SW_BUILD_VERSION = "20260524-pwa-update-pr8-1";
+const CACHE_NAME = "klevby-cache-v14-min-shell-precache-2026-05-24-pr9";
+const SW_BUILD_VERSION = "20260524-pwa-update-pr9-verify-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
