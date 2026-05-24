@@ -193,7 +193,17 @@
 
       try {
         if (visibleSection === "home" || visibleSection === "profile") {
-          if (typeof window.renderProfileFeed === "function") {
+          const wakeFeedFn =
+            (typeof window.klevbyWakeFeed === "function" && window.klevbyWakeFeed) ||
+            (typeof window.refreshKlevbyFeedSilently === "function" && window.refreshKlevbyFeedSilently) ||
+            null;
+
+          if (typeof wakeFeedFn === "function") {
+            const delay = isBurst ? 0 : 250;
+            setTimeout(() => {
+              try { wakeFeedFn(); } catch (error) { console.warn("Klevby: лента не обновилась после resume:", reason, error); }
+            }, delay);
+          } else if (typeof window.renderProfileFeed === "function") {
             const delay = isBurst ? 0 : 250;
             setTimeout(() => {
               try { window.renderProfileFeed(); } catch (error) { console.warn("Klevby: лента не обновилась после resume:", reason, error); }
