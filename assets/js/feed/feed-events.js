@@ -19,9 +19,12 @@
 
   const KLEVB_TARGETED_LIKE_SUCCESS_TTL_MS = 4500;
   const klevbyTargetedLikeSuccessMap = new Map();
+  const KLEVB_TARGETED_FALLBACK_CANCEL_TTL_MS = 5000;
+  const klevbyTargetedFallbackByPostMap = new Map();
 
 
   let klevbyFeedRefreshTimer = null;
+  let klevbyFeedPendingRefreshMeta = null;
   let klevbyFeedIntervalTimer = null;
   let klevbyFeedHiddenIntervalTimer = null;
   let klevbyFeedRefreshInProgress = false;
@@ -171,16 +174,74 @@
     }
   }
 
+
+
+  function markTargetedFallbackQueued(postId, reason = "") {
+    const cleanPostId = String(postId || "").trim();
+    if (!cleanPostId) return;
+
+    klevbyTargetedFallbackByPostMap.set(cleanPostId, {
+      at: Date.now(),
+      reason: String(reason || "")
+    });
+  }
+
+  function cancelPendingFullRefreshAfterTargetedSuccess(postId, reason = "") {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId || !klevbyFeedPendingRefreshMeta || !klevbyFeedRefreshTimer) {
+      return false;
+    }
+
+    if (String(klevbyFeedPendingRefreshMeta.postId || "") !== cleanPostId) {
+      return false;
+    }
+
+    const fallbackMeta = klevbyTargetedFallbackByPostMap.get(cleanPostId);
+
+    if (!fallbackMeta || Number(fallbackMeta.at || 0) <= 0) {
+      return false;
+    }
+
+    if (Date.now() - Number(fallbackMeta.at || 0) > KLEVB_TARGETED_FALLBACK_CANCEL_TTL_MS) {
+      klevbyTargetedFallbackByPostMap.delete(cleanPostId);
+      return false;
+    }
+
+    clearTimeout(klevbyFeedRefreshTimer);
+    klevbyFeedRefreshTimer = null;
+    klevbyFeedPendingRefreshMeta = null;
+    klevbyTargetedFallbackByPostMap.delete(cleanPostId);
+
+    logTargetedUpdateDecision(reason || "targeted_update", {
+      event: "pending_full_refresh_cancelled_after_targeted_success",
+      action: reason || "",
+      postId: cleanPostId,
+      fallback: false,
+      note: "pending full refresh cancelled after targeted success"
+    });
+
+    return true;
+  }
+
   function queueFeedRefresh(reason = "queued", delay = KLEVB_FEED_DEBOUNCE_MS, options = {}) {
     const safeDelay = Math.max(0, Number(delay || 0));
     logFeedRefreshMarker("queueFeedRefresh", reason, {
       action: "queue_full_refresh",
       delay: safeDelay,
-      force: Boolean(options.force)
+      force: Boolean(options.force),
+      postId: options.postId
     });
     clearTimeout(klevbyFeedRefreshTimer);
 
+    klevbyFeedPendingRefreshMeta = {
+      reason: String(reason || "queued"),
+      postId: options.postId ? String(options.postId) : "",
+      queuedAt: Date.now()
+    };
+
     klevbyFeedRefreshTimer = setTimeout(() => {
+      klevbyFeedPendingRefreshMeta = null;
       refreshFeedNow(reason, {
         force: Boolean(options.force)
       });
@@ -425,7 +486,7 @@
       return setReason("missing_counter_fields");
     }
 
-    const allowedChangedFields = new Set(["likes_count", "comments_count", "updated_at"]);
+    const allowedChangedFields = new Set(["likes_count", "comments_count", "engagement_score", "updated_at"]);
     const prevRow = payload?.old && typeof payload.old === "object" ? payload.old : null;
 
     if (!prevRow) {
@@ -766,10 +827,12 @@
       }
 
       if (cardCountersUpdated) {
+        const targetedPostId = resolveRealtimePostId(detail);
+        cancelPendingFullRefreshAfterTargetedSuccess(targetedPostId, action);
         logTargetedUpdateDecision(action, {
           event: "targeted_update_success",
           action,
-          postId: resolveRealtimePostId(detail),
+          postId: targetedPostId,
           fallback: false,
           note: "full refresh suppressed"
         });
@@ -781,8 +844,11 @@
           fallback: true,
           note: "targeted update failed, fallback full refresh"
         });
+        const fallbackPostId = resolveRealtimePostId(detail);
+        markTargetedFallbackQueued(fallbackPostId, action);
         queueFeedRefresh(action, 120, {
-          force: true
+          force: true,
+          postId: fallbackPostId
         });
       }
 
@@ -949,6 +1015,7 @@
       }
 
       if (cardCountersUpdated) {
+        cancelPendingFullRefreshAfterTargetedSuccess(postId, "realtime_" + (postId || "feed"));
         logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
           event: "targeted_update_success",
           action,
@@ -964,8 +1031,10 @@
           fallback: true,
           note: "targeted update failed, fallback full refresh"
         });
+        markTargetedFallbackQueued(postId, "realtime_" + (postId || "feed"));
         queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
-          force: true
+          force: true,
+          postId
         });
       }
 
