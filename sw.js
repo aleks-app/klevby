@@ -1,4 +1,5 @@
-const CACHE_NAME = "klevby-cache-v12-min-shell-precache-2026-05-22";
+const CACHE_NAME = "klevby-cache-v13-min-shell-precache-2026-05-24-pr8";
+const SW_BUILD_VERSION = "20260524-pwa-update-pr8-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
@@ -32,7 +33,8 @@ self.addEventListener("activate", (event) => {
       .then(() => self.clients.claim())
       .then(() => notifyClients({
         type: "KLEVB_SW_ACTIVATED",
-        cacheName: CACHE_NAME
+        cacheName: CACHE_NAME,
+        buildVersion: SW_BUILD_VERSION
       }))
   );
 });
@@ -49,17 +51,19 @@ self.addEventListener("message", (event) => {
     event.waitUntil(
       clearAllCaches()
         .then(() => notifyClients({
-          type: "KLEVB_CACHE_CLEARED"
+          type: "KLEVB_CACHE_CLEARED",
+          buildVersion: SW_BUILD_VERSION
         }))
     );
     return;
   }
 
-  if (data.type === "KLEVB_GET_SW_VERSION") {
+  if (data.type === "KLEVB_GET_SW_VERSION" || data.type === "KLEVB_GET_BUILD_VERSION") {
     if (event.source && typeof event.source.postMessage === "function") {
       event.source.postMessage({
         type: "KLEVB_SW_VERSION",
-        cacheName: CACHE_NAME
+        cacheName: CACHE_NAME,
+        buildVersion: SW_BUILD_VERSION
       });
     }
   }
