@@ -34,6 +34,11 @@
   const MARKET_RESUME_RECOVER_THROTTLE_MS = 1500;
   const MARKET_RESUME_RELOAD_COOLDOWN_MS = 90000;
 
+  const MARKET_REALTIME_CHANNEL_NAME = "klevby-market-items-live";
+  const MARKET_REALTIME_OWNER = "market";
+  const MARKET_REALTIME_PURPOSE = "items-realtime";
+
+
   function getMainSupabaseClient() {
     return (
       window.klevbySupabase ||
@@ -41,6 +46,13 @@
       (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null) ||
       null
     );
+  }
+
+
+  function getRealtimeManagerSafe() {
+    const manager = window.KlevbySupabaseRealtimeManager;
+    if (!manager || typeof manager !== "object") return null;
+    return manager;
   }
 
   function getMainUser() {
@@ -913,6 +925,19 @@
       marketDb.removeChannel(marketRealtimeChannel);
     } catch (error) {
       console.warn("Klevby барахолка: не удалось отписаться от realtime:", error);
+    } finally {
+      const realtimeManager = getRealtimeManagerSafe();
+      if (realtimeManager && typeof realtimeManager.unregisterChannel === "function") {
+        try {
+          realtimeManager.unregisterChannel(
+            MARKET_REALTIME_OWNER,
+            MARKET_REALTIME_CHANNEL_NAME,
+            MARKET_REALTIME_PURPOSE
+          );
+        } catch (managerError) {
+          console.warn("Klevby барахолка: не удалось снять регистрацию realtime-канала в менеджере:", managerError);
+        }
+      }
     }
 
     marketRealtimeChannel = null;
@@ -924,7 +949,7 @@
 
     try {
       marketRealtimeChannel = marketDb
-        .channel("klevby-market-items-live")
+        .channel(MARKET_REALTIME_CHANNEL_NAME)
         .on("postgres_changes", {
           event: "INSERT",
           schema: "public",
@@ -1010,6 +1035,21 @@
             console.warn("Klevby барахолка: realtime недоступен, продолжаем без live-уведомлений:", status);
           }
         });
+
+      const realtimeManager = getRealtimeManagerSafe();
+      if (realtimeManager && typeof realtimeManager.registerChannel === "function") {
+        try {
+          realtimeManager.registerChannel({
+            owner: MARKET_REALTIME_OWNER,
+            channelName: MARKET_REALTIME_CHANNEL_NAME,
+            purpose: MARKET_REALTIME_PURPOSE,
+            channel: marketRealtimeChannel,
+            allowReplace: true
+          });
+        } catch (managerError) {
+          console.warn("Klevby барахолка: не удалось зарегистрировать realtime-канал в менеджере:", managerError);
+        }
+      }
     } catch (error) {
       marketRealtimeChannel = null;
       console.warn("Klevby барахолка: ошибка подписки realtime, продолжаем в обычном режиме:", error);
