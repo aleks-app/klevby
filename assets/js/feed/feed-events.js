@@ -10,6 +10,7 @@
   }
 
   const KLEVB_FEED_VISIBLE_REFRESH_MS = 4000;
+  const KLEVB_FEED_VISIBLE_STALE_REFRESH_MS = 60000;
   const KLEVB_FEED_HIDDEN_REFRESH_MS = 30000;
   const KLEVB_FEED_DEBOUNCE_MS = 450;
   const KLEVB_FEED_RESUME_DELAYS = [0, 600, 1800, 4200, 8000];
@@ -899,7 +900,45 @@
 
       if (!isHomeFeedVisible()) return;
 
-      refreshFeedNow("visible_interval", {
+      const now = Date.now();
+      const lastRenderAt = Number(klevbyFeedLastRenderAt || 0);
+      const elapsedMs = lastRenderAt > 0 ? now - lastRenderAt : -1;
+      const debug = getFeedMainDebug();
+
+      if (lastRenderAt > 0 && elapsedMs < KLEVB_FEED_VISIBLE_STALE_REFRESH_MS) {
+        if (debug) {
+          try {
+            debug.log("full_refresh_marker", "visible_interval_skipped_recent_render", {
+              source: "feed-events",
+              function: "startFeedAutoRefresh",
+              action: "skip_visible_interval_refresh",
+              refreshKind: "full",
+              elapsedMs,
+              staleThresholdMs: KLEVB_FEED_VISIBLE_STALE_REFRESH_MS,
+              visible: true,
+              homeVisible: true
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+
+      if (debug) {
+        try {
+          debug.log("full_refresh_marker", "visible_interval_stale_recovery_refresh", {
+            source: "feed-events",
+            function: "startFeedAutoRefresh",
+            action: "stale_visible_interval_recovery",
+            refreshKind: "full",
+            elapsedMs,
+            staleThresholdMs: KLEVB_FEED_VISIBLE_STALE_REFRESH_MS,
+            visible: true,
+            homeVisible: true
+          });
+        } catch (_) {}
+      }
+
+      refreshFeedNow("visible_interval_stale", {
         force: true
       });
 
