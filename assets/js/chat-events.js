@@ -265,7 +265,7 @@
       const captureAction = getMenuActionTargetFromEvent(event);
       if (captureAction !== "delete") return;
 
-      alert("DELETE ROUTE DEBUG: capture delete action");
+      console.info("[KlevbyDeleteRoute] capture delete action");
       event.preventDefault();
       event.stopPropagation();
       await deleteMessage();

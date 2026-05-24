@@ -267,11 +267,8 @@
     const liveType = resolved?.data?.type || type;
     const liveId = resolved?.data?.id || id;
     const liveIsMine = resolved?.data?.isMine;
-    if (!liveId) { console.error("[KlevbyDelete] missing message id", { type: liveType, id: liveId }); alert("DELETE DEBUG: missing liveId"); cleanupMenuState("delete_missing_id"); return; }
-    if (liveIsMine === false) { console.error("[KlevbyDelete] blocked delete for чужое сообщение", { id: liveId, type: liveType, isMine: liveIsMine }); alert(`DELETE DEBUG: blocked not mine
-liveType=${liveType}
-liveId=${liveId}
-liveIsMine=${liveIsMine}`); cleanupMenuState("delete_not_mine"); return; }
+    if (!liveId) { console.error("[KlevbyDelete] missing message id", { type: liveType, id: liveId }); alert("Не удалось удалить сообщение. Попробуйте ещё раз."); cleanupMenuState("delete_missing_id"); return; }
+    if (liveIsMine === false) { console.error("[KlevbyDelete] blocked delete for чужое сообщение", { id: liveId, type: liveType, isMine: liveIsMine }); alert("Не удалось удалить сообщение. Попробуйте ещё раз."); cleanupMenuState("delete_not_mine"); return; }
 
     const elements = getElements();
     const messagesContainer = elements.messagesContainer || null;
@@ -287,7 +284,7 @@ liveIsMine=${liveIsMine}`); cleanupMenuState("delete_not_mine"); return; }
 
       const currentChatUser = getCurrentUser();
       client = getMainSupabaseClient();
-      if (!client || typeof client.from !== "function") { alert("Нет подключения к Supabase."); return; }
+      if (!client || typeof client.from !== "function") { alert("Не удалось удалить сообщение. Попробуйте ещё раз."); return; }
 
     let authUser = null;
     let authUserError = null;
@@ -322,9 +319,8 @@ liveIsMine=${liveIsMine}`); cleanupMenuState("delete_not_mine"); return; }
     let result;
     if (liveType === "private") {
       if (!deleteUserIdValid) {
-        alert(`DELETE DEBUG: invalid deleteUserId for private
-deleteUserSource=${deleteUserSource}
-deleteUserIdValid=${deleteUserIdValid}`);
+        console.warn("[KlevbyDelete] invalid deleteUserId for private", { deleteUserSource, deleteUserIdValid, deleteUserId });
+        alert("Не удалось удалить сообщение. Попробуйте ещё раз.");
         return;
       }
       result = await withTimeout(client.from("private_messages").delete().eq("id", liveId).eq("sender_id", deleteUserId), 4000, "SUPABASE_DELETE_TIMEOUT");
@@ -337,7 +333,7 @@ deleteUserIdValid=${deleteUserIdValid}`);
     }
     if (!result?.error) {
       const removedSource = removeDeletedMessageRow(liveId, liveType, messagesContainer);
-      alert(`DELETE DEBUG: supabase success removed=${removedSource}`);
+      console.info("[KlevbyDelete] supabase success", { id: liveId, type: liveType, removedSource, deletePath });
       cleanupMenuState("delete_success_supabase");
       return;
     }
@@ -346,11 +342,11 @@ deleteUserIdValid=${deleteUserIdValid}`);
   } catch (error) {
     const isTimeout = String(error?.message || "").includes("SUPABASE_DELETE_TIMEOUT");
     if (isTimeout) {
-      alert("DELETE DEBUG: supabase builder timeout, using REST fallback");
+      console.warn("[KlevbyDelete] supabase builder timeout, using REST fallback", { id: liveId, type: liveType, deletePath });
       try {
         await deleteViaRestFallback({ liveType, liveId, deleteUserId, deleteUserIdValid, currentChatName, client });
         const removedSource = removeDeletedMessageRow(liveId, liveType, messagesContainer);
-        alert(`DELETE DEBUG: rest fallback success removed=${removedSource}`);
+        console.info("[KlevbyDelete] rest fallback success", { id: liveId, type: liveType, removedSource, deletePath });
         cleanupMenuState("delete_success_rest_fallback");
         return;
       } catch (restError) {
@@ -359,7 +355,7 @@ deleteUserIdValid=${deleteUserIdValid}`);
     } else {
       console.error("[KlevbyDelete] delete failed", { id: liveId, type: liveType, isMine: liveIsMine, deletePath, error });
     }
-    alert("DELETE DEBUG: delete failed");
+    alert("Не удалось удалить сообщение. Попробуйте ещё раз.");
     return;
   }
   }
