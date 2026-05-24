@@ -1,4 +1,20 @@
 (function () {
+  function logFeedMarker(functionName, reason, detail = {}) {
+    const api = window.KlevbyFeedMainDebug;
+    if (!api || typeof api.log !== "function") return;
+    try {
+      api.log("full_refresh_marker", String(reason || ""), {
+        source: "profile-photos",
+        function: String(functionName || "unknown"),
+        action: String(detail.action || "profile_sync_refresh"),
+        refreshKind: "full",
+        delay: Number(detail.delay || 0),
+        postId: detail.postId ? String(detail.postId) : "",
+        visible: document.visibilityState !== "hidden"
+      });
+    } catch (_) {}
+  }
+
   const PROFILE_PHOTOS_VERSION = "20260513-profile-feed-events-split-1";
 
   const PROFILE_MAX_PHOTOS = 8;
@@ -799,6 +815,7 @@
     setTimeout(() => {
       try {
         if (typeof window.renderProfileFeed === "function") {
+          logFeedMarker("renderProfileFeed", "profile_sync_render", { action: "profile_sync_refresh" });
           window.renderProfileFeed();
         }
       } catch (error) {

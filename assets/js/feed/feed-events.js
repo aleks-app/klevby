@@ -66,6 +66,30 @@
     return document.visibilityState !== "hidden";
   }
 
+
+  function getFeedMainDebug() {
+    const api = window.KlevbyFeedMainDebug;
+    return api && typeof api.log === "function" ? api : null;
+  }
+
+  function logFeedRefreshMarker(functionName, reason, detail = {}) {
+    const debug = getFeedMainDebug();
+    if (!debug) return;
+    try {
+      debug.log("full_refresh_marker", String(reason || ""), {
+        source: "feed-events",
+        function: String(functionName || "unknown"),
+        action: String(detail.action || "full_refresh"),
+        refreshKind: String(detail.refreshKind || "full"),
+        delay: Number(detail.delay || 0),
+        force: Boolean(detail.force),
+        postId: detail.postId ? String(detail.postId) : "",
+        visible: detail.visible === undefined ? isPageVisible() : Boolean(detail.visible),
+        homeVisible: detail.homeVisible === undefined ? isHomeFeedVisible() : Boolean(detail.homeVisible)
+      });
+    } catch (_) {}
+  }
+
   function renderFeed() {
     const render = getRender();
 
@@ -82,6 +106,7 @@
 
   async function refreshFeedNow(reason = "manual", options = {}) {
     const force = Boolean(options.force);
+    logFeedRefreshMarker("refreshFeedNow", reason, { force, action: "full_refresh" });
 
     if (!force && !isPageVisible()) {
       return false;
@@ -131,13 +156,19 @@
   }
 
   function queueFeedRefresh(reason = "queued", delay = KLEVB_FEED_DEBOUNCE_MS, options = {}) {
+    const safeDelay = Math.max(0, Number(delay || 0));
+    logFeedRefreshMarker("queueFeedRefresh", reason, {
+      action: "queue_full_refresh",
+      delay: safeDelay,
+      force: Boolean(options.force)
+    });
     clearTimeout(klevbyFeedRefreshTimer);
 
     klevbyFeedRefreshTimer = setTimeout(() => {
       refreshFeedNow(reason, {
         force: Boolean(options.force)
       });
-    }, Math.max(0, Number(delay || 0)));
+    }, safeDelay);
   }
 
   function refreshFeedIfHomeVisible(options = {}) {

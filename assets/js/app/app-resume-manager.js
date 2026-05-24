@@ -6,6 +6,23 @@
   const KLEVB_APP_RESUME_BURST_DELAYS = [350, 1600, 4200];
   const KLEVB_APP_BOOT_RESUME_GRACE_MS = 2500;
 
+  function markFeedMainRefreshMarker(functionName, reason, detail = {}) {
+    const api = window.KlevbyFeedMainDebug;
+    if (!api || typeof api.log !== "function") return;
+    try {
+      api.log("full_refresh_marker", String(reason || ""), {
+        source: "app-resume-manager",
+        function: String(functionName || "unknown"),
+        action: String(detail.action || "resume_refresh"),
+        refreshKind: "full",
+        delay: Number(detail.delay || 0),
+        visible: document.visibilityState !== "hidden",
+        homeVisible: Boolean(detail.homeVisible),
+        stack: detail.stack || null
+      });
+    } catch (_) {}
+  }
+
   function createAppResumeManager(deps = {}) {
     let klevbyAppResumeTimer = null;
     let klevbyAppResumeInProgress = false;
@@ -193,6 +210,11 @@
 
       try {
         if (visibleSection === "home" || visibleSection === "profile") {
+          markFeedMainRefreshMarker("refreshCurrentScreenAfterResume", reason, {
+            action: "resume_feed_wake",
+            delay: isBurst ? 0 : 250,
+            homeVisible: visibleSection === "home"
+          });
           const wakeFeedFn =
             (typeof window.klevbyWakeFeed === "function" && window.klevbyWakeFeed) ||
             (typeof window.refreshKlevbyFeedSilently === "function" && window.refreshKlevbyFeedSilently) ||
