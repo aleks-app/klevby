@@ -335,48 +335,79 @@
   }
 
   function isCounterOnlyFeedPostChanged(detail = {}) {
+    const setReason = (reason) => {
+      try {
+        if (detail && typeof detail === "object") {
+          detail.counterOnlyRejectReason = reason;
+        }
+      } catch (error) {
+        // no-op
+      }
+      return false;
+    };
+
     const action = String(detail?.action || detail?.type || "").trim();
 
     if (action !== "feed_post_changed") {
-      return false;
+      return setReason("not_feed_post_changed");
     }
 
     const payload = detail?.payload || {};
     const eventType = String(payload?.eventType || payload?.event_type || "").toUpperCase();
 
-    if (eventType !== "UPDATE") {
-      return false;
+    if (eventType && eventType !== "UPDATE") {
+      return setReason("not_update");
     }
 
     const postId = resolveRealtimePostId(detail);
 
     if (!postId) {
-      return false;
+      return setReason("missing_post_id");
     }
 
-    if (!payload?.new || !hasOwn(payload.new, "likes_count") || !hasOwn(payload.new, "comments_count")) {
-      return false;
+    const nextRow = payload?.new && typeof payload.new === "object" ? payload.new : null;
+
+    if (!nextRow) {
+      return setReason("missing_payload_new");
     }
 
-    const nextRow = payload.new;
-    const prevRow = payload.old;
+    const hasLikesCounter = hasOwn(nextRow, "likes_count");
+    const hasCommentsCounter = hasOwn(nextRow, "comments_count");
 
-    if (prevRow && typeof prevRow === "object") {
-      const allowedChangedFields = new Set(["likes_count", "comments_count", "updated_at"]);
-      const keys = new Set([...Object.keys(nextRow || {}), ...Object.keys(prevRow || {})]);
+    if (!hasLikesCounter && !hasCommentsCounter) {
+      return setReason("missing_counter_fields");
+    }
 
-      for (const key of keys) {
-        const before = prevRow?.[key];
-        const after = nextRow?.[key];
+    const allowedChangedFields = new Set(["likes_count", "comments_count", "updated_at"]);
+    const prevRow = payload?.old && typeof payload.old === "object" ? payload.old : null;
 
-        if (before === after) {
-          continue;
+    if (!prevRow) {
+      if (hasRecentTargetedLikeCounterUpdate(postId)) {
+        if (detail && typeof detail === "object" && hasOwn(detail, "counterOnlyRejectReason")) {
+          delete detail.counterOnlyRejectReason;
         }
-
-        if (!allowedChangedFields.has(key)) {
-          return false;
-        }
+        return true;
       }
+      return setReason("missing_payload_old");
+    }
+
+    const keys = new Set([...Object.keys(nextRow || {}), ...Object.keys(prevRow || {})]);
+
+    for (const key of keys) {
+      const before = prevRow?.[key];
+      const after = nextRow?.[key];
+
+      if (before === after) {
+        continue;
+      }
+
+      if (!allowedChangedFields.has(key)) {
+        return setReason("content_field_changed");
+      }
+    }
+
+    if (detail && typeof detail === "object" && hasOwn(detail, "counterOnlyRejectReason")) {
+      delete detail.counterOnlyRejectReason;
     }
 
     return true;
