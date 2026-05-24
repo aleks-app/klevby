@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   const POSTS_LOAD_RETRY_DELAY_MS = 900;
   const POSTS_MAX_RETRIES = 3;
   const POSTS_LOAD_TIMEOUT_MS = 9000;
@@ -927,6 +937,7 @@
   }
 
   window.addEventListener("pageshow", () => {
+    markKlevbyResumeDebug("posts.resume.listener", "pageshow", { trigger: "pageshow" });
     ensurePostsRealtimeSync().catch((error) => {
       console.warn("Klevby posts realtime: re-init on pageshow failed", error);
     });
@@ -935,10 +946,12 @@
   });
 
   document.addEventListener("visibilitychange", () => {
+    markKlevbyResumeDebug("posts.resume.listener", "visibilitychange", { visibilityState: document.visibilityState });
     refreshPostsAutoSyncState("visibilitychange");
   });
 
   window.addEventListener("focus", () => {
+    markKlevbyResumeDebug("posts.resume.listener", "focus", { trigger: "focus" });
     refreshPostsAutoSyncState("focus");
   });
 

@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   let marketDb = null;
   let marketItems = [];
   let marketOwnerItems = [];
@@ -889,9 +899,17 @@
   }
 
   async function recoverMarketOnResume(reason) {
-    if (!isMarketVisible()) return;
+    const cleanReason = String(reason || "resume");
+    markKlevbyResumeDebug("market.resume", cleanReason, { phase: "start" });
+    if (!isMarketVisible()) {
+      markKlevbyResumeDebug("market.resume", cleanReason, { phase: "skip_not_visible" });
+      return;
+    }
     const now = Date.now();
-    if (now - marketLastResumeRecoverAt < MARKET_RESUME_RECOVER_THROTTLE_MS) return;
+    if (now - marketLastResumeRecoverAt < MARKET_RESUME_RECOVER_THROTTLE_MS) {
+      markKlevbyResumeDebug("market.resume", cleanReason, { phase: "skip_throttle", sinceLastMs: now - marketLastResumeRecoverAt });
+      return;
+    }
     marketLastResumeRecoverAt = now;
 
     resetStaleMarketLoadLock(reason || "resume");
@@ -905,6 +923,7 @@
     const shouldForceReload = !(isLoaded && isFresh);
 
     await loadMarketItems({ force: shouldForceReload });
+    markKlevbyResumeDebug("market.resume", cleanReason, { phase: "done", shouldForceReload });
   }
 
   function applyMarketPendingNewItems() {

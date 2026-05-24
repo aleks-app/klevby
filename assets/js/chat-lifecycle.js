@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   let lifecycleApi = null;
 
   function init(options = {}) {
@@ -306,13 +316,20 @@
     async function reloadChatAfterResume(reason = "resume") {
       const now = Date.now();
 
-      if (klevbyResumeInProgress) return;
-      if (now - klevbyLastResumeAt < 2500) return;
+      if (klevbyResumeInProgress) {
+        markKlevbyResumeDebug("chat.lifecycle.resume", reason, { phase: "skip_in_progress" });
+        return;
+      }
+      if (now - klevbyLastResumeAt < 2500) {
+        markKlevbyResumeDebug("chat.lifecycle.resume", reason, { phase: "skip_throttle", sinceLastMs: now - klevbyLastResumeAt });
+        return;
+      }
 
       klevbyResumeInProgress = true;
       klevbyLastResumeAt = now;
 
       try {
+        markKlevbyResumeDebug("chat.lifecycle.resume", reason, { phase: "start" });
         updateViewportVars();
 
         await withChatStepTimeout("refreshCurrentUser", () => refreshCurrentUser(), { reason });
@@ -349,7 +366,9 @@
           updateViewportVars();
           scrollChatToBottom();
         }, 150);
+        markKlevbyResumeDebug("chat.lifecycle.resume", reason, { phase: "done" });
       } catch (error) {
+        markKlevbyResumeDebug("chat.lifecycle.resume", reason, { phase: "error", message: String(error?.message || error) });
         await tryRecoverSupabaseAfterTimeout(reason, error);
         console.warn("Не удалось восстановить чат после возврата в приложение:", reason, error);
         setChatTabsLoading(false);
@@ -362,8 +381,10 @@
 
     function scheduleChatResume(reason = "resume") {
       clearTimeout(klevbyResumeTimer);
+      markKlevbyResumeDebug("chat.lifecycle.schedule", reason, { phase: "scheduled", delayMs: 700 });
 
       klevbyResumeTimer = setTimeout(() => {
+        markKlevbyResumeDebug("chat.lifecycle.schedule", reason, { phase: "timer_fired" });
         reloadChatAfterResume(reason);
       }, 700);
     }

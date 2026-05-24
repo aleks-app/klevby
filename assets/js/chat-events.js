@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   let cleanupFns = [];
   let longPressTimer = null;
 
@@ -237,21 +247,25 @@
 
     addListener(window, "klevby-app-resumed", (event) => {
       const reason = String(event?.detail?.reason || "app_resumed");
+      markKlevbyResumeDebug("chat.events.listener", reason, { trigger: "klevby-app-resumed" });
       scheduleChatResume(reason);
     });
 
     if (!window.__klevbyCentralResumeRouter) {
       addListener(document, "visibilitychange", () => {
         if (document.visibilityState === "visible") {
+          markKlevbyResumeDebug("chat.events.listener", "visibilitychange", { visibilityState: document.visibilityState });
           scheduleChatResume("visibilitychange");
         }
       });
 
       addListener(window, "pageshow", () => {
+        markKlevbyResumeDebug("chat.events.listener", "pageshow", { trigger: "pageshow" });
         scheduleChatResume("pageshow");
       });
 
       addListener(window, "focus", () => {
+        markKlevbyResumeDebug("chat.events.listener", "focus", { trigger: "focus" });
         scheduleChatResume("focus");
       });
 
