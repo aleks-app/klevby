@@ -155,27 +155,122 @@
 liveType=${liveType}
 liveId=${liveId}
 liveIsMine=${liveIsMine}`); cleanupMenuState("delete_not_mine"); return; }
-    const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
-      let timeoutId = null;
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("timeout")), timeoutMs);
-      });
+
+    const elements = getElements();
+    const messagesContainer = elements.messagesContainer || null;
+    if (!confirm("Удалить сообщение?")) return;
+
+    try { await refreshCurrentUser({ force: true }); } catch (error) { console.error("[KlevbyDelete] refreshCurrentUser failed", error); }
+
+    const currentChatUser = getCurrentUser();
+    const client = getMainSupabaseClient();
+    if (!client || typeof client.from !== "function") { alert("Нет подключения к Supabase."); return; }
+
+    let authUser = null;
+    let authUserError = null;
+    if (!isValidSupabaseUuid(currentChatUser?.id) && client?.auth?.getUser) {
       try {
-        return await Promise.race([promise, timeoutPromise]);
+        const { data, error } = await client.auth.getUser();
+        authUserError = error || null;
+        if (!error && isValidSupabaseUuid(data?.user?.id)) authUser = data.user;
       } catch (error) {
-        if (error?.message === "timeout") {
-          alert(timeoutMessage);
-        }
-        throw error;
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
+        authUserError = error;
+        console.error("[KlevbyDelete] auth.getUser failed", error);
       }
-    };
-    const elements=getElements(); const messagesContainer=elements.messagesContainer||null; if(!confirm("Удалить сообщение?")) return; alert("DELETE STEP DEBUG: after confirm"); alert("DELETE STEP DEBUG: before refreshCurrentUser"); try { await withTimeout(refreshCurrentUser({force:true}), 3000, "DELETE STEP DEBUG: refreshCurrentUser timeout"); } catch (error) { console.error("[KlevbyDelete] refreshCurrentUser failed", error); if (error?.message !== "timeout") alert(`DELETE DEBUG: refreshCurrentUser error: ${error?.message||"unknown"}`); return; } alert("DELETE STEP DEBUG: after refreshCurrentUser"); const currentChatUser=getCurrentUser(); const client=getMainSupabaseClient(); if(!client||typeof client.from!=="function"){alert("Нет подключения к Supabase."); return;} let authUser=null; let authUserError=null; if(!isValidSupabaseUuid(currentChatUser?.id)&&client?.auth?.getUser){ alert("DELETE STEP DEBUG: before auth.getUser"); try{ const { data, error }=await withTimeout(client.auth.getUser(), 3000, "DELETE STEP DEBUG: auth.getUser timeout"); authUserError=error||null; if(!error&&isValidSupabaseUuid(data?.user?.id)) authUser=data.user; }catch(error){ authUserError=error; if (error?.message !== "timeout") alert(`DELETE DEBUG: auth.getUser error: ${error?.message||"unknown"}`); return; } alert("DELETE STEP DEBUG: after auth.getUser"); } let result; const currentChatUserId=currentChatUser?.id||null; const currentChatUserIdValid=isValidSupabaseUuid(currentChatUserId); const deleteUser=authUser||currentChatUser||null; const deleteUserId=deleteUser?.id||null; const deleteUserIdValid=isValidSupabaseUuid(deleteUserId); const deleteUserSource=authUser?"supabase-auth-user":(currentChatUserIdValid?"cached-current-user":"user-name-fallback"); let deletePath="public-user-name-fallback"; if(liveType==="private"){ deletePath=`private-${deleteUserSource}`; } else if(deleteUserIdValid){ deletePath=`public-user-id-${deleteUserSource}`; } console.info("[KlevbyDelete] delete request",{liveType,liveId,liveIsMine,currentChatUserId,currentChatUserIdValid,authUserId:authUser?.id||null,authUserError:authUserError?String(authUserError?.message||authUserError):null,deleteUserId,deleteUserIdValid,deleteUserSource,currentChatName:getCurrentChatName(),deletePath}); alert(`DELETE STEP DEBUG: before supabase delete path=${deletePath}`); if(liveType==="private"){ if(!deleteUserIdValid){alert(`DELETE DEBUG: invalid deleteUserId for private
+    }
+
+    const currentChatUserId = currentChatUser?.id || null;
+    const currentChatUserIdValid = isValidSupabaseUuid(currentChatUserId);
+    const deleteUser = authUser || currentChatUser || null;
+    const deleteUserId = deleteUser?.id || null;
+    const deleteUserIdValid = isValidSupabaseUuid(deleteUserId);
+    const deleteUserSource = authUser ? "supabase-auth-user" : (currentChatUserIdValid ? "cached-current-user" : "user-name-fallback");
+
+    let deletePath = "public-user-name-fallback";
+    if (liveType === "private") {
+      deletePath = `private-${deleteUserSource}`;
+    } else if (deleteUserIdValid) {
+      deletePath = `public-user-id-${deleteUserSource}`;
+    }
+
+    const currentSelectedRow = resolveLiveMessageRow();
+    const activeRowDataset = currentSelectedRow?.dataset ? {
+      messageId: currentSelectedRow.dataset.messageId || "",
+      messageType: currentSelectedRow.dataset.messageType || "",
+      isMine: currentSelectedRow.dataset.isMine || "",
+      author: currentSelectedRow.dataset.author || ""
+    } : null;
+    const liveSelector = `[data-message-id="${cssEscape(liveId)}"][data-message-type="${cssEscape(liveType || "public")}"]`;
+    const existsInContainer = Boolean(messagesContainer?.querySelector?.(liveSelector));
+    const existsInDocument = Boolean(document.querySelector(liveSelector));
+
+    console.info("[KlevbyDelete] delete request", {
+      liveType,
+      liveId,
+      liveIsMine,
+      currentChatUserId,
+      currentChatUserIdValid,
+      authUserId: authUser?.id || null,
+      authUserError: authUserError ? String(authUserError?.message || authUserError) : null,
+      deleteUserId,
+      deleteUserIdValid,
+      deleteUserSource,
+      currentChatName: getCurrentChatName(),
+      deletePath,
+      activeRowDataset,
+      existsInContainer,
+      existsInDocument
+    });
+
+    let result;
+    if (liveType === "private") {
+      if (!deleteUserIdValid) {
+        alert(`DELETE DEBUG: invalid deleteUserId for private
 deleteUserSource=${deleteUserSource}
-deleteUserIdValid=${deleteUserIdValid}`); return;} result=await client.from("private_messages").delete().eq("id",liveId).eq("sender_id",deleteUserId);} else { if(deleteUserIdValid){ result=await client.from("messages").delete().eq("id",liveId).eq("user_id",deleteUserId);} else { result=await client.from("messages").delete().eq("id",liveId).eq("user_name",getCurrentChatName()); } } alert("DELETE STEP DEBUG: after supabase delete"); if(result.error){console.error("[KlevbyDelete] delete failed",{id:liveId,type:liveType,isMine:liveIsMine,deletePath,error:result.error}); alert(`DELETE DEBUG: Supabase error: ${result.error.message||"unknown"}`); return;} console.info("[KlevbyDelete] delete success",{id:liveId,type:liveType,deletePath,result}); alert(`DELETE DEBUG: request success path=${deletePath}`); if(messagesContainer){ const row=messagesContainer.querySelector(`[data-message-id="${cssEscape(liveId)}"][data-message-type="${liveType}"]`); if(row){ row.remove(); } else { alert(`DELETE DEBUG: server ok but local row not found
+deleteUserIdValid=${deleteUserIdValid}`);
+        return;
+      }
+      result = await client.from("private_messages").delete().eq("id", liveId).eq("sender_id", deleteUserId).select("id");
+    } else {
+      if (deleteUserIdValid) {
+        result = await client.from("messages").delete().eq("id", liveId).eq("user_id", deleteUserId).select("id");
+      } else {
+        result = await client.from("messages").delete().eq("id", liveId).eq("user_name", getCurrentChatName()).select("id");
+      }
+    }
+
+    if (result.error) {
+      console.error("[KlevbyDelete] delete failed", { id: liveId, type: liveType, isMine: liveIsMine, deletePath, error: result.error });
+      alert(`DELETE DEBUG: Supabase error: ${result.error.message || "unknown"}`);
+      return;
+    }
+
+    const deletedRows = Array.isArray(result.data) ? result.data : [];
+    if (!deletedRows.length) {
+      alert(`DELETE DEBUG: zero rows deleted
 liveId=${liveId}
-liveType=${liveType}`); } } cleanupMenuState("delete_success"); }
+liveType=${liveType}
+deletePath=${deletePath}
+deleteUserId=${deleteUserId || "null"}`);
+      return;
+    }
+
+    console.info("[KlevbyDelete] delete success", { id: liveId, type: liveType, deletePath, deletedRows });
+    alert(`DELETE DEBUG: success path=${deletePath}`);
+
+    const rowFromContainer = messagesContainer?.querySelector?.(liveSelector) || null;
+    const rowFromDocument = document.querySelector(liveSelector);
+    const rowToRemove = rowFromContainer || rowFromDocument || null;
+    if (rowToRemove) {
+      rowToRemove.remove();
+    } else {
+      alert(`DELETE DEBUG: deleted on server but visible row not found
+liveId=${liveId}
+liveType=${liveType}`);
+    }
+    cleanupMenuState("delete_success");
+  }
+
 
   function init(options = {}) { optionsRef = options || {}; cleanupMenuState("init"); }
   // Action menu ownership:
