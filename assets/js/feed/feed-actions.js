@@ -196,6 +196,21 @@
     return helper ? helper() : Promise.resolve();
   }
 
+
+  function hasRecentTargetedLikeCounterUpdate(postId) {
+    const api = window.KlevbyFeedEvents || {};
+
+    if (typeof api.hasRecentTargetedLikeCounterUpdate !== "function") {
+      return false;
+    }
+
+    try {
+      return Boolean(api.hasRecentTargetedLikeCounterUpdate(postId));
+    } catch (_) {
+      return false;
+    }
+  }
+
   function refreshOpenCommentsIfNeeded(delay = 140) {
     const helper = getCoreHelper("refreshOpenCommentsIfNeeded");
 
@@ -1027,15 +1042,32 @@
     throw lastError || new Error("Supabase не подтвердил лайк.");
   }
 
-  function scheduleLikeRefresh(delay = LIKE_BACKGROUND_REFRESH_MS) {
+  function scheduleLikeRefresh(delay = LIKE_BACKGROUND_REFRESH_MS, options = {}) {
+    const postId = String(options?.postId || "").trim();
+    const reason = String(options?.reason || "like_refresh").trim();
+
     clearTimeout(likeRefreshTimer);
+
+    console.debug("Klevby feed actions: scheduleLikeRefresh set", {
+      delay,
+      postId,
+      reason
+    });
 
     likeRefreshTimer = setTimeout(() => {
       if (hasActiveLikeRenderProtection()) {
-        scheduleLikeRefresh(LIKE_PROTECTION_RECHECK_MS);
+        console.debug("Klevby feed actions: scheduleLikeRefresh recheck", { postId, reason });
+        scheduleLikeRefresh(LIKE_PROTECTION_RECHECK_MS, options);
         return;
       }
 
+      if (postId && hasRecentTargetedLikeCounterUpdate(postId)) {
+        console.debug("Klevby feed actions: scheduleLikeRefresh skip full refresh", { postId, reason });
+        refreshOpenCommentsIfNeeded(120);
+        return;
+      }
+
+      console.debug("Klevby feed actions: scheduleLikeRefresh fire full refresh", { postId, reason });
       refreshFeedIfHomeVisible();
       refreshOpenCommentsIfNeeded(120);
     }, Math.max(300, Number(delay || LIKE_BACKGROUND_REFRESH_MS)));
@@ -1168,7 +1200,7 @@
       });
 
       protectLikeRender(cleanId, LIKE_RENDER_PROTECTION_MS);
-      scheduleLikeRefresh(900);
+      scheduleLikeRefresh(900, { postId: cleanId, reason: "like_commit_success" });
 
       return {
         postId: cleanId,
@@ -1189,7 +1221,7 @@
         applyLocalLikeState(cleanId, verified.liked, verifiedCount);
         setLikeButtonsState(cleanId, verifiedCount, verified.liked, false);
         releaseLikeButtonVisualState(cleanId);
-        scheduleLikeRefresh(900);
+        scheduleLikeRefresh(900, { postId: cleanId, reason: "like_verify_after_error" });
 
         console.warn("Klevby feed actions: like verified after error", {
           postId: cleanId,
@@ -1218,7 +1250,7 @@
       }
 
       if (recentlyResumed) {
-        scheduleLikeRefresh(900);
+        scheduleLikeRefresh(900, { postId: cleanId, reason: "like_recent_resume" });
       }
 
       return {

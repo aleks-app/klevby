@@ -17,6 +17,10 @@
   const KLEVB_RT_COUNTER_HYDRATE_DEDUP_MS = 1200;
   const klevbyRealtimeCounterHydrationMap = new Map();
 
+  const KLEVB_TARGETED_LIKE_SUCCESS_TTL_MS = 4500;
+  const klevbyTargetedLikeSuccessMap = new Map();
+
+
   let klevbyFeedRefreshTimer = null;
   let klevbyFeedIntervalTimer = null;
   let klevbyFeedHiddenIntervalTimer = null;
@@ -464,10 +468,66 @@
     }
 
     try {
-      return Boolean(updateFn(postId, counters));
+      const updated = Boolean(updateFn(postId, counters));
+      const isCounterOnlyPostAction =
+        action === "feed_post_changed" &&
+        isCounterOnlyFeedPostChanged(detail);
+      const hasLikeCounterInCounters = Object.prototype.hasOwnProperty.call(counters, "likesCount");
+      const payload = detail?.payload || {};
+      const payloadShowsLikesCounterChange =
+        payload?.new &&
+        payload?.old &&
+        Object.prototype.hasOwnProperty.call(payload.new, "likes_count") &&
+        Object.prototype.hasOwnProperty.call(payload.old, "likes_count") &&
+        payload.new.likes_count !== payload.old.likes_count;
+
+      if (
+        updated &&
+        (
+          action === "feed_like_changed" ||
+          (isCounterOnlyPostAction && (hasLikeCounterInCounters || payloadShowsLikesCounterChange))
+        )
+      ) {
+        markTargetedLikeCounterUpdateSuccess(postId);
+      }
+
+      return updated;
     } catch (error) {
       return false;
     }
+  }
+
+
+  function markTargetedLikeCounterUpdateSuccess(postId, ttlMs = KLEVB_TARGETED_LIKE_SUCCESS_TTL_MS) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return false;
+    }
+
+    klevbyTargetedLikeSuccessMap.set(cleanPostId, Date.now() + Math.max(500, Number(ttlMs || KLEVB_TARGETED_LIKE_SUCCESS_TTL_MS)));
+    return true;
+  }
+
+  function hasRecentTargetedLikeCounterUpdate(postId) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return false;
+    }
+
+    const expiresAt = Number(klevbyTargetedLikeSuccessMap.get(cleanPostId) || 0);
+
+    if (!expiresAt) {
+      return false;
+    }
+
+    if (Date.now() > expiresAt) {
+      klevbyTargetedLikeSuccessMap.delete(cleanPostId);
+      return false;
+    }
+
+    return true;
   }
 
   function closeOpenFeedWindows() {
@@ -609,6 +669,10 @@
                 }
 
                 cardCountersUpdated = Boolean(updateFn(postId, nextCounters));
+
+                if (cardCountersUpdated) {
+                  markTargetedLikeCounterUpdateSuccess(postId);
+                }
               }
             }
           } catch (error) {
@@ -774,6 +838,10 @@
               }
 
               cardCountersUpdated = Boolean(updateFn(postId, nextCounters));
+
+              if (cardCountersUpdated) {
+                markTargetedLikeCounterUpdateSuccess(postId);
+              }
             }
           }
         } catch (error) {
@@ -826,6 +894,8 @@
     refreshFeedNow,
     queueFeedRefresh,
     isCounterOnlyFeedPostChanged,
+    markTargetedLikeCounterUpdateSuccess,
+    hasRecentTargetedLikeCounterUpdate,
     handleAppResume,
     loadCommentsIntoActiveModal,
     closeOpenFeedWindows
