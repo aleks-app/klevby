@@ -1035,6 +1035,12 @@
           });
           return;
         }
+
+        feedMainDebugLog("counter_only_check_failed", action, {
+          source: "klevby-feed-updated",
+          ownership: "feed-events",
+          reason: String(detail?.counterOnlyRejectReason || "unknown")
+        });
       }
 
       scheduleMainFeedRefresh(action, 900, {
