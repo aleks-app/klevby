@@ -139,6 +139,111 @@
     }
   }
 
+
+
+  function isFeedDebugModeEnabled() {
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      if (params.get("feedDebug") === "1") return true;
+    } catch (_) {}
+
+    try {
+      return String(localStorage.getItem("KLEVB_FEED_DEBUG") || "") === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function buildFeedDebugExportPayload() {
+    const summary = typeof feedMainDebug.summary === "function" ? feedMainDebug.summary() : null;
+    const events = typeof feedMainDebug.getEvents === "function" ? feedMainDebug.getEvents().slice(-100) : [];
+    return {
+      exportedAt: new Date().toISOString(),
+      url: String(window.location.href || ""),
+      userAgent: String(navigator.userAgent || ""),
+      summary,
+      events
+    };
+  }
+
+  function ensureFeedDebugFallbackModal(text) {
+    const modalId = "klevbyFeedDebugExportModal";
+    let modal = document.getElementById(modalId);
+
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = modalId;
+      modal.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:10px;";
+      modal.innerHTML = `
+        <div style="width:min(680px,100%);background:#111;color:#fff;border-radius:12px;padding:10px;box-sizing:border-box;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="font-size:13px;">Feed debug export</strong>
+            <button type="button" data-close="1" style="background:#333;color:#fff;border:1px solid #555;border-radius:8px;padding:4px 8px;">Close</button>
+          </div>
+          <textarea id="klevbyFeedDebugExportText" style="width:100%;height:42vh;box-sizing:border-box;border-radius:8px;border:1px solid #444;background:#000;color:#9ef;padding:8px;font-size:11px;"></textarea>
+        </div>
+      `;
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal || event.target?.dataset?.close === "1") {
+          modal.remove();
+        }
+      });
+      document.body.appendChild(modal);
+    }
+
+    const textarea = modal.querySelector("#klevbyFeedDebugExportText");
+    if (textarea) {
+      textarea.value = text;
+      textarea.focus();
+      textarea.select();
+    }
+  }
+
+  function mountFeedDebugExportUi() {
+    if (!isFeedDebugModeEnabled()) return;
+    if (document.getElementById("klevbyFeedDebugPanel")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "klevbyFeedDebugPanel";
+    panel.style.cssText = "position:fixed;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);z-index:9998;display:flex;gap:6px;background:rgba(12,12,12,.88);padding:6px;border-radius:10px;border:1px solid rgba(255,255,255,.16);";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.textContent = "Copy feed debug";
+    copyBtn.style.cssText = "font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid #4d8;background:#163;color:#dff;";
+
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.textContent = "Clear feed debug";
+    clearBtn.style.cssText = "font-size:11px;padding:6px 8px;border-radius:8px;border:1px solid #666;background:#222;color:#fff;";
+
+    copyBtn.addEventListener("click", async () => {
+      const payload = buildFeedDebugExportPayload();
+      const text = JSON.stringify(payload, null, 2);
+
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(text);
+          copyBtn.textContent = "Copied";
+          setTimeout(() => { copyBtn.textContent = "Copy feed debug"; }, 1200);
+          return;
+        }
+      } catch (_) {}
+
+      ensureFeedDebugFallbackModal(text);
+    });
+
+    clearBtn.addEventListener("click", () => {
+      if (feedMainDebug && typeof feedMainDebug.reset === "function") {
+        feedMainDebug.reset();
+      }
+    });
+
+    panel.appendChild(copyBtn);
+    panel.appendChild(clearBtn);
+    document.body.appendChild(panel);
+  }
+
   function safeDebugStack(skipLines = 2, maxLines = 5) {
     try {
       const raw = String(new Error().stack || "");
@@ -152,6 +257,27 @@
         .join(" | ");
     } catch (_) {
       return null;
+    }
+  }
+
+  function getSafeHomeVisibleForDebug() {
+    try {
+      if (typeof isHomeSectionVisible === "function") {
+        return Boolean(isHomeSectionVisible());
+      }
+    } catch (_) {}
+
+    try {
+      const homeSection = document.getElementById("homeSection");
+      if (homeSection) {
+        return !homeSection.classList.contains("hidden");
+      }
+    } catch (_) {}
+
+    try {
+      return Boolean(hasFeedDom());
+    } catch (_) {
+      return false;
     }
   }
 
@@ -762,6 +888,17 @@
       if (feedMainDebug && typeof feedMainDebug.trackRenderExecution === "function") {
         feedMainDebug.trackRenderExecution(cleanReason, { force });
       }
+      feedMainDebugLog("full_refresh_marker", cleanReason, {
+        source: "feed-main",
+        function: "forceRenderFeed",
+        action: "full_render_execute",
+        refreshKind: "full",
+        delay: Number(options.delay || 0),
+        force,
+        visible: isPageVisible(),
+        homeVisible: getSafeHomeVisibleForDebug(),
+        stack: safeDebugStack(3, 4)
+      });
       feedMainDebugLog("full_render_execution", cleanReason, { force });
       await Promise.resolve(renderProfileFeed());
 
@@ -822,9 +959,15 @@
       }
     }
 
-    feedMainDebugLog("schedule_refresh", cleanReason, {
+    feedMainDebugLog("full_refresh_marker", cleanReason, {
+      source: "feed-main",
+      function: "scheduleMainFeedRefresh",
+      action: "schedule_full_refresh",
+      refreshKind: "full",
       delay: safeDelay,
-      force
+      force,
+      visible: isPageVisible(),
+      homeVisible: getSafeHomeVisibleForDebug()
     });
 
     const runCoalescedRefresh = () => {
@@ -1330,6 +1473,7 @@
     window.__klevbyFeedModularStarted = true;
 
     exposeLegacyGlobals();
+    mountFeedDebugExportUi();
     warmUpModules();
     renderLater();
     startRealtimeLater();

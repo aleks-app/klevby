@@ -1,4 +1,20 @@
 (function () {
+  function logFeedMarker(functionName, reason, detail = {}) {
+    const api = window.KlevbyFeedMainDebug;
+    if (!api || typeof api.log !== "function") return;
+    try {
+      api.log("full_refresh_marker", String(reason || ""), {
+        source: "profile-avatar",
+        function: String(functionName || "unknown"),
+        action: String(detail.action || "profile_sync_refresh"),
+        refreshKind: "full",
+        delay: Number(detail.delay || 0),
+        postId: detail.postId ? String(detail.postId) : "",
+        visible: document.visibilityState !== "hidden"
+      });
+    } catch (_) {}
+  }
+
   const PROFILE_AVATAR_VERSION = "20260512-profile-avatar-feed-sync-1";
 
   const KLEVB_PROFILE_AVATAR_KEY = "klevby_profile_avatar";
@@ -78,6 +94,7 @@
         }
 
         if (typeof window.renderProfileFeed === "function") {
+          logFeedMarker("renderProfileFeed", "profile_sync_render", { action: "profile_sync_refresh" });
           window.renderProfileFeed();
         }
       } catch (error) {

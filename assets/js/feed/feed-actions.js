@@ -184,13 +184,38 @@
     return helper ? helper() : false;
   }
 
-  function renderFeed() {
+
+  function getFeedMainDebug() {
+    const api = window.KlevbyFeedMainDebug;
+    return api && typeof api.log === "function" ? api : null;
+  }
+
+  function logFeedActionRefreshMarker(functionName, reason, detail = {}) {
+    const debug = getFeedMainDebug();
+    if (!debug) return;
+    try {
+      debug.log("full_refresh_marker", String(reason || ""), {
+        source: "feed-actions",
+        function: String(functionName || "unknown"),
+        action: String(detail.action || "full_refresh"),
+        refreshKind: String(detail.refreshKind || "full"),
+        delay: Number(detail.delay || 0),
+        postId: detail.postId ? String(detail.postId) : "",
+        visible: document.visibilityState !== "hidden",
+        homeVisible: isHomeVisible()
+      });
+    } catch (_) {}
+  }
+
+  function renderFeed(reason = "feed_actions_render", markerDetail = {}) {
+    logFeedActionRefreshMarker("renderFeed", reason, { action: "full_render", ...markerDetail });
     const helper = getCoreHelper("renderFeed");
 
     return helper ? helper() : Promise.resolve();
   }
 
-  function refreshFeedIfHomeVisible() {
+  function refreshFeedIfHomeVisible(reason = "feed_actions_refresh_home_visible", markerDetail = {}) {
+    logFeedActionRefreshMarker("refreshFeedIfHomeVisible", reason, { action: "full_refresh", ...markerDetail });
     const helper = getCoreHelper("refreshFeedIfHomeVisible");
 
     return helper ? helper() : Promise.resolve();
@@ -496,7 +521,7 @@
     likeResumeResetTimer = setTimeout(() => {
       likeResumeResetTimer = null;
 
-      refreshFeedIfHomeVisible();
+      refreshFeedIfHomeVisible("recover_feed_after_resume", { delay, action: "resume_recovery" });
       refreshOpenCommentsIfNeeded(220);
     }, Math.max(80, Number(delay || LIKE_RESUME_REFRESH_DELAY_MS)));
   }
@@ -1068,7 +1093,7 @@
       }
 
       console.debug("Klevby feed actions: scheduleLikeRefresh fire full refresh", { postId, reason });
-      refreshFeedIfHomeVisible();
+      refreshFeedIfHomeVisible("like_refresh_full", { delay, action: "like_recheck_full_refresh", postId });
       refreshOpenCommentsIfNeeded(120);
     }, Math.max(300, Number(delay || LIKE_BACKGROUND_REFRESH_MS)));
   }
@@ -1368,6 +1393,11 @@
     const feedEventsApi = window.KlevbyFeedEvents || {};
     const isRealtimeLikeOrCommentChange =
       action === "feed_like_changed" || action === "feed_comment_changed";
+    logFeedActionRefreshMarker("handleFeedUpdatedEvent", action || "feed_updated_event", {
+      action: "event_received",
+      postId: changedPostId
+    });
+
     const isCounterOnlyPostChange =
       action === "feed_post_changed" &&
       typeof feedEventsApi.isCounterOnlyFeedPostChanged === "function" &&
@@ -1385,7 +1415,7 @@
           return;
         }
 
-        renderFeed();
+        renderFeed("feed_updated_delayed_render", { delay: 120, postId: changedPostId, action: "event_delayed_render" });
       }, 120);
     }
 
@@ -1423,7 +1453,7 @@
           return;
         }
 
-        refreshFeedIfHomeVisible();
+        refreshFeedIfHomeVisible("realtime_event_refresh", { delay: 90, action: "realtime_refresh" });
       }, 90);
 
       refreshOpenCommentsIfNeeded(160);
@@ -1470,7 +1500,7 @@
         return;
       }
 
-      refreshFeedIfHomeVisible();
+      refreshFeedIfHomeVisible("feed_auto_refresh", { delay: FEED_AUTO_REFRESH_MS, action: "auto_refresh" });
       refreshOpenCommentsIfNeeded(120);
     }, FEED_AUTO_REFRESH_MS);
   }
@@ -1499,7 +1529,7 @@
       ];
 
       if (watchedKeys.includes(key)) {
-        setTimeout(refreshFeedIfHomeVisible, 80);
+        setTimeout(() => refreshFeedIfHomeVisible("feed_storage_refresh", { delay: 80, action: "storage_sync" }), 80);
       }
     });
 
@@ -1532,7 +1562,7 @@
           return;
         }
 
-        refreshFeedIfHomeVisible();
+        refreshFeedIfHomeVisible("feed_auth_changed_refresh", { delay: 180, action: "auth_changed" });
       }, 180);
     });
 
@@ -1551,7 +1581,7 @@
           return;
         }
 
-        refreshFeedIfHomeVisible();
+        refreshFeedIfHomeVisible("feed_home_nav_refresh", { delay: 180, action: "home_nav" });
       }, 180);
     });
 
