@@ -139,6 +139,42 @@
     }
   }
 
+  function safeDebugStack(skipLines = 2, maxLines = 5) {
+    try {
+      const raw = String(new Error().stack || "");
+      if (!raw) return null;
+      return raw
+        .split("\n")
+        .slice(Math.max(0, Number(skipLines || 0)))
+        .map((line) => String(line || "").trim())
+        .filter(Boolean)
+        .slice(0, Math.max(1, Number(maxLines || 5)))
+        .join(" | ");
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getMainRenderGuardDebugSnapshot(event, reason, extra = {}) {
+    const cleanReason = String(reason || "");
+    const originalReason = String(extra.originalReason || "");
+    return {
+      event: String(event || "guard_event"),
+      reason: cleanReason,
+      originalReason,
+      deferred: Boolean(extra.deferred),
+      timestamp: new Date().toISOString(),
+      nowMs: Date.now(),
+      visible: Boolean(isPageVisible()),
+      homeVisible: Boolean(isHomeSectionVisible()),
+      hasFeedDom: Boolean(hasFeedDom()),
+      quietWindowActive: Boolean(isFeedQuiet()),
+      quietUntilMs: Number(klevbyFeedMainQuietUntil || 0),
+      caller: String(extra.caller || ""),
+      stack: safeDebugStack(3, 6)
+    };
+  }
+
   const KLEVB_FEED_MAIN_INITIAL_DELAYS = [
     0,
     1400
@@ -363,6 +399,15 @@
   }
 
   function scheduleDeferredRender(reason = "deferred_render", delay = KLEVB_FEED_MAIN_INTERACTION_DEFER_MS) {
+    const requestedReason = String(reason || "deferred_render");
+    feedMainDebugLog("schedule_deferred_render_before", requestedReason, getMainRenderGuardDebugSnapshot(
+      "schedule_deferred_render_before",
+      requestedReason,
+      {
+        deferred: true,
+        caller: "scheduleDeferredRender"
+      }
+    ));
     clearDeferredRenderTimer();
 
     klevbyFeedMainDeferredRenderTimer = setTimeout(() => {
@@ -372,11 +417,37 @@
       if (!hasFeedDom()) return;
 
       if (isFeedQuiet()) {
-        scheduleDeferredRender(reason + "_still_quiet", KLEVB_FEED_MAIN_INTERACTION_DEFER_MS);
+        const stillQuietReason = requestedReason + "_still_quiet";
+        feedMainDebugLog("schedule_deferred_render_after", stillQuietReason, getMainRenderGuardDebugSnapshot(
+          "schedule_deferred_render_after",
+          stillQuietReason,
+          {
+            deferred: true,
+            originalReason: requestedReason,
+            caller: "scheduleDeferredRender:still_quiet"
+          }
+        ));
+        scheduleDeferredRender(stillQuietReason, KLEVB_FEED_MAIN_INTERACTION_DEFER_MS);
         return;
       }
 
-      forceRenderFeed(reason, {
+      feedMainDebugLog("schedule_deferred_render_after", requestedReason, getMainRenderGuardDebugSnapshot(
+        "schedule_deferred_render_after",
+        requestedReason,
+        {
+          deferred: false,
+          caller: "scheduleDeferredRender:timeout_ready"
+        }
+      ));
+      feedMainDebugLog("guard_force_render_before", requestedReason, getMainRenderGuardDebugSnapshot(
+        "guard_force_render_before",
+        requestedReason,
+        {
+          deferred: false,
+          caller: "scheduleDeferredRender->forceRenderFeed"
+        }
+      ));
+      forceRenderFeed(requestedReason, {
         force: false
       });
     }, Math.max(0, Number(delay || 0)));
@@ -419,7 +490,24 @@
     }
 
     render.renderProfileFeed = function klevbyFeedMainGuardedRenderProfileFeed() {
+      feedMainDebugLog("guarded_external_render", "guarded_external_render", getMainRenderGuardDebugSnapshot(
+        "guarded_external_render",
+        "guarded_external_render",
+        {
+          deferred: false,
+          caller: "render.renderProfileFeed"
+        }
+      ));
       if (shouldDeferRender("guarded_external_render", false)) {
+        feedMainDebugLog("guarded_external_render_deferred", "guarded_external_render_after_quiet", getMainRenderGuardDebugSnapshot(
+          "guarded_external_render_deferred",
+          "guarded_external_render_after_quiet",
+          {
+            deferred: true,
+            originalReason: "guarded_external_render",
+            caller: "render.renderProfileFeed"
+          }
+        ));
         scheduleDeferredRender("guarded_external_render_after_quiet");
         return Promise.resolve(false);
       }
@@ -436,7 +524,24 @@
     render.renderProfileFeed.__klevbyFeedMainGuarded = true;
 
     render.refreshFeedIfHomeVisible = function klevbyFeedMainGuardedRefreshFeedIfHomeVisible() {
+      feedMainDebugLog("guarded_external_refresh", "guarded_external_refresh", getMainRenderGuardDebugSnapshot(
+        "guarded_external_refresh",
+        "guarded_external_refresh",
+        {
+          deferred: false,
+          caller: "render.refreshFeedIfHomeVisible"
+        }
+      ));
       if (shouldDeferRender("guarded_external_refresh", false)) {
+        feedMainDebugLog("guarded_external_refresh_deferred", "guarded_external_refresh_after_quiet", getMainRenderGuardDebugSnapshot(
+          "guarded_external_refresh_deferred",
+          "guarded_external_refresh_after_quiet",
+          {
+            deferred: true,
+            originalReason: "guarded_external_refresh",
+            caller: "render.refreshFeedIfHomeVisible"
+          }
+        ));
         scheduleDeferredRender("guarded_external_refresh_after_quiet");
         return Promise.resolve(false);
       }
