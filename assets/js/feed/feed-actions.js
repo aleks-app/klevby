@@ -1361,6 +1361,10 @@
   }
 
   function tryStartRealtimeSubscription() {
+    // PR6: feed realtime lifecycle is owned by feed-events/feed-main.
+    // Keep legacy function for compatibility, but disable duplicate start from feed-actions.
+    return;
+
     if (realtimeStarted) return;
 
     const api = getApi();
@@ -1527,9 +1531,6 @@
   function initActions() {
     bindRefreshHooks();
     startFeedAutoRefresh();
-
-    setTimeout(tryStartRealtimeSubscription, 1200);
-    setTimeout(tryStartRealtimeSubscription, 2600);
   }
 
   const actions = {
