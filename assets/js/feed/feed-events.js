@@ -318,6 +318,66 @@
     return null;
   }
 
+  function resolveRealtimePostId(detail = {}) {
+    return String(
+      detail?.postId ||
+      detail?.payload?.postId ||
+      detail?.payload?.new?.post_id ||
+      detail?.payload?.old?.post_id ||
+      detail?.payload?.new?.id ||
+      detail?.payload?.old?.id ||
+      ""
+    ).trim();
+  }
+
+  function isCounterOnlyFeedPostChanged(detail = {}) {
+    const action = String(detail?.action || detail?.type || "").trim();
+
+    if (action !== "feed_post_changed") {
+      return false;
+    }
+
+    const payload = detail?.payload || {};
+    const eventType = String(payload?.eventType || payload?.event_type || "").toUpperCase();
+
+    if (eventType !== "UPDATE") {
+      return false;
+    }
+
+    const postId = resolveRealtimePostId(detail);
+
+    if (!postId) {
+      return false;
+    }
+
+    if (!payload?.new || !hasOwn(payload.new, "likes_count") || !hasOwn(payload.new, "comments_count")) {
+      return false;
+    }
+
+    const nextRow = payload.new;
+    const prevRow = payload.old;
+
+    if (prevRow && typeof prevRow === "object") {
+      const allowedChangedFields = new Set(["likes_count", "comments_count", "updated_at"]);
+      const keys = new Set([...Object.keys(nextRow || {}), ...Object.keys(prevRow || {})]);
+
+      for (const key of keys) {
+        const before = prevRow?.[key];
+        const after = nextRow?.[key];
+
+        if (before === after) {
+          continue;
+        }
+
+        if (!allowedChangedFields.has(key)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
   async function hydrateRealtimeFeedCardCounters(postId) {
     const cleanPostId = String(postId || "").trim();
 
@@ -377,17 +437,15 @@
   function tryUpdateRealtimeFeedCardCounters(detail = {}) {
     const action = String(detail?.action || "");
 
-    if (action !== "feed_like_changed" && action !== "feed_comment_changed") {
+    if (
+      action !== "feed_like_changed" &&
+      action !== "feed_comment_changed" &&
+      !(action === "feed_post_changed" && isCounterOnlyFeedPostChanged(detail))
+    ) {
       return false;
     }
 
-    const postId = String(
-      detail?.postId ||
-      detail?.payload?.postId ||
-      detail?.payload?.new?.post_id ||
-      detail?.payload?.old?.post_id ||
-      ""
-    ).trim();
+    const postId = resolveRealtimePostId(detail);
 
     if (!postId) {
       return false;
@@ -767,6 +825,7 @@
     refreshFeedIfHomeVisible,
     refreshFeedNow,
     queueFeedRefresh,
+    isCounterOnlyFeedPostChanged,
     handleAppResume,
     loadCommentsIntoActiveModal,
     closeOpenFeedWindows
