@@ -350,8 +350,7 @@ function initSupabase() {
     return isAdmin();
   };
 
-  if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+  const authStateHandler = async (event, session) => {
       const previousUserId = currentUser?.id || null;
 
       if (event === "SIGNED_OUT") {
@@ -389,7 +388,15 @@ function initSupabase() {
       if (userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT") {
         reloadPondsIfReady({ delay: 700 });
       }
+    };
+
+  if (window.KlevbySupabaseAuthService?.bindAuthStateListener) {
+    window.KlevbySupabaseAuthService.bindAuthStateListener({
+      client: supabaseClient,
+      callback: authStateHandler
     });
+  } else if (supabaseClient.auth && typeof supabaseClient.auth.onAuthStateChange === "function") {
+    supabaseClient.auth.onAuthStateChange(authStateHandler);
   }
 
   syncGlobalAuthState({ notify: true, forceNotify: true });
