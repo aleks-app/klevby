@@ -249,6 +249,16 @@
     return false;
   }
 
+  function updateFeedCardCounters(postId, counters = {}, options = {}) {
+    const listRenderer = getList();
+
+    if (typeof listRenderer.updateFeedCardCounters === "function") {
+      return Boolean(listRenderer.updateFeedCardCounters(postId, counters, options));
+    }
+
+    return false;
+  }
+
   function profilePhotoCardHtml(item, index = 0) {
     const cards = getCards();
 
@@ -402,6 +412,7 @@
     emptyHtml,
     loadingHtml,
     renderFeedItems,
+    updateFeedCardCounters,
     renderProfileFeed,
     refreshFeedIfHomeVisible,
     getRenderableFeedItems

@@ -355,6 +355,46 @@
     return true;
   }
 
+  function updateFeedCardCounters(postId, counters = {}, options = {}) {
+    const cleanId = String(postId || "").trim();
+
+    if (!cleanId) return false;
+
+    const root = options && options.root && options.root.nodeType === 1
+      ? options.root
+      : document;
+
+    const card = root.querySelector(`.profile-feed-card[data-feed-card-id="${cssEscape(cleanId)}"]`);
+
+    if (!card) return false;
+
+    const likeButton = card.querySelector(`.profile-feed-like-btn[data-feed-post-id="${cssEscape(cleanId)}"]`);
+    const commentButton = card.querySelector(`.profile-feed-comment-btn[data-feed-post-id="${cssEscape(cleanId)}"]`);
+
+    if (likeButton && Object.prototype.hasOwnProperty.call(counters, "likesCount")) {
+      const likesCount = Math.max(0, Number(counters.likesCount || 0) || 0);
+      likeButton.textContent = `👍 ${likesCount}`;
+      likeButton.dataset.likeCount = String(likesCount);
+      likeButton.dataset.feedPostId = cleanId;
+    }
+
+    if (likeButton && typeof counters.liked === "boolean") {
+      likeButton.dataset.liked = counters.liked ? "true" : "false";
+      likeButton.setAttribute("aria-pressed", counters.liked ? "true" : "false");
+      likeButton.classList.toggle("liked", counters.liked);
+      likeButton.classList.toggle("is-liked", counters.liked);
+    }
+
+    if (commentButton && Object.prototype.hasOwnProperty.call(counters, "commentsCount")) {
+      const commentsCount = Math.max(0, Number(counters.commentsCount || 0) || 0);
+      commentButton.textContent = `💬 ${commentsCount}`;
+      commentButton.dataset.commentCount = String(commentsCount);
+      commentButton.dataset.feedPostId = cleanId;
+    }
+
+    return true;
+  }
+
   function renderFeedItems(list, items, source = "fresh", options = {}) {
     const safeItems = getRenderableFeedItems(items);
     const emptyHtml = typeof options.emptyHtml === "function"
@@ -414,6 +454,7 @@
   window.KlevbyFeedRenderList = {
     setStaticListHtml,
     patchExistingFeedCards,
+    updateFeedCardCounters,
     renderFeedItems
   };
 })();
