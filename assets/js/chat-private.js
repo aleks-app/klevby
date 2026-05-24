@@ -813,6 +813,8 @@
             renderPrivateDialogAvatar: (peer) => renderPrivateDialogAvatar(peer),
             parseReplyContent: (value) => parseReplyContent(value),
             escapeHtml: (value) => escapeHtml(value),
+            normalizePrivateAvatarUrl: (value) => normalizePrivateAvatarUrl(value),
+            getInitials: (value) => getInitials(value),
             isOnline: (value) => isOnline(value)
           });
           list.className = rendered.className;
