@@ -167,6 +167,104 @@
     }, Math.max(0, Number(delay || 0)));
   }
 
+
+  function hasOwn(object, key) {
+    return Boolean(object) && Object.prototype.hasOwnProperty.call(object, key);
+  }
+
+  function pickCounterValue(detail, payload, primaryKey, fallbackKeys = []) {
+    if (hasOwn(detail, primaryKey)) {
+      return detail[primaryKey];
+    }
+
+    for (const key of fallbackKeys) {
+      if (hasOwn(detail, key)) {
+        return detail[key];
+      }
+    }
+
+    if (payload && payload.new) {
+      if (hasOwn(payload.new, primaryKey)) {
+        return payload.new[primaryKey];
+      }
+
+      for (const key of fallbackKeys) {
+        if (hasOwn(payload.new, key)) {
+          return payload.new[key];
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  function makeRealtimeCounters(detail = {}) {
+    const payload = detail?.payload || null;
+
+    const likesCount = pickCounterValue(detail, payload, "likesCount", ["likes_count"]);
+    const commentsCount = pickCounterValue(detail, payload, "commentsCount", ["comments_count"]);
+    const liked = pickCounterValue(detail, payload, "liked", []);
+
+    const counters = {};
+
+    if (likesCount !== undefined) {
+      counters.likesCount = likesCount;
+    }
+
+    if (commentsCount !== undefined) {
+      counters.commentsCount = commentsCount;
+    }
+
+    if (typeof liked === "boolean") {
+      counters.liked = liked;
+    }
+
+    return counters;
+  }
+
+  function tryUpdateRealtimeFeedCardCounters(detail = {}) {
+    const action = String(detail?.action || "");
+
+    if (action !== "feed_like_changed" && action !== "feed_comment_changed") {
+      return false;
+    }
+
+    const postId = String(
+      detail?.postId ||
+      detail?.payload?.postId ||
+      detail?.payload?.new?.post_id ||
+      detail?.payload?.old?.post_id ||
+      ""
+    ).trim();
+
+    if (!postId) {
+      return false;
+    }
+
+    const counters = makeRealtimeCounters(detail);
+
+    if (!Object.keys(counters).length) {
+      return false;
+    }
+
+    const render = getRender();
+    const updateFn = render && typeof render.updateFeedCardCounters === "function"
+      ? render.updateFeedCardCounters
+      : window.KlevbyFeedRender && typeof window.KlevbyFeedRender.updateFeedCardCounters === "function"
+        ? window.KlevbyFeedRender.updateFeedCardCounters
+        : null;
+
+    if (!updateFn) {
+      return false;
+    }
+
+    try {
+      return Boolean(updateFn(postId, counters));
+    } catch (error) {
+      return false;
+    }
+  }
+
   function closeOpenFeedWindows() {
     const modals = getModals();
 
@@ -274,10 +372,13 @@
 
     window.addEventListener("klevby-feed-updated", (event) => {
       const action = String(event?.detail?.action || "feed_updated");
+      const cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(event?.detail || {});
 
-      queueFeedRefresh(action, 120, {
-        force: true
-      });
+      if (!cardCountersUpdated) {
+        queueFeedRefresh(action, 120, {
+          force: true
+        });
+      }
 
       const modal = document.getElementById("klevbyFeedCommentModal");
       const activePostId = String(modal?.dataset?.postId || "");
@@ -406,9 +507,13 @@
         payload?.old?.id ||
         "";
 
-      queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
-        force: true
-      });
+      const cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(payload || {});
+
+      if (!cardCountersUpdated) {
+        queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
+          force: true
+        });
+      }
 
       queueCommentsRefresh(180);
     };
