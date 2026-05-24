@@ -936,24 +936,45 @@
     });
   }
 
-  window.addEventListener("pageshow", () => {
-    markKlevbyResumeDebug("posts.resume.listener", "pageshow", { trigger: "pageshow" });
-    ensurePostsRealtimeSync().catch((error) => {
-      console.warn("Klevby posts realtime: re-init on pageshow failed", error);
+  function handlePostsResume(trigger, { ensureRealtime = false, details = {} } = {}) {
+    markKlevbyResumeDebug("posts.resume.listener", trigger, details);
+
+    if (ensureRealtime) {
+      ensurePostsRealtimeSync().catch((error) => {
+        console.warn(`Klevby posts realtime: re-init on ${trigger} failed`, error);
+      });
+    }
+
+    refreshPostsAutoSyncState(trigger);
+  }
+
+  window.addEventListener("klevby-app-resumed", () => {
+    handlePostsResume("klevby-app-resumed", {
+      ensureRealtime: true,
+      details: { trigger: "klevby-app-resumed" }
+    });
+  });
+
+  if (!window.__klevbyCentralResumeRouter) {
+    window.addEventListener("pageshow", () => {
+      handlePostsResume("pageshow", {
+        ensureRealtime: true,
+        details: { trigger: "pageshow" }
+      });
     });
 
-    refreshPostsAutoSyncState("pageshow");
-  });
+    document.addEventListener("visibilitychange", () => {
+      handlePostsResume("visibilitychange", {
+        details: { visibilityState: document.visibilityState }
+      });
+    });
 
-  document.addEventListener("visibilitychange", () => {
-    markKlevbyResumeDebug("posts.resume.listener", "visibilitychange", { visibilityState: document.visibilityState });
-    refreshPostsAutoSyncState("visibilitychange");
-  });
-
-  window.addEventListener("focus", () => {
-    markKlevbyResumeDebug("posts.resume.listener", "focus", { trigger: "focus" });
-    refreshPostsAutoSyncState("focus");
-  });
+    window.addEventListener("focus", () => {
+      handlePostsResume("focus", {
+        details: { trigger: "focus" }
+      });
+    });
+  }
 
   window.setInterval(() => {
     refreshPostsAutoSyncState("section_guard");
