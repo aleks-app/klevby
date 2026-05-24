@@ -2216,27 +2216,30 @@
   });
 
   window.addEventListener("beforeunload", unsubscribeMarketRealtime);
-  window.addEventListener("focus", function () {
-    recoverMarketOnResume("window-focus").catch((error) => {
-      console.warn("Klevby барахолка: не удалось восстановиться после focus:", error);
-    });
-  });
-  window.addEventListener("pageshow", function () {
-    recoverMarketOnResume("pageshow").catch((error) => {
-      console.warn("Klevby барахолка: не удалось восстановиться после pageshow:", error);
-    });
-  });
   window.addEventListener("klevby-app-resumed", function () {
     recoverMarketOnResume("klevby-app-resumed").catch((error) => {
       console.warn("Klevby барахолка: не удалось восстановиться после возобновления приложения:", error);
     });
   });
-  document.addEventListener("visibilitychange", function () {
-    if (document.hidden) return;
-    recoverMarketOnResume("visibilitychange").catch((error) => {
-      console.warn("Klevby барахолка: не удалось восстановиться после visibilitychange:", error);
+
+  if (!window.__klevbyCentralResumeRouter) {
+    window.addEventListener("focus", function () {
+      recoverMarketOnResume("window-focus").catch((error) => {
+        console.warn("Klevby барахолка: не удалось восстановиться после focus:", error);
+      });
     });
-  });
+    window.addEventListener("pageshow", function () {
+      recoverMarketOnResume("pageshow").catch((error) => {
+        console.warn("Klevby барахолка: не удалось восстановиться после pageshow:", error);
+      });
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) return;
+      recoverMarketOnResume("visibilitychange").catch((error) => {
+        console.warn("Klevby барахолка: не удалось восстановиться после visibilitychange:", error);
+      });
+    });
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initMarket);
