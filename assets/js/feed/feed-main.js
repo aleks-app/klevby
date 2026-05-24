@@ -156,6 +156,31 @@
   }
 
   function getMainRenderGuardDebugSnapshot(event, reason, extra = {}) {
+    const safeDebugBool = (resolver, fallbackValue = false) => {
+      try {
+        if (typeof resolver === "function") {
+          return Boolean(resolver());
+        }
+      } catch (_) {
+        return Boolean(fallbackValue);
+      }
+
+      return Boolean(fallbackValue);
+    };
+
+    const resolveHomeVisibleSafe = () => {
+      if (typeof isHomeSectionVisible === "function") {
+        return isHomeSectionVisible();
+      }
+
+      const homeSection = document.getElementById("homeSection");
+      if (homeSection) {
+        return !homeSection.classList.contains("hidden");
+      }
+
+      return hasFeedDom();
+    };
+
     const cleanReason = String(reason || "");
     const originalReason = String(extra.originalReason || "");
     return {
@@ -165,10 +190,10 @@
       deferred: Boolean(extra.deferred),
       timestamp: new Date().toISOString(),
       nowMs: Date.now(),
-      visible: Boolean(isPageVisible()),
-      homeVisible: Boolean(isHomeSectionVisible()),
-      hasFeedDom: Boolean(hasFeedDom()),
-      quietWindowActive: Boolean(isFeedQuiet()),
+      visible: safeDebugBool(() => isPageVisible(), false),
+      homeVisible: safeDebugBool(resolveHomeVisibleSafe, false),
+      hasFeedDom: safeDebugBool(() => hasFeedDom(), false),
+      quietWindowActive: safeDebugBool(() => isFeedQuiet(), false),
       quietUntilMs: Number(klevbyFeedMainQuietUntil || 0),
       caller: String(extra.caller || ""),
       stack: safeDebugStack(3, 6)
