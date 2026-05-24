@@ -90,6 +90,22 @@
     } catch (_) {}
   }
 
+
+
+  function logTargetedUpdateDecision(reason, detail = {}) {
+    const debug = getFeedMainDebug();
+    if (!debug) return;
+    try {
+      debug.log(String(detail.event || "targeted_update"), String(reason || ""), {
+        source: "feed-events",
+        action: String(detail.action || ""),
+        postId: detail.postId ? String(detail.postId) : "",
+        fallback: Boolean(detail.fallback),
+        note: String(detail.note || "")
+      });
+    } catch (_) {}
+  }
+
   function renderFeed() {
     const render = getRender();
 
@@ -433,6 +449,12 @@
       }
 
       if (!allowedChangedFields.has(key)) {
+        if (detail && typeof detail === "object") {
+          detail.counterOnlyChangedKeys = detail.counterOnlyChangedKeys || [];
+          if (!detail.counterOnlyChangedKeys.includes(String(key))) {
+            detail.counterOnlyChangedKeys.push(String(key));
+          }
+        }
         return setReason("content_field_changed");
       }
     }
@@ -743,7 +765,22 @@
         }
       }
 
-      if (!cardCountersUpdated) {
+      if (cardCountersUpdated) {
+        logTargetedUpdateDecision(action, {
+          event: "targeted_update_success",
+          action,
+          postId: resolveRealtimePostId(detail),
+          fallback: false,
+          note: "full refresh suppressed"
+        });
+      } else {
+        logTargetedUpdateDecision(action, {
+          event: "targeted_update_fallback",
+          action,
+          postId: resolveRealtimePostId(detail),
+          fallback: true,
+          note: "targeted update failed, fallback full refresh"
+        });
         queueFeedRefresh(action, 120, {
           force: true
         });
@@ -911,7 +948,22 @@
         }
       }
 
-      if (!cardCountersUpdated) {
+      if (cardCountersUpdated) {
+        logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
+          event: "targeted_update_success",
+          action,
+          postId,
+          fallback: false,
+          note: "full refresh suppressed"
+        });
+      } else {
+        logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
+          event: "targeted_update_fallback",
+          action,
+          postId,
+          fallback: true,
+          note: "targeted update failed, fallback full refresh"
+        });
         queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
           force: true
         });
