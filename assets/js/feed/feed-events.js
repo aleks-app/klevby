@@ -14,6 +14,9 @@
   const KLEVB_FEED_DEBOUNCE_MS = 450;
   const KLEVB_FEED_RESUME_DELAYS = [0, 600, 1800, 4200, 8000];
 
+  const KLEVB_RT_COUNTER_HYDRATE_DEDUP_MS = 1200;
+  const klevbyRealtimeCounterHydrationMap = new Map();
+
   let klevbyFeedRefreshTimer = null;
   let klevbyFeedIntervalTimer = null;
   let klevbyFeedHiddenIntervalTimer = null;
@@ -222,6 +225,155 @@
     return counters;
   }
 
+
+
+  function getKnownViewerUserIdSync() {
+    const fromWindow =
+      window.currentUser?.id ||
+      window.klevbyCurrentUser?.id ||
+      window.klevbyUser?.id ||
+      "";
+
+    if (fromWindow) {
+      return String(fromWindow).trim();
+    }
+
+    try {
+      return String(localStorage.getItem("klevby_feed_last_like_user_id") || "").trim();
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function resolveOwnLikeEventState(detail = {}) {
+    const payload = detail?.payload || detail || {};
+    const action = String(detail?.action || "");
+
+    if (action && action !== "feed_like_changed") {
+      return {
+        safe: false,
+        isOwnLikeEvent: false,
+        liked: null
+      };
+    }
+
+    const viewerUserId = getKnownViewerUserIdSync();
+    const actorUserId = String(
+      payload?.new?.user_id ||
+      payload?.old?.user_id ||
+      ""
+    ).trim();
+    const eventType = String(payload?.eventType || payload?.event_type || "").toUpperCase();
+
+    if (!viewerUserId || !actorUserId || !eventType) {
+      return {
+        safe: false,
+        isOwnLikeEvent: false,
+        liked: null
+      };
+    }
+
+    if (actorUserId !== viewerUserId) {
+      return {
+        safe: true,
+        isOwnLikeEvent: false,
+        liked: null
+      };
+    }
+
+    if (eventType === "INSERT") {
+      return {
+        safe: true,
+        isOwnLikeEvent: true,
+        liked: true
+      };
+    }
+
+    if (eventType === "DELETE") {
+      return {
+        safe: true,
+        isOwnLikeEvent: true,
+        liked: false
+      };
+    }
+
+    return {
+      safe: false,
+      isOwnLikeEvent: true,
+      liked: null
+    };
+  }
+
+  function resolveFeedCountersUpdater() {
+    const render = getRender();
+
+    if (render && typeof render.updateFeedCardCounters === "function") {
+      return render.updateFeedCardCounters;
+    }
+
+    if (window.KlevbyFeedRender && typeof window.KlevbyFeedRender.updateFeedCardCounters === "function") {
+      return window.KlevbyFeedRender.updateFeedCardCounters;
+    }
+
+    return null;
+  }
+
+  async function hydrateRealtimeFeedCardCounters(postId) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return null;
+    }
+
+    const now = Date.now();
+    const existing = klevbyRealtimeCounterHydrationMap.get(cleanPostId);
+
+    if (existing && existing.promise && now - existing.startedAt <= KLEVB_RT_COUNTER_HYDRATE_DEDUP_MS) {
+      return existing.promise;
+    }
+
+    const promise = (async () => {
+      const countsApi = window.KlevbyFeedSupabaseCounts || null;
+      const coreApi = window.KlevbyFeedSupabaseCore || null;
+
+      if (!countsApi || typeof countsApi.getPostCounters !== "function") {
+        return null;
+      }
+
+      const db = coreApi && typeof coreApi.getClient === "function"
+        ? coreApi.getClient()
+        : null;
+
+      const counters = await countsApi.getPostCounters(db, cleanPostId);
+
+      if (!counters) {
+        return null;
+      }
+
+      return {
+        likesCount: Number(counters.likesCount || 0),
+        commentsCount: Number(counters.commentsCount || 0)
+      };
+    })();
+
+    klevbyRealtimeCounterHydrationMap.set(cleanPostId, {
+      startedAt: now,
+      promise
+    });
+
+    const cleanup = () => {
+      const active = klevbyRealtimeCounterHydrationMap.get(cleanPostId);
+
+      if (active && active.promise === promise) {
+        klevbyRealtimeCounterHydrationMap.delete(cleanPostId);
+      }
+    };
+
+    promise.then(cleanup, cleanup);
+
+    return promise;
+  }
+
   function tryUpdateRealtimeFeedCardCounters(detail = {}) {
     const action = String(detail?.action || "");
 
@@ -247,12 +399,7 @@
       return false;
     }
 
-    const render = getRender();
-    const updateFn = render && typeof render.updateFeedCardCounters === "function"
-      ? render.updateFeedCardCounters
-      : window.KlevbyFeedRender && typeof window.KlevbyFeedRender.updateFeedCardCounters === "function"
-        ? window.KlevbyFeedRender.updateFeedCardCounters
-        : null;
+    const updateFn = resolveFeedCountersUpdater();
 
     if (!updateFn) {
       return false;
@@ -370,9 +517,47 @@
       });
     });
 
-    window.addEventListener("klevby-feed-updated", (event) => {
+    window.addEventListener("klevby-feed-updated", async (event) => {
       const action = String(event?.detail?.action || "feed_updated");
-      const cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(event?.detail || {});
+      const detail = event?.detail || {};
+      let cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(detail);
+
+      if (!cardCountersUpdated && action === "feed_like_changed") {
+        const postId = String(
+          detail?.postId ||
+          detail?.payload?.postId ||
+          detail?.payload?.new?.post_id ||
+          detail?.payload?.old?.post_id ||
+          ""
+        ).trim();
+
+        if (postId) {
+          try {
+            const hydratedCounters = await hydrateRealtimeFeedCardCounters(postId);
+            const updateFn = resolveFeedCountersUpdater();
+
+            if (hydratedCounters && updateFn) {
+              const ownLikeState = resolveOwnLikeEventState(detail);
+
+              if (!ownLikeState.safe) {
+                cardCountersUpdated = false;
+              } else {
+                const nextCounters = {
+                  ...hydratedCounters
+                };
+
+                if (ownLikeState.isOwnLikeEvent) {
+                  nextCounters.liked = Boolean(ownLikeState.liked);
+                }
+
+                cardCountersUpdated = Boolean(updateFn(postId, nextCounters));
+              }
+            }
+          } catch (error) {
+            console.debug("Klevby feed: targeted hydration counters skipped", error);
+          }
+        }
+      }
 
       if (!cardCountersUpdated) {
         queueFeedRefresh(action, 120, {
@@ -498,16 +683,45 @@
       return false;
     }
 
-    const refresh = (payload) => {
-      const postId =
+    const refresh = async (payload) => {
+      const postId = String(
         payload?.postId ||
         payload?.new?.post_id ||
         payload?.old?.post_id ||
         payload?.new?.id ||
         payload?.old?.id ||
-        "";
+        ""
+      ).trim();
 
-      const cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(payload || {});
+      let cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(payload || {});
+      const action = String(payload?.action || "");
+
+      if (!cardCountersUpdated && action === "feed_like_changed" && postId) {
+        try {
+          const hydratedCounters = await hydrateRealtimeFeedCardCounters(postId);
+          const updateFn = resolveFeedCountersUpdater();
+
+          if (hydratedCounters && updateFn) {
+            const ownLikeState = resolveOwnLikeEventState(payload);
+
+            if (!ownLikeState.safe) {
+              cardCountersUpdated = false;
+            } else {
+              const nextCounters = {
+                ...hydratedCounters
+              };
+
+              if (ownLikeState.isOwnLikeEvent) {
+                nextCounters.liked = Boolean(ownLikeState.liked);
+              }
+
+              cardCountersUpdated = Boolean(updateFn(postId, nextCounters));
+            }
+          }
+        } catch (error) {
+          console.debug("Klevby feed: realtime targeted hydration counters skipped", error);
+        }
+      }
 
       if (!cardCountersUpdated) {
         queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
