@@ -1182,7 +1182,10 @@
         feedMainDebugLog("counter_only_check_failed", action, {
           source: "klevby-feed-updated",
           ownership: "feed-events",
-          reason: String(detail?.counterOnlyRejectReason || "unknown")
+          reason: String(detail?.counterOnlyRejectReason || "unknown"),
+          changedKeys: Array.isArray(detail?.counterOnlyChangedKeys)
+            ? detail.counterOnlyChangedKeys.map((key) => String(key))
+            : []
         });
       }
 
