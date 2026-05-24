@@ -1332,20 +1332,25 @@
   function handleFeedUpdatedEvent(event) {
     const detail = event?.detail || {};
     const changedPostId = String(detail?.postId || detail?.post_id || extractPostIdFromDetail(detail) || "");
+    const action = String(detail?.action || detail?.type || "").trim();
+    const isRealtimeLikeOrCommentChange =
+      action === "feed_like_changed" || action === "feed_comment_changed";
 
-    if (shouldDelayRenderForLikeUpdate(detail)) {
-      scheduleLikeRefresh(700);
-      return;
-    }
-
-    setTimeout(() => {
-      if (hasActiveLikeRenderProtection()) {
+    if (!isRealtimeLikeOrCommentChange) {
+      if (shouldDelayRenderForLikeUpdate(detail)) {
         scheduleLikeRefresh(700);
         return;
       }
 
-      renderFeed();
-    }, 120);
+      setTimeout(() => {
+        if (hasActiveLikeRenderProtection()) {
+          scheduleLikeRefresh(700);
+          return;
+        }
+
+        renderFeed();
+      }, 120);
+    }
 
     const modal = document.getElementById("klevbyFeedCommentModal");
     const activePostId = String(modal?.dataset?.postId || "");
