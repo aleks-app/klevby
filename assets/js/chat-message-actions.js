@@ -175,6 +175,93 @@
 
   function getContextMessageData() { return contextMessageData; }
 
+  function withTimeout(promise, timeoutMs, timeoutLabel) {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+    return new Promise((resolve, reject) => {
+      const timerId = setTimeout(() => reject(new Error(timeoutLabel || "TIMEOUT")), timeoutMs);
+      Promise.resolve(promise).then(
+        (value) => { clearTimeout(timerId); resolve(value); },
+        (error) => { clearTimeout(timerId); reject(error); }
+      );
+    });
+  }
+
+  function readSessionFromStorage() {
+    try {
+      const config = window.KLEVB_CONFIG || {};
+      const storageKey = String(config.SUPABASE_STORAGE_KEY || window.SUPABASE_STORAGE_KEY || "sb-klevby-auth-token").trim();
+      if (!storageKey) return null;
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function extractAccessToken(candidate) {
+    if (!candidate || typeof candidate !== "object") return "";
+    const sessionCandidates = [candidate, candidate.currentSession, candidate.session, candidate.data?.session, candidate.data?.currentSession];
+    for (const entry of sessionCandidates) {
+      const token = String(entry?.access_token || "").trim();
+      if (token) return token;
+    }
+    return "";
+  }
+
+  async function getAccessTokenForDelete(client) {
+    const globalCandidates = [window.klevbySession, window.currentSession, window.supabaseSession, window.klevbyAuthSession, readSessionFromStorage()];
+    for (const candidate of globalCandidates) {
+      const token = extractAccessToken(candidate);
+      if (token) return token;
+    }
+    try {
+      if (client?.auth?.getSession) {
+        const sessionResult = await client.auth.getSession();
+        const token = extractAccessToken(sessionResult);
+        if (token) return token;
+      }
+    } catch (error) {
+      console.warn("[KlevbyDelete] auth.getSession token read failed", error);
+    }
+    return "";
+  }
+
+  async function deleteViaRestFallback({ liveType, liveId, deleteUserId, deleteUserIdValid, currentChatName, client }) {
+    const config = window.KLEVB_CONFIG || {};
+    const supabaseUrl = String(config.SUPABASE_URL || window.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+    const supabaseAnonKey = String(config.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "").trim();
+    if (!supabaseUrl || !supabaseAnonKey) throw new Error("REST_CONFIG_MISSING");
+
+    const table = liveType === "private" ? "private_messages" : "messages";
+    const userField = liveType === "private" ? "sender_id" : (deleteUserIdValid ? "user_id" : "user_name");
+    const userValue = deleteUserIdValid ? deleteUserId : currentChatName;
+    const endpoint = `${supabaseUrl}/rest/v1/${table}?id=eq.${encodeURIComponent(liveId)}&${userField}=eq.${encodeURIComponent(userValue)}`;
+    const accessToken = await getAccessTokenForDelete(client);
+    const bearer = accessToken || supabaseAnonKey;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = setTimeout(() => { if (controller) controller.abort(); }, 5000);
+    try {
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${bearer}`,
+          Prefer: "return=minimal"
+        },
+        signal: controller ? controller.signal : undefined
+      });
+      if (!response.ok) throw new Error(`REST_DELETE_HTTP_${response.status}`);
+      return { ok: true };
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error("REST_DELETE_TIMEOUT");
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async function deleteMessage(type, id) {
     const resolved = !type && !id ? resolveActionContext("delete") : null;
     const liveType = resolved?.data?.type || type;
@@ -190,11 +277,17 @@ liveIsMine=${liveIsMine}`); cleanupMenuState("delete_not_mine"); return; }
     const messagesContainer = elements.messagesContainer || null;
     if (!confirm("Удалить сообщение?")) return;
 
-    try { await refreshCurrentUser({ force: true }); } catch (error) { console.error("[KlevbyDelete] refreshCurrentUser failed", error); }
+    let currentChatName = "";
+    let client = null;
+    let deleteUserId = null;
+    let deleteUserIdValid = false;
+    let deletePath = "public-user-name-fallback";
+    try {
+      try { await refreshCurrentUser({ force: true }); } catch (error) { console.error("[KlevbyDelete] refreshCurrentUser failed", error); }
 
-    const currentChatUser = getCurrentUser();
-    const client = getMainSupabaseClient();
-    if (!client || typeof client.from !== "function") { alert("Нет подключения к Supabase."); return; }
+      const currentChatUser = getCurrentUser();
+      client = getMainSupabaseClient();
+      if (!client || typeof client.from !== "function") { alert("Нет подключения к Supabase."); return; }
 
     let authUser = null;
     let authUserError = null;
@@ -209,48 +302,22 @@ liveIsMine=${liveIsMine}`); cleanupMenuState("delete_not_mine"); return; }
       }
     }
 
-    const currentChatUserId = currentChatUser?.id || null;
-    const currentChatUserIdValid = isValidSupabaseUuid(currentChatUserId);
-    const deleteUser = authUser || currentChatUser || null;
-    const deleteUserId = deleteUser?.id || null;
-    const deleteUserIdValid = isValidSupabaseUuid(deleteUserId);
-    const deleteUserSource = authUser ? "supabase-auth-user" : (currentChatUserIdValid ? "cached-current-user" : "user-name-fallback");
+      const currentChatUserId = currentChatUser?.id || null;
+      const currentChatUserIdValid = isValidSupabaseUuid(currentChatUserId);
+      const deleteUser = authUser || currentChatUser || null;
+      deleteUserId = deleteUser?.id || null;
+      deleteUserIdValid = isValidSupabaseUuid(deleteUserId);
+      const deleteUserSource = authUser ? "supabase-auth-user" : (currentChatUserIdValid ? "cached-current-user" : "user-name-fallback");
 
-    let deletePath = "public-user-name-fallback";
-    if (liveType === "private") {
-      deletePath = `private-${deleteUserSource}`;
-    } else if (deleteUserIdValid) {
-      deletePath = `public-user-id-${deleteUserSource}`;
-    }
+      deletePath = "public-user-name-fallback";
+      if (liveType === "private") {
+        deletePath = `private-${deleteUserSource}`;
+      } else if (deleteUserIdValid) {
+        deletePath = `public-user-id-${deleteUserSource}`;
+      }
 
-    const currentSelectedRow = resolveLiveMessageRow();
-    const activeRowDataset = currentSelectedRow?.dataset ? {
-      messageId: currentSelectedRow.dataset.messageId || "",
-      messageType: currentSelectedRow.dataset.messageType || "",
-      isMine: currentSelectedRow.dataset.isMine || "",
-      author: currentSelectedRow.dataset.author || ""
-    } : null;
-    const liveSelector = `[data-message-id="${cssEscape(liveId)}"][data-message-type="${cssEscape(liveType || "public")}"]`;
-    const existsInContainer = Boolean(messagesContainer?.querySelector?.(liveSelector));
-    const existsInDocument = Boolean(document.querySelector(liveSelector));
-
-    console.info("[KlevbyDelete] delete request", {
-      liveType,
-      liveId,
-      liveIsMine,
-      currentChatUserId,
-      currentChatUserIdValid,
-      authUserId: authUser?.id || null,
-      authUserError: authUserError ? String(authUserError?.message || authUserError) : null,
-      deleteUserId,
-      deleteUserIdValid,
-      deleteUserSource,
-      currentChatName: getCurrentChatName(),
-      deletePath,
-      activeRowDataset,
-      existsInContainer,
-      existsInDocument
-    });
+      currentChatName = getCurrentChatName();
+      console.info("[KlevbyDelete] delete request", { liveType, liveId, liveIsMine, currentChatUserId, currentChatUserIdValid, authUserId: authUser?.id || null, authUserError: authUserError ? String(authUserError?.message || authUserError) : null, deleteUserId, deleteUserIdValid, deleteUserSource, currentChatName, deletePath });
 
     let result;
     if (liveType === "private") {
@@ -260,30 +327,41 @@ deleteUserSource=${deleteUserSource}
 deleteUserIdValid=${deleteUserIdValid}`);
         return;
       }
-      result = await client.from("private_messages").delete().eq("id", liveId).eq("sender_id", deleteUserId);
+      result = await withTimeout(client.from("private_messages").delete().eq("id", liveId).eq("sender_id", deleteUserId), 4000, "SUPABASE_DELETE_TIMEOUT");
     } else {
       if (deleteUserIdValid) {
-        result = await client.from("messages").delete().eq("id", liveId).eq("user_id", deleteUserId);
+        result = await withTimeout(client.from("messages").delete().eq("id", liveId).eq("user_id", deleteUserId), 4000, "SUPABASE_DELETE_TIMEOUT");
       } else {
-        result = await client.from("messages").delete().eq("id", liveId).eq("user_name", getCurrentChatName());
+        result = await withTimeout(client.from("messages").delete().eq("id", liveId).eq("user_name", currentChatName), 4000, "SUPABASE_DELETE_TIMEOUT");
       }
     }
-
-    if (result.error) {
-      console.error("[KlevbyDelete] delete failed", { id: liveId, type: liveType, isMine: liveIsMine, deletePath, error: result.error });
-      alert(`DELETE DEBUG: Supabase error: ${result.error.message || "unknown"}`);
+    if (!result?.error) {
+      const removedSource = removeDeletedMessageRow(liveId, liveType, messagesContainer);
+      alert(`DELETE DEBUG: supabase success removed=${removedSource}`);
+      cleanupMenuState("delete_success_supabase");
       return;
     }
 
-    console.info("[KlevbyDelete] delete success", { id: liveId, type: liveType, deletePath });
-
-    const removedSource = removeDeletedMessageRow(liveId, liveType, messagesContainer);
-    if (removedSource === "missing") {
-      alert("DELETE DEBUG: delete success but row not found");
+    throw result.error;
+  } catch (error) {
+    const isTimeout = String(error?.message || "").includes("SUPABASE_DELETE_TIMEOUT");
+    if (isTimeout) {
+      alert("DELETE DEBUG: supabase builder timeout, using REST fallback");
+      try {
+        await deleteViaRestFallback({ liveType, liveId, deleteUserId, deleteUserIdValid, currentChatName, client });
+        const removedSource = removeDeletedMessageRow(liveId, liveType, messagesContainer);
+        alert(`DELETE DEBUG: rest fallback success removed=${removedSource}`);
+        cleanupMenuState("delete_success_rest_fallback");
+        return;
+      } catch (restError) {
+        console.error("[KlevbyDelete] rest fallback failed", { id: liveId, type: liveType, deletePath, error: restError });
+      }
     } else {
-      alert(`DELETE DEBUG: delete success removed=${removedSource}`);
+      console.error("[KlevbyDelete] delete failed", { id: liveId, type: liveType, isMine: liveIsMine, deletePath, error });
     }
-    cleanupMenuState("delete_success");
+    alert("DELETE DEBUG: delete failed");
+    return;
+  }
   }
 
 
