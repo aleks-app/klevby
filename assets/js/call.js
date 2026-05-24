@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   if (window.__klevbyCallLoadedV9) return;
   window.__klevbyCallLoadedV9 = true;
 
@@ -1287,6 +1297,7 @@
   }
 
   function handleVisibilityChange() {
+    markKlevbyResumeDebug("calls.resume.listener", "visibilitychange", { visibilityState: document.visibilityState });
     if (document.visibilityState === "visible") {
       ensurePersonalChannel();
       scheduleButtonUpdate();
@@ -1362,6 +1373,7 @@
   });
 
   window.addEventListener("pageshow", () => {
+    markKlevbyResumeDebug("calls.resume.listener", "pageshow", { trigger: "pageshow" });
     ensurePersonalChannel();
     scheduleButtonUpdate();
 
@@ -1373,6 +1385,7 @@
   });
 
   window.addEventListener("focus", () => {
+    markKlevbyResumeDebug("calls.resume.listener", "focus", { trigger: "focus" });
     ensurePersonalChannel();
     scheduleButtonUpdate();
 

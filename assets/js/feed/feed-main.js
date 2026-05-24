@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   let klevbyFeedMainRefreshTimer = null;
   let klevbyFeedMainRefreshInProgress = false;
   let klevbyFeedMainRefreshPending = false;
@@ -587,6 +597,7 @@
   }
 
   function runMainResumeBurst(reason = "resume") {
+    markKlevbyResumeDebug("feed.main.resume", reason, { phase: "start" });
     const now = Date.now();
 
     if (now - Number(klevbyFeedMainLastResumeAt || 0) < KLEVB_FEED_MAIN_RESUME_DUPLICATE_GAP_MS) {
@@ -683,6 +694,7 @@
 
     window.addEventListener("klevby-app-resumed", (event) => {
       const reason = String(event?.detail?.reason || "app_resumed");
+      markKlevbyResumeDebug("feed.main.listener", reason, { trigger: "klevby-app-resumed" });
       runMainResumeBurst(reason);
     });
 

@@ -1,4 +1,14 @@
 (function () {
+  function markKlevbyResumeDebug(source, reason, detail = {}) {
+    const api = window.KlevbyResumeDebug;
+    if (!api || typeof api.mark !== "function") return null;
+    try {
+      return api.mark(source, reason, detail);
+    } catch (error) {
+      return null;
+    }
+  }
+
   const KLEVB_FEED_VISIBLE_REFRESH_MS = 4000;
   const KLEVB_FEED_HIDDEN_REFRESH_MS = 30000;
   const KLEVB_FEED_DEBOUNCE_MS = 450;
@@ -182,13 +192,16 @@
   }
 
   function handleAppResume(reason = "resume") {
+    markKlevbyResumeDebug("feed.events.resume", reason, { phase: "start" });
     clearResumeTimers();
 
     tryStartRealtimeSubscription();
 
     klevbyFeedResumeTimers = KLEVB_FEED_RESUME_DELAYS.map((delay) => {
       return setTimeout(() => {
-        queueFeedRefresh(reason + "_burst_" + delay, 0, {
+        const burstReason = reason + "_burst_" + delay;
+        markKlevbyResumeDebug("feed.events.resume", burstReason, { phase: "burst_fire", delay });
+        queueFeedRefresh(burstReason, 0, {
           force: true
         });
 
