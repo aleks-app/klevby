@@ -17,7 +17,7 @@ window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
 window.ADMIN_EMAIL = ADMIN_EMAIL;
 
-let supabaseClient = null;
+let supabaseClient = window.klevbyGetSupabase?.() || null;
 let currentUser = null;
 let viewMode = "all";
 let authMode = "register";
@@ -144,8 +144,12 @@ function syncGlobalAuthState(options = {}) {
   const shouldNotify = Boolean(options.notify);
   const forceNotify = Boolean(options.forceNotify);
 
-  window.klevbySupabase = supabaseClient;
-  window.supabaseClient = supabaseClient;
+  if (window.KlevbySupabaseCompatGlobals?.syncCompatGlobals) {
+    window.KlevbySupabaseCompatGlobals.syncCompatGlobals();
+  } else {
+    window.klevbySupabase = supabaseClient;
+    window.supabaseClient = supabaseClient;
+  }
 
   window.klevbyCurrentUser = currentUser;
   window.currentUser = currentUser;
@@ -301,25 +305,42 @@ function initSupabase() {
     return true;
   }
 
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storageKey: SUPABASE_STORAGE_KEY,
-      flowType: "pkce"
-    },
-    global: {
-      fetch: (...args) => fetch(...args)
+  if (!window.KlevbySupabaseCore || typeof window.KlevbySupabaseCore.initClient !== "function") {
+    showStatus("Supabase core не загрузился. Обнови страницу.", true);
+    console.error("Klevby: Supabase core module is not available.");
+    return false;
+  }
+
+  supabaseClient = window.KlevbySupabaseCore.initClient({
+    supabaseLib: window.supabase,
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+    options: {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: SUPABASE_STORAGE_KEY,
+        flowType: "pkce"
+      },
+      global: {
+        fetch: (...args) => fetch(...args)
+      }
     }
   });
 
-  window.klevbySupabase = supabaseClient;
-  window.supabaseClient = supabaseClient;
+  if (!supabaseClient) {
+    showStatus("Supabase клиент не удалось создать. Обнови страницу.", true);
+    console.error("Klevby: failed to initialize Supabase client via core module.");
+    return false;
+  }
 
-  window.klevbyGetSupabase = function () {
-    return supabaseClient;
-  };
+  if (window.KlevbySupabaseCompatGlobals?.syncCompatGlobals) {
+    window.KlevbySupabaseCompatGlobals.syncCompatGlobals();
+  } else {
+    window.klevbySupabase = supabaseClient;
+    window.supabaseClient = supabaseClient;
+  }
 
   window.klevbyGetCurrentUser = function () {
     return currentUser;
