@@ -4,6 +4,8 @@
   const POSTS_LOAD_TIMEOUT_MS = 9000;
   const POSTS_REALTIME_RELOAD_DEBOUNCE_MS = 350;
   const POSTS_REALTIME_CHANNEL_NAME = "klevby-posts-live";
+  const POSTS_REALTIME_OWNER = "posts";
+  const POSTS_REALTIME_PURPOSE = "trips-realtime";
   const POSTS_AUTO_SYNC_INTERVAL_MS = 12000;
   let postsRealtimeChannel = null;
   let postsRealtimeReloadTimer = null;
@@ -211,6 +213,12 @@
     return window.KLEVB_CONFIG || window.klevbyConfig || {};
   }
 
+  function getRealtimeManagerSafe() {
+    const manager = window.KlevbySupabaseRealtimeManager;
+    if (!manager || typeof manager !== "object") return null;
+    return manager;
+  }
+
   function getSupabaseUrlSafe() {
     const config = getConfigSafe();
 
@@ -414,6 +422,7 @@
     if (!postsRealtimeChannel) return;
 
     const db = getSupabaseClientSafe();
+    const realtimeManager = getRealtimeManagerSafe();
     const channel = postsRealtimeChannel;
     postsRealtimeChannel = null;
 
@@ -425,11 +434,20 @@
       }
     } catch (error) {
       console.warn("Klevby posts realtime: removeChannel failed", error);
+    } finally {
+      if (realtimeManager && typeof realtimeManager.unregisterChannel === "function") {
+        realtimeManager.unregisterChannel(
+          POSTS_REALTIME_OWNER,
+          POSTS_REALTIME_CHANNEL_NAME,
+          POSTS_REALTIME_PURPOSE
+        );
+      }
     }
   }
 
   async function ensurePostsRealtimeSync() {
     const db = getSupabaseClientSafe();
+    const realtimeManager = getRealtimeManagerSafe();
     if (!db || typeof db.channel !== "function") return;
 
     await removePostsRealtimeChannel();
@@ -449,6 +467,16 @@
         schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
       }
     });
+
+    if (realtimeManager && typeof realtimeManager.registerChannel === "function") {
+      realtimeManager.registerChannel({
+        owner: POSTS_REALTIME_OWNER,
+        channelName: POSTS_REALTIME_CHANNEL_NAME,
+        purpose: POSTS_REALTIME_PURPOSE,
+        channel: postsRealtimeChannel,
+        allowReplace: true
+      });
+    }
   }
 
   async function queryPostsViaRest(includeFishingType = true, includeTripDate = true) {
