@@ -143,6 +143,36 @@
     } catch (error) { console.error("[KlevbyCopy] copy failed", error); cleanupMenuState("copy_failed"); showCopyToast("Не удалось скопировать"); }
   }
 
+
+
+  function removeDeletedMessageRow(liveId, liveType, messagesContainer) {
+    const selector = `[data-message-id="${cssEscape(liveId)}"][data-message-type="${cssEscape(liveType || "public")}"]`;
+    const liveRow = resolveLiveMessageRow();
+    const liveMatches = Boolean(
+      liveRow?.isConnected &&
+      String(liveRow.dataset?.messageId || "") === String(liveId) &&
+      String(liveRow.dataset?.messageType || "public") === String(liveType || "public")
+    );
+    if (liveMatches) {
+      liveRow.remove();
+      return "live-row";
+    }
+
+    const rowFromContainer = messagesContainer?.querySelector?.(selector) || null;
+    if (rowFromContainer) {
+      rowFromContainer.remove();
+      return "container";
+    }
+
+    const rowFromDocument = document.querySelector(selector);
+    if (rowFromDocument) {
+      rowFromDocument.remove();
+      return "document";
+    }
+
+    return "missing";
+  }
+
   function getContextMessageData() { return contextMessageData; }
 
   async function deleteMessage(type, id) {
@@ -230,12 +260,12 @@ deleteUserSource=${deleteUserSource}
 deleteUserIdValid=${deleteUserIdValid}`);
         return;
       }
-      result = await client.from("private_messages").delete().eq("id", liveId).eq("sender_id", deleteUserId).select("id");
+      result = await client.from("private_messages").delete().eq("id", liveId).eq("sender_id", deleteUserId);
     } else {
       if (deleteUserIdValid) {
-        result = await client.from("messages").delete().eq("id", liveId).eq("user_id", deleteUserId).select("id");
+        result = await client.from("messages").delete().eq("id", liveId).eq("user_id", deleteUserId);
       } else {
-        result = await client.from("messages").delete().eq("id", liveId).eq("user_name", getCurrentChatName()).select("id");
+        result = await client.from("messages").delete().eq("id", liveId).eq("user_name", getCurrentChatName());
       }
     }
 
@@ -245,28 +275,13 @@ deleteUserIdValid=${deleteUserIdValid}`);
       return;
     }
 
-    const deletedRows = Array.isArray(result.data) ? result.data : [];
-    if (!deletedRows.length) {
-      alert(`DELETE DEBUG: zero rows deleted
-liveId=${liveId}
-liveType=${liveType}
-deletePath=${deletePath}
-deleteUserId=${deleteUserId || "null"}`);
-      return;
-    }
+    console.info("[KlevbyDelete] delete success", { id: liveId, type: liveType, deletePath });
 
-    console.info("[KlevbyDelete] delete success", { id: liveId, type: liveType, deletePath, deletedRows });
-    alert(`DELETE DEBUG: success path=${deletePath}`);
-
-    const rowFromContainer = messagesContainer?.querySelector?.(liveSelector) || null;
-    const rowFromDocument = document.querySelector(liveSelector);
-    const rowToRemove = rowFromContainer || rowFromDocument || null;
-    if (rowToRemove) {
-      rowToRemove.remove();
+    const removedSource = removeDeletedMessageRow(liveId, liveType, messagesContainer);
+    if (removedSource === "missing") {
+      alert("DELETE DEBUG: delete success but row not found");
     } else {
-      alert(`DELETE DEBUG: deleted on server but visible row not found
-liveId=${liveId}
-liveType=${liveType}`);
+      alert(`DELETE DEBUG: delete success removed=${removedSource}`);
     }
     cleanupMenuState("delete_success");
   }
