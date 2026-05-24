@@ -65,6 +65,46 @@
     return null;
   }
 
+
+  function getMenuActionTargetFromEvent(event) {
+    const target = event?.target;
+    if (!target) return null;
+
+    const element =
+      target.nodeType === 1
+        ? target
+        : target.parentElement || null;
+
+    if (!element || typeof element.closest !== "function") {
+      return null;
+    }
+
+    const contextDeleteButton = element.closest("#contextDeleteBtn");
+    if (contextDeleteButton) return "delete";
+
+    const menuButton = element.closest(".klevby-message-menu button");
+    if (menuButton) {
+      const actionId = String(menuButton.id || "").trim();
+      const explicitAction = String(menuButton.dataset?.action || "").trim().toLowerCase();
+      const className = String(menuButton.className || "").toLowerCase();
+      const label = String(menuButton.textContent || "").trim().toLowerCase();
+
+      if (explicitAction === "delete") return "delete";
+      if (actionId === "contextDeleteBtn") return "delete";
+      if (className.includes("delete")) return "delete";
+      if (label.includes("удал")) return "delete";
+
+      return "menu_action_other";
+    }
+
+    const deleteButton = element.closest(".delete-message-btn");
+    if (deleteButton && deleteButton.closest(".chat-message-row") && deleteButton.closest("#messages-container, .chat-messages, .klevby-chat-messages")) {
+      return "delete";
+    }
+
+    return null;
+  }
+
   function init(options = {}) {
     // DOM/user events only:
     // - chat open/close clicks
@@ -219,6 +259,17 @@
         scheduleChatResume("online");
       });
     }
+
+
+    addListener(document, "pointerdown", async (event) => {
+      const captureAction = getMenuActionTargetFromEvent(event);
+      if (captureAction !== "delete") return;
+
+      alert("DELETE ROUTE DEBUG: capture delete action");
+      event.preventDefault();
+      event.stopPropagation();
+      await deleteMessage();
+    }, true);
 
     addListener(document, "click", async (event) => {
       try {
