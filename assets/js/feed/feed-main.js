@@ -1004,12 +1004,37 @@
     }
 
     window.addEventListener("klevby-feed-updated", (event) => {
-      const action = String(event?.detail?.action || "feed_updated");
+      const detail = event?.detail || {};
+      const action = String(detail?.action || "feed_updated");
 
       if (isLikeUpdateAction(action)) {
         markFeedQuiet(action, KLEVB_FEED_MAIN_LIKE_QUIET_MS);
         feedMainDebugLog("quiet_window", action, { duration: KLEVB_FEED_MAIN_LIKE_QUIET_MS });
         return;
+      }
+
+      if (action === "feed_comment_changed") {
+        feedMainDebugLog("suppressed_event_refresh", action, {
+          source: "klevby-feed-updated",
+          ownership: "feed-events"
+        });
+        return;
+      }
+
+      if (action === "feed_post_changed") {
+        const eventsApi = window.KlevbyFeedEvents || {};
+        const isCounterOnly = typeof eventsApi.isCounterOnlyFeedPostChanged === "function"
+          ? Boolean(eventsApi.isCounterOnlyFeedPostChanged(detail))
+          : false;
+
+        if (isCounterOnly) {
+          feedMainDebugLog("suppressed_event_refresh", action, {
+            source: "klevby-feed-updated",
+            ownership: "feed-events",
+            reason: "counter_only"
+          });
+          return;
+        }
       }
 
       scheduleMainFeedRefresh(action, 900, {
