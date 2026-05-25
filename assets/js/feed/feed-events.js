@@ -832,6 +832,51 @@
     return Boolean(modal && !modal.classList.contains("hidden") && cleanPostId && modalPostId === cleanPostId);
   }
 
+  function resolveActiveCommentContextPostId() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const modalPostId = String(modal?.dataset?.postId || "").trim();
+    if (modalPostId) {
+      return {
+        postId: modalPostId,
+        resolvedFromActiveCommentContext: true,
+        source: "comment_modal_dataset"
+      };
+    }
+
+    const list = document.getElementById("klevbyFeedCommentsList");
+    const listPostId = String(list?.dataset?.postId || "").trim();
+    if (listPostId) {
+      return {
+        postId: listPostId,
+        resolvedFromActiveCommentContext: true,
+        source: "comment_list_dataset"
+      };
+    }
+
+    const globalPostId = String(window.KlevbyActiveCommentPostId || "").trim();
+    if (globalPostId) {
+      return {
+        postId: globalPostId,
+        resolvedFromActiveCommentContext: true,
+        source: "window.KlevbyActiveCommentPostId"
+      };
+    }
+
+    return {
+      postId: "",
+      resolvedFromActiveCommentContext: false,
+      source: ""
+    };
+  }
+
+  function resolveCommentEventPostId(detail = {}, result = {}) {
+    const fromResult = String(result?.postId || "").trim();
+    if (fromResult) return { postId: fromResult, resolvedFromActiveCommentContext: false, source: "targeted_result" };
+    const fromDetail = String(detail?.postId || "").trim();
+    if (fromDetail) return { postId: fromDetail, resolvedFromActiveCommentContext: false, source: "event_detail" };
+    return resolveActiveCommentContextPostId();
+  }
+
   function shouldSuppressCommentFallbackRefresh(action, result = {}) {
     if (action !== "feed_comment_changed" && action !== "comment_deleted") {
       return false;
@@ -1111,8 +1156,13 @@
             fallbackReason: targetedUpdateResult.fallbackReason || "unknown"
           }
         });
-        const fallbackPostId = targetedUpdateResult.postId || resolveRealtimePostId(detail);
+        const resolvedCommentContext = resolveCommentEventPostId(detail, targetedUpdateResult);
+        const fallbackPostId = resolvedCommentContext.postId || resolveRealtimePostId(detail);
         const likeFallbackSuppressed = shouldSuppressLikeFallbackRefresh(action, targetedUpdateResult);
+        const commentFallbackSuppressed = shouldSuppressCommentFallbackRefresh(action, {
+          ...targetedUpdateResult,
+          postId: fallbackPostId
+        });
         if (likeFallbackSuppressed) {
           logTargetedUpdateDecision(action, {
             event: "feed_like_target_card_not_found_skip",
@@ -1124,6 +1174,42 @@
               ...(targetedUpdateResult.diagnostics || {}),
               fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found"
             }
+          });
+        } else if (commentFallbackSuppressed) {
+          const modalOpenForPost = isCommentsModalOpenForPost(fallbackPostId);
+          logTargetedUpdateDecision(action, {
+            event: "comment_target_card_not_found_skip",
+            action,
+            postId: fallbackPostId,
+            fallback: false,
+            note: modalOpenForPost
+              ? "comment_target_not_visible_skip_feed_refresh_modal_will_refresh"
+              : "comment_target_not_visible_skip_feed_refresh",
+            snapshot: {
+              ...(targetedUpdateResult.diagnostics || {}),
+              fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found",
+              resolvedFromActiveCommentContext: Boolean(resolvedCommentContext.resolvedFromActiveCommentContext),
+              activeCommentContextSource: resolvedCommentContext.source || "",
+              matchingSelectorsCount: Number(targetedUpdateResult?.diagnostics?.matchingSelectorsCount || 0),
+              cardExists: Boolean(targetedUpdateResult?.diagnostics?.cardExists)
+            }
+          });
+        } else if (action === "comment_deleted" && !fallbackPostId) {
+          logTargetedUpdateDecision(action, {
+            event: "comment_deleted_missing_post_id_fallback",
+            action,
+            postId: "",
+            fallback: true,
+            note: "comment_deleted postId unresolved, fallback full refresh queued",
+            snapshot: {
+              fallbackReason: targetedUpdateResult.fallbackReason || "missing_post_id",
+              resolvedFromActiveCommentContext: false
+            }
+          });
+          markTargetedFallbackQueued(fallbackPostId, action);
+          queueFeedRefresh(action, 120, {
+            force: true,
+            postId: fallbackPostId
           });
         } else {
           markTargetedFallbackQueued(fallbackPostId, action);
@@ -1383,9 +1469,13 @@
             }
           });
 
-          const fallbackPostId = targetedUpdateResult.postId || postId;
+          const resolvedCommentContext = resolveCommentEventPostId(payload || {}, targetedUpdateResult);
+          const fallbackPostId = resolvedCommentContext.postId || targetedUpdateResult.postId || postId;
           const likeFallbackSuppressed = shouldSuppressLikeFallbackRefresh(action, targetedUpdateResult);
-          const commentFallbackSuppressed = shouldSuppressCommentFallbackRefresh(action, targetedUpdateResult);
+          const commentFallbackSuppressed = shouldSuppressCommentFallbackRefresh(action, {
+            ...targetedUpdateResult,
+            postId: fallbackPostId
+          });
           if (likeFallbackSuppressed) {
             logTargetedUpdateDecision(fallbackReason, {
               event: "feed_like_target_card_not_found_skip",
@@ -1411,8 +1501,30 @@
               snapshot: {
                 ...(targetedUpdateResult.diagnostics || {}),
                 fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found",
-                modalOpenForPost
+                modalOpenForPost,
+                resolvedFromActiveCommentContext: Boolean(resolvedCommentContext.resolvedFromActiveCommentContext),
+                activeCommentContextSource: resolvedCommentContext.source || "",
+                matchingSelectorsCount: Number(targetedUpdateResult?.diagnostics?.matchingSelectorsCount || 0),
+                cardExists: Boolean(targetedUpdateResult?.diagnostics?.cardExists)
               }
+            });
+          } else if (action === "comment_deleted" && !fallbackPostId) {
+            logTargetedUpdateDecision(fallbackReason, {
+              event: "comment_deleted_missing_post_id_fallback",
+              action,
+              postId: "",
+              fallback: true,
+              note: "comment_deleted postId unresolved, fallback full refresh queued",
+              snapshot: {
+                ...(targetedUpdateResult.diagnostics || {}),
+                fallbackReason: targetedUpdateResult.fallbackReason || "missing_post_id",
+                resolvedFromActiveCommentContext: false
+              }
+            });
+            markTargetedFallbackQueued(fallbackPostId, fallbackReason);
+            queueFeedRefresh(fallbackReason, 80, {
+              force: true,
+              postId: fallbackPostId
             });
           } else {
             markTargetedFallbackQueued(fallbackPostId, fallbackReason);
