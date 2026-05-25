@@ -618,19 +618,37 @@
     const postId = resolveRealtimePostId(detail);
 
     if (!postId) {
-      return false;
+      return {
+        updated: false,
+        action,
+        postId: "",
+        diagnostics: null,
+        fallbackReason: "missing_post_id"
+      };
     }
 
     const counters = makeRealtimeCounters(detail);
 
     if (!Object.keys(counters).length) {
-      return false;
+      return {
+        updated: false,
+        action,
+        postId,
+        diagnostics: getTargetedUpdateDomDiagnostics(postId, counters),
+        fallbackReason: "missing_counters"
+      };
     }
 
     const updateFn = resolveFeedCountersUpdater();
 
     if (!updateFn) {
-      return false;
+      return {
+        updated: false,
+        action,
+        postId,
+        diagnostics: getTargetedUpdateDomDiagnostics(postId, counters),
+        fallbackReason: "missing_updater"
+      };
     }
 
     const diagnostics = getTargetedUpdateDomDiagnostics(postId, counters);
@@ -664,7 +682,7 @@
         action,
         postId,
         diagnostics,
-        fallbackReason: updated ? "" : detectTargetedFallbackReason(diagnostics)
+        fallbackReason: updated ? "" : detectTargetedFallbackReason(diagnostics, null, { updaterReturnedFalse: true })
       };
     } catch (error) {
       return {
@@ -762,9 +780,13 @@
   }
 
   function detectTargetedFallbackReason(diagnostics = {}, error = null) {
-    if (!diagnostics.cardExists) return "missing_card";
+    const options = arguments[2] || {};
+    if (error) return "exception";
+    if (!diagnostics || typeof diagnostics !== "object") return "unknown";
+    if (!diagnostics.cardExists) return "target_card_not_found";
+    if (!diagnostics.cardVisible) return "target_card_not_in_dom";
     if (diagnostics.missingLikeNode || diagnostics.missingCommentNode) return "missing_counter_node";
-    if (error) return "update_failed";
+    if (options.updaterReturnedFalse) return "updater_returned_false";
     return "unknown";
   }
 
@@ -778,8 +800,17 @@
       action: String(detail?.action || ""),
       postId: resolveRealtimePostId(detail),
       diagnostics: null,
-      fallbackReason: Boolean(result) ? "" : "unknown"
+      fallbackReason: Boolean(result) ? "" : "updater_returned_false"
     };
+  }
+
+  function shouldSuppressLikeFallbackRefresh(action, result = {}) {
+    if (action !== "feed_like_changed") {
+      return false;
+    }
+
+    const reason = String(result?.fallbackReason || "");
+    return reason === "target_card_not_found" || reason === "target_card_not_in_dom";
   }
 
   function buildMissingPostIdRealtimeSnapshot(detail = {}) {
@@ -1036,19 +1067,17 @@
           }
         });
         const fallbackPostId = targetedUpdateResult.postId || resolveRealtimePostId(detail);
-        const actionIsLikeOrComment = action === "feed_like_changed" || action === "feed_comment_changed";
-        const missingCardFallbackSuppressed = actionIsLikeOrComment && fallbackPostId && targetedUpdateResult.fallbackReason === "missing_card";
-
-        if (missingCardFallbackSuppressed) {
+        const likeFallbackSuppressed = shouldSuppressLikeFallbackRefresh(action, targetedUpdateResult);
+        if (likeFallbackSuppressed) {
           logTargetedUpdateDecision(action, {
-            event: "targeted_update_skip",
+            event: "feed_like_target_card_not_found_skip",
             action,
             postId: fallbackPostId,
             fallback: false,
-            note: action === "feed_comment_changed" ? "comment_target_not_visible_skip" : "like_target_not_visible_skip",
+            note: "like_target_not_visible_skip",
             snapshot: {
               ...(targetedUpdateResult.diagnostics || {}),
-              fallbackReason: targetedUpdateResult.fallbackReason || "missing_card"
+              fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found"
             }
           });
         } else {
@@ -1309,19 +1338,17 @@
           });
 
           const fallbackPostId = targetedUpdateResult.postId || postId;
-          const actionIsLikeOrComment = action === "feed_like_changed" || action === "feed_comment_changed";
-          const missingCardFallbackSuppressed = actionIsLikeOrComment && fallbackPostId && targetedUpdateResult.fallbackReason === "missing_card";
-
-          if (missingCardFallbackSuppressed) {
+          const likeFallbackSuppressed = shouldSuppressLikeFallbackRefresh(action, targetedUpdateResult);
+          if (likeFallbackSuppressed) {
             logTargetedUpdateDecision(fallbackReason, {
-              event: "suppressed_event_refresh",
+              event: "feed_like_target_card_not_found_skip",
               action,
               postId: fallbackPostId,
               fallback: false,
-              note: action === "feed_comment_changed" ? "comment_target_not_visible_skip" : "like_target_not_visible_skip",
+              note: "like_target_not_visible_skip",
               snapshot: {
                 ...(targetedUpdateResult.diagnostics || {}),
-                fallbackReason: targetedUpdateResult.fallbackReason || "missing_card"
+                fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found"
               }
             });
           } else {
