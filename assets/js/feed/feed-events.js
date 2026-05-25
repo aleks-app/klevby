@@ -25,6 +25,9 @@
   const KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS = 1800;
   let klevbyRecentTargetedFeedSuccessUntil = 0;
 
+  const KLEVB_RECENT_COMMENT_ADDED_TARGETED_SUCCESS_TTL_MS = 2200;
+  const klevbyRecentCommentAddedTargetedSuccessByPostMap = new Map();
+
 
   let klevbyFeedRefreshTimer = null;
   let klevbyFeedPendingRefreshMeta = null;
@@ -761,6 +764,49 @@
   }
 
 
+
+
+  function markRecentCommentAddedTargetedSuccess(postId, ttlMs = KLEVB_RECENT_COMMENT_ADDED_TARGETED_SUCCESS_TTL_MS) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return false;
+    }
+
+    const expiresAt = Date.now() + Math.max(500, Number(ttlMs || KLEVB_RECENT_COMMENT_ADDED_TARGETED_SUCCESS_TTL_MS));
+    klevbyRecentCommentAddedTargetedSuccessByPostMap.set(cleanPostId, expiresAt);
+    return true;
+  }
+
+  function hasRecentCommentAddedTargetedSuccess(postId) {
+    const cleanPostId = String(postId || "").trim();
+
+    if (!cleanPostId) {
+      return false;
+    }
+
+    const expiresAt = Number(klevbyRecentCommentAddedTargetedSuccessByPostMap.get(cleanPostId) || 0);
+
+    if (!expiresAt) {
+      return false;
+    }
+
+    if (Date.now() > expiresAt) {
+      klevbyRecentCommentAddedTargetedSuccessByPostMap.delete(cleanPostId);
+      return false;
+    }
+
+    return true;
+  }
+
+  function shouldSuppressCommentAddedFullRefreshAfterTargetedSuccess(action, fallbackPostId) {
+    if (action !== "comment_added") {
+      return false;
+    }
+
+    return hasRecentCommentAddedTargetedSuccess(fallbackPostId);
+  }
+
   function getTargetedUpdateDomDiagnostics(postId, counters = {}) {
     const cleanPostId = String(postId || "").trim();
     const root = document.getElementById("profileFeedSection");
@@ -1155,6 +1201,9 @@
       if (cardCountersUpdated) {
         markRecentTargetedFeedCounterSuccess();
         const targetedPostId = resolveRealtimePostId(detail);
+        if (action === "comment_added") {
+          markRecentCommentAddedTargetedSuccess(targetedPostId);
+        }
         cancelPendingFullRefreshAfterTargetedSuccess(targetedPostId, action);
         cancelPendingMissingPostIdRealtimeLikeFallbackAfterTargetedSuccess(action);
         logTargetedUpdateDecision(action, {
@@ -1183,7 +1232,16 @@
           ...targetedUpdateResult,
           postId: fallbackPostId
         });
-        if (likeFallbackSuppressed) {
+        const commentAddedFallbackSuppressedAfterSuccess = shouldSuppressCommentAddedFullRefreshAfterTargetedSuccess(action, fallbackPostId);
+        if (commentAddedFallbackSuppressedAfterSuccess) {
+          logTargetedUpdateDecision(action, {
+            event: "comment_added_recent_targeted_success_skip",
+            action,
+            postId: fallbackPostId,
+            fallback: false,
+            note: "recent comment_added targeted success suppresses full refresh"
+          });
+        } else if (likeFallbackSuppressed) {
           logTargetedUpdateDecision(action, {
             event: "feed_like_target_card_not_found_skip",
             action,
@@ -1449,6 +1507,9 @@
 
       if (cardCountersUpdated) {
         markRecentTargetedFeedCounterSuccess();
+        if (action === "comment_added") {
+          markRecentCommentAddedTargetedSuccess(postId);
+        }
         cancelPendingFullRefreshAfterTargetedSuccess(postId, "realtime_" + (postId || "feed"));
         cancelPendingMissingPostIdRealtimeLikeFallbackAfterTargetedSuccess("realtime_" + (postId || "feed"));
         logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
@@ -1502,7 +1563,16 @@
             ...targetedUpdateResult,
             postId: fallbackPostId
           });
-          if (likeFallbackSuppressed) {
+          const commentAddedFallbackSuppressedAfterSuccess = shouldSuppressCommentAddedFullRefreshAfterTargetedSuccess(action, fallbackPostId);
+          if (commentAddedFallbackSuppressedAfterSuccess) {
+            logTargetedUpdateDecision(fallbackReason, {
+              event: "comment_added_recent_targeted_success_skip",
+              action,
+              postId: fallbackPostId,
+              fallback: false,
+              note: "recent comment_added targeted success suppresses full refresh"
+            });
+          } else if (likeFallbackSuppressed) {
             logTargetedUpdateDecision(fallbackReason, {
               event: "feed_like_target_card_not_found_skip",
               action,
