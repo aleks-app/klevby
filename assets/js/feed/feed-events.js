@@ -610,6 +610,7 @@
     if (
       action !== "feed_like_changed" &&
       action !== "feed_comment_changed" &&
+      action !== "comment_added" &&
       action !== "comment_deleted" &&
       !(action === "feed_post_changed" && isCounterOnlyFeedPostChanged(detail))
     ) {
@@ -869,6 +870,25 @@
     };
   }
 
+
+  function isAnyCommentsModalOpen() {
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    return Boolean(modal && !modal.classList.contains("hidden"));
+  }
+
+  function queueSoftCommentMissingPostFallback(reason = "comment_deleted_missing_post_id") {
+    if (isAnyCommentsModalOpen()) {
+      return false;
+    }
+
+    queueFeedRefresh(reason, 1600, {
+      force: true,
+      postId: ""
+    });
+
+    return true;
+  }
+
   function resolveCommentEventPostId(detail = {}, result = {}) {
     const fromResult = String(result?.postId || "").trim();
     if (fromResult) return { postId: fromResult, resolvedFromActiveCommentContext: false, source: "targeted_result" };
@@ -878,7 +898,7 @@
   }
 
   function shouldSuppressCommentFallbackRefresh(action, result = {}) {
-    if (action !== "feed_comment_changed" && action !== "comment_deleted") {
+    if (action !== "feed_comment_changed" && action !== "comment_added" && action !== "comment_deleted") {
       return false;
     }
 
@@ -1200,16 +1220,22 @@
             action,
             postId: "",
             fallback: true,
-            note: "comment_deleted postId unresolved, fallback full refresh queued",
+            note: "comment_deleted postId unresolved, immediate full refresh skipped",
             snapshot: {
               fallbackReason: targetedUpdateResult.fallbackReason || "missing_post_id",
               resolvedFromActiveCommentContext: false
             }
           });
-          markTargetedFallbackQueued(fallbackPostId, action);
-          queueFeedRefresh(action, 120, {
-            force: true,
-            postId: fallbackPostId
+          const softFallbackReason = action + "_missing_post_id_soft_fallback";
+          const softFallbackQueued = queueSoftCommentMissingPostFallback(softFallbackReason);
+          logTargetedUpdateDecision(action, {
+            event: "comment_deleted_missing_post_id_soft_fallback",
+            action,
+            postId: "",
+            fallback: softFallbackQueued,
+            note: softFallbackQueued
+              ? "comment_deleted missing postId queued delayed soft fallback"
+              : "comment_deleted missing postId soft fallback skipped while modal open"
           });
         } else {
           markTargetedFallbackQueued(fallbackPostId, action);
@@ -1514,17 +1540,23 @@
               action,
               postId: "",
               fallback: true,
-              note: "comment_deleted postId unresolved, fallback full refresh queued",
+              note: "comment_deleted postId unresolved, immediate full refresh skipped",
               snapshot: {
                 ...(targetedUpdateResult.diagnostics || {}),
                 fallbackReason: targetedUpdateResult.fallbackReason || "missing_post_id",
                 resolvedFromActiveCommentContext: false
               }
             });
-            markTargetedFallbackQueued(fallbackPostId, fallbackReason);
-            queueFeedRefresh(fallbackReason, 80, {
-              force: true,
-              postId: fallbackPostId
+            const softFallbackReason = fallbackReason + "_missing_post_id_soft_fallback";
+            const softFallbackQueued = queueSoftCommentMissingPostFallback(softFallbackReason);
+            logTargetedUpdateDecision(fallbackReason, {
+              event: "comment_deleted_missing_post_id_soft_fallback",
+              action,
+              postId: "",
+              fallback: softFallbackQueued,
+              note: softFallbackQueued
+                ? "comment_deleted missing postId queued delayed soft fallback"
+                : "comment_deleted missing postId soft fallback skipped while modal open"
             });
           } else {
             markTargetedFallbackQueued(fallbackPostId, fallbackReason);
