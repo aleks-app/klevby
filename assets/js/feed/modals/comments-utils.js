@@ -238,6 +238,34 @@
     window.__klevbyFeedItemsCache = cache;
   }
 
+  function getCurrentUserId(user) {
+    if (!user) return "";
+
+    return String(
+      user.id ||
+      user.userId ||
+      user.user_id ||
+      user?.user?.id ||
+      user?.user?.userId ||
+      user?.user?.user_id ||
+      ""
+    ).trim();
+  }
+
+  function getCommentOwnerId(comment) {
+    if (!comment) return "";
+
+    return String(
+      comment.user_id ||
+      comment.userId ||
+      comment.owner_id ||
+      comment.ownerId ||
+      comment.author_id ||
+      comment.authorId ||
+      ""
+    ).trim();
+  }
+
   function canManageComment(comment) {
     const core = getCore();
 
@@ -248,11 +276,12 @@
     if (!comment) return false;
 
     const user = getCurrentUser();
-    const userId = user?.id || "";
+    const userId = getCurrentUserId(user);
+    const commentOwnerId = getCommentOwnerId(comment);
 
     return Boolean(
       isAdmin() ||
-      (userId && comment.user_id && String(userId) === String(comment.user_id))
+      (userId && commentOwnerId && userId === commentOwnerId)
     );
   }
 
