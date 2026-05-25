@@ -792,7 +792,6 @@
 
     return true;
   }
-
   function closeOpenFeedWindows() {
     const modals = getModals();
 
