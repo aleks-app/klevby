@@ -1156,7 +1156,7 @@
         return;
       }
 
-      if (action === "feed_comment_changed") {
+      if (action === "feed_comment_changed" || action === "comment_added") {
         feedMainDebugLog("suppressed_event_refresh", action, {
           source: "klevby-feed-updated",
           ownership: "feed-events"
