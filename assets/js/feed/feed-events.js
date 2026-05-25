@@ -633,6 +633,8 @@
       return false;
     }
 
+    const diagnostics = getTargetedUpdateDomDiagnostics(postId, counters);
+
     try {
       const updated = Boolean(updateFn(postId, counters));
       const isCounterOnlyPostAction =
@@ -657,9 +659,21 @@
         markTargetedLikeCounterUpdateSuccess(postId);
       }
 
-      return updated;
+      return {
+        updated,
+        action,
+        postId,
+        diagnostics,
+        fallbackReason: updated ? "" : detectTargetedFallbackReason(diagnostics)
+      };
     } catch (error) {
-      return false;
+      return {
+        updated: false,
+        action,
+        postId,
+        diagnostics,
+        fallbackReason: detectTargetedFallbackReason(diagnostics, error)
+      };
     }
   }
 
@@ -713,6 +727,59 @@
     }
 
     return true;
+  }
+
+
+  function getTargetedUpdateDomDiagnostics(postId, counters = {}) {
+    const cleanPostId = String(postId || "").trim();
+    const root = document.getElementById("profileFeedSection");
+    const feedList = root ? root.querySelector("#profileFeed") : null;
+    const selector = cleanPostId
+      ? `.profile-feed-card[data-feed-card-id="${CSS.escape(cleanPostId)}"]`
+      : "";
+    const matches = selector && feedList ? Array.from(feedList.querySelectorAll(selector)) : [];
+    const card = matches[0] || null;
+    const cardVisible = Boolean(card && card.isConnected && card.getClientRects && card.getClientRects().length > 0);
+
+    const needLikeNode = Object.prototype.hasOwnProperty.call(counters, "likesCount") || Object.prototype.hasOwnProperty.call(counters, "liked");
+    const needCommentNode = Object.prototype.hasOwnProperty.call(counters, "commentsCount");
+    const likeNode = card && needLikeNode
+      ? card.querySelector(`.profile-feed-like-btn[data-feed-post-id="${CSS.escape(cleanPostId)}"]`)
+      : null;
+    const commentNode = card && needCommentNode
+      ? card.querySelector(`.profile-feed-comment-btn[data-feed-post-id="${CSS.escape(cleanPostId)}"]`)
+      : null;
+
+    return {
+      cardExists: Boolean(card),
+      cardVisible,
+      matchingSelectorsCount: matches.length,
+      isHomeVisible: isHomeFeedVisible(),
+      visibleFeedContainerExists: Boolean(root && feedList),
+      missingLikeNode: Boolean(needLikeNode && !likeNode),
+      missingCommentNode: Boolean(needCommentNode && !commentNode)
+    };
+  }
+
+  function detectTargetedFallbackReason(diagnostics = {}, error = null) {
+    if (!diagnostics.cardExists) return "missing_card";
+    if (diagnostics.missingLikeNode || diagnostics.missingCommentNode) return "missing_counter_node";
+    if (error) return "update_failed";
+    return "unknown";
+  }
+
+  function normalizeTargetedUpdateResult(result, detail = {}) {
+    if (result && typeof result === "object" && Object.prototype.hasOwnProperty.call(result, "updated")) {
+      return result;
+    }
+
+    return {
+      updated: Boolean(result),
+      action: String(detail?.action || ""),
+      postId: resolveRealtimePostId(detail),
+      diagnostics: null,
+      fallbackReason: Boolean(result) ? "" : "unknown"
+    };
   }
 
   function buildMissingPostIdRealtimeSnapshot(detail = {}) {
@@ -900,7 +967,8 @@
     window.addEventListener("klevby-feed-updated", async (event) => {
       const action = String(event?.detail?.action || "feed_updated");
       const detail = event?.detail || {};
-      let cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(detail);
+      const targetedUpdateResult = normalizeTargetedUpdateResult(tryUpdateRealtimeFeedCardCounters(detail), detail);
+      let cardCountersUpdated = Boolean(targetedUpdateResult.updated);
 
       if (!cardCountersUpdated && action === "feed_like_changed") {
         const postId = String(
@@ -959,16 +1027,37 @@
         logTargetedUpdateDecision(action, {
           event: "targeted_update_fallback",
           action,
-          postId: resolveRealtimePostId(detail),
+          postId: targetedUpdateResult.postId || resolveRealtimePostId(detail),
           fallback: true,
-          note: "targeted update failed, fallback full refresh"
+          note: "targeted update failed, fallback full refresh",
+          snapshot: {
+            ...(targetedUpdateResult.diagnostics || {}),
+            fallbackReason: targetedUpdateResult.fallbackReason || "unknown"
+          }
         });
-        const fallbackPostId = resolveRealtimePostId(detail);
-        markTargetedFallbackQueued(fallbackPostId, action);
-        queueFeedRefresh(action, 120, {
-          force: true,
-          postId: fallbackPostId
-        });
+        const fallbackPostId = targetedUpdateResult.postId || resolveRealtimePostId(detail);
+        const actionIsLikeOrComment = action === "feed_like_changed" || action === "feed_comment_changed";
+        const missingCardFallbackSuppressed = actionIsLikeOrComment && fallbackPostId && targetedUpdateResult.fallbackReason === "missing_card";
+
+        if (missingCardFallbackSuppressed) {
+          logTargetedUpdateDecision(action, {
+            event: "targeted_update_skip",
+            action,
+            postId: fallbackPostId,
+            fallback: false,
+            note: action === "feed_comment_changed" ? "comment_target_not_visible_skip" : "like_target_not_visible_skip",
+            snapshot: {
+              ...(targetedUpdateResult.diagnostics || {}),
+              fallbackReason: targetedUpdateResult.fallbackReason || "missing_card"
+            }
+          });
+        } else {
+          markTargetedFallbackQueued(fallbackPostId, action);
+          queueFeedRefresh(action, 120, {
+            force: true,
+            postId: fallbackPostId
+          });
+        }
       }
 
       const modal = document.getElementById("klevbyFeedCommentModal");
@@ -1137,7 +1226,8 @@
         ""
       ).trim();
 
-      let cardCountersUpdated = tryUpdateRealtimeFeedCardCounters(payload || {});
+      const targetedUpdateResult = normalizeTargetedUpdateResult(tryUpdateRealtimeFeedCardCounters(payload || {}), payload || {});
+      let cardCountersUpdated = Boolean(targetedUpdateResult.updated);
       const action = String(payload?.action || "");
 
       if (!cardCountersUpdated && action === "feed_like_changed" && postId) {
@@ -1208,16 +1298,39 @@
               ? "missing_post_id_realtime_feed_fallback"
               : "targeted_update_fallback",
             action,
-            postId,
+            postId: targetedUpdateResult.postId || postId,
             fallback: true,
             note: "targeted update failed, fallback full refresh",
-            snapshot
+            snapshot: {
+              ...(snapshot || {}),
+              ...(targetedUpdateResult.diagnostics || {}),
+              fallbackReason: targetedUpdateResult.fallbackReason || "unknown"
+            }
           });
-          markTargetedFallbackQueued(postId, fallbackReason);
-          queueFeedRefresh(fallbackReason, 80, {
-            force: true,
-            postId
-          });
+
+          const fallbackPostId = targetedUpdateResult.postId || postId;
+          const actionIsLikeOrComment = action === "feed_like_changed" || action === "feed_comment_changed";
+          const missingCardFallbackSuppressed = actionIsLikeOrComment && fallbackPostId && targetedUpdateResult.fallbackReason === "missing_card";
+
+          if (missingCardFallbackSuppressed) {
+            logTargetedUpdateDecision(fallbackReason, {
+              event: "suppressed_event_refresh",
+              action,
+              postId: fallbackPostId,
+              fallback: false,
+              note: action === "feed_comment_changed" ? "comment_target_not_visible_skip" : "like_target_not_visible_skip",
+              snapshot: {
+                ...(targetedUpdateResult.diagnostics || {}),
+                fallbackReason: targetedUpdateResult.fallbackReason || "missing_card"
+              }
+            });
+          } else {
+            markTargetedFallbackQueued(fallbackPostId, fallbackReason);
+            queueFeedRefresh(fallbackReason, 80, {
+              force: true,
+              postId: fallbackPostId
+            });
+          }
 
           if (action === "feed_like_changed" && !postId && fallbackReason === "realtime_feed") {
             markPendingMissingPostIdRealtimeLikeFallback({
