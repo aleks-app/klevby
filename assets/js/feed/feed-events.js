@@ -610,6 +610,7 @@
     if (
       action !== "feed_like_changed" &&
       action !== "feed_comment_changed" &&
+      action !== "comment_deleted" &&
       !(action === "feed_post_changed" && isCounterOnlyFeedPostChanged(detail))
     ) {
       return false;
@@ -630,12 +631,23 @@
     const counters = makeRealtimeCounters(detail);
 
     if (!Object.keys(counters).length) {
+      const payload = detail?.payload || null;
       return {
         updated: false,
         action,
         postId,
         diagnostics: getTargetedUpdateDomDiagnostics(postId, counters),
-        fallbackReason: "missing_counters"
+        fallbackReason: "missing_counters",
+        missingCountersDiagnostics: {
+          hasPostId: Boolean(postId),
+          hasPayload: Boolean(payload),
+          hasPayloadOld: Boolean(payload && payload.old),
+          hasPayloadNew: Boolean(payload && payload.new),
+          hasDetailCommentsCount: hasOwn(detail, "commentsCount"),
+          hasDetailCommentsCountSnake: hasOwn(detail, "comments_count"),
+          hasPayloadNewCommentsCount: Boolean(payload?.new && hasOwn(payload.new, "comments_count")),
+          hasPayloadOldCommentsCount: Boolean(payload?.old && hasOwn(payload.old, "comments_count"))
+        }
       };
     }
 
@@ -811,6 +823,39 @@
 
     const reason = String(result?.fallbackReason || "");
     return reason === "target_card_not_found" || reason === "target_card_not_in_dom";
+  }
+
+  function isCommentsModalOpenForPost(postId) {
+    const cleanPostId = String(postId || "").trim();
+    const modal = document.getElementById("klevbyFeedCommentModal");
+    const modalPostId = String(modal?.dataset?.postId || "").trim();
+    return Boolean(modal && !modal.classList.contains("hidden") && cleanPostId && modalPostId === cleanPostId);
+  }
+
+  function shouldSuppressCommentFallbackRefresh(action, result = {}) {
+    if (action !== "feed_comment_changed" && action !== "comment_deleted") {
+      return false;
+    }
+
+    const postId = String(result?.postId || "").trim();
+    if (!postId) {
+      return false;
+    }
+
+    const reason = String(result?.fallbackReason || "");
+    if (reason === "target_card_not_found" || reason === "target_card_not_in_dom") {
+      return true;
+    }
+
+    if (reason !== "missing_counters") {
+      return false;
+    }
+
+    const diagnostics = result?.diagnostics || {};
+    const cardExists = Boolean(diagnostics.cardExists);
+    const matchingSelectorsCount = Number(diagnostics.matchingSelectorsCount || 0);
+
+    return !cardExists || matchingSelectorsCount <= 0;
   }
 
   function buildMissingPostIdRealtimeSnapshot(detail = {}) {
@@ -1333,12 +1378,14 @@
             snapshot: {
               ...(snapshot || {}),
               ...(targetedUpdateResult.diagnostics || {}),
-              fallbackReason: targetedUpdateResult.fallbackReason || "unknown"
+              fallbackReason: targetedUpdateResult.fallbackReason || "unknown",
+              missingCountersDiagnostics: targetedUpdateResult.missingCountersDiagnostics || null
             }
           });
 
           const fallbackPostId = targetedUpdateResult.postId || postId;
           const likeFallbackSuppressed = shouldSuppressLikeFallbackRefresh(action, targetedUpdateResult);
+          const commentFallbackSuppressed = shouldSuppressCommentFallbackRefresh(action, targetedUpdateResult);
           if (likeFallbackSuppressed) {
             logTargetedUpdateDecision(fallbackReason, {
               event: "feed_like_target_card_not_found_skip",
@@ -1349,6 +1396,22 @@
               snapshot: {
                 ...(targetedUpdateResult.diagnostics || {}),
                 fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found"
+              }
+            });
+          } else if (commentFallbackSuppressed) {
+            const modalOpenForPost = isCommentsModalOpenForPost(fallbackPostId);
+            logTargetedUpdateDecision(fallbackReason, {
+              event: "comment_target_card_not_found_skip",
+              action,
+              postId: fallbackPostId,
+              fallback: false,
+              note: modalOpenForPost
+                ? "comment_target_not_visible_skip_feed_refresh_modal_will_refresh"
+                : "comment_target_not_visible_skip_feed_refresh",
+              snapshot: {
+                ...(targetedUpdateResult.diagnostics || {}),
+                fallbackReason: targetedUpdateResult.fallbackReason || "target_card_not_found",
+                modalOpenForPost
               }
             });
           } else {
