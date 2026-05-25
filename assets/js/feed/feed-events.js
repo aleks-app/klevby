@@ -22,6 +22,8 @@
   const klevbyTargetedLikeSuccessMap = new Map();
   const KLEVB_TARGETED_FALLBACK_CANCEL_TTL_MS = 5000;
   const klevbyTargetedFallbackByPostMap = new Map();
+  const KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS = 1800;
+  let klevbyRecentTargetedFeedSuccessUntil = 0;
 
 
   let klevbyFeedRefreshTimer = null;
@@ -34,6 +36,7 @@
   let klevbyFeedRealtimeStarted = false;
   let klevbyFeedResumeTimers = [];
   let klevbyFeedLastRenderAt = 0;
+  let klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
 
   function getState() {
     return window.KlevbyFeedState || {};
@@ -105,7 +108,8 @@
         action: String(detail.action || ""),
         postId: detail.postId ? String(detail.postId) : "",
         fallback: Boolean(detail.fallback),
-        note: String(detail.note || "")
+        note: String(detail.note || ""),
+        snapshot: detail && typeof detail.snapshot === "object" ? detail.snapshot : null
       });
     } catch (_) {}
   }
@@ -233,6 +237,12 @@
       force: Boolean(options.force),
       postId: options.postId
     });
+    if (klevbyPendingMissingPostIdRealtimeFallbackMeta && klevbyFeedRefreshTimer) {
+      if (klevbyPendingMissingPostIdRealtimeFallbackMeta.timerId === klevbyFeedRefreshTimer) {
+        klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
+      }
+    }
+
     clearTimeout(klevbyFeedRefreshTimer);
 
     klevbyFeedPendingRefreshMeta = {
@@ -242,6 +252,11 @@
     };
 
     klevbyFeedRefreshTimer = setTimeout(() => {
+      if (klevbyPendingMissingPostIdRealtimeFallbackMeta && klevbyPendingMissingPostIdRealtimeFallbackMeta.timerId === klevbyFeedRefreshTimer) {
+        klevbyPendingMissingPostIdRealtimeFallbackMeta.executedAt = Date.now();
+        klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
+      }
+
       klevbyFeedPendingRefreshMeta = null;
       refreshFeedNow(reason, {
         force: Boolean(options.force)
@@ -437,6 +452,11 @@
       detail?.payload?.postId ||
       detail?.payload?.new?.post_id ||
       detail?.payload?.old?.post_id ||
+      detail?.payload?.new?.postId ||
+      detail?.payload?.old?.postId ||
+      detail?.payload?.post_id ||
+      detail?.payload?.new?.feed_post_id ||
+      detail?.payload?.old?.feed_post_id ||
       detail?.payload?.new?.id ||
       detail?.payload?.old?.id ||
       ""
@@ -676,6 +696,103 @@
     return true;
   }
 
+  function markRecentTargetedFeedCounterSuccess(ttlMs = KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS) {
+    const safeTtlMs = Math.max(500, Number(ttlMs || KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS));
+    klevbyRecentTargetedFeedSuccessUntil = Date.now() + safeTtlMs;
+    return true;
+  }
+
+  function hasRecentTargetedFeedCounterSuccess() {
+    if (!klevbyRecentTargetedFeedSuccessUntil) {
+      return false;
+    }
+
+    if (Date.now() > klevbyRecentTargetedFeedSuccessUntil) {
+      klevbyRecentTargetedFeedSuccessUntil = 0;
+      return false;
+    }
+
+    return true;
+  }
+
+  function buildMissingPostIdRealtimeSnapshot(detail = {}) {
+    const payload = detail?.payload || null;
+    return {
+      action: String(detail?.action || detail?.type || ''),
+      postIdResolved: resolveRealtimePostId(detail),
+      hasDetailPayload: Boolean(detail && typeof detail === 'object' && detail.payload),
+      hasPayloadNew: Boolean(payload && payload.new),
+      hasPayloadOld: Boolean(payload && payload.old),
+      detailPostId: detail?.postId || '',
+      payloadPostId: payload?.postId || '',
+      payloadNewPostId: payload?.new?.post_id || '',
+      payloadOldPostId: payload?.old?.post_id || '',
+      payloadNewId: payload?.new?.id || '',
+      payloadOldId: payload?.old?.id || '',
+      eventType: payload?.eventType || '',
+      event_type: payload?.event_type || ''
+    };
+  }
+
+  function markPendingMissingPostIdRealtimeLikeFallback(meta = {}) {
+    if (!klevbyFeedRefreshTimer) {
+      klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
+      return false;
+    }
+
+    klevbyPendingMissingPostIdRealtimeFallbackMeta = {
+      reason: "realtime_feed",
+      action: String(meta.action || "feed_like_changed"),
+      queuedAt: Number(meta.queuedAt || Date.now()),
+      timerId: klevbyFeedRefreshTimer,
+      isMissingPostIdLikeFallback: true
+    };
+
+    return true;
+  }
+
+  function cancelPendingMissingPostIdRealtimeLikeFallbackAfterTargetedSuccess(reason = "") {
+    const pending = klevbyPendingMissingPostIdRealtimeFallbackMeta;
+
+    if (!pending || !pending.isMissingPostIdLikeFallback) {
+      return false;
+    }
+
+    const ageMs = Date.now() - Number(pending.queuedAt || 0);
+
+    if (ageMs > KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS + 400) {
+      klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
+      return false;
+    }
+
+    if (!klevbyFeedRefreshTimer || pending.timerId !== klevbyFeedRefreshTimer) {
+      logTargetedUpdateDecision(reason || "realtime_feed", {
+        event: "pending_realtime_feed_missing_post_id_cancel_missed",
+        action: pending.action || "feed_like_changed",
+        postId: "",
+        fallback: true,
+        note: "pending realtime_feed missing postId fallback already executed or replaced"
+      });
+      klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
+      return false;
+    }
+
+    clearTimeout(klevbyFeedRefreshTimer);
+    klevbyFeedRefreshTimer = null;
+    klevbyFeedPendingRefreshMeta = null;
+    klevbyPendingMissingPostIdRealtimeFallbackMeta = null;
+
+    logTargetedUpdateDecision(reason || "realtime_feed", {
+      event: "pending_realtime_feed_missing_post_id_cancelled_after_targeted_success",
+      action: pending.action || "feed_like_changed",
+      postId: "",
+      fallback: false,
+      note: "pending realtime_feed missing postId fallback cancelled after targeted success"
+    });
+
+    return true;
+  }
+
   function closeOpenFeedWindows() {
     const modals = getModals();
 
@@ -828,8 +945,10 @@
       }
 
       if (cardCountersUpdated) {
+        markRecentTargetedFeedCounterSuccess();
         const targetedPostId = resolveRealtimePostId(detail);
         cancelPendingFullRefreshAfterTargetedSuccess(targetedPostId, action);
+        cancelPendingMissingPostIdRealtimeLikeFallbackAfterTargetedSuccess(action);
         logTargetedUpdateDecision(action, {
           event: "targeted_update_success",
           action,
@@ -1054,7 +1173,9 @@
       }
 
       if (cardCountersUpdated) {
+        markRecentTargetedFeedCounterSuccess();
         cancelPendingFullRefreshAfterTargetedSuccess(postId, "realtime_" + (postId || "feed"));
+        cancelPendingMissingPostIdRealtimeLikeFallbackAfterTargetedSuccess("realtime_" + (postId || "feed"));
         logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
           event: "targeted_update_success",
           action,
@@ -1063,18 +1184,49 @@
           note: "full refresh suppressed"
         });
       } else {
-        logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
-          event: "targeted_update_fallback",
-          action,
-          postId,
-          fallback: true,
-          note: "targeted update failed, fallback full refresh"
-        });
-        markTargetedFallbackQueued(postId, "realtime_" + (postId || "feed"));
-        queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
-          force: true,
-          postId
-        });
+        const fallbackReason = "realtime_" + (postId || "feed");
+        const suppressRealtimeFeedFallback =
+          action === "feed_like_changed" &&
+          !postId &&
+          fallbackReason === "realtime_feed" &&
+          hasRecentTargetedFeedCounterSuccess();
+
+        if (suppressRealtimeFeedFallback) {
+          logTargetedUpdateDecision(fallbackReason, {
+            event: "realtime_feed_missing_post_id_suppressed_after_recent_targeted_success",
+            action,
+            postId,
+            fallback: false,
+            note: "missing postId realtime_feed fallback suppressed after recent targeted success"
+          });
+        } else {
+          const snapshot = !postId && fallbackReason === "realtime_feed"
+            ? buildMissingPostIdRealtimeSnapshot(payload || {})
+            : null;
+
+          logTargetedUpdateDecision(fallbackReason, {
+            event: !postId && fallbackReason === "realtime_feed"
+              ? "missing_post_id_realtime_feed_fallback"
+              : "targeted_update_fallback",
+            action,
+            postId,
+            fallback: true,
+            note: "targeted update failed, fallback full refresh",
+            snapshot
+          });
+          markTargetedFallbackQueued(postId, fallbackReason);
+          queueFeedRefresh(fallbackReason, 80, {
+            force: true,
+            postId
+          });
+
+          if (action === "feed_like_changed" && !postId && fallbackReason === "realtime_feed") {
+            markPendingMissingPostIdRealtimeLikeFallback({
+              action,
+              queuedAt: Date.now()
+            });
+          }
+        }
       }
 
       queueCommentsRefresh(180);
