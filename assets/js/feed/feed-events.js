@@ -22,6 +22,8 @@
   const klevbyTargetedLikeSuccessMap = new Map();
   const KLEVB_TARGETED_FALLBACK_CANCEL_TTL_MS = 5000;
   const klevbyTargetedFallbackByPostMap = new Map();
+  const KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS = 1800;
+  let klevbyRecentTargetedFeedSuccessUntil = 0;
 
 
   let klevbyFeedRefreshTimer = null;
@@ -105,7 +107,8 @@
         action: String(detail.action || ""),
         postId: detail.postId ? String(detail.postId) : "",
         fallback: Boolean(detail.fallback),
-        note: String(detail.note || "")
+        note: String(detail.note || ""),
+        snapshot: detail && typeof detail.snapshot === "object" ? detail.snapshot : null
       });
     } catch (_) {}
   }
@@ -437,6 +440,11 @@
       detail?.payload?.postId ||
       detail?.payload?.new?.post_id ||
       detail?.payload?.old?.post_id ||
+      detail?.payload?.new?.postId ||
+      detail?.payload?.old?.postId ||
+      detail?.payload?.post_id ||
+      detail?.payload?.new?.feed_post_id ||
+      detail?.payload?.old?.feed_post_id ||
       detail?.payload?.new?.id ||
       detail?.payload?.old?.id ||
       ""
@@ -676,6 +684,44 @@
     return true;
   }
 
+  function markRecentTargetedFeedCounterSuccess(ttlMs = KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS) {
+    const safeTtlMs = Math.max(500, Number(ttlMs || KLEVB_RECENT_TARGETED_FEED_SUCCESS_TTL_MS));
+    klevbyRecentTargetedFeedSuccessUntil = Date.now() + safeTtlMs;
+    return true;
+  }
+
+  function hasRecentTargetedFeedCounterSuccess() {
+    if (!klevbyRecentTargetedFeedSuccessUntil) {
+      return false;
+    }
+
+    if (Date.now() > klevbyRecentTargetedFeedSuccessUntil) {
+      klevbyRecentTargetedFeedSuccessUntil = 0;
+      return false;
+    }
+
+    return true;
+  }
+
+  function buildMissingPostIdRealtimeSnapshot(detail = {}) {
+    const payload = detail?.payload || null;
+    return {
+      action: String(detail?.action || detail?.type || ''),
+      postIdResolved: resolveRealtimePostId(detail),
+      hasDetailPayload: Boolean(detail && typeof detail === 'object' && detail.payload),
+      hasPayloadNew: Boolean(payload && payload.new),
+      hasPayloadOld: Boolean(payload && payload.old),
+      detailPostId: detail?.postId || '',
+      payloadPostId: payload?.postId || '',
+      payloadNewPostId: payload?.new?.post_id || '',
+      payloadOldPostId: payload?.old?.post_id || '',
+      payloadNewId: payload?.new?.id || '',
+      payloadOldId: payload?.old?.id || '',
+      eventType: payload?.eventType || '',
+      event_type: payload?.event_type || ''
+    };
+  }
+
   function closeOpenFeedWindows() {
     const modals = getModals();
 
@@ -828,6 +874,7 @@
       }
 
       if (cardCountersUpdated) {
+        markRecentTargetedFeedCounterSuccess();
         const targetedPostId = resolveRealtimePostId(detail);
         cancelPendingFullRefreshAfterTargetedSuccess(targetedPostId, action);
         logTargetedUpdateDecision(action, {
@@ -1054,6 +1101,7 @@
       }
 
       if (cardCountersUpdated) {
+        markRecentTargetedFeedCounterSuccess();
         cancelPendingFullRefreshAfterTargetedSuccess(postId, "realtime_" + (postId || "feed"));
         logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
           event: "targeted_update_success",
@@ -1063,18 +1111,42 @@
           note: "full refresh suppressed"
         });
       } else {
-        logTargetedUpdateDecision("realtime_" + (postId || "feed"), {
-          event: "targeted_update_fallback",
-          action,
-          postId,
-          fallback: true,
-          note: "targeted update failed, fallback full refresh"
-        });
-        markTargetedFallbackQueued(postId, "realtime_" + (postId || "feed"));
-        queueFeedRefresh("realtime_" + (postId || "feed"), 80, {
-          force: true,
-          postId
-        });
+        const fallbackReason = "realtime_" + (postId || "feed");
+        const suppressRealtimeFeedFallback =
+          action === "feed_like_changed" &&
+          !postId &&
+          fallbackReason === "realtime_feed" &&
+          hasRecentTargetedFeedCounterSuccess();
+
+        if (suppressRealtimeFeedFallback) {
+          logTargetedUpdateDecision(fallbackReason, {
+            event: "realtime_feed_missing_post_id_suppressed_after_recent_targeted_success",
+            action,
+            postId,
+            fallback: false,
+            note: "missing postId realtime_feed fallback suppressed after recent targeted success"
+          });
+        } else {
+          const snapshot = !postId && fallbackReason === "realtime_feed"
+            ? buildMissingPostIdRealtimeSnapshot(payload || {})
+            : null;
+
+          logTargetedUpdateDecision(fallbackReason, {
+            event: !postId && fallbackReason === "realtime_feed"
+              ? "missing_post_id_realtime_feed_fallback"
+              : "targeted_update_fallback",
+            action,
+            postId,
+            fallback: true,
+            note: "targeted update failed, fallback full refresh",
+            snapshot
+          });
+          markTargetedFallbackQueued(postId, fallbackReason);
+          queueFeedRefresh(fallbackReason, 80, {
+            force: true,
+            postId
+          });
+        }
       }
 
       queueCommentsRefresh(180);
