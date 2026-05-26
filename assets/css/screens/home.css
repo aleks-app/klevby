@@ -12,7 +12,7 @@
   background:
     linear-gradient(90deg, rgba(2, 6, 5, 0.90) 0%, rgba(2,6,5,0.62) 44%, rgba(2,6,5,0.36) 100%),
     radial-gradient(circle at 0% 0%, rgba(244,178,74,0.22), transparent 34%),
-    url("../../img/home-hero-sunset.jpg") center/cover no-repeat;
+    url("../../img/home-hero-golden-sunset.png") center/cover no-repeat;
   border: 1px solid rgba(244,178,74,0.12);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px);
@@ -136,7 +136,7 @@
   min-height: 400px;
   border-radius: var(--radius-card);
   overflow: hidden;
-  background-image: url("../../img/home-hero-sunset.jpg");
+  background-image: url("../../img/home-hero-golden-sunset.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
