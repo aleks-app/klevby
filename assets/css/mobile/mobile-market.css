@@ -232,3 +232,30 @@
   font-weight: 520 !important;
   color: rgba(184, 177, 173, 0.86) !important;
 }
+
+/* Market card final polish */
+#marketSection .market-card {
+  padding-bottom: 16px !important;
+}
+
+#marketSection .market-card h3,
+#marketSection .market-card-title {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  line-height: 1.16 !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+}
+
+#marketSection .market-price {
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  margin-top: 8px !important;
+}
+
+#marketSection .market-location,
+#marketSection .market-card-meta {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: rgba(145, 139, 136, 0.92) !important;
+}
