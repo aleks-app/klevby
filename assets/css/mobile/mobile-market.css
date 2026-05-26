@@ -189,3 +189,46 @@
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
 }
+
+
+/* Market final typography tune */
+#marketSection .market-hero h2 {
+  font-size: 30px !important;
+  font-weight: 760 !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.038em !important;
+}
+
+#marketSection .market-hero p {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  line-height: 1.34 !important;
+  letter-spacing: -0.012em !important;
+  max-width: 58% !important;
+  -webkit-line-clamp: 3 !important;
+}
+
+#marketSection .market-card {
+  padding-bottom: 14px !important;
+}
+
+#marketSection .market-card h3,
+#marketSection .market-card-title {
+  font-size: 18px !important;
+  font-weight: 720 !important;
+  line-height: 1.14 !important;
+  letter-spacing: -0.025em !important;
+}
+
+#marketSection .market-price {
+  font-size: 24px !important;
+  font-weight: 820 !important;
+  line-height: 1.05 !important;
+}
+
+#marketSection .market-location,
+#marketSection .market-card-meta {
+  font-size: 14px !important;
+  font-weight: 520 !important;
+  color: rgba(184, 177, 173, 0.86) !important;
+}
