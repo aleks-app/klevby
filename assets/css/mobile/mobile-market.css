@@ -48,3 +48,97 @@
     -webkit-line-clamp: 2;
   }
 }
+
+/* Market hero premium image */
+#marketSection .market-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(10, 10, 10, 0.97) 0%, rgba(10, 10, 10, 0.84) 48%, rgba(10, 10, 10, 0.36) 100%),
+    url("../../img/market-hero-tackle-golden.png") center right / cover no-repeat !important;
+  border: 1px solid rgba(244, 122, 43, 0.32) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.46), inset 0 0 0 1px rgba(255, 208, 138, 0.06) !important;
+}
+
+#marketSection .market-hero h2,
+#marketSection .market-hero p {
+  position: relative;
+  z-index: 1;
+  max-width: 68%;
+}
+
+/* Market premium polish: hero height and orange tabs */
+#marketSection .market-hero {
+  min-height: 128px !important;
+  padding: 22px 18px !important;
+  background-position: center right !important;
+}
+
+#marketSection .market-hero h2 {
+  max-width: 66% !important;
+  font-size: 28px !important;
+  line-height: 1.04 !important;
+  margin-bottom: 8px !important;
+}
+
+#marketSection .market-hero p {
+  max-width: 62% !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  color: rgba(244, 241, 238, 0.72) !important;
+  -webkit-line-clamp: 3 !important;
+}
+
+#marketSection .market-view-btn {
+  background: rgba(18, 18, 18, 0.72) !important;
+  border: 1px solid rgba(244, 122, 43, 0.24) !important;
+  color: rgba(244, 241, 238, 0.72) !important;
+  box-shadow: none !important;
+}
+
+#marketSection .market-view-btn.is-active {
+  background: linear-gradient(180deg, rgba(244, 122, 43, 0.24), rgba(244, 122, 43, 0.10)) !important;
+  border-color: rgba(244, 122, 43, 0.78) !important;
+  color: #FFD08A !important;
+  box-shadow: 0 0 0 1px rgba(255, 208, 138, 0.08), 0 10px 24px rgba(244, 122, 43, 0.12) !important;
+}
+
+#marketSection #marketViewMineBtn {
+  color: rgba(255, 208, 138, 0.86) !important;
+}
+
+/* Market premium polish: shell, cards and prices */
+#marketSection .market-shell {
+  background:
+    radial-gradient(circle at 78% 12%, rgba(244, 122, 43, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(18, 18, 18, 0.92), rgba(10, 10, 10, 0.94)) !important;
+  border: 1px solid rgba(244, 122, 43, 0.22) !important;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.48) !important;
+}
+
+#marketSection .market-card {
+  background: linear-gradient(180deg, rgba(35, 35, 35, 0.96), rgba(24, 24, 24, 0.98)) !important;
+  border: 1px solid rgba(244, 122, 43, 0.22) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36) !important;
+}
+
+#marketSection .market-card:hover {
+  border-color: rgba(244, 122, 43, 0.42) !important;
+}
+
+#marketSection .market-price,
+#marketSection .market-details-price {
+  color: #F47A2B !important;
+  text-shadow: 0 0 18px rgba(244, 122, 43, 0.16) !important;
+}
+
+#marketSection .market-card h3,
+#marketSection .market-card-title {
+  color: #F4F1EE !important;
+}
+
+#marketSection .market-card p,
+#marketSection .market-card-meta,
+#marketSection .market-location {
+  color: rgba(244, 241, 238, 0.72) !important;
+}
