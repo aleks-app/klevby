@@ -445,7 +445,65 @@
       return marketUtils.normalizeText(value);
     }
 
-    return String(value || "").toLowerCase().trim();
+    return String(value || "")
+      .toLowerCase()
+      .replace(/ё/g, "е")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function getSearchTokens(value) {
+    return normalizeText(value)
+      .split(/[^a-zа-я0-9]+/i)
+      .map(function (token) { return token.trim(); })
+      .filter(Boolean);
+  }
+
+  function normalizeRuTokenStem(token) {
+    const safe = String(token || "").trim();
+    if (!safe) return "";
+    if (safe.length <= 3) return safe;
+
+    const suffixes = ["иями", "ями", "ами", "ией", "ией", "ого", "ему", "ому", "ыми", "ими", "ать", "ять", "ешь", "ите", "ов", "ев", "ей", "ой", "ий", "ый", "ая", "яя", "ое", "ее", "ам", "ям", "ах", "ях", "ом", "ем", "ую", "юю", "ы", "и", "а", "я", "е", "о", "у", "ю"];
+
+    for (const suffix of suffixes) {
+      if (safe.length - suffix.length < 3) continue;
+      if (safe.endsWith(suffix)) {
+        return safe.slice(0, -suffix.length);
+      }
+    }
+
+    return safe;
+  }
+
+  function isSmartSearchMatch(searchValue, haystackValue) {
+    const search = normalizeText(searchValue);
+    const haystack = normalizeText(haystackValue);
+    if (!search) return true;
+    if (!haystack) return false;
+
+    if (haystack.includes(search)) return true;
+
+    const searchTokens = getSearchTokens(search);
+    if (!searchTokens.length) return haystack.includes(search);
+
+    const haystackTokens = getSearchTokens(haystack);
+    if (!haystackTokens.length) return false;
+
+    const haystackStems = haystackTokens.map(normalizeRuTokenStem);
+
+    return searchTokens.every(function (searchToken) {
+      if (haystack.includes(searchToken)) return true;
+
+      const searchStem = normalizeRuTokenStem(searchToken);
+      if (!searchStem || searchStem.length < 3) return false;
+
+      return haystackTokens.some(function (token, index) {
+        if (token.startsWith(searchStem)) return true;
+        const stem = haystackStems[index] || "";
+        return stem.startsWith(searchStem) || searchStem.startsWith(stem);
+      });
+    });
   }
 
   function getMarketImage(item) {
@@ -1270,11 +1328,11 @@
     if (search) {
       filtered = filtered.filter(function (item) {
         return (
-          normalizeText(item.title).includes(search) ||
-          normalizeText(item.description).includes(search) ||
-          normalizeText(item.category).includes(search) ||
-          normalizeText(item.city).includes(search) ||
-          normalizeText(item.price).includes(search)
+          isSmartSearchMatch(search, item.title) ||
+          isSmartSearchMatch(search, item.description) ||
+          isSmartSearchMatch(search, item.category) ||
+          isSmartSearchMatch(search, item.city) ||
+          isSmartSearchMatch(search, item.price)
         );
       });
     }

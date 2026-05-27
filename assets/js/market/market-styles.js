@@ -234,6 +234,28 @@
         color: rgba(145, 139, 136, 0.95);
       }
 
+      #marketSearchInput.market-search-input,
+      #marketSearchInput.market-search-input:focus,
+      #marketSearchInput.market-search-input:focus-visible,
+      #marketSearchInput.market-search-input:active {
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        outline: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+      }
+
+      #marketSearchInput.market-search-input::-webkit-search-decoration,
+      #marketSearchInput.market-search-input::-webkit-search-cancel-button,
+      #marketSearchInput.market-search-input::-webkit-search-results-button,
+      #marketSearchInput.market-search-input::-webkit-search-results-decoration {
+        -webkit-appearance: none;
+      }
+
+
       .market-search-filters-btn {
         min-width: 26px;
         height: 26px;
