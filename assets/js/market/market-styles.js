@@ -186,45 +186,62 @@
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
-        gap: 8px;
-        min-height: 46px;
-        margin: 0 0 10px;
-        padding: 6px 8px 6px 12px;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 208, 138, 0.18);
-        background: linear-gradient(180deg, rgba(26,28,30,0.94), rgba(18,20,22,0.96));
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        gap: 9px;
+        min-height: 54px;
+        margin: 0 0 8px;
+        padding: 0 10px 0 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(244, 122, 43, 0.24);
+        background: linear-gradient(180deg, rgba(29, 31, 33, 0.95), rgba(21, 23, 25, 0.97));
+        box-shadow: 0 6px 14px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.03);
       }
 
       .market-search-icon {
-        font-size: 16px;
-        line-height: 1;
-        opacity: 0.9;
+        width: 18px;
+        height: 18px;
+        color: rgba(244, 241, 238, 0.55);
+        opacity: 1;
+      }
+
+      .market-search-icon::before {
+        content: "";
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: currentColor;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='6.5' fill='none' stroke='black' stroke-width='2.2'/%3E%3Cpath d='M16 16L21 21' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='6.5' fill='none' stroke='black' stroke-width='2.2'/%3E%3Cpath d='M16 16L21 21' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
       }
 
       .market-search-input {
         width: 100%;
         min-width: 0;
-        border: 0;
-        outline: none;
+        border: none;
         background: transparent;
+        box-shadow: none;
+        outline: none;
+        padding: 0;
+        border-radius: 0;
+        appearance: none;
+        -webkit-appearance: none;
         color: #f4f1ee;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
+        line-height: 1.2;
       }
 
       .market-search-input::placeholder {
-        color: rgba(244, 241, 238, 0.52);
+        color: rgba(145, 139, 136, 0.95);
       }
 
       .market-search-filters-btn {
-        min-width: 38px;
-        height: 34px;
-        border-radius: 10px;
-        border: 1px solid rgba(244, 122, 43, 0.48);
-        background: linear-gradient(180deg, rgba(244,122,43,0.24), rgba(244,122,43,0.1));
+        min-width: 26px;
+        height: 26px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(244, 122, 43, 0.08);
         color: #ffd08a;
-        font-size: 23px;
+        font-size: 21px;
         line-height: 1;
         font-weight: 700;
         display: inline-flex;
@@ -862,19 +879,25 @@
 
       @media (max-width: 430px) {
         .market-search-row {
-          min-height: 44px;
-          padding: 6px 7px 6px 10px;
-          gap: 7px;
+          min-height: 52px;
+          padding: 0 9px 0 11px;
+          gap: 8px;
+          margin-bottom: 7px;
+        }
+
+        .market-search-icon {
+          width: 17px;
+          height: 17px;
         }
 
         .market-search-input {
-          font-size: 14px;
+          font-size: 13px;
         }
 
         .market-search-filters-btn {
-          min-width: 34px;
-          height: 32px;
-          font-size: 21px;
+          min-width: 24px;
+          height: 24px;
+          font-size: 19px;
         }
       }
 

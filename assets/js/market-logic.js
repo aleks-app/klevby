@@ -674,7 +674,7 @@
           <div id="marketOwnerLoginMessage" class="info-line hidden">Чтобы смотреть свои объявления, войдите в аккаунт.</div>
 
           <div class="market-search-row" role="search" aria-label="Поиск объявлений">
-            <span class="market-search-icon" aria-hidden="true">🔍</span>
+            <span class="market-search-icon" aria-hidden="true"></span>
             <input id="marketSearchInput" class="market-search-input" placeholder="Поиск объявлений" oninput="renderMarketItems()" />
             <button id="marketSearchFiltersBtn" class="market-search-filters-btn" type="button" onclick="toggleMarketFilters()" aria-label="Открыть фильтры" aria-expanded="false">⋯</button>
           </div>
