@@ -182,6 +182,61 @@
         color: #d6fff2;
       }
 
+      .market-search-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 46px;
+        margin: 0 0 10px;
+        padding: 6px 8px 6px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 208, 138, 0.18);
+        background: linear-gradient(180deg, rgba(26,28,30,0.94), rgba(18,20,22,0.96));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+
+      .market-search-icon {
+        font-size: 16px;
+        line-height: 1;
+        opacity: 0.9;
+      }
+
+      .market-search-input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: #f4f1ee;
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .market-search-input::placeholder {
+        color: rgba(244, 241, 238, 0.52);
+      }
+
+      .market-search-filters-btn {
+        min-width: 38px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(244, 122, 43, 0.48);
+        background: linear-gradient(180deg, rgba(244,122,43,0.24), rgba(244,122,43,0.1));
+        color: #ffd08a;
+        font-size: 23px;
+        line-height: 1;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+
+      .market-search-filters-btn:active {
+        transform: scale(0.98);
+      }
+
       .market-filters {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr 0.8fr;
@@ -804,6 +859,25 @@
           font-size: 13px;
         }
       }
+
+      @media (max-width: 430px) {
+        .market-search-row {
+          min-height: 44px;
+          padding: 6px 7px 6px 10px;
+          gap: 7px;
+        }
+
+        .market-search-input {
+          font-size: 14px;
+        }
+
+        .market-search-filters-btn {
+          min-width: 34px;
+          height: 32px;
+          font-size: 21px;
+        }
+      }
+
     `;
 
     document.head.appendChild(style);

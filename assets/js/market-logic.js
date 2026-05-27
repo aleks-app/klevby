@@ -481,6 +481,7 @@
     const filtersBox = document.getElementById("marketFiltersBox");
     const formBtn = document.getElementById("marketToggleFormBtn");
     const filtersBtn = document.getElementById("marketToggleFiltersBtn");
+    const searchFiltersBtn = document.getElementById("marketSearchFiltersBtn");
 
     if (formBox) {
       formBox.classList.toggle("hidden", !marketUiState.marketFormOpen);
@@ -498,6 +499,10 @@
     if (filtersBtn) {
       filtersBtn.textContent = marketUiState.marketFiltersOpen ? "Скрыть фильтры" : "Фильтр";
       filtersBtn.setAttribute("aria-expanded", String(marketUiState.marketFiltersOpen));
+    }
+
+    if (searchFiltersBtn) {
+      searchFiltersBtn.setAttribute("aria-expanded", String(marketUiState.marketFiltersOpen));
     }
   }
 
@@ -668,9 +673,13 @@
           </div>
           <div id="marketOwnerLoginMessage" class="info-line hidden">Чтобы смотреть свои объявления, войдите в аккаунт.</div>
 
-          <div id="marketFiltersBox" class="market-filters hidden">
-            <input id="marketSearchInput" placeholder="Поиск: катушка, лодка, Shimano..." oninput="renderMarketItems()" />
+          <div class="market-search-row" role="search" aria-label="Поиск объявлений">
+            <span class="market-search-icon" aria-hidden="true">🔍</span>
+            <input id="marketSearchInput" class="market-search-input" placeholder="Поиск объявлений" oninput="renderMarketItems()" />
+            <button id="marketSearchFiltersBtn" class="market-search-filters-btn" type="button" onclick="toggleMarketFilters()" aria-label="Открыть фильтры" aria-expanded="false">⋯</button>
+          </div>
 
+          <div id="marketFiltersBox" class="market-filters hidden">
             <select id="marketCategoryFilter" onchange="renderMarketItems()">
               <option value="">Все категории</option>
               <option value="Спиннинги">Спиннинги</option>
