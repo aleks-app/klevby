@@ -188,7 +188,7 @@
         align-items: center;
         gap: 9px;
         min-height: 54px;
-        margin: 0 0 8px;
+        margin: 0 6px 8px;
         padding: 0 10px 0 12px;
         border-radius: 999px;
         border: 1px solid rgba(244, 122, 43, 0.24);
@@ -902,9 +902,10 @@
       @media (max-width: 430px) {
         .market-search-row {
           min-height: 52px;
+          width: calc(100% - 14px);
+          margin: 0 auto 7px;
           padding: 0 9px 0 11px;
           gap: 8px;
-          margin-bottom: 7px;
         }
 
         .market-search-icon {
