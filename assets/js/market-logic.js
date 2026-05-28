@@ -1715,8 +1715,16 @@
     const overlay = document.getElementById("marketDetailsOverlay");
     if (!overlay || !marketOpenDetailsItemId) return;
 
-    const currentPanel = overlay.querySelector(".market-details-panel");
-    const currentScrollTop = currentPanel ? currentPanel.scrollTop : 0;
+    const item = getMarketItemById(marketOpenDetailsItemId);
+    if (!item) return;
+
+    const panel = overlay.querySelector(".market-details-panel");
+    const moreActions = panel ? panel.querySelector(".market-owner-actions-more") : null;
+    const toggle = panel ? panel.querySelector(".market-owner-more-toggle") : null;
+
+    if (!panel || !moreActions || !toggle) return;
+
+    const currentScrollTop = panel.scrollTop;
     const wasExpanded = marketOwnerActionsExpanded;
 
     if (!wasExpanded) {
@@ -1726,15 +1734,10 @@
     marketOwnerActionsExpanded = !marketOwnerActionsExpanded;
     const expanded = marketOwnerActionsExpanded;
     const savedReturnScrollTop = marketOwnerActionsReturnScrollTop;
-    const item = getMarketItemById(marketOpenDetailsItemId);
-    if (!item) return;
 
-    overlay.innerHTML = marketDetailsHtml(item);
-
-    const nextPanel = overlay.querySelector(".market-details-panel");
-    if (nextPanel) {
-      nextPanel.scrollTop = currentScrollTop;
-    }
+    moreActions.classList.toggle("hidden", !expanded);
+    toggle.textContent = expanded ? "Скрыть" : "Ещё";
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
 
     if (expanded) {
       scheduleMarketOwnerActionsScroll(true);
