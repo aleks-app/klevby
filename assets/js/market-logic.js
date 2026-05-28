@@ -630,6 +630,8 @@
   }
 
   function toggleMarketFilters() {
+    hideMarketSearchSuggestions();
+
     const marketUi = getMarketUiHelpers();
 
     if (typeof marketUi.toggleMarketFilters === "function") {
@@ -720,9 +722,11 @@
 
           <div class="market-search-row" role="search" aria-label="Поиск объявлений">
             <span class="market-search-icon" aria-hidden="true"></span>
-            <input id="marketSearchInput" class="market-search-input" placeholder="Поиск объявлений" oninput="renderMarketItems()" />
+            <input id="marketSearchInput" class="market-search-input" placeholder="Поиск объявлений" autocomplete="off" oninput="handleMarketSearchInput()" onblur="setTimeout(hideMarketSearchSuggestions, 120)" />
             <button id="marketSearchFiltersBtn" class="market-search-filters-btn" type="button" onclick="toggleMarketFilters()" aria-label="Открыть фильтры" aria-expanded="false">⋯</button>
           </div>
+
+          <div id="marketSearchSuggestions" class="market-search-suggestions hidden"></div>
 
           <div id="marketFiltersBox" class="market-filters hidden">
             <select id="marketCategoryFilter" onchange="renderMarketItems()">
@@ -1300,6 +1304,135 @@
     }
   }
 
+  function getMarketSearchSourceItems() {
+    const hasUser = Boolean(marketUser && marketUser.id);
+    return marketViewMode === "mine" && hasUser ? marketOwnerItems : marketItems;
+  }
+
+  function handleMarketSearchInput() {
+    renderMarketItems();
+    renderMarketSearchSuggestions();
+  }
+
+  function buildMarketSearchSuggestions(query, sourceItems) {
+    const search = normalizeText(query);
+    if (!search) return [];
+
+    const items = Array.isArray(sourceItems) ? sourceItems : [];
+    const suggestions = [];
+    const seen = new Set();
+    const stopWords = new Set([
+      "продам",
+      "новый",
+      "новая",
+      "хорошее",
+      "состояние",
+      "есть",
+      "для",
+      "или",
+      "это"
+    ]);
+
+    function addSuggestion(label, type) {
+      const value = String(label || "").trim();
+      if (!value) return;
+      if (!isSmartSearchMatch(search, value)) return;
+
+      const normalizedLabel = normalizeText(value);
+      if (!normalizedLabel || seen.has(normalizedLabel)) return;
+
+      seen.add(normalizedLabel);
+      suggestions.push({ label: value, type });
+    }
+
+    items.forEach(function (item) {
+      if (!item || suggestions.length >= 8) return;
+
+      addSuggestion(item.title, "title");
+      addSuggestion(item.category, "category");
+      addSuggestion(item.city, "city");
+
+      const wordSource = [item.title, item.description].join(" ");
+      getSearchTokens(wordSource).forEach(function (token) {
+        if (suggestions.length >= 8) return;
+        if (token.length < 3) return;
+
+        const normalizedToken = normalizeText(token);
+        const tokenStem = normalizeRuTokenStem(normalizedToken);
+        if (stopWords.has(normalizedToken) || stopWords.has(tokenStem)) return;
+
+        addSuggestion(token, "word");
+      });
+    });
+
+    return suggestions.slice(0, 8);
+  }
+
+  function renderMarketSearchSuggestions() {
+    const input = document.getElementById("marketSearchInput");
+    const box = document.getElementById("marketSearchSuggestions");
+    if (!input || !box) return;
+
+    const query = input.value || "";
+    if (!normalizeText(query)) {
+      hideMarketSearchSuggestions();
+      return;
+    }
+
+    const suggestions = buildMarketSearchSuggestions(query, getMarketSearchSourceItems());
+    if (!suggestions.length) {
+      hideMarketSearchSuggestions();
+      return;
+    }
+
+    box.innerHTML = "";
+    suggestions.forEach(function (suggestion) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "market-search-suggestion";
+      button.addEventListener("click", function () {
+        applyMarketSearchSuggestion(suggestion.label);
+      });
+
+      const label = document.createElement("span");
+      label.className = "market-search-suggestion-label";
+      label.textContent = suggestion.label;
+
+      const type = document.createElement("span");
+      type.className = "market-search-suggestion-type";
+      type.textContent = getMarketSearchSuggestionTypeLabel(suggestion.type);
+
+      button.appendChild(label);
+      button.appendChild(type);
+      box.appendChild(button);
+    });
+
+    box.classList.remove("hidden");
+  }
+
+  function getMarketSearchSuggestionTypeLabel(type) {
+    if (type === "title") return "товар";
+    if (type === "category") return "категория";
+    if (type === "city") return "город";
+    return "слово";
+  }
+
+  function applyMarketSearchSuggestion(value) {
+    const input = document.getElementById("marketSearchInput");
+    if (input) input.value = String(value || "").trim();
+
+    hideMarketSearchSuggestions();
+    renderMarketItems();
+  }
+
+  function hideMarketSearchSuggestions() {
+    const box = document.getElementById("marketSearchSuggestions");
+    if (!box) return;
+
+    box.classList.add("hidden");
+    box.innerHTML = "";
+  }
+
   function renderMarketItems() {
     const grid = document.getElementById("marketItemsGrid");
     if (!grid) return;
@@ -1309,7 +1442,7 @@
     const city = normalizeText(document.getElementById("marketCityFilter")?.value);
 
     const hasUser = Boolean(marketUser && marketUser.id);
-    const sourceItems = marketViewMode === "mine" && hasUser ? marketOwnerItems : marketItems;
+    const sourceItems = getMarketSearchSourceItems();
     let filtered = [...sourceItems];
 
     if (search) {
@@ -2348,6 +2481,9 @@
       window.applyMarketOwnerAction = applyMarketOwnerAction;
       window.toggleMarketForm = toggleMarketForm;
       window.toggleMarketFilters = toggleMarketFilters;
+      window.handleMarketSearchInput = handleMarketSearchInput;
+      window.applyMarketSearchSuggestion = applyMarketSearchSuggestion;
+      window.hideMarketSearchSuggestions = hideMarketSearchSuggestions;
       window.openMarketItemDetails = openMarketItemDetails;
       window.closeMarketItemDetails = closeMarketItemDetails;
       window.toggleMarketOwnerActions = toggleMarketOwnerActions;
