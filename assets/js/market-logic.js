@@ -35,6 +35,7 @@
   let marketSelectedPhotoFile = null;
   let marketSaveInProgress = false;
   let marketOwnerActionsExpanded = false;
+  let marketOwnerActionsReturnScrollTop = null;
 
   const MARKET_AUTH_REFRESH_THROTTLE_MS = 3000;
   const MARKET_LOAD_RETRY_DELAY_MS = 900;
@@ -1679,13 +1680,32 @@
 
         const target = expanded
           ? panel.querySelector(".market-owner-actions-more:not(.hidden)")
-          : (panel.querySelector(".market-owner-actions-top") || panel.querySelector(".market-owner-more-toggle"));
+          : (panel.querySelector(".market-owner-more-toggle") || panel.querySelector(".market-owner-actions-top"));
 
         if (!target) return;
 
         scrollMarketDetailsToElement(panel, target, {
-          align: expanded ? "nearest" : "top",
+          align: "nearest",
           offset: expanded ? 18 : 14
+        });
+      });
+    });
+  }
+
+  function scheduleMarketOwnerActionsReturnScroll(savedScrollTop) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        const overlay = document.getElementById("marketDetailsOverlay");
+        const panel = overlay ? overlay.querySelector(".market-details-panel") : null;
+
+        if (!panel || typeof panel.scrollTo !== "function") return;
+
+        const maxTop = Math.max(0, panel.scrollHeight - panel.clientHeight);
+        const boundedTop = Math.min(Math.max(0, savedScrollTop), maxTop);
+
+        panel.scrollTo({
+          top: boundedTop,
+          behavior: "smooth"
         });
       });
     });
@@ -1697,9 +1717,15 @@
 
     const currentPanel = overlay.querySelector(".market-details-panel");
     const currentScrollTop = currentPanel ? currentPanel.scrollTop : 0;
+    const wasExpanded = marketOwnerActionsExpanded;
+
+    if (!wasExpanded) {
+      marketOwnerActionsReturnScrollTop = currentScrollTop;
+    }
 
     marketOwnerActionsExpanded = !marketOwnerActionsExpanded;
     const expanded = marketOwnerActionsExpanded;
+    const savedReturnScrollTop = marketOwnerActionsReturnScrollTop;
     const item = getMarketItemById(marketOpenDetailsItemId);
     if (!item) return;
 
@@ -1710,7 +1736,18 @@
       nextPanel.scrollTop = currentScrollTop;
     }
 
-    scheduleMarketOwnerActionsScroll(expanded);
+    if (expanded) {
+      scheduleMarketOwnerActionsScroll(true);
+      return;
+    }
+
+    if (Number.isFinite(savedReturnScrollTop)) {
+      scheduleMarketOwnerActionsReturnScroll(savedReturnScrollTop);
+      marketOwnerActionsReturnScrollTop = null;
+      return;
+    }
+
+    scheduleMarketOwnerActionsScroll(false);
   }
 
   function openMarketItemDetails(id) {
@@ -1721,6 +1758,7 @@
     const overlay = ensureMarketDetailsOverlay();
 
     marketOwnerActionsExpanded = false;
+    marketOwnerActionsReturnScrollTop = null;
     overlay.innerHTML = marketDetailsHtml(item);
     overlay.classList.remove("hidden");
     marketOpenDetailsItemId = String(id);
@@ -1737,6 +1775,8 @@
     }
 
     marketOpenDetailsItemId = null;
+    marketOwnerActionsExpanded = false;
+    marketOwnerActionsReturnScrollTop = null;
     document.body.classList.remove("market-details-open");
     document.removeEventListener("keydown", handleMarketDetailsEscape);
   }
