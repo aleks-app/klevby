@@ -642,18 +642,6 @@
 
     root.innerHTML = `
       <div class="market-layout">
-        <div class="market-toolbar">
-          <div class="market-toolbar-left">
-            <button id="marketToggleFormBtn" class="small-btn green market-toolbar-btn" type="button" onclick="toggleMarketForm()" aria-expanded="false">
-              + Добавить товар
-            </button>
-
-            <button id="marketToggleFiltersBtn" class="small-btn gray market-toolbar-btn" type="button" onclick="toggleMarketFilters()" aria-expanded="false">
-              Фильтр
-            </button>
-          </div>
-        </div>
-
         <div id="marketFormBox" class="market-form-box hidden">
           <h2 id="marketFormTitle">Добавить товар</h2>
 
@@ -720,15 +708,6 @@
         </div>
 
         <div class="market-list-panel">
-          <div class="market-view-switch" role="tablist" aria-label="Режим барахолки">
-            <button id="marketViewAllBtn" class="small-btn market-view-btn is-active" type="button" onclick="switchMarketView('all')">Все объявления</button>
-            <button id="marketViewMineBtn" class="small-btn market-view-btn" type="button" onclick="switchMarketView('mine')"><span class="market-view-mine-long">Мои объявления</span><span class="market-view-mine-short">Мои</span></button>
-          </div>
-          <div id="marketOwnerTabs" class="market-owner-tabs hidden" role="tablist" aria-label="Мои объявления">
-            <button id="marketOwnerTabActiveBtn" class="small-btn market-owner-tab-btn is-active" type="button" onclick="switchMarketOwnerTab('active')">Активные</button>
-            <button id="marketOwnerTabArchiveBtn" class="small-btn market-owner-tab-btn" type="button" onclick="switchMarketOwnerTab('archive')">Архив</button>
-            <button id="marketOwnerTabSoldBtn" class="small-btn market-owner-tab-btn" type="button" onclick="switchMarketOwnerTab('sold')">Продано</button>
-          </div>
           <div id="marketOwnerLoginMessage" class="info-line hidden">Чтобы смотреть свои объявления, войдите в аккаунт.</div>
 
           <div class="market-search-row" role="search" aria-label="Поиск объявлений">
