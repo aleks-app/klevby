@@ -408,9 +408,17 @@
       }
 
       .market-details-img {
-        min-height: 330px;
+        height: clamp(280px, 42vh, 430px);
         border-radius: 28px 28px 0 0;
         overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 18%, rgba(244,122,43,0.12), transparent 42%),
+          linear-gradient(180deg, #2B2B2B, #151515);
+      }
+
+      .market-details-photo {
+        object-fit: contain;
+        background: transparent;
       }
 
       .market-details-photo-frame::after {
@@ -418,7 +426,9 @@
         position: absolute;
         inset: 0;
         pointer-events: none;
-        background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.38));
+        background:
+          linear-gradient(180deg, rgba(17,17,17,0.04), rgba(17,17,17,0.18)),
+          linear-gradient(0deg, rgba(244,122,43,0.08), transparent 34%);
       }
 
       @keyframes marketPhotoPulse {
@@ -555,7 +565,7 @@
         height: 100%;
         border: 0;
         padding: 0;
-        background: rgba(0,0,0,0.68);
+        background: rgba(0,0,0,0.72);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         cursor: pointer;
@@ -569,29 +579,39 @@
         overflow: auto;
         border-radius: 28px;
         background:
-          radial-gradient(circle at 14% 0%, rgba(244,178,74,0.16), transparent 34%),
-          linear-gradient(180deg, rgba(26,35,30,0.98), rgba(8,14,12,0.98));
-        border: 1px solid rgba(255,255,255,0.11);
-        box-shadow: 0 28px 80px rgba(0,0,0,0.48);
+          radial-gradient(circle at 18% 0%, rgba(244,122,43,0.14), transparent 34%),
+          linear-gradient(180deg, #242424 0%, #151515 48%, #111111 100%);
+        border: 1px solid rgba(244,122,43,0.16);
+        box-shadow: 0 28px 80px rgba(0,0,0,0.54), inset 0 1px 0 rgba(255,255,255,0.05);
+        scrollbar-color: rgba(244,122,43,0.34) rgba(36,36,36,0.7);
       }
 
       .market-details-close {
         position: absolute;
-        top: 14px;
-        right: 14px;
+        top: 16px;
+        right: 16px;
         z-index: 3;
-        width: 42px;
-        height: 42px;
-        border: 1px solid rgba(255,255,255,0.14);
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(244,122,43,0.24);
         border-radius: 999px;
-        background: rgba(0,0,0,0.42);
-        color: #ffffff;
-        font-size: 24px;
+        background: rgba(36,36,36,0.82);
+        color: #F4F1EE;
+        font-size: 25px;
         line-height: 1;
-        font-weight: 800;
+        font-weight: 700;
         cursor: pointer;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+
+      .market-details-close:hover,
+      .market-details-close:focus-visible {
+        background: rgba(52,52,52,0.92);
+        border-color: rgba(244,122,43,0.44);
+        color: #FFFFFF;
+        outline: none;
       }
 
       .market-details-body {
@@ -600,7 +620,7 @@
 
       .market-details-kicker {
         margin: 0 0 8px;
-        color: rgba(255,190,82,0.94);
+        color: #F09A58;
         font-size: 13px;
         line-height: 1.25;
         font-weight: 900;
@@ -619,10 +639,11 @@
 
       .market-details-price {
         margin: 0 0 16px;
-        color: #57e6b2;
+        color: #F47A2B;
         font-size: 32px;
         line-height: 1.05;
         font-weight: 900;
+        text-shadow: 0 0 20px rgba(244,122,43,0.16);
       }
 
       .market-details-meta {
@@ -634,7 +655,7 @@
 
       .market-details-description {
         margin: 0;
-        color: rgba(244,251,247,0.78);
+        color: rgba(244,241,238,0.78);
         font-size: 16px;
         line-height: 1.62;
         white-space: pre-wrap;
@@ -645,12 +666,31 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 22px;
+        padding-bottom: 4px;
       }
 
       .market-details-actions .small-btn {
         min-height: 44px;
         padding: 12px 16px;
         border-radius: 16px;
+        background: rgba(52,52,52,0.76);
+        border-color: rgba(244,122,43,0.18);
+        color: #F4F1EE;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+      }
+
+      .market-details-actions .small-btn.green,
+      .market-details-actions .small-btn.yellow {
+        background: linear-gradient(135deg, rgba(244,122,43,0.96), rgba(240,154,88,0.92));
+        border-color: rgba(255,208,138,0.28);
+        color: #170D07;
+        box-shadow: 0 12px 24px rgba(244,122,43,0.18), inset 0 1px 0 rgba(255,255,255,0.18);
+      }
+
+      .market-details-actions .small-btn.gray {
+        background: rgba(43,43,43,0.82);
+        border-color: rgba(255,255,255,0.10);
+        color: rgba(244,241,238,0.86);
       }
 
       .market-owner-actions {
@@ -843,27 +883,32 @@
           width: 100%;
           height: 100dvh;
           max-height: 100dvh;
+          padding: calc(12px + env(safe-area-inset-top)) 12px 0;
           border-radius: 0;
           border-left: 0;
           border-right: 0;
           overflow: auto;
+          box-sizing: border-box;
         }
 
         .market-details-close {
-          top: calc(12px + env(safe-area-inset-top));
-          right: 14px;
+          top: calc(20px + env(safe-area-inset-top));
+          right: 20px;
           width: 46px;
           height: 46px;
-          font-size: 26px;
+          font-size: 25px;
         }
 
         .market-details-img {
-          min-height: 42dvh;
-          border-radius: 0;
+          height: clamp(240px, 34dvh, 340px);
+          min-height: 0;
+          border-radius: 24px;
+          border: 1px solid rgba(244,122,43,0.14);
+          box-shadow: 0 16px 34px rgba(0,0,0,0.32);
         }
 
         .market-details-body {
-          padding: 22px 18px calc(34px + env(safe-area-inset-bottom));
+          padding: 20px 6px calc(48px + env(safe-area-inset-bottom));
         }
 
         .market-details-title {
@@ -876,6 +921,27 @@
 
         .market-details-description {
           font-size: 15px;
+        }
+
+        .market-details-actions {
+          margin-top: 20px;
+          padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+
+        .market-owner-actions {
+          gap: 8px;
+        }
+
+        .market-owner-actions-top,
+        .market-owner-actions-more {
+          gap: 8px;
+        }
+
+        .market-details-actions .small-btn {
+          min-height: 42px;
+          padding: 10px 12px;
+          border-radius: 14px;
+          box-shadow: 0 6px 16px rgba(0,0,0,0.18);
         }
       }
 
