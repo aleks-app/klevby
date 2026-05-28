@@ -276,73 +276,6 @@
         transform: scale(0.98);
       }
 
-      .market-search-suggestions {
-        display: grid;
-        gap: 7px;
-        width: calc(100% - 12px);
-        max-width: 100%;
-        margin: -2px 6px 12px;
-        padding: 8px;
-        border-radius: 18px;
-        border: 1px solid rgba(244, 178, 74, 0.18);
-        background: linear-gradient(180deg, rgba(32, 32, 32, 0.98), rgba(22, 22, 22, 0.98));
-        box-shadow: 0 10px 24px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.04);
-      }
-
-      .market-search-suggestions.hidden {
-        display: none;
-      }
-
-      .market-search-suggestion {
-        width: 100%;
-        min-width: 0;
-        min-height: 40px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 10px;
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 14px;
-        background: rgba(255,255,255,0.045);
-        color: #f4f1ee;
-        text-align: left;
-        cursor: pointer;
-      }
-
-      .market-search-suggestion:active {
-        transform: scale(0.99);
-        border-color: rgba(244, 178, 74, 0.32);
-        background: rgba(244, 122, 43, 0.10);
-      }
-
-      .market-search-suggestion-label {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: 13px;
-        font-weight: 700;
-        color: #f4f1ee;
-      }
-
-      .market-search-suggestion-type {
-        flex: 0 0 auto;
-        max-width: 96px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        padding: 4px 8px;
-        border-radius: 999px;
-        background: rgba(244, 178, 74, 0.12);
-        color: #ffd08a;
-        font-size: 10px;
-        line-height: 1;
-        font-weight: 800;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-      }
-
       .market-filters {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr 0.8fr;
@@ -1056,29 +989,6 @@
           min-width: 24px;
           height: 24px;
           font-size: 19px;
-        }
-
-        .market-search-suggestions {
-          width: calc(100% - 14px);
-          margin: -1px auto 10px;
-          padding: 7px;
-          border-radius: 16px;
-        }
-
-        .market-search-suggestion {
-          min-height: 38px;
-          padding: 8px 9px;
-          gap: 8px;
-        }
-
-        .market-search-suggestion-label {
-          font-size: 12px;
-        }
-
-        .market-search-suggestion-type {
-          max-width: 82px;
-          padding: 4px 7px;
-          font-size: 9px;
         }
       }
 
