@@ -584,6 +584,7 @@
         border: 1px solid rgba(244,122,43,0.16);
         box-shadow: 0 28px 80px rgba(0,0,0,0.54), inset 0 1px 0 rgba(255,255,255,0.05);
         scrollbar-color: rgba(244,122,43,0.34) rgba(36,36,36,0.7);
+        scroll-padding-bottom: 28px;
       }
 
       .market-details-close {
@@ -884,6 +885,7 @@
           height: 100dvh;
           max-height: 100dvh;
           padding: calc(12px + env(safe-area-inset-top)) 12px 0;
+          scroll-padding-bottom: calc(40px + env(safe-area-inset-bottom));
           border-radius: 0;
           border-left: 0;
           border-right: 0;
@@ -925,7 +927,7 @@
 
         .market-details-actions {
           margin-top: 20px;
-          padding-bottom: calc(10px + env(safe-area-inset-bottom));
+          padding-bottom: calc(28px + env(safe-area-inset-bottom));
         }
 
         .market-owner-actions {

@@ -1584,7 +1584,7 @@
             ${editBtn}
           </div>
           ${ownerMoreActions
-            ? `<button class="small-btn market-owner-more-toggle" type="button" onclick="toggleMarketOwnerActions()" aria-expanded="${marketOwnerActionsExpanded ? "true" : "false"}">Ещё</button>
+            ? `<button class="small-btn market-owner-more-toggle" type="button" onclick="toggleMarketOwnerActions()" aria-expanded="${marketOwnerActionsExpanded ? "true" : "false"}">${marketOwnerActionsExpanded ? "Скрыть" : "Ещё"}</button>
             <div class="market-owner-actions-more ${marketOwnerActionsExpanded ? "" : "hidden"}">
               ${ownerMoreActions}
             </div>`
@@ -1630,15 +1630,87 @@
   }
 
 
+  function getMarketDetailsScrollInset() {
+    const viewport = window.visualViewport;
+    const viewportGap = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+    return Math.max(28, Math.ceil(viewportGap) + 28);
+  }
+
+  function scrollMarketDetailsToElement(panel, target, options = {}) {
+    if (!panel || !target || typeof panel.scrollTo !== "function") return;
+
+    const panelRect = panel.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const scrollInset = getMarketDetailsScrollInset();
+    const align = options.align || "nearest";
+    let nextTop = panel.scrollTop;
+
+    if (align === "top") {
+      nextTop += targetRect.top - panelRect.top - (options.offset || 18);
+    } else {
+      const visibleBottom = panelRect.bottom - scrollInset;
+      const visibleTop = panelRect.top + (options.offset || 18);
+
+      if (targetRect.bottom > visibleBottom) {
+        nextTop += targetRect.bottom - visibleBottom;
+      }
+
+      if (targetRect.top < visibleTop) {
+        nextTop -= visibleTop - targetRect.top;
+      }
+    }
+
+    const maxTop = Math.max(0, panel.scrollHeight - panel.clientHeight);
+    const boundedTop = Math.min(Math.max(0, nextTop), maxTop);
+
+    panel.scrollTo({
+      top: boundedTop,
+      behavior: "smooth"
+    });
+  }
+
+  function scheduleMarketOwnerActionsScroll(expanded) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        const overlay = document.getElementById("marketDetailsOverlay");
+        const panel = overlay ? overlay.querySelector(".market-details-panel") : null;
+
+        if (!panel) return;
+
+        const target = expanded
+          ? panel.querySelector(".market-owner-actions-more:not(.hidden)")
+          : (panel.querySelector(".market-owner-actions-top") || panel.querySelector(".market-owner-more-toggle"));
+
+        if (!target) return;
+
+        scrollMarketDetailsToElement(panel, target, {
+          align: expanded ? "nearest" : "top",
+          offset: expanded ? 18 : 14
+        });
+      });
+    });
+  }
+
   function toggleMarketOwnerActions() {
     const overlay = document.getElementById("marketDetailsOverlay");
     if (!overlay || !marketOpenDetailsItemId) return;
 
+    const currentPanel = overlay.querySelector(".market-details-panel");
+    const currentScrollTop = currentPanel ? currentPanel.scrollTop : 0;
+
     marketOwnerActionsExpanded = !marketOwnerActionsExpanded;
+    const expanded = marketOwnerActionsExpanded;
     const item = getMarketItemById(marketOpenDetailsItemId);
     if (!item) return;
 
     overlay.innerHTML = marketDetailsHtml(item);
+
+    const nextPanel = overlay.querySelector(".market-details-panel");
+    if (nextPanel) {
+      nextPanel.scrollTop = currentScrollTop;
+    }
+
+    scheduleMarketOwnerActionsScroll(expanded);
   }
 
   function openMarketItemDetails(id) {
