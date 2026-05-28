@@ -589,10 +589,6 @@
     }
   }
 
-  function closeMarketForm() {
-    setMarketFormOpen(false, { scroll: false });
-  }
-
   function setMarketFiltersOpen(open, options = {}) {
     const marketUi = getMarketUiHelpers();
 
@@ -650,10 +646,7 @@
     root.innerHTML = `
       <div class="market-layout">
         <div id="marketFormBox" class="market-form-box hidden">
-          <div class="market-form-header">
-            <h2 id="marketFormTitle">Добавить товар</h2>
-            <button class="market-form-close" type="button" aria-label="Закрыть форму" onclick="closeMarketForm()">×</button>
-          </div>
+          <h2 id="marketFormTitle">Добавить товар</h2>
 
           <input id="marketTitleInput" placeholder="Название: спиннинг, катушка, лодка..." />
 
@@ -2476,7 +2469,6 @@
       window.saveMarketItem = saveMarketItem;
       window.editMarketItem = editMarketItem;
       window.cancelMarketEdit = cancelMarketEdit;
-      window.closeMarketForm = closeMarketForm;
       window.deleteMarketItem = deleteMarketItem;
       window.applyMarketOwnerAction = applyMarketOwnerAction;
       window.toggleMarketForm = toggleMarketForm;

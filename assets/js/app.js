@@ -531,12 +531,6 @@ function getVisibleSectionName() {
 function showSection(section) {
   const safeSection = String(section || "home").trim();
 
-  if (typeof window.closeMobileMenuSafe === "function") {
-    window.closeMobileMenuSafe();
-  } else if (typeof window.closeMobileMenu === "function") {
-    window.closeMobileMenu();
-  }
-
   if (safeSection === "profile") {
     if (typeof window.openKlevbyProfile === "function") {
       window.openKlevbyProfile();
