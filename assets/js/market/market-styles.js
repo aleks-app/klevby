@@ -49,11 +49,43 @@
         padding: 20px;
       }
 
+      .market-form-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
       .market-form-box h2 {
-        margin: 0 0 14px;
+        margin: 0;
         font-size: 22px;
         color: #ffffff;
         font-weight: 800;
+      }
+
+      .market-form-close {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        color: rgba(244,251,247,0.92);
+        cursor: pointer;
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+      }
+
+      .market-form-close:hover,
+      .market-form-close:focus-visible {
+        background: rgba(255,255,255,0.14);
+        border-color: rgba(255,255,255,0.28);
+        outline: none;
       }
 
       .market-note {
@@ -746,6 +778,12 @@
         }
 
         .market-form-box h2 {
+          font-size: 21px;
+        }
+
+        .market-form-close {
+          width: 32px;
+          height: 32px;
           font-size: 21px;
         }
 
