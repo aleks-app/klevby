@@ -758,7 +758,7 @@ async function verifySignupCode() {
     const { data, error } = await supabaseClient.auth.verifyOtp({
       email,
       token,
-      type: "email"
+      type: "signup"
     });
 
     if (!error) {
