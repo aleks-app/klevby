@@ -5,6 +5,11 @@ const KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR = [
   "sb-klevby-auth-token",
   "supabase.auth.token"
 ];
+const KLEVB_PENDING_SIGNUP_STORAGE_KEY = "klevby_pending_signup";
+const KLEVB_PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
+const KLEVB_SIGNUP_CODE_RESEND_COOLDOWN_MS = 55 * 1000;
+
+let signupCodeResendUntil = 0;
 
 function getLogoutGuardNow() {
   return Date.now();
@@ -282,6 +287,109 @@ function getUserDisplayName() {
   return getUserNickname();
 }
 
+function getPendingSignupNow() {
+  return Date.now();
+}
+
+function normalizePendingSignup(rawSignup) {
+  const email = String(rawSignup?.email || "").trim();
+  const nickname = cleanDisplayName(rawSignup?.nickname || "");
+  const timestamp = Number(rawSignup?.timestamp || 0);
+
+  if (!email || !timestamp || getPendingSignupNow() - timestamp > KLEVB_PENDING_SIGNUP_TTL_MS) {
+    return null;
+  }
+
+  return { email, nickname, timestamp };
+}
+
+function getPendingSignup() {
+  try {
+    const savedSignup = localStorage.getItem(KLEVB_PENDING_SIGNUP_STORAGE_KEY);
+    if (!savedSignup) return null;
+
+    const pendingSignup = normalizePendingSignup(JSON.parse(savedSignup));
+    if (!pendingSignup) {
+      clearPendingSignup();
+    }
+
+    return pendingSignup;
+  } catch (error) {
+    console.warn("Не удалось прочитать pending signup:", error);
+    clearPendingSignup();
+    return null;
+  }
+}
+
+function savePendingSignup(email, nickname) {
+  const pendingSignup = normalizePendingSignup({
+    email,
+    nickname,
+    timestamp: getPendingSignupNow()
+  });
+
+  if (!pendingSignup) return null;
+
+  localStorage.setItem(KLEVB_PENDING_SIGNUP_STORAGE_KEY, JSON.stringify(pendingSignup));
+  return pendingSignup;
+}
+
+function clearPendingSignup() {
+  try {
+    localStorage.removeItem(KLEVB_PENDING_SIGNUP_STORAGE_KEY);
+  } catch (error) {
+    console.warn("Не удалось очистить pending signup:", error);
+  }
+}
+
+function fillPendingSignupInputs(pendingSignup = getPendingSignup()) {
+  if (!pendingSignup) return;
+
+  const emailInput = document.getElementById("emailInput");
+  const usernameInput = document.getElementById("usernameInput");
+
+  if (emailInput && !emailInput.value) {
+    emailInput.value = pendingSignup.email;
+  }
+
+  if (usernameInput && pendingSignup.nickname && !usernameInput.value) {
+    usernameInput.value = pendingSignup.nickname;
+  }
+}
+
+function getSignupCodeTokenVariants(codeValue) {
+  const withoutSpaces = String(codeValue || "").trim().replace(/\s+/g, "");
+  const digitsOnly = withoutSpaces.replace(/-/g, "");
+  const variants = [withoutSpaces, digitsOnly];
+
+  if (/^\d{8}$/.test(digitsOnly)) {
+    variants.push(`${digitsOnly.slice(0, 4)}-${digitsOnly.slice(4)}`);
+  }
+
+  return [...new Set(variants.filter(Boolean))];
+}
+
+function setSignupCodeResendCooldown() {
+  signupCodeResendUntil = Date.now() + KLEVB_SIGNUP_CODE_RESEND_COOLDOWN_MS;
+  updateSignupCodeResendButton();
+}
+
+function updateSignupCodeResendButton() {
+  const resendBtn = document.getElementById("authResendBtn");
+  if (!resendBtn) return;
+
+  const secondsLeft = Math.ceil((signupCodeResendUntil - Date.now()) / 1000);
+
+  if (secondsLeft > 0) {
+    resendBtn.disabled = true;
+    resendBtn.textContent = `Отправить код ещё раз (${secondsLeft})`;
+    setTimeout(updateSignupCodeResendButton, 1000);
+  } else {
+    resendBtn.disabled = false;
+    resendBtn.textContent = "Отправить код ещё раз";
+  }
+}
+
 function fillAuthorLocal() {
   const savedName = localStorage.getItem("klevby_author_name") || "";
   const savedTelegram = localStorage.getItem("klevby_author_telegram") || "";
@@ -305,39 +413,67 @@ function fillAuthorLocal() {
 }
 
 function setAuthMode(mode) {
-  authMode = mode === "login" ? "login" : "register";
+  authMode = ["login", "register", "verify"].includes(mode) ? mode : "register";
 
   const title = document.getElementById("authTitle");
   const subtitle = document.getElementById("authSubtitle");
   const usernameLabel = document.getElementById("usernameLabel");
   const usernameInput = document.getElementById("usernameInput");
+  const passwordLabel = document.getElementById("passwordLabel");
   const passwordInput = document.getElementById("passwordInput");
+  const codeLabel = document.getElementById("signupCodeLabel");
+  const codeInput = document.getElementById("signupCodeInput");
   const createBtn = document.getElementById("authCreateBtn");
   const loginBtn = document.getElementById("authLoginBtn");
+  const verifyBtn = document.getElementById("authVerifyBtn");
+  const resendBtn = document.getElementById("authResendBtn");
   const switchText = document.getElementById("authSwitchText");
 
   if (!title || !subtitle || !usernameLabel || !usernameInput || !passwordInput || !createBtn || !loginBtn || !switchText) return;
 
+  usernameLabel.classList.add("hidden");
+  usernameInput.classList.add("hidden");
+  passwordLabel?.classList.remove("hidden");
+  passwordInput.classList.remove("hidden");
+  codeLabel?.classList.add("hidden");
+  codeInput?.classList.add("hidden");
+  createBtn.classList.add("hidden");
+  loginBtn.classList.add("hidden");
+  verifyBtn?.classList.add("hidden");
+  resendBtn?.classList.add("hidden");
+
   if (authMode === "login") {
     title.textContent = "Войти в профиль";
-    subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — сначала подтверди email по ссылке из письма, потом вернись в Klevby и войди.";
-    usernameLabel.classList.add("hidden");
-    usernameInput.classList.add("hidden");
+    subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — сначала подтверди email кодом из письма или войди после подтверждения.";
     passwordInput.setAttribute("autocomplete", "current-password");
-    createBtn.classList.add("hidden");
     loginBtn.classList.remove("hidden");
     switchText.innerHTML = `
       Нет аккаунта?
       <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать профиль</button>
     `;
+  } else if (authMode === "verify") {
+    fillPendingSignupInputs();
+    title.textContent = "Подтверждение email";
+    subtitle.textContent = "Введите код из письма прямо здесь. Если писем несколько — используйте последний код.";
+    passwordLabel?.classList.add("hidden");
+    passwordInput.classList.add("hidden");
+    codeLabel?.classList.remove("hidden");
+    codeInput?.classList.remove("hidden");
+    verifyBtn?.classList.remove("hidden");
+    resendBtn?.classList.remove("hidden");
+    updateSignupCodeResendButton();
+    switchText.innerHTML = `
+      Уже подтвердили email?
+      <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
+    `;
+    codeInput?.focus();
   } else {
     title.textContent = "Регистрация аккаунта Klevby";
-    subtitle.textContent = "Создай аккаунт через email и пароль. После регистрации открой письмо, подтверди email по ссылке (она может открыться в браузере), затем вернись в Klevby и войди.";
+    subtitle.textContent = "Создай аккаунт через email и пароль. После регистрации введи код из письма прямо в Klevby.";
     usernameLabel.classList.remove("hidden");
     usernameInput.classList.remove("hidden");
     passwordInput.setAttribute("autocomplete", "new-password");
     createBtn.classList.remove("hidden");
-    loginBtn.classList.add("hidden");
     switchText.innerHTML = `
       Уже есть аккаунт?
       <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
@@ -475,7 +611,13 @@ async function initAuth() {
     }
   }
 
-  setAuthMode(currentUser ? "login" : "register");
+  const pendingSignup = currentUser ? null : getPendingSignup();
+  if (pendingSignup) {
+    fillPendingSignupInputs(pendingSignup);
+    window.klevbyAuthStatusNotice = "Введите код из письма. Если писем несколько — используйте последний код.";
+  }
+
+  setAuthMode(currentUser ? "login" : (pendingSignup ? "verify" : "register"));
   updateAuthStatus();
   fillAuthorLocal();
   await loadPosts();
@@ -541,6 +683,7 @@ async function register() {
 
   const activeSession = data?.session || null;
   if (activeSession?.user) {
+    clearPendingSignup();
     clearAuthLogoutGuardForFreshLogin();
   }
   currentUser = activeSession?.user || null;
@@ -571,17 +714,9 @@ async function register() {
   }
 
   if (!activeSession) {
-    window.klevbyAuthStatusNotice = "Письмо отправлено. Откройте почту, подтвердите email, потом вернитесь в Klevby и войдите.";
-    setAuthMode("login");
-
-    const switchText = document.getElementById("authSwitchText");
-    if (switchText) {
-      switchText.innerHTML = `
-        После подтверждения email нажмите «Войти».
-        <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать другой профиль</button>
-      `;
-    }
-
+    savePendingSignup(email, nickname);
+    window.klevbyAuthStatusNotice = "Письмо отправлено. Введите код из письма. Если писем несколько — используйте последний код.";
+    setAuthMode("verify");
     updateAuthStatus();
     reloadPondsIfReady();
     return;
@@ -593,6 +728,117 @@ async function register() {
   await restoreAuthState("register", true);
   reloadPondsIfReady();
   showSection("home");
+}
+
+async function verifySignupCode() {
+  const pendingSignup = getPendingSignup();
+  const email = String(pendingSignup?.email || document.getElementById("emailInput")?.value || "").trim();
+  const codeInput = document.getElementById("signupCodeInput");
+  const rawCode = String(codeInput?.value || "").trim();
+  const compactCode = rawCode.replace(/\s+/g, "");
+  const digitsOnly = compactCode.replace(/-/g, "");
+
+  if (!email) {
+    return alert("Введите email для подтверждения.");
+  }
+
+  if (!rawCode) {
+    return alert("Введите код из письма.");
+  }
+
+  if (/[^\d\s-]/.test(rawCode) || digitsOnly.length < 6) {
+    return alert("Код должен содержать только цифры, пробелы или дефис. Проверьте код из последнего письма.");
+  }
+
+  const tokenVariants = getSignupCodeTokenVariants(rawCode);
+  let lastError = null;
+  let verifiedData = null;
+
+  for (const token of tokenVariants) {
+    const { data, error } = await supabaseClient.auth.verifyOtp({
+      email,
+      token,
+      type: "signup"
+    });
+
+    if (!error) {
+      verifiedData = data;
+      lastError = null;
+      break;
+    }
+
+    lastError = error;
+  }
+
+  if (lastError) {
+    window.klevbyAuthStatusNotice = "Код не подошёл. Проверьте последний код из письма или отправьте код ещё раз.";
+    updateAuthStatus();
+    return alert("Код не подошёл: " + lastError.message);
+  }
+
+  clearPendingSignup();
+  clearAuthLogoutGuardForFreshLogin();
+  currentUser = verifiedData?.session?.user || verifiedData?.user || null;
+  authReady = true;
+  syncGlobalAuthState();
+
+  if (currentUser && pendingSignup?.nickname) {
+    const updateResult = await supabaseClient.auth.updateUser({
+      data: {
+        nickname: pendingSignup.nickname,
+        username: pendingSignup.nickname,
+        display_name: pendingSignup.nickname
+      }
+    });
+
+    if (!updateResult.error) {
+      currentUser = updateResult.data?.user || currentUser;
+      syncGlobalAuthState();
+    }
+
+    localStorage.setItem("klevby_author_name", pendingSignup.nickname);
+    localStorage.setItem("klevby_chat_username", pendingSignup.nickname);
+  }
+
+  window.klevbyAuthStatusNotice = "";
+  await restoreAuthState("verify", true);
+  updateAuthStatus();
+  fillAuthorLocal();
+  reloadPondsIfReady();
+  alert("Email подтверждён. Ты вошёл в аккаунт.");
+  showSection("home");
+}
+
+async function resendSignupCode() {
+  const pendingSignup = getPendingSignup();
+  const email = String(pendingSignup?.email || document.getElementById("emailInput")?.value || "").trim();
+  const secondsLeft = Math.ceil((signupCodeResendUntil - Date.now()) / 1000);
+
+  if (!email) {
+    return alert("Введите email, чтобы отправить код ещё раз.");
+  }
+
+  if (secondsLeft > 0) {
+    return alert(`Подождите ${secondsLeft} сек. перед повторной отправкой.`);
+  }
+
+  const { error } = await supabaseClient.auth.resend({
+    type: "signup",
+    email
+  });
+
+  if (error) {
+    return alert("Не получилось отправить код ещё раз: " + error.message);
+  }
+
+  if (pendingSignup) {
+    savePendingSignup(email, pendingSignup.nickname);
+  }
+
+  setSignupCodeResendCooldown();
+  window.klevbyAuthStatusNotice = "Код отправлен ещё раз. Если писем несколько — используйте последний код.";
+  updateAuthStatus();
+  alert("Код отправлен ещё раз. Если писем несколько — используйте последний код.");
 }
 
 async function login() {
@@ -609,6 +855,7 @@ async function login() {
     return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
   }
 
+  clearPendingSignup();
   clearAuthLogoutGuardForFreshLogin();
   currentUser = data.user;
   authReady = true;
@@ -714,6 +961,8 @@ window.setupAuthResumeHandlers = setupAuthResumeHandlers;
 window.initAuth = initAuth;
 window.updateAuthStatus = updateAuthStatus;
 window.register = register;
+window.verifySignupCode = verifySignupCode;
+window.resendSignupCode = resendSignupCode;
 window.login = login;
 window.logout = logout;
 window.sendRecovery = sendRecovery;
