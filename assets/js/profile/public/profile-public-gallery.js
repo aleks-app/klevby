@@ -64,13 +64,34 @@
     hideViewer();
   });
 
+  function renderGalleryStatus(container, options = {}) {
+    if (!container) return;
+
+    const state = String(options.state || "empty");
+    const icon = String(options.icon || (state === "loading" ? "⏳" : state === "error" ? "⚠️" : "📷"));
+    const title = String(options.title || "Фото пока нет");
+    const text = String(options.text || "Когда рыбак добавит фото или отчёт, они появятся здесь.");
+
+    container.innerHTML = `
+      <div class="public-profile-empty public-profile-empty-${state}">
+        <div class="public-profile-empty-icon">${icon}</div>
+        <div class="public-profile-empty-title">${title}</div>
+        <div class="public-profile-empty-text">${text}</div>
+      </div>`;
+  }
+
   function renderGallery(container, photos) {
     if (!container) return;
 
     container.innerHTML = "";
 
     if (!Array.isArray(photos) || photos.length === 0) {
-      container.innerHTML = '<div class="public-profile-empty">У автора пока нет фото в ленте.</div>';
+      renderGalleryStatus(container, {
+        state: "empty",
+        icon: "📷",
+        title: "Фото пока нет",
+        text: "Когда рыбак добавит фото или отчёт в ленту, они появятся в этом профиле."
+      });
       return;
     }
 
@@ -99,6 +120,7 @@
   }
 
   window.KlevbyPublicProfileGallery = {
-    renderGallery
+    renderGallery,
+    renderGalleryStatus
   };
 })();
