@@ -34,7 +34,10 @@
   }
 
   function normalizeText(value) {
-    return String(value || "").toLowerCase().trim();
+    return String(value || "")
+      .toLowerCase()
+      .replace(/ё/g, "е")
+      .trim();
   }
 
   function getMarketImage(item) {
