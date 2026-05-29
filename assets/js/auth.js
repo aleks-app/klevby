@@ -47,40 +47,172 @@ function fillAuthorLocal() {
   }
 }
 
+const PENDING_SIGNUP_STORAGE_KEY = "klevby_pending_signup";
+const PENDING_SIGNUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SIGNUP_RESEND_COOLDOWN_MS = 50 * 1000;
+
+let pendingSignupEmail = "";
+let pendingSignupNickname = "";
+let pendingSignupTimestamp = 0;
+let lastSignupResendAt = 0;
+let signupResendCooldownTimer = null;
+
+function getPendingSignupStorage() {
+  try {
+    const raw = localStorage.getItem(PENDING_SIGNUP_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const email = String(parsed?.email || "").trim();
+    const timestamp = Number(parsed?.timestamp || 0);
+
+    if (!email || !timestamp || Date.now() - timestamp > PENDING_SIGNUP_MAX_AGE_MS) {
+      localStorage.removeItem(PENDING_SIGNUP_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      email,
+      nickname: cleanDisplayName(parsed?.nickname || ""),
+      timestamp
+    };
+  } catch (_) {
+    localStorage.removeItem(PENDING_SIGNUP_STORAGE_KEY);
+    return null;
+  }
+}
+
+function savePendingSignup(email, nickname = "") {
+  pendingSignupEmail = String(email || "").trim();
+  pendingSignupNickname = cleanDisplayName(nickname);
+  pendingSignupTimestamp = Date.now();
+
+  if (!pendingSignupEmail) return;
+
+  localStorage.setItem(
+    PENDING_SIGNUP_STORAGE_KEY,
+    JSON.stringify({
+      email: pendingSignupEmail,
+      nickname: pendingSignupNickname,
+      timestamp: pendingSignupTimestamp
+    })
+  );
+}
+
+function restorePendingSignup() {
+  const pending = getPendingSignupStorage();
+  if (!pending) return false;
+
+  pendingSignupEmail = pending.email;
+  pendingSignupNickname = pending.nickname;
+  pendingSignupTimestamp = pending.timestamp;
+
+  const emailInput = document.getElementById("emailInput");
+  if (emailInput && !emailInput.value) {
+    emailInput.value = pendingSignupEmail;
+  }
+
+  const usernameInput = document.getElementById("usernameInput");
+  if (usernameInput && pendingSignupNickname && !usernameInput.value) {
+    usernameInput.value = pendingSignupNickname;
+  }
+
+  return true;
+}
+
+function clearPendingSignup() {
+  pendingSignupEmail = "";
+  pendingSignupNickname = "";
+  pendingSignupTimestamp = 0;
+  localStorage.removeItem(PENDING_SIGNUP_STORAGE_KEY);
+}
+
+function updateSignupResendButton() {
+  const resendBtn = document.getElementById("authResendCodeBtn");
+  if (!resendBtn) return;
+
+  const remainingMs = Math.max(0, SIGNUP_RESEND_COOLDOWN_MS - (Date.now() - lastSignupResendAt));
+
+  if (authMode !== "verify" || remainingMs <= 0) {
+    resendBtn.disabled = false;
+    resendBtn.textContent = "Отправить код ещё раз";
+    clearTimeout(signupResendCooldownTimer);
+    signupResendCooldownTimer = null;
+    return;
+  }
+
+  resendBtn.disabled = true;
+  resendBtn.textContent = `Отправить код ещё раз (${Math.ceil(remainingMs / 1000)}с)`;
+
+  clearTimeout(signupResendCooldownTimer);
+  signupResendCooldownTimer = setTimeout(updateSignupResendButton, 1000);
+}
+
 function setAuthMode(mode) {
-  authMode = mode === "login" ? "login" : "register";
+  authMode = ["login", "verify"].includes(mode) ? mode : "register";
 
   const title = document.getElementById("authTitle");
   const subtitle = document.getElementById("authSubtitle");
   const usernameLabel = document.getElementById("usernameLabel");
   const usernameInput = document.getElementById("usernameInput");
+  const passwordLabel = document.getElementById("passwordLabel");
   const passwordInput = document.getElementById("passwordInput");
+  const codeLabel = document.getElementById("authCodeLabel");
+  const codeInput = document.getElementById("authCodeInput");
   const createBtn = document.getElementById("authCreateBtn");
   const loginBtn = document.getElementById("authLoginBtn");
+  const verifyBtn = document.getElementById("authVerifyCodeBtn");
+  const resendBtn = document.getElementById("authResendCodeBtn");
   const switchText = document.getElementById("authSwitchText");
 
-  if (!title || !subtitle || !usernameLabel || !usernameInput || !passwordInput || !createBtn || !loginBtn || !switchText) return;
+  if (!title || !subtitle || !usernameLabel || !usernameInput || !passwordLabel || !passwordInput || !codeLabel || !codeInput || !createBtn || !loginBtn || !verifyBtn || !resendBtn || !switchText) return;
+
+  usernameLabel.classList.add("hidden");
+  usernameInput.classList.add("hidden");
+  passwordLabel.classList.add("hidden");
+  passwordInput.classList.add("hidden");
+  codeLabel.classList.add("hidden");
+  codeInput.classList.add("hidden");
+  createBtn.classList.add("hidden");
+  loginBtn.classList.add("hidden");
+  verifyBtn.classList.add("hidden");
+  resendBtn.classList.add("hidden");
 
   if (authMode === "login") {
     title.textContent = "Войти в профиль";
-    subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — сначала подтверди email по ссылке из письма, потом вернись в Klevby и войди.";
-    usernameLabel.classList.add("hidden");
-    usernameInput.classList.add("hidden");
+    subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — подтверди email кодом из письма.";
+    passwordLabel.classList.remove("hidden");
+    passwordInput.classList.remove("hidden");
     passwordInput.setAttribute("autocomplete", "current-password");
-    createBtn.classList.add("hidden");
     loginBtn.classList.remove("hidden");
     switchText.innerHTML = `
       Нет аккаунта?
       <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать профиль</button>
     `;
+  } else if (authMode === "verify") {
+    restorePendingSignup();
+    title.textContent = "Введите код из письма";
+    subtitle.textContent = "Код может действовать ограниченное время. Если писем несколько — используйте последний код.";
+    codeLabel.classList.remove("hidden");
+    codeInput.classList.remove("hidden");
+    verifyBtn.classList.remove("hidden");
+    resendBtn.classList.remove("hidden");
+    switchText.innerHTML = `
+      Нужно изменить email или создать другой профиль?
+      <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Вернуться к регистрации</button>
+      <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти паролем</button>
+    `;
+    updateSignupResendButton();
+    codeInput.focus();
   } else {
     title.textContent = "Регистрация аккаунта Klevby";
-    subtitle.textContent = "Создай аккаунт через email и пароль. После регистрации открой письмо, подтверди email по ссылке (она может открыться в браузере), затем вернись в Klevby и войди.";
+    subtitle.textContent = "Зарегистрироваться можно через email и пароль. После регистрации код придёт на email — введите его здесь, чтобы подтвердить почту и войти.";
     usernameLabel.classList.remove("hidden");
     usernameInput.classList.remove("hidden");
+    passwordLabel.classList.remove("hidden");
+    passwordInput.classList.remove("hidden");
     passwordInput.setAttribute("autocomplete", "new-password");
     createBtn.classList.remove("hidden");
-    loginBtn.classList.add("hidden");
     switchText.innerHTML = `
       Уже есть аккаунт?
       <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
@@ -93,7 +225,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
 
   const now = Date.now();
 
-  if (reason !== "init" && now - lastAuthRestoreAt < 900) {
+  if (!["init", "verify-email"].includes(reason) && now - lastAuthRestoreAt < 900) {
     return currentUser;
   }
 
@@ -193,7 +325,13 @@ async function initAuth() {
     }
   }
 
-  setAuthMode(currentUser ? "login" : "register");
+  if (!currentUser && restorePendingSignup()) {
+    window.klevbyAuthStatusNotice = "Введите код из последнего письма или отправьте код ещё раз.";
+    setAuthMode("verify");
+  } else {
+    setAuthMode(currentUser ? "login" : "register");
+  }
+
   updateAuthStatus();
   fillAuthorLocal();
   await loadPosts();
@@ -286,22 +424,20 @@ async function register() {
   }
 
   if (!activeSession) {
-    window.klevbyAuthStatusNotice = "Письмо отправлено. Откройте почту, подтвердите email, потом вернитесь в Klevby и войдите.";
-    setAuthMode("login");
-
-    const switchText = document.getElementById("authSwitchText");
-    if (switchText) {
-      switchText.innerHTML = `
-        После подтверждения email нажмите «Войти».
-        <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать другой профиль</button>
-      `;
+    savePendingSignup(email, nickname);
+    const codeInput = document.getElementById("authCodeInput");
+    if (codeInput) {
+      codeInput.value = "";
     }
 
+    window.klevbyAuthStatusNotice = "Код отправлен на почту. Введите код из письма.";
+    setAuthMode("verify");
     updateAuthStatus();
     reloadPondsIfReady();
     return;
   }
 
+  clearPendingSignup();
   window.klevbyAuthStatusNotice = "";
   updateAuthStatus();
   alert("Профиль создан. Ты вошёл в аккаунт.");
@@ -321,7 +457,7 @@ async function login() {
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
+    return alert("Проверьте email и пароль. Если вы только зарегистрировались — подтвердите email кодом из письма.");
   }
 
   currentUser = data.user;
@@ -343,11 +479,114 @@ async function login() {
   showSection("home");
 }
 
+async function verifySignupCode() {
+  const email = (pendingSignupEmail || document.getElementById("emailInput")?.value || "").trim();
+  const rawToken = String(document.getElementById("authCodeInput")?.value || "").trim();
+  const tokenWithoutSpaces = rawToken.replace(/\s+/g, "");
+  const tokenDigitsOnly = tokenWithoutSpaces.replace(/-/g, "");
+  const tokenCandidates = [tokenWithoutSpaces];
+
+  if (/^\d{8}$/.test(tokenDigitsOnly)) {
+    tokenCandidates.push(`${tokenDigitsOnly.slice(0, 4)}-${tokenDigitsOnly.slice(4)}`);
+  }
+
+  tokenCandidates.push(tokenDigitsOnly);
+
+  const uniqueTokenCandidates = tokenCandidates.filter((token, index, tokens) => (
+    token && tokens.indexOf(token) === index
+  ));
+
+  if (!email) {
+    window.klevbyAuthStatusNotice = "Введите email, на который отправлен код.";
+    updateAuthStatus();
+    return;
+  }
+
+  if (!tokenWithoutSpaces || !/^[\d\s-]+$/.test(rawToken) || !/^\d{6,}$/.test(tokenDigitsOnly)) {
+    window.klevbyAuthStatusNotice = "Введите код из письма.";
+    updateAuthStatus();
+    return;
+  }
+
+  let verifyData = null;
+  let verifyError = null;
+
+  for (const token of uniqueTokenCandidates) {
+    const { data, error } = await supabaseClient.auth.verifyOtp({
+      email,
+      token,
+      type: "email"
+    });
+
+    if (!error) {
+      verifyData = data;
+      verifyError = null;
+      break;
+    }
+
+    verifyError = error;
+  }
+
+  if (verifyError) {
+    window.klevbyAuthStatusNotice = "Код неверный или истёк. Проверьте код или отправьте новый.";
+    updateAuthStatus();
+    return;
+  }
+
+  currentUser = verifyData?.user || verifyData?.session?.user || currentUser;
+  authReady = true;
+  clearPendingSignup();
+  window.klevbyAuthStatusNotice = "";
+  syncGlobalAuthState();
+  await restoreAuthState("verify-email", true);
+  updateAuthStatus();
+  fillAuthorLocal();
+  reloadPondsIfReady();
+  showSection("home");
+}
+
+async function resendSignupCode() {
+  const email = (pendingSignupEmail || document.getElementById("emailInput")?.value || "").trim();
+
+  if (!email) {
+    window.klevbyAuthStatusNotice = "Введите email, на который нужно отправить код.";
+    updateAuthStatus();
+    return;
+  }
+
+  const remainingMs = SIGNUP_RESEND_COOLDOWN_MS - (Date.now() - lastSignupResendAt);
+  if (remainingMs > 0) {
+    window.klevbyAuthStatusNotice = `Отправить код ещё раз можно через ${Math.ceil(remainingMs / 1000)}с.`;
+    updateAuthStatus();
+    updateSignupResendButton();
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.resend({
+    type: "signup",
+    email
+  });
+
+  lastSignupResendAt = Date.now();
+  updateSignupResendButton();
+
+  if (error) {
+    window.klevbyAuthStatusNotice = "Если регистрация есть, мы отправили новый код. Используйте последний код из письма.";
+    updateAuthStatus();
+    return;
+  }
+
+  savePendingSignup(email, pendingSignupNickname);
+  window.klevbyAuthStatusNotice = "Если регистрация есть, мы отправили новый код. Используйте последний код из письма.";
+  updateAuthStatus();
+}
+
 async function logout() {
   await supabaseClient.auth.signOut();
   currentUser = null;
   authReady = true;
   window.klevbyAuthStatusNotice = "";
+  clearPendingSignup();
   syncGlobalAuthState();
   updateAuthStatus();
   setAuthMode("register");
@@ -415,6 +654,8 @@ window.initAuth = initAuth;
 window.updateAuthStatus = updateAuthStatus;
 window.register = register;
 window.login = login;
+window.verifySignupCode = verifySignupCode;
+window.resendSignupCode = resendSignupCode;
 window.logout = logout;
 window.sendRecovery = sendRecovery;
 window.updatePassword = updatePassword;
