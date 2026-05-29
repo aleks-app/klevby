@@ -71,6 +71,34 @@
     return requireCoreMethod("promiseWithTimeout")(promise, timeoutMs, message);
   }
 
+
+  function isProfileGuestState() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+    const user = window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null;
+
+    return Boolean((window.klevbyAuthReady || window.authReady || recentLogout) && !user);
+  }
+
+  function resetProfileAvatarUi() {
+    const image = document.getElementById("profileAvatarImage");
+    const fallback = document.getElementById("profileAvatarFallback");
+
+    if (image) {
+      image.removeAttribute("src");
+      image.classList.add("hidden");
+    }
+
+    if (fallback) {
+      fallback.textContent = "👤";
+      fallback.classList.remove("hidden");
+    }
+
+    resetMobileProfileAvatar();
+  }
+
   function isPublicUrl(value) {
     return /^https?:\/\//i.test(String(value || "").trim());
   }
@@ -140,6 +168,12 @@
   }
 
   async function handleLocalAvatarUpload(event) {
+    if (isProfileGuestState()) {
+      if (event?.target) event.target.value = "";
+      if (typeof window.showSection === "function") window.showSection("auth");
+      return;
+    }
+
     const file = event?.target?.files?.[0];
 
     if (!file) return;
@@ -209,6 +243,11 @@
   }
 
   function restoreLocalProfileAvatar() {
+    if (isProfileGuestState()) {
+      resetProfileAvatarUi();
+      return;
+    }
+
     try {
       const savedAvatar = localStorage.getItem(KLEVB_PROFILE_AVATAR_KEY);
 
@@ -227,6 +266,11 @@
   }
 
   async function loadProfileAvatarFromSupabase() {
+    if (isProfileGuestState()) {
+      resetProfileAvatarUi();
+      return null;
+    }
+
     const supabase = getProfileSupabaseClient();
     const currentUser = await resolveCurrentProfileUser(supabase);
 
@@ -276,6 +320,11 @@
   }
 
   function setProfileAvatar(src) {
+    if (isProfileGuestState()) {
+      resetProfileAvatarUi();
+      return;
+    }
+
     if (!src) return;
 
     const image = document.getElementById("profileAvatarImage");
@@ -316,6 +365,7 @@
     restoreLocalProfileAvatar,
     loadProfileAvatarFromSupabase,
     setProfileAvatar,
+    resetProfileAvatarUi,
     resetMobileProfileAvatar,
     syncAuthorAvatarInFeed
   };

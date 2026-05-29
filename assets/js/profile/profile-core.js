@@ -201,15 +201,33 @@
     );
   }
 
+  function isMainAuthGuestAuthoritative() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+
+    return Boolean(
+      (recentLogout || window.klevbyAuthReady) &&
+      !window.currentUser &&
+      !window.klevbyCurrentUser &&
+      !window.klevbyUser
+    );
+  }
+
   function getCurrentProfileUser() {
-    return (
+    const mainUser =
       window.currentUser ||
       window.klevbyCurrentUser ||
       window.klevbyUser ||
       (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
-      getProfileUserFromStoredAuth() ||
-      null
-    );
+      null;
+
+    if (mainUser || isMainAuthGuestAuthoritative()) {
+      return mainUser;
+    }
+
+    return getProfileUserFromStoredAuth() || null;
   }
 
   function getProfileNameFromCurrentUser() {

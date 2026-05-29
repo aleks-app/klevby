@@ -27,6 +27,21 @@ let postModalCloseTimer = null;
 let authRestoreTimer = null;
 let authRestoreInProgress = false;
 let lastAuthRestoreAt = 0;
+let authLogoutInProgress = false;
+let lastLogoutAt = (() => {
+  const values = [Number(window.klevbyLastLogoutAt || 0) || 0];
+
+  [window.localStorage, window.sessionStorage].filter(Boolean).forEach((store) => {
+    try {
+      values.push(Number(store.getItem("klevby_recent_logout_at") || 0) || 0);
+    } catch (_) {}
+  });
+
+  return Math.max(...values);
+})();
+
+window.klevbyLastLogoutAt = lastLogoutAt;
+window.klevbyAuthLogoutInProgress = authLogoutInProgress;
 
 let lastAuthEventSignature = "";
 let lastAuthEventAt = 0;
@@ -341,9 +356,17 @@ function initSupabase() {
 
   const authStateHandler = async (event, session) => {
       const previousUserId = currentUser?.id || null;
+      const logoutGuardActive =
+        typeof isAuthLogoutGuardActive === "function"
+          ? isAuthLogoutGuardActive()
+          : Boolean(window.klevbyAuthLogoutInProgress);
 
-      if (event === "SIGNED_OUT") {
+      if (event === "SIGNED_OUT" || logoutGuardActive) {
         currentUser = null;
+
+        if (logoutGuardActive && typeof window.clearKnownAuthStorageKeys === "function") {
+          window.clearKnownAuthStorageKeys();
+        }
       } else if (session && session.user) {
         currentUser = session.user;
       }

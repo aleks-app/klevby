@@ -46,6 +46,21 @@
     }
   }
 
+
+  function isMainAuthGuestAuthoritative() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+
+    return Boolean(
+      (recentLogout || window.klevbyAuthReady) &&
+      !window.currentUser &&
+      !window.klevbyCurrentUser &&
+      !window.klevbyUser
+    );
+  }
+
   function getUserFromMainSite() {
     const fromGetter =
       typeof window.klevbyGetCurrentUser === "function"
@@ -147,6 +162,12 @@
     const now = Date.now();
     const mainUser = getUserFromMainSite();
 
+    if (!mainUser && isMainAuthGuestAuthoritative()) {
+      setCurrentUser(null);
+      lastUserRefreshAt = now;
+      return null;
+    }
+
     if (mainUser && mainUser.id) {
       setCurrentUser(mainUser);
       lastUserRefreshAt = now;
@@ -166,7 +187,7 @@
     const mainClient = getMainSupabaseClient();
 
     if (!mainClient?.auth?.getUser) {
-      const fallbackUser = getUserFromMainSite() || currentUser || null;
+      const fallbackUser = isMainAuthGuestAuthoritative() ? null : (getUserFromMainSite() || currentUser || null);
       setCurrentUser(fallbackUser);
       return fallbackUser;
     }
@@ -182,12 +203,12 @@
             console.warn("Не удалось получить пользователя из основного клиента:", error);
           }
 
-          const fallbackUser = getUserFromMainSite() || getCurrentUser() || null;
+          const fallbackUser = isMainAuthGuestAuthoritative() ? null : (getUserFromMainSite() || getCurrentUser() || null);
           setCurrentUser(fallbackUser);
           return fallbackUser;
         }
 
-        if (data?.user) {
+        if (data?.user && !isMainAuthGuestAuthoritative()) {
           setCurrentUser(data.user);
           syncGlobalChatUser();
           return data.user;
@@ -200,7 +221,7 @@
         userRefreshPromise = null;
       }
 
-      const fallbackUser = getUserFromMainSite() || getCurrentUser() || null;
+      const fallbackUser = isMainAuthGuestAuthoritative() ? null : (getUserFromMainSite() || getCurrentUser() || null);
       setCurrentUser(fallbackUser);
       return fallbackUser;
     })();

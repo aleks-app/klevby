@@ -112,7 +112,7 @@
     const isLocalLegacy = !ownerId && String(item?.source || "").trim() === "local";
 
     if (!currentUserId) {
-      return isLocalLegacy;
+      return false;
     }
 
     if (ownerId) {
@@ -234,6 +234,11 @@
 
   function getProfilePhotosForDisplay() {
     const currentUserId = getCurrentProfileUserId();
+
+    if (!currentUserId) {
+      return [];
+    }
+
     const localPhotos = readProfilePhotos();
     const ownRemotePhotos = profileRemotePhotos.filter((item) => isOwnProfilePhoto(item, { currentUserId }));
 
