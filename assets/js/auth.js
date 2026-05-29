@@ -10,6 +10,7 @@ const KLEVB_PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
 const KLEVB_SIGNUP_CODE_RESEND_COOLDOWN_MS = 55 * 1000;
 
 let signupCodeResendUntil = 0;
+let klevbyLoginInProgress = false;
 
 function getLogoutGuardNow() {
   return Date.now();
@@ -68,6 +69,58 @@ function clearAuthLogoutGuardForFreshLogin() {
   window.klevbyAuthLogoutInProgress = false;
   window.klevbyLastLogoutAt = 0;
   clearRecentLogoutMarker();
+}
+
+
+function setLoginLoadingState(isLoading, statusText = "") {
+  const loginBtn = document.getElementById("authLoginBtn");
+  const loading = Boolean(isLoading);
+
+  klevbyLoginInProgress = loading;
+  window.klevbyLoginInProgress = loading;
+
+  if (loginBtn) {
+    loginBtn.disabled = loading;
+    loginBtn.textContent = loading ? "Входим..." : "Войти";
+  }
+
+  if (statusText) {
+    window.klevbyAuthStatusNotice = statusText;
+    const status = document.getElementById("authStatus");
+    if (status && !currentUser) {
+      status.textContent = statusText;
+    }
+  }
+}
+
+function beginExplicitLoginRequest() {
+  clearPendingAuthRestore();
+  clearAuthLogoutGuardForFreshLogin();
+  setLoginLoadingState(true, "Входим...");
+}
+
+function finishExplicitLoginRequest() {
+  setLoginLoadingState(false);
+}
+
+function resetStaleLoginLoadingState() {
+  if (klevbyLoginInProgress || window.klevbyLoginInProgress) return;
+  setLoginLoadingState(false);
+}
+
+function clearAuthCredentialFields(options = {}) {
+  const fields = {
+    emailInput: Boolean(options.email),
+    passwordInput: options.password !== false,
+    signupCodeInput: options.code !== false,
+    usernameInput: Boolean(options.username)
+  };
+
+  Object.entries(fields).forEach(([id, shouldClear]) => {
+    if (!shouldClear) return;
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  });
 }
 
 function isAuthLogoutGuardActive() {
@@ -443,6 +496,7 @@ function setAuthMode(mode) {
   resendBtn?.classList.add("hidden");
 
   if (authMode === "login") {
+    resetStaleLoginLoadingState();
     title.textContent = "Войти в профиль";
     subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — сначала подтверди email кодом из письма или войди после подтверждения.";
     passwordInput.setAttribute("autocomplete", "current-password");
@@ -625,6 +679,8 @@ async function initAuth() {
 }
 
 function updateAuthStatus() {
+  resetStaleLoginLoadingState();
+
   const status = document.getElementById("authStatus");
   if (!status) return;
 
@@ -842,6 +898,8 @@ async function resendSignupCode() {
 }
 
 async function login() {
+  if (klevbyLoginInProgress) return;
+
   const email = document.getElementById("emailInput").value.trim();
   const password = document.getElementById("passwordInput").value.trim();
 
@@ -849,31 +907,47 @@ async function login() {
     return alert("Введи email и пароль.");
   }
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  beginExplicitLoginRequest();
 
-  if (error) {
-    return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      clearAuthCredentialFields({ password: true });
+      window.klevbyAuthStatusNotice = "Не удалось войти. Проверьте email и пароль.";
+      updateAuthStatus();
+      return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
+    }
+
+    clearPendingSignup();
+    clearAuthLogoutGuardForFreshLogin();
+    clearAuthCredentialFields({ password: true, code: true });
+    currentUser = data.user;
+    authReady = true;
+    window.klevbyAuthStatusNotice = "";
+    syncGlobalAuthState();
+
+    const nickname = getUserNickname();
+
+    if (nickname) {
+      localStorage.setItem("klevby_author_name", nickname);
+      localStorage.setItem("klevby_chat_username", nickname);
+    }
+
+    await restoreAuthState("login", true);
+    updateAuthStatus();
+    fillAuthorLocal();
+    reloadPondsIfReady();
+    showSection("home");
+  } catch (error) {
+    clearAuthCredentialFields({ password: true });
+    window.klevbyAuthStatusNotice = "Не удалось войти. Проверьте подключение и попробуйте ещё раз.";
+    updateAuthStatus();
+    console.warn("Ошибка входа:", error);
+    alert("Не удалось войти. Проверьте подключение и попробуйте ещё раз.");
+  } finally {
+    finishExplicitLoginRequest();
   }
-
-  clearPendingSignup();
-  clearAuthLogoutGuardForFreshLogin();
-  currentUser = data.user;
-  authReady = true;
-  window.klevbyAuthStatusNotice = "";
-  syncGlobalAuthState();
-
-  const nickname = getUserNickname();
-
-  if (nickname) {
-    localStorage.setItem("klevby_author_name", nickname);
-    localStorage.setItem("klevby_chat_username", nickname);
-  }
-
-  await restoreAuthState("login", true);
-  updateAuthStatus();
-  fillAuthorLocal();
-  reloadPondsIfReady();
-  showSection("home");
 }
 
 async function logout() {
@@ -960,6 +1034,8 @@ window.scheduleAuthRestore = scheduleAuthRestore;
 window.setupAuthResumeHandlers = setupAuthResumeHandlers;
 window.initAuth = initAuth;
 window.updateAuthStatus = updateAuthStatus;
+window.setLoginLoadingState = setLoginLoadingState;
+window.resetStaleLoginLoadingState = resetStaleLoginLoadingState;
 window.register = register;
 window.verifySignupCode = verifySignupCode;
 window.resendSignupCode = resendSignupCode;
