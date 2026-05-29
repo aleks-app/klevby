@@ -355,12 +355,20 @@ function initSupabase() {
 
   const authStateHandler = async (event, session) => {
     const previousUserId = currentUser?.id || null;
+    const signedInUser = event === "SIGNED_IN" && session?.user ? session.user : null;
+
+    if (signedInUser && typeof window.clearAuthLogoutGuardForFreshLogin === "function") {
+      window.clearAuthLogoutGuardForFreshLogin();
+    }
+
     const logoutGuardActive =
       typeof isAuthLogoutGuardActive === "function"
         ? isAuthLogoutGuardActive()
         : Boolean(window.klevbyAuthLogoutInProgress);
 
-    if (event === "SIGNED_OUT" || logoutGuardActive) {
+    if (signedInUser) {
+      currentUser = signedInUser;
+    } else if (event === "SIGNED_OUT" || logoutGuardActive) {
       currentUser = null;
 
       if (logoutGuardActive && typeof window.clearKnownAuthStorageKeys === "function") {
