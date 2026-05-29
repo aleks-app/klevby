@@ -116,6 +116,39 @@
   border: 1px solid rgba(255, 255, 255, .08);
 }
 
+.public-profile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.public-profile-empty-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.public-profile-empty-title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.public-profile-empty-text {
+  color: rgba(244, 251, 247, .68);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.public-profile-empty-loading {
+  border-color: rgba(244, 122, 43, .24);
+  background: rgba(244, 122, 43, .07);
+}
+
+.public-profile-empty-error {
+  border-color: rgba(255, 107, 107, .24);
+  background: rgba(255, 107, 107, .07);
+}
+
 @media (min-width: 560px) {
   .public-profile-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

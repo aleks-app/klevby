@@ -30,17 +30,46 @@
     render.bindClose(close);
     render.show();
 
-    const [profile, photos] = await Promise.all([
-      api.getPublicProfile(userId, fallbackData || {}),
-      api.getPublicProfilePhotos(userId)
-    ]);
+    const galleryContainer = render.getGalleryContainer();
+    if (typeof gallery.renderGalleryStatus === "function") {
+      gallery.renderGalleryStatus(galleryContainer, {
+        state: "loading",
+        icon: "⏳",
+        title: "Загружаем профиль…",
+        text: "Собираем фото и данные рыбака."
+      });
+    }
 
-    state.profile = profile;
-    state.photos = Array.isArray(photos) ? photos : [];
-    state.isLoading = false;
+    try {
+      const [profile, photos] = await Promise.all([
+        api.getPublicProfile(userId, fallbackData || {}),
+        api.getPublicProfilePhotos(userId)
+      ]);
 
-    render.renderProfile(profile, state.photos);
-    gallery.renderGallery(render.getGalleryContainer(), state.photos);
+      state.profile = profile;
+      state.photos = Array.isArray(photos) ? photos : [];
+      state.isLoading = false;
+
+      render.renderProfile(profile, state.photos);
+      gallery.renderGallery(galleryContainer, state.photos);
+    } catch (error) {
+      console.warn("Klevby public profile: не удалось загрузить профиль.", error);
+      state.profile = fallbackData || null;
+      state.photos = [];
+      state.isLoading = false;
+      state.error = error;
+
+      render.renderProfile(state.profile, state.photos);
+
+      if (typeof gallery.renderGalleryStatus === "function") {
+        gallery.renderGalleryStatus(galleryContainer, {
+          state: "error",
+          icon: "⚠️",
+          title: "Не удалось загрузить профиль",
+          text: "Проверь интернет и попробуй открыть профиль ещё раз."
+        });
+      }
+    }
   }
 
   function close() {
