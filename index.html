@@ -603,7 +603,7 @@
       <div class="panel">
         <h2 id="authTitle">Регистрация аккаунта Klevby</h2>
         <p id="authSubtitle" style="margin-top:-8px;color:rgba(244,251,247,0.66);font-weight:600;">
-          Создай аккаунт через email и пароль. После регистрации открой письмо, подтверди email по ссылке (она может открыться в браузере), затем вернись в Klevby и войди.
+          Зарегистрироваться можно через email и пароль. После регистрации код придёт на email — введите его здесь, чтобы подтвердить почту и войти.
         </p>
 
         <label id="usernameLabel" class="auth-label" for="usernameInput">Nickname</label>
@@ -612,12 +612,17 @@
         <label class="auth-label" for="emailInput">Email</label>
         <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
 
-        <label class="auth-label" for="passwordInput">Пароль</label>
+        <label id="passwordLabel" class="auth-label" for="passwordInput">Пароль</label>
         <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="new-password" />
 
+        <label id="authCodeLabel" class="auth-label hidden" for="authCodeInput">Код из письма</label>
+        <input id="authCodeInput" class="hidden" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-значный код" />
+
         <div class="actions">
-          <button id="authCreateBtn" class="small-btn green" onclick="register()">Создать профиль</button>
+          <button id="authCreateBtn" class="small-btn green" onclick="register()">Зарегистрироваться</button>
           <button id="authLoginBtn" class="small-btn blue hidden" onclick="login()">Войти</button>
+          <button id="authVerifyCodeBtn" class="small-btn green hidden" onclick="verifySignupCode()">Подтвердить код</button>
+          <button id="authResendCodeBtn" class="small-btn gray hidden" onclick="resendSignupCode()">Отправить код ещё раз</button>
           <button class="small-btn yellow" onclick="sendRecovery()">Сбросить пароль</button>
           <button class="small-btn red" onclick="logout()">Выйти</button>
         </div>
@@ -732,7 +737,7 @@
   <script src="assets/js/config.js?v=20260503-4" defer></script>
   <script src="assets/js/weather.js?v=20260503-4" defer></script>
   <script src="assets/js/pwa.js?v=20260524-pwa-update-pr8-1" defer></script>
-  <script src="assets/js/auth.js?v=20260529-signup-ux-1" defer></script>
+  <script src="assets/js/auth.js?v=20260529-signup-code-1" defer></script>
   <script src="assets/js/posts/posts-state.js?v=20260514-posts-state-split-1" defer></script>
   <script src="assets/js/posts/posts-utils.js?v=20260515-trip-card-images-1" defer></script>
   <script src="assets/js/posts/posts-api.js?v=20260524-posts-resume-owner-pr13-1" defer></script>
