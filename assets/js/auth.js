@@ -20,6 +20,7 @@ const KLEVB_PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
 const KLEVB_SIGNUP_CODE_RESEND_COOLDOWN_MS = 55 * 1000;
 
 let signupCodeResendUntil = 0;
+let klevbyLoginInProgress = false;
 
 function getLogoutGuardNow() {
   return Date.now();
@@ -60,6 +61,7 @@ function clearRecentLogoutMarker() {
 
 function markAuthLogoutStarted() {
   const now = getLogoutGuardNow();
+  window.klevbyForceGuestProfileUi = true;
   authLogoutInProgress = true;
   window.klevbyAuthLogoutInProgress = true;
   writeRecentLogoutMarker(now);
@@ -73,6 +75,7 @@ function markAuthLogoutFinished() {
 }
 
 function clearAuthLogoutGuardForFreshLogin() {
+  window.klevbyForceGuestProfileUi = false;
   authLogoutInProgress = false;
   lastLogoutAt = 0;
   window.klevbyAuthLogoutInProgress = false;
@@ -80,7 +83,20 @@ function clearAuthLogoutGuardForFreshLogin() {
   clearRecentLogoutMarker();
 }
 
+function prepareAuthForExplicitLogin() {
+  clearPendingAuthRestore();
+  clearAuthLogoutGuardForFreshLogin();
+  window.klevbyExplicitLoginInProgress = true;
+}
+
+function finishAuthExplicitLogin() {
+  window.klevbyExplicitLoginInProgress = false;
+  clearAuthLogoutGuardForFreshLogin();
+}
+
 function isAuthLogoutGuardActive() {
+  if (window.klevbyExplicitLoginInProgress) return false;
+
   const marker = readRecentLogoutMarker();
 
   if (authLogoutInProgress || window.klevbyAuthLogoutInProgress) {
@@ -196,6 +212,93 @@ function clearProfileStorageAfterLogout() {
   });
 }
 
+
+function clearAuthCredentialFields(options = {}) {
+  const fields = {
+    emailInput: Boolean(options.email),
+    passwordInput: options.password !== false,
+    signupCodeInput: options.code !== false,
+    usernameInput: Boolean(options.username)
+  };
+
+  Object.entries(fields).forEach(([id, shouldClear]) => {
+    if (!shouldClear) return;
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  });
+}
+
+
+function reloadProfilePhotosAfterFreshLogin() {
+  const photos = window.KlevbyProfilePhotos;
+
+  if (typeof photos?.reloadProfilePhotosAfterLogin === "function") {
+    photos.reloadProfilePhotosAfterLogin().catch((error) => {
+      console.warn("Klevby auth: фото профиля не перезагрузились после входа", error);
+    });
+    return;
+  }
+
+  if (typeof photos?.ensureProfilePhotosLoaded === "function") {
+    photos.ensureProfilePhotosLoaded().catch((error) => {
+      console.warn("Klevby auth: фото профиля не загрузились после входа", error);
+    });
+  }
+}
+
+function setLoginLoadingState(isLoading, statusText = "") {
+  const loginBtn = document.getElementById("authLoginBtn");
+
+  if (loginBtn) {
+    loginBtn.disabled = Boolean(isLoading);
+    loginBtn.textContent = isLoading ? "Входим..." : "Войти";
+  }
+
+  if (statusText) {
+    window.klevbyAuthStatusNotice = statusText;
+    const status = document.getElementById("authStatus");
+    if (status && !currentUser) {
+      status.textContent = statusText;
+    }
+  }
+}
+
+function resetLiveProfileDomAfterLogout() {
+  const textResets = {
+    profileNameText: "Гость",
+    profileStatusText: "Войдите, чтобы открыть свой профиль Klevby.",
+    profileAvatarFallback: "👤",
+    profilePhotosCount: "0",
+    profileReportsCount: "0",
+    profileTripsCount: "0",
+    profileFriendsCount: "0"
+  };
+
+  Object.entries(textResets).forEach(([id, value]) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  });
+
+  const avatarImage = document.getElementById("profileAvatarImage");
+  if (avatarImage) {
+    avatarImage.removeAttribute("src");
+    avatarImage.classList.add("hidden");
+  }
+
+  const avatarFallback = document.getElementById("profileAvatarFallback");
+  if (avatarFallback) {
+    avatarFallback.classList.remove("hidden");
+  }
+
+  document.querySelectorAll(".profile-photo-gallery").forEach((gallery) => {
+    gallery.remove();
+  });
+
+  document.querySelectorAll(".profile-empty-state").forEach((emptyState) => {
+    emptyState.classList.remove("hidden");
+  });
+}
+
 function resetProfileAvatarUiAfterLogout() {
   if (typeof window.KlevbyProfileAvatar?.resetProfileAvatarUi === "function") {
     window.KlevbyProfileAvatar.resetProfileAvatarUi();
@@ -226,8 +329,22 @@ function resetProfileAvatarUiAfterLogout() {
 }
 
 function resetGuestProfileAfterLogout() {
+  window.klevbyForceGuestProfileUi = true;
+  clearAuthCredentialFields({
+    email: true,
+    password: true,
+    code: true,
+    username: true
+  });
   clearProfileStorageAfterLogout();
+  resetLiveProfileDomAfterLogout();
   resetProfileAvatarUiAfterLogout();
+
+  if (typeof window.KlevbyProfilePhotos?.resetProfilePhotosAfterLogout === "function") {
+    window.KlevbyProfilePhotos.resetProfilePhotosAfterLogout();
+  } else if (typeof window.KlevbyProfilePhotos?.renderProfilePhotos === "function") {
+    window.KlevbyProfilePhotos.renderProfilePhotos();
+  }
 
   if (typeof window.updateKlevbyProfileView === "function") {
     window.updateKlevbyProfileView();
@@ -907,38 +1024,63 @@ async function resendSignupCode() {
 }
 
 async function login() {
+  if (klevbyLoginInProgress) return;
+
   const email = document.getElementById("emailInput").value.trim();
-  const password = document.getElementById("passwordInput").value.trim();
+  const passwordInput = document.getElementById("passwordInput");
+  const password = passwordInput ? passwordInput.value.trim() : "";
 
   if (!email || !password) {
     return alert("Введи email и пароль.");
   }
 
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  klevbyLoginInProgress = true;
+  setLoginLoadingState(true, "Входим...");
+  prepareAuthForExplicitLogin();
 
-  if (error) {
-    return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      window.klevbyExplicitLoginInProgress = false;
+      clearAuthCredentialFields({ password: true });
+      window.klevbyAuthStatusNotice = "Не удалось войти. Проверьте email и пароль.";
+      updateAuthStatus();
+      return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
+    }
+
+    clearPendingSignup();
+    finishAuthExplicitLogin();
+    clearAuthCredentialFields({ password: true, code: true });
+    currentUser = data.user;
+    authReady = true;
+    window.klevbyAuthStatusNotice = "";
+    syncGlobalAuthState();
+    reloadProfilePhotosAfterFreshLogin();
+
+    const nickname = getUserNickname();
+
+    if (nickname) {
+      localStorage.setItem("klevby_author_name", nickname);
+      localStorage.setItem("klevby_chat_username", nickname);
+    }
+
+    await restoreAuthState("login", true);
+    updateAuthStatus();
+    fillAuthorLocal();
+    reloadPondsIfReady();
+    showSection("home");
+  } catch (error) {
+    window.klevbyExplicitLoginInProgress = false;
+    clearAuthCredentialFields({ password: true });
+    window.klevbyAuthStatusNotice = "Не удалось войти. Проверьте подключение и попробуйте ещё раз.";
+    updateAuthStatus();
+    console.warn("Ошибка входа:", error);
+    alert("Не удалось войти. Проверьте подключение и попробуйте ещё раз.");
+  } finally {
+    klevbyLoginInProgress = false;
+    setLoginLoadingState(false);
   }
-
-  clearPendingSignup();
-  clearAuthLogoutGuardForFreshLogin();
-  currentUser = data.user;
-  authReady = true;
-  window.klevbyAuthStatusNotice = "";
-  syncGlobalAuthState();
-
-  const nickname = getUserNickname();
-
-  if (nickname) {
-    localStorage.setItem("klevby_author_name", nickname);
-    localStorage.setItem("klevby_chat_username", nickname);
-  }
-
-  await restoreAuthState("login", true);
-  updateAuthStatus();
-  fillAuthorLocal();
-  reloadPondsIfReady();
-  showSection("home");
 }
 
 async function logout() {
@@ -1019,6 +1161,7 @@ window.fillAuthorLocal = fillAuthorLocal;
 window.setAuthMode = setAuthMode;
 window.restoreAuthState = restoreAuthState;
 window.isAuthLogoutGuardActive = isAuthLogoutGuardActive;
+window.clearAuthLogoutGuardForFreshLogin = clearAuthLogoutGuardForFreshLogin;
 window.clearKnownAuthStorageKeys = clearKnownAuthStorageKeys;
 window.listAuthStorageKeys = listAuthStorageKeys;
 window.scheduleAuthRestore = scheduleAuthRestore;
