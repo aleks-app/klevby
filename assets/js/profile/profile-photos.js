@@ -25,7 +25,9 @@
   let profileRemotePhotos = [];
   let profileRemoteLoadedForUserId = "";
   let profileRemoteLoadInFlight = null;
+  let profileRemoteLoadInFlightForUserId = "";
   let profileRemoteLoadGeneration = 0;
+  let profilePhotosDirtyForUserId = "";
 
   function getCore() {
     return window.KlevbyProfileCore || {};
@@ -116,6 +118,52 @@
     return String(ownerId || "").trim();
   }
 
+  function getCurrentProfileAuthorNames() {
+    const names = [];
+    const pushName = (value) => {
+      const clean = String(value || "").trim().toLowerCase();
+      if (clean && !names.includes(clean)) names.push(clean);
+    };
+
+    const user =
+      window.currentUser ||
+      window.klevbyCurrentUser ||
+      window.klevbyUser ||
+      null;
+
+    const metadata = user?.user_metadata || user?.raw_user_meta_data || {};
+    pushName(metadata.nickname);
+    pushName(metadata.username);
+    pushName(metadata.display_name);
+    pushName(metadata.name);
+    pushName(metadata.full_name);
+    pushName(user?.email ? String(user.email).split("@")[0] : "");
+
+    try {
+      const profileData = JSON.parse(localStorage.getItem("klevby_profile_settings") || "{}");
+      pushName(profileData.name);
+    } catch (_) {}
+
+    try {
+      pushName(localStorage.getItem("klevby_profile_name"));
+      pushName(localStorage.getItem("klevby_author_name"));
+      pushName(localStorage.getItem("klevby_chat_username"));
+    } catch (_) {}
+
+    return names;
+  }
+
+  function getFeedPostAuthorName(item) {
+    return String(
+      item?.author_name ||
+      item?.authorName ||
+      item?.name ||
+      item?.username ||
+      item?.display_name ||
+      ""
+    ).trim().toLowerCase();
+  }
+
   function isOwnProfilePhoto(item, options = {}) {
     const currentUserId = String(options.currentUserId || getCurrentProfileUserId() || "").trim();
     const ownerId = getPhotoOwnerId(item);
@@ -127,6 +175,13 @@
 
     if (ownerId) {
       return String(ownerId) === String(currentUserId);
+    }
+
+    if (options.allowAuthorFallback) {
+      const authorName = getFeedPostAuthorName(item);
+      if (authorName && getCurrentProfileAuthorNames().includes(authorName)) {
+        return true;
+      }
     }
 
     return isLocalLegacy;
@@ -169,12 +224,91 @@
     });
   }
 
-  async function loadRemoteProfilePhotosByUserId() {
+  function mapFeedItemsToCurrentUserPhotos(items, source, userId) {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    return dedupeProfilePhotos(
+      safeItems
+        .filter((item) => isOwnProfilePhoto(item, {
+          currentUserId: userId,
+          allowAuthorFallback: true
+        }))
+        .map((item) => mapFeedPostToProfilePhoto(item, source, userId))
+        .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }))
+    );
+  }
+
+  function getLoadedFeedItemsFromMemory() {
+    const batches = [];
+
+    try {
+      if (typeof window.KlevbyFeedState?.getLastItems === "function") {
+        batches.push(window.KlevbyFeedState.getLastItems());
+      }
+    } catch (_) {}
+
+    if (Array.isArray(window.__klevbyFeedLastItems)) {
+      batches.push(window.__klevbyFeedLastItems);
+    }
+
+    try {
+      if (typeof window.KlevbyFeedState?.getItemsCache === "function") {
+        batches.push(Object.values(window.KlevbyFeedState.getItemsCache() || {}));
+      }
+    } catch (_) {}
+
+    if (window.__klevbyFeedItemsCache && typeof window.__klevbyFeedItemsCache === "object") {
+      batches.push(Object.values(window.__klevbyFeedItemsCache));
+    }
+
+    const seen = new Set();
+
+    return batches
+      .flat()
+      .filter(Boolean)
+      .filter((item) => {
+        const dedupeKey = String(item?.id || item?.feedPostId || "").trim();
+        if (!dedupeKey || seen.has(dedupeKey)) return false;
+        seen.add(dedupeKey);
+        return true;
+      });
+  }
+
+  async function queryProfilePhotosByOwnerField(client, ownerField, userId) {
+    const selectColumns = [
+      "id",
+      ownerField,
+      "type",
+      "author_name",
+      "caption",
+      "image_url",
+      "image_path",
+      "image_width",
+      "image_height",
+      "image_size_kb",
+      "created_at",
+      "updated_at"
+    ].join(",");
+
+    const { data, error } = await client
+      .from(PROFILE_FEED_TABLE)
+      .select(selectColumns)
+      .eq(ownerField, userId)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (error) throw error;
+
+    return mapFeedItemsToCurrentUserPhotos(data, `feed_posts_${ownerField}`, userId);
+  }
+
+  async function loadRemoteProfilePhotosByUserId(options = {}) {
     const userId = getCurrentProfileUserId();
+    const force = Boolean(options.force);
     const loadGeneration = profileRemoteLoadGeneration;
     if (!userId) return [];
-    if (profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
-    if (profileRemoteLoadInFlight) return profileRemoteLoadInFlight;
+    if (!force && profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
+    if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId === userId) return profileRemoteLoadInFlight;
 
     const client =
       window.supabaseClient ||
@@ -182,6 +316,14 @@
       (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null);
 
     async function loadViaFeedApiFallback() {
+      const memoryPhotos = mapFeedItemsToCurrentUserPhotos(
+        getLoadedFeedItemsFromMemory(),
+        "feed_memory",
+        userId
+      );
+
+      if (memoryPhotos.length) return memoryPhotos;
+
       if (typeof window.klevbyLoadFeedPostsFromSupabase !== "function") return [];
 
       try {
@@ -189,11 +331,7 @@
           limit: 120
         });
         const items = Array.isArray(result?.items) ? result.items : [];
-        const onlyCurrentUserItems = items.filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }));
-        const mapped = onlyCurrentUserItems
-          .map((item) => mapFeedPostToProfilePhoto(item, "feed_fallback", userId))
-          .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }));
-        return dedupeProfilePhotos(mapped);
+        return mapFeedItemsToCurrentUserPhotos(items, "feed_fallback", userId);
       } catch (error) {
         console.warn("[KlevbyProfilePhotos] Feed API fallback не сработал.", error);
         return [];
@@ -206,27 +344,30 @@
       if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
         profileRemotePhotos = fallbackPhotos;
         profileRemoteLoadedForUserId = userId;
+        if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
       }
 
       return profileRemotePhotos;
     }
 
+    profileRemoteLoadInFlightForUserId = userId;
     profileRemoteLoadInFlight = (async () => {
       try {
-        const { data, error } = await client
-          .from(PROFILE_FEED_TABLE)
-          .select("id,user_id,caption,image_url,image_path,image_width,image_height,image_size_kb,created_at,updated_at")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(80);
+        let mapped = [];
+        let directError = null;
 
-        if (error) throw error;
+        for (const ownerField of ["user_id", "owner_id"]) {
+          try {
+            mapped = await queryProfilePhotosByOwnerField(client, ownerField, userId);
+            if (mapped.length) break;
+          } catch (error) {
+            directError = directError || error;
+          }
+        }
 
-        const mapped = Array.isArray(data)
-          ? data
-            .map((item) => mapFeedPostToProfilePhoto(item, "feed_posts", userId))
-            .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }))
-          : [];
+        if (!mapped.length) {
+          mapped = await loadViaFeedApiFallback();
+        }
 
         if (loadGeneration !== profileRemoteLoadGeneration || userId !== getCurrentProfileUserId()) {
           return profileRemotePhotos;
@@ -234,12 +375,18 @@
 
         profileRemotePhotos = dedupeProfilePhotos(mapped);
         profileRemoteLoadedForUserId = userId;
+        if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
+
+        if (!mapped.length && directError) {
+          console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", directError);
+        }
       } catch (error) {
         const fallbackPhotos = await loadViaFeedApiFallback();
         if (fallbackPhotos.length) {
           if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
             profileRemotePhotos = fallbackPhotos;
             profileRemoteLoadedForUserId = userId;
+            if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
           }
         } else {
           console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", error);
@@ -247,6 +394,7 @@
       } finally {
         if (loadGeneration === profileRemoteLoadGeneration) {
           profileRemoteLoadInFlight = null;
+          profileRemoteLoadInFlightForUserId = "";
         }
       }
 
@@ -591,15 +739,38 @@
     contentCard.appendChild(gallery);
   }
 
-  async function ensureProfilePhotosLoaded() {
-    const beforeCount = getProfilePhotosForDisplay().length;
-    await loadRemoteProfilePhotosByUserId();
-    const afterCount = getProfilePhotosForDisplay().length;
+  async function ensureProfilePhotosLoaded(options = {}) {
+    const currentUserId = getCurrentProfileUserId();
+    if (!currentUserId) {
+      renderProfilePhotos();
+      return [];
+    }
 
-    if (afterCount !== beforeCount) {
+    const beforeCount = getProfilePhotosForDisplay().length;
+    const loadedForUserBefore = profileRemoteLoadedForUserId;
+    const dirtyForUserBefore = profilePhotosDirtyForUserId;
+    const shouldForceLoad =
+      Boolean(options.force) ||
+      profilePhotosDirtyForUserId === currentUserId ||
+      profileRemoteLoadedForUserId !== currentUserId;
+
+    await loadRemoteProfilePhotosByUserId({ force: shouldForceLoad });
+
+    const afterCount = getProfilePhotosForDisplay().length;
+    const loadedForUserAfter = profileRemoteLoadedForUserId;
+    const dirtyForUserAfter = profilePhotosDirtyForUserId;
+
+    if (
+      afterCount !== beforeCount ||
+      loadedForUserBefore !== loadedForUserAfter ||
+      dirtyForUserBefore !== dirtyForUserAfter ||
+      options.force
+    ) {
       renderProfilePhotos();
       window.dispatchEvent(new CustomEvent("klevby-profile-photos-updated"));
     }
+
+    return getProfilePhotosForDisplay();
   }
 
 
@@ -608,6 +779,8 @@
     profileRemotePhotos = [];
     profileRemoteLoadedForUserId = "";
     profileRemoteLoadInFlight = null;
+    profileRemoteLoadInFlightForUserId = "";
+    profilePhotosDirtyForUserId = "";
     saveProfilePhotos([]);
 
     const viewer = document.getElementById("profilePhotoViewer");
@@ -621,18 +794,31 @@
   function reloadProfilePhotosAfterLogin() {
     const userId = getCurrentProfileUserId();
 
-    profileRemoteLoadGeneration += 1;
-    profileRemotePhotos = [];
-    profileRemoteLoadedForUserId = "";
-    profileRemoteLoadInFlight = null;
-
     if (!userId) {
       renderProfilePhotos();
       return Promise.resolve([]);
     }
 
-    renderProfilePhotos();
-    return ensureProfilePhotosLoaded();
+    profilePhotosDirtyForUserId = userId;
+
+    if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId !== userId) {
+      profileRemoteLoadGeneration += 1;
+      profileRemoteLoadInFlight = null;
+      profileRemoteLoadInFlightForUserId = "";
+    }
+
+    return ensureProfilePhotosLoaded({ force: true });
+  }
+
+  function markProfilePhotosDirtyAfterLogin() {
+    const userId = getCurrentProfileUserId();
+
+    if (!userId) {
+      return Promise.resolve([]);
+    }
+
+    profilePhotosDirtyForUserId = userId;
+    return reloadProfilePhotosAfterLogin();
   }
 
   function ensureProfilePhotoViewer() {
@@ -903,6 +1089,7 @@
     ensureProfilePhotosLoaded,
     resetProfilePhotosAfterLogout,
     reloadProfilePhotosAfterLogin,
+    markProfilePhotosDirtyAfterLogin,
     ensureProfilePhotoViewer,
     openProfilePhotoViewer,
     closeProfilePhotoViewer,
