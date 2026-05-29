@@ -449,7 +449,6 @@
     return String(value || "")
       .toLowerCase()
       .replace(/ё/g, "е")
-      .replace(/\s+/g, " ")
       .trim();
   }
 
@@ -505,6 +504,97 @@
         return stem.startsWith(searchStem) || searchStem.startsWith(stem);
       });
     });
+  }
+
+  function getSpoonSearchStem(token) {
+    const safe = normalizeText(token);
+    if (safe === "бле" || safe.startsWith("блес")) return "блес";
+    return "";
+  }
+
+  function isSpoonTitleSearchMatch(searchValue, titleValue) {
+    const searchTokens = getSearchTokens(searchValue);
+    const titleTokens = getSearchTokens(titleValue);
+    if (!searchTokens.length || !titleTokens.length) return false;
+
+    return searchTokens.every(function (searchToken) {
+      const searchStem = getSpoonSearchStem(searchToken);
+      if (!searchStem) return false;
+
+      return titleTokens.some(function (titleToken) {
+        return getSpoonSearchStem(titleToken) === searchStem;
+      });
+    });
+  }
+
+  const MARKET_CATEGORY_SEARCH_RULES = [
+    {
+      aliases: ["приманки", "приманка"],
+      categories: ["Приманки"],
+      matchType: "category"
+    },
+    {
+      aliases: ["блесна", "блесны", "блесен", "бле"],
+      categories: ["Приманки"],
+      matchType: "title"
+    },
+    {
+      aliases: ["катушки", "катушка"],
+      categories: ["Катушки"],
+      matchType: "category"
+    },
+    {
+      aliases: ["лодки", "лодка", "пвх"],
+      categories: ["Лодки"],
+      matchType: "category"
+    },
+    {
+      aliases: ["эхолоты", "эхолот"],
+      categories: ["Эхолоты"],
+      matchType: "category"
+    }
+  ];
+
+  function getMarketCategorySearchRule(searchValue) {
+    const search = normalizeText(searchValue);
+    if (!search) return null;
+
+    return MARKET_CATEGORY_SEARCH_RULES.find(function (rule) {
+      return rule.aliases.some(function (alias) {
+        return search === normalizeText(alias);
+      });
+    }) || null;
+  }
+
+  function isMarketItemInSearchCategory(item, rule) {
+    if (!rule) return false;
+
+    return rule.categories.some(function (categoryName) {
+      return normalizeText(item.category) === normalizeText(categoryName);
+    });
+  }
+
+  function isMarketItemSearchMatch(item, search) {
+    const categoryRule = getMarketCategorySearchRule(search);
+    if (categoryRule) {
+      if (categoryRule.matchType === "category") {
+        return isMarketItemInSearchCategory(item, categoryRule);
+      }
+
+      if (categoryRule.matchType === "title") {
+        return isMarketItemInSearchCategory(item, categoryRule) && isSpoonTitleSearchMatch(search, item.title);
+      }
+
+      return false;
+    }
+
+    return (
+      isSmartSearchMatch(search, item.title) ||
+      isSmartSearchMatch(search, item.description) ||
+      isSmartSearchMatch(search, item.category) ||
+      isSmartSearchMatch(search, item.city) ||
+      isSmartSearchMatch(search, item.price)
+    );
   }
 
   function getMarketImage(item) {
@@ -1307,13 +1397,7 @@
 
     if (search) {
       filtered = filtered.filter(function (item) {
-        return (
-          isSmartSearchMatch(search, item.title) ||
-          isSmartSearchMatch(search, item.description) ||
-          isSmartSearchMatch(search, item.category) ||
-          isSmartSearchMatch(search, item.city) ||
-          isSmartSearchMatch(search, item.price)
-        );
+        return isMarketItemSearchMatch(item, search);
       });
     }
 
