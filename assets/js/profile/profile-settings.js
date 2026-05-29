@@ -57,6 +57,23 @@
     return requireUiMethod("updateProfileHomeFloatButton")();
   }
 
+
+  function isProfileGuestState() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+    const user = window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null;
+
+    return Boolean((window.klevbyAuthReady || window.authReady || recentLogout) && !user);
+  }
+
+  function openAuthFromGuestProfile() {
+    if (typeof window.showSection === "function") {
+      window.showSection("auth");
+    }
+  }
+
   function updateKlevbyProfileViewSafe() {
     if (typeof window.updateKlevbyProfileView === "function") {
       window.updateKlevbyProfileView();
@@ -80,6 +97,11 @@
   }
 
   function openProfileSettingsModal() {
+    if (isProfileGuestState()) {
+      openAuthFromGuestProfile();
+      return;
+    }
+
     const modal = document.getElementById("profileSettingsModal");
     const message = document.getElementById("profileSettingsMessage");
 

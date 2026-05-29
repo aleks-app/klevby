@@ -20,6 +20,105 @@ let klevbyProfileFeedRecoveryTimer = null;
 let klevbyProfileFeedRecoveryLastAt = 0;
 let klevbyProfilePhotoUploadInProgress = false;
 
+function getProfileAuthUserQuick() {
+  return window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null;
+}
+
+function isProfileGuestState() {
+  const recentLogout =
+    typeof window.isAuthLogoutGuardActive === "function"
+      ? window.isAuthLogoutGuardActive()
+      : Boolean(window.klevbyAuthLogoutInProgress);
+
+  return Boolean((window.klevbyAuthReady || window.authReady || recentLogout) && !getProfileAuthUserQuick());
+}
+
+function openAuthFromGuestProfile() {
+  if (typeof window.showSection === "function") {
+    window.showSection("auth");
+    return true;
+  }
+
+  const authSection = document.getElementById("authSection");
+  const profileSection = document.getElementById("profileSection");
+
+  if (profileSection) profileSection.classList.add("hidden");
+
+  if (authSection) {
+    authSection.classList.remove("hidden");
+    return true;
+  }
+
+  return false;
+}
+
+function resetProfileAvatarForGuest() {
+  const avatar = getProfileAvatar();
+
+  if (typeof avatar.resetProfileAvatarUi === "function") {
+    avatar.resetProfileAvatarUi();
+    return;
+  }
+
+  if (typeof avatar.resetMobileProfileAvatar === "function") {
+    avatar.resetMobileProfileAvatar();
+  }
+
+  const image = document.getElementById("profileAvatarImage");
+  const fallback = document.getElementById("profileAvatarFallback");
+
+  if (image) {
+    image.removeAttribute("src");
+    image.classList.add("hidden");
+  }
+
+  if (fallback) {
+    fallback.textContent = "👤";
+    fallback.classList.remove("hidden");
+  }
+}
+
+function setProfileGuestActions(isGuest) {
+  const selectors = [
+    'button[onclick*="openProfilePhotoAction"]',
+    'button[onclick*="openProfileTripsView"]',
+    'button[onclick*="openProfileCreateView"]',
+    'button[onclick*="openProfileSettingsModal"]'
+  ];
+
+  document.querySelectorAll(selectors.join(",")).forEach((button) => {
+    button.disabled = Boolean(isGuest);
+    button.classList.toggle("hidden", Boolean(isGuest));
+    button.setAttribute("aria-hidden", isGuest ? "true" : "false");
+  });
+}
+
+function renderGuestProfileView() {
+  const nameNode = document.getElementById("profileNameText");
+  const statusNode = document.getElementById("profileStatusText");
+  const fallbackNode = document.getElementById("profileAvatarFallback");
+  const reportsNode = document.getElementById("profileReportsCount");
+  const tripsNode = document.getElementById("profileTripsCount");
+  const photosNode = document.getElementById("profilePhotosCount");
+  const friendsNode = document.getElementById("profileFriendsCount");
+
+  if (nameNode) nameNode.textContent = "Гость";
+  if (statusNode) statusNode.textContent = "Войдите, чтобы открыть свой профиль Klevby.";
+  if (fallbackNode) fallbackNode.textContent = "👤";
+  if (reportsNode) reportsNode.textContent = "0";
+  if (tripsNode) tripsNode.textContent = "0";
+  if (photosNode) photosNode.textContent = "0";
+  if (friendsNode) friendsNode.textContent = "0";
+
+  resetProfileAvatarForGuest();
+  setProfileGuestActions(true);
+
+  const photos = getProfilePhotos();
+  if (typeof photos.renderProfilePhotos === "function") {
+    photos.renderProfilePhotos();
+  }
+}
+
 function getProfileCore() {
   return window.KlevbyProfileCore || {};
 }
@@ -261,6 +360,11 @@ function resetMobileProfileAvatar() {
 }
 
 function openProfileSettingsModal() {
+  if (isProfileGuestState()) {
+    openAuthFromGuestProfile();
+    return;
+  }
+
   return requireProfileSettingsMethod("openProfileSettingsModal")();
 }
 
@@ -374,6 +478,11 @@ function openKlevbyPublicProfile(userId, fallbackData) {
 }
 
 function openKlevbyProfile() {
+  if (isProfileGuestState() && openAuthFromGuestProfile()) {
+    resetProfileAvatarForGuest();
+    return;
+  }
+
   setProfileReturnMode(false);
   setProfileScreenChrome(true);
 
@@ -428,6 +537,13 @@ function patchProfileCardButtonsSafe() {
 }
 
 function updateKlevbyProfileView() {
+  if (isProfileGuestState()) {
+    renderGuestProfileView();
+    return;
+  }
+
+  setProfileGuestActions(false);
+
   const data = readProfileData();
 
   const name =
@@ -515,6 +631,11 @@ function countUserPosts(profileName) {
 }
 
 function openProfilePhotoAction() {
+  if (isProfileGuestState()) {
+    openAuthFromGuestProfile();
+    return;
+  }
+
   if (klevbyProfilePhotoUploadInProgress) {
     showProfileUploadStatus("Фото уже загружается. Подожди пару секунд…", "loading");
     return;
@@ -1092,6 +1213,11 @@ function closeProfilePhotoViewer() {
 }
 
 function openProfileTripsView() {
+  if (isProfileGuestState()) {
+    openAuthFromGuestProfile();
+    return;
+  }
+
   setProfileReturnMode(true);
   setProfileScreenChrome(true);
   applyProfileTabbar();
@@ -1134,6 +1260,11 @@ function openProfileTripsView() {
 }
 
 function openProfileCreateView() {
+  if (isProfileGuestState()) {
+    openAuthFromGuestProfile();
+    return;
+  }
+
   setProfileReturnMode(true);
   setProfileScreenChrome(true);
   applyProfileTabbar();
@@ -1166,6 +1297,10 @@ function openProfileCreateView() {
     }
   }, 100);
 }
+
+window.addEventListener("klevby-auth-changed", () => {
+  updateKlevbyProfileView();
+});
 
 window.addEventListener("klevby-profile-photos-updated", () => {
   updateKlevbyProfileView();

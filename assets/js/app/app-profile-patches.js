@@ -24,6 +24,29 @@
     return value;
   }
 
+
+  function isProfileGuestState() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+    const user = window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null;
+
+    return Boolean((window.klevbyAuthReady || window.authReady || recentLogout) && !user);
+  }
+
+  function openAuthFromGuestProfile() {
+    setProfileReturnMode(false);
+
+    if (typeof window.showSection === "function") {
+      window.showSection("auth");
+      return true;
+    }
+
+    hideAllAppSectionsExcept("authSection");
+    return true;
+  }
+
   function hideAllAppSectionsExcept(activeId) {
     if (typeof window.hideAllAppSectionsExcept === "function") {
       window.hideAllAppSectionsExcept(activeId);
@@ -121,11 +144,21 @@
 
   function patchProfileShortcutActions() {
     window.openProfileCreateView = function patchedOpenProfileCreateView() {
+      if (isProfileGuestState()) {
+        openAuthFromGuestProfile();
+        return;
+      }
+
       markProfileReturnMode();
       showCreatePostScreen({ fromProfile: true });
     };
 
     window.openProfileTripsView = function patchedOpenProfileTripsView() {
+      if (isProfileGuestState()) {
+        openAuthFromGuestProfile();
+        return;
+      }
+
       markProfileReturnMode();
       setMode("mine");
     };
