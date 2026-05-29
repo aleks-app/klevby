@@ -231,19 +231,24 @@ function clearAuthCredentialFields(options = {}) {
 
 function reloadProfilePhotosAfterFreshLogin() {
   const photos = window.KlevbyProfilePhotos;
+  const reload =
+    (typeof photos?.markProfilePhotosDirtyAfterLogin === "function" && photos.markProfilePhotosDirtyAfterLogin) ||
+    (typeof photos?.reloadProfilePhotosAfterLogin === "function" && photos.reloadProfilePhotosAfterLogin) ||
+    (typeof photos?.ensureProfilePhotosLoaded === "function" && photos.ensureProfilePhotosLoaded) ||
+    null;
 
-  if (typeof photos?.reloadProfilePhotosAfterLogin === "function") {
-    photos.reloadProfilePhotosAfterLogin().catch((error) => {
+  if (!reload) return;
+
+  Promise.resolve()
+    .then(() => reload.call(photos))
+    .then(() => {
+      if (typeof window.updateKlevbyProfileView === "function") {
+        window.updateKlevbyProfileView();
+      }
+    })
+    .catch((error) => {
       console.warn("Klevby auth: фото профиля не перезагрузились после входа", error);
     });
-    return;
-  }
-
-  if (typeof photos?.ensureProfilePhotosLoaded === "function") {
-    photos.ensureProfilePhotosLoaded().catch((error) => {
-      console.warn("Klevby auth: фото профиля не загрузились после входа", error);
-    });
-  }
 }
 
 function setLoginLoadingState(isLoading, statusText = "") {
@@ -1056,7 +1061,6 @@ async function login() {
     authReady = true;
     window.klevbyAuthStatusNotice = "";
     syncGlobalAuthState();
-    reloadProfilePhotosAfterFreshLogin();
 
     const nickname = getUserNickname();
 
@@ -1066,6 +1070,7 @@ async function login() {
     }
 
     await restoreAuthState("login", true);
+    reloadProfilePhotosAfterFreshLogin();
     updateAuthStatus();
     fillAuthorLocal();
     reloadPondsIfReady();

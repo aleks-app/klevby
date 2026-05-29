@@ -25,7 +25,9 @@
   let profileRemotePhotos = [];
   let profileRemoteLoadedForUserId = "";
   let profileRemoteLoadInFlight = null;
+  let profileRemoteLoadInFlightForUserId = "";
   let profileRemoteLoadGeneration = 0;
+  let profilePhotosDirtyForUserId = "";
 
   function getCore() {
     return window.KlevbyProfileCore || {};
@@ -116,6 +118,102 @@
     return String(ownerId || "").trim();
   }
 
+  function getCurrentProfileAuthorNames() {
+    const names = [];
+    const pushName = (value) => {
+      const clean = String(value || "").trim().toLowerCase();
+      if (clean && !names.includes(clean)) names.push(clean);
+    };
+
+    const user =
+      window.currentUser ||
+      window.klevbyCurrentUser ||
+      window.klevbyUser ||
+      null;
+
+    const metadata = user?.user_metadata || user?.raw_user_meta_data || {};
+    pushName(metadata.nickname);
+    pushName(metadata.username);
+    pushName(metadata.display_name);
+    pushName(metadata.name);
+    pushName(metadata.full_name);
+    pushName(user?.email ? String(user.email).split("@")[0] : "");
+
+    try {
+      const profileData = JSON.parse(localStorage.getItem("klevby_profile_settings") || "{}");
+      pushName(profileData.name);
+    } catch (_) {}
+
+    try {
+      pushName(localStorage.getItem("klevby_profile_name"));
+      pushName(localStorage.getItem("klevby_author_name"));
+      pushName(localStorage.getItem("klevby_chat_username"));
+    } catch (_) {}
+
+    return names;
+  }
+
+  function getFeedPostAuthorName(item) {
+    return String(
+      item?.author_name ||
+      item?.authorName ||
+      item?.name ||
+      item?.username ||
+      item?.display_name ||
+      ""
+    ).trim().toLowerCase();
+  }
+
+  function getFeedPostType(item) {
+    return String(item?.type || item?.postType || item?.post_type || "").trim().toLowerCase();
+  }
+
+  function isProfilePhotoFeedItem(item, options = {}) {
+    const type = getFeedPostType(item);
+
+    if (!type) {
+      return !options.requireProfileType;
+    }
+
+    return type === "profile_photo" || type === "profile-photo";
+  }
+
+  function getFeedPostImageUrl(item) {
+    return String(
+      item?.imageUrl ||
+      item?.image ||
+      item?.image_url ||
+      item?.src ||
+      item?.feedImageUrl ||
+      ""
+    ).trim();
+  }
+
+  function getFeedPostImagePath(item) {
+    return String(
+      item?.imagePath ||
+      item?.image_path ||
+      item?.feedImagePath ||
+      ""
+    ).trim();
+  }
+
+  function hasFeedPostImage(item) {
+    return Boolean(getFeedPostImageUrl(item) || getFeedPostImagePath(item));
+  }
+
+  function getFeedPostTitle(item) {
+    return String(item?.caption || item?.title || "Фото с рыбалки").trim() || "Фото с рыбалки";
+  }
+
+  function getFeedPostCreatedAt(item) {
+    return item?.createdAt || item?.created_at || "";
+  }
+
+  function getFeedPostSavedSizeKb(item) {
+    return Number(item?.savedSizeKb || item?.image_size_kb || 0);
+  }
+
   function isOwnProfilePhoto(item, options = {}) {
     const currentUserId = String(options.currentUserId || getCurrentProfileUserId() || "").trim();
     const ownerId = getPhotoOwnerId(item);
@@ -129,15 +227,22 @@
       return String(ownerId) === String(currentUserId);
     }
 
+    if (options.allowAuthorFallback) {
+      const authorName = getFeedPostAuthorName(item);
+      if (authorName && getCurrentProfileAuthorNames().includes(authorName)) {
+        return true;
+      }
+    }
+
     return isLocalLegacy;
   }
 
   function mapFeedPostToProfilePhoto(post, source = "feed_posts", fallbackUserId = "") {
-    const imageUrl = String(post?.image_url || post?.imageUrl || "").trim();
-    const imagePath = String(post?.image_path || post?.imagePath || "").trim();
+    const imageUrl = getFeedPostImageUrl(post);
+    const imagePath = getFeedPostImagePath(post);
     if (!imageUrl && !imagePath) return null;
 
-    const id = String(post?.id || "").trim();
+    const id = String(post?.id || post?.feedPostId || "").trim();
     if (!id) return null;
 
     const ownerId = getPhotoOwnerId(post) || String(fallbackUserId || "").trim();
@@ -145,11 +250,11 @@
     return {
       id: `feed_${id}`,
       src: imageUrl,
-      title: String(post?.caption || "Фото с рыбалки").trim() || "Фото с рыбалки",
-      createdAt: post?.created_at || post?.createdAt || "",
-      savedSizeKb: Number(post?.image_size_kb || post?.savedSizeKb || 0),
-      width: Number(post?.image_width || post?.width || 0),
-      height: Number(post?.image_height || post?.height || 0),
+      title: getFeedPostTitle(post),
+      createdAt: getFeedPostCreatedAt(post),
+      savedSizeKb: getFeedPostSavedSizeKb(post),
+      width: Number(post?.width || post?.image_width || 0),
+      height: Number(post?.height || post?.image_height || 0),
       source,
       userId: ownerId,
       feedUserId: ownerId,
@@ -169,12 +274,114 @@
     });
   }
 
-  async function loadRemoteProfilePhotosByUserId() {
+  function mapFeedItemsToCurrentUserPhotos(items, source, userId, options = {}) {
+    const safeItems = Array.isArray(items) ? items : [];
+
+    return dedupeProfilePhotos(
+      safeItems
+        .filter((item) => isProfilePhotoFeedItem(item, {
+          requireProfileType: Boolean(options.requireProfileType)
+        }))
+        .filter(hasFeedPostImage)
+        .filter((item) => isOwnProfilePhoto(item, {
+          currentUserId: userId,
+          allowAuthorFallback: true
+        }))
+        .map((item) => mapFeedPostToProfilePhoto(item, source, userId))
+        .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }))
+    );
+  }
+
+  function commitRemoteProfilePhotos(photos, userId, loadGeneration) {
+    if (loadGeneration !== profileRemoteLoadGeneration || userId !== getCurrentProfileUserId()) {
+      return profileRemotePhotos;
+    }
+
+    const safePhotos = dedupeProfilePhotos(Array.isArray(photos) ? photos : []);
+
+    if (!safePhotos.length) {
+      profileRemoteLoadedForUserId = "";
+      return profileRemotePhotos;
+    }
+
+    profileRemotePhotos = safePhotos;
+    profileRemoteLoadedForUserId = userId;
+    if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
+
+    return profileRemotePhotos;
+  }
+
+  function getLoadedFeedItemsFromMemory() {
+    const batches = [];
+
+    try {
+      if (typeof window.KlevbyFeedState?.getLastItems === "function") {
+        batches.push(window.KlevbyFeedState.getLastItems());
+      }
+    } catch (_) {}
+
+    if (Array.isArray(window.__klevbyFeedLastItems)) {
+      batches.push(window.__klevbyFeedLastItems);
+    }
+
+    try {
+      if (typeof window.KlevbyFeedState?.getItemsCache === "function") {
+        batches.push(Object.values(window.KlevbyFeedState.getItemsCache() || {}));
+      }
+    } catch (_) {}
+
+    if (window.__klevbyFeedItemsCache && typeof window.__klevbyFeedItemsCache === "object") {
+      batches.push(Object.values(window.__klevbyFeedItemsCache));
+    }
+
+    const seen = new Set();
+
+    return batches
+      .flat()
+      .filter(Boolean)
+      .filter((item) => {
+        const dedupeKey = String(item?.id || item?.feedPostId || "").trim();
+        if (!dedupeKey || seen.has(dedupeKey)) return false;
+        seen.add(dedupeKey);
+        return true;
+      });
+  }
+
+  async function queryProfilePhotosByOwnerField(client, ownerField, userId) {
+    const selectColumns = [
+      "id",
+      ownerField,
+      "type",
+      "author_name",
+      "caption",
+      "image_url",
+      "image_path",
+      "image_width",
+      "image_height",
+      "image_size_kb",
+      "created_at",
+      "updated_at"
+    ].join(",");
+
+    const { data, error } = await client
+      .from(PROFILE_FEED_TABLE)
+      .select(selectColumns)
+      .eq(ownerField, userId)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (error) throw error;
+
+    return mapFeedItemsToCurrentUserPhotos(data, `feed_posts_${ownerField}`, userId);
+  }
+
+  async function loadRemoteProfilePhotosByUserId(options = {}) {
     const userId = getCurrentProfileUserId();
+    const force = Boolean(options.force);
     const loadGeneration = profileRemoteLoadGeneration;
     if (!userId) return [];
-    if (profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
-    if (profileRemoteLoadInFlight) return profileRemoteLoadInFlight;
+    if (!force && profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
+    if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId === userId) return profileRemoteLoadInFlight;
 
     const client =
       window.supabaseClient ||
@@ -182,6 +389,15 @@
       (typeof window.klevbyGetSupabase === "function" ? window.klevbyGetSupabase() : null);
 
     async function loadViaFeedApiFallback() {
+      const memoryPhotos = mapFeedItemsToCurrentUserPhotos(
+        getLoadedFeedItemsFromMemory(),
+        "feed_memory",
+        userId,
+        { requireProfileType: true }
+      );
+
+      if (memoryPhotos.length) return memoryPhotos;
+
       if (typeof window.klevbyLoadFeedPostsFromSupabase !== "function") return [];
 
       try {
@@ -189,11 +405,7 @@
           limit: 120
         });
         const items = Array.isArray(result?.items) ? result.items : [];
-        const onlyCurrentUserItems = items.filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }));
-        const mapped = onlyCurrentUserItems
-          .map((item) => mapFeedPostToProfilePhoto(item, "feed_fallback", userId))
-          .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }));
-        return dedupeProfilePhotos(mapped);
+        return mapFeedItemsToCurrentUserPhotos(items, "feed_fallback", userId, { requireProfileType: true });
       } catch (error) {
         console.warn("[KlevbyProfilePhotos] Feed API fallback не сработал.", error);
         return [];
@@ -203,50 +415,51 @@
     if (!client || typeof client.from !== "function") {
       const fallbackPhotos = await loadViaFeedApiFallback();
 
-      if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
-        profileRemotePhotos = fallbackPhotos;
-        profileRemoteLoadedForUserId = userId;
-      }
-
-      return profileRemotePhotos;
+      return commitRemoteProfilePhotos(fallbackPhotos, userId, loadGeneration);
     }
 
+    profileRemoteLoadInFlightForUserId = userId;
     profileRemoteLoadInFlight = (async () => {
       try {
-        const { data, error } = await client
-          .from(PROFILE_FEED_TABLE)
-          .select("id,user_id,caption,image_url,image_path,image_width,image_height,image_size_kb,created_at,updated_at")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(80);
+        let mapped = mapFeedItemsToCurrentUserPhotos(
+          getLoadedFeedItemsFromMemory(),
+          "feed_memory",
+          userId,
+          { requireProfileType: true }
+        );
+        let directError = null;
 
-        if (error) throw error;
-
-        const mapped = Array.isArray(data)
-          ? data
-            .map((item) => mapFeedPostToProfilePhoto(item, "feed_posts", userId))
-            .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }))
-          : [];
-
-        if (loadGeneration !== profileRemoteLoadGeneration || userId !== getCurrentProfileUserId()) {
-          return profileRemotePhotos;
+        if (!mapped.length) {
+          for (const ownerField of ["user_id", "owner_id"]) {
+            try {
+              mapped = await queryProfilePhotosByOwnerField(client, ownerField, userId);
+              if (mapped.length) break;
+            } catch (error) {
+              directError = directError || error;
+            }
+          }
         }
 
-        profileRemotePhotos = dedupeProfilePhotos(mapped);
-        profileRemoteLoadedForUserId = userId;
+        if (!mapped.length) {
+          mapped = await loadViaFeedApiFallback();
+        }
+
+        commitRemoteProfilePhotos(mapped, userId, loadGeneration);
+
+        if (!mapped.length && directError) {
+          console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", directError);
+        }
       } catch (error) {
         const fallbackPhotos = await loadViaFeedApiFallback();
         if (fallbackPhotos.length) {
-          if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
-            profileRemotePhotos = fallbackPhotos;
-            profileRemoteLoadedForUserId = userId;
-          }
+          commitRemoteProfilePhotos(fallbackPhotos, userId, loadGeneration);
         } else {
           console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", error);
         }
       } finally {
         if (loadGeneration === profileRemoteLoadGeneration) {
           profileRemoteLoadInFlight = null;
+          profileRemoteLoadInFlightForUserId = "";
         }
       }
 
@@ -591,15 +804,38 @@
     contentCard.appendChild(gallery);
   }
 
-  async function ensureProfilePhotosLoaded() {
-    const beforeCount = getProfilePhotosForDisplay().length;
-    await loadRemoteProfilePhotosByUserId();
-    const afterCount = getProfilePhotosForDisplay().length;
+  async function ensureProfilePhotosLoaded(options = {}) {
+    const currentUserId = getCurrentProfileUserId();
+    if (!currentUserId) {
+      renderProfilePhotos();
+      return [];
+    }
 
-    if (afterCount !== beforeCount) {
+    const beforeCount = getProfilePhotosForDisplay().length;
+    const loadedForUserBefore = profileRemoteLoadedForUserId;
+    const dirtyForUserBefore = profilePhotosDirtyForUserId;
+    const shouldForceLoad =
+      Boolean(options.force) ||
+      profilePhotosDirtyForUserId === currentUserId ||
+      profileRemoteLoadedForUserId !== currentUserId;
+
+    await loadRemoteProfilePhotosByUserId({ force: shouldForceLoad });
+
+    const afterCount = getProfilePhotosForDisplay().length;
+    const loadedForUserAfter = profileRemoteLoadedForUserId;
+    const dirtyForUserAfter = profilePhotosDirtyForUserId;
+
+    if (
+      afterCount !== beforeCount ||
+      loadedForUserBefore !== loadedForUserAfter ||
+      dirtyForUserBefore !== dirtyForUserAfter ||
+      options.force
+    ) {
       renderProfilePhotos();
       window.dispatchEvent(new CustomEvent("klevby-profile-photos-updated"));
     }
+
+    return getProfilePhotosForDisplay();
   }
 
 
@@ -608,6 +844,8 @@
     profileRemotePhotos = [];
     profileRemoteLoadedForUserId = "";
     profileRemoteLoadInFlight = null;
+    profileRemoteLoadInFlightForUserId = "";
+    profilePhotosDirtyForUserId = "";
     saveProfilePhotos([]);
 
     const viewer = document.getElementById("profilePhotoViewer");
@@ -621,18 +859,31 @@
   function reloadProfilePhotosAfterLogin() {
     const userId = getCurrentProfileUserId();
 
-    profileRemoteLoadGeneration += 1;
-    profileRemotePhotos = [];
-    profileRemoteLoadedForUserId = "";
-    profileRemoteLoadInFlight = null;
-
     if (!userId) {
       renderProfilePhotos();
       return Promise.resolve([]);
     }
 
-    renderProfilePhotos();
-    return ensureProfilePhotosLoaded();
+    profilePhotosDirtyForUserId = userId;
+
+    if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId !== userId) {
+      profileRemoteLoadGeneration += 1;
+      profileRemoteLoadInFlight = null;
+      profileRemoteLoadInFlightForUserId = "";
+    }
+
+    return ensureProfilePhotosLoaded({ force: true });
+  }
+
+  function markProfilePhotosDirtyAfterLogin() {
+    const userId = getCurrentProfileUserId();
+
+    if (!userId) {
+      return Promise.resolve([]);
+    }
+
+    profilePhotosDirtyForUserId = userId;
+    return reloadProfilePhotosAfterLogin();
   }
 
   function ensureProfilePhotoViewer() {
@@ -903,6 +1154,7 @@
     ensureProfilePhotosLoaded,
     resetProfilePhotosAfterLogout,
     reloadProfilePhotosAfterLogin,
+    markProfilePhotosDirtyAfterLogin,
     ensureProfilePhotoViewer,
     openProfilePhotoViewer,
     closeProfilePhotoViewer,
