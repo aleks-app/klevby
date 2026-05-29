@@ -27,6 +27,11 @@ let postModalCloseTimer = null;
 let authRestoreTimer = null;
 let authRestoreInProgress = false;
 let lastAuthRestoreAt = 0;
+let authLogoutInProgress = false;
+let lastLogoutAt = Number(window.klevbyLastLogoutAt || 0) || 0;
+
+window.klevbyLastLogoutAt = lastLogoutAt;
+window.klevbyAuthLogoutInProgress = authLogoutInProgress;
 
 let lastAuthEventSignature = "";
 let lastAuthEventAt = 0;
@@ -341,8 +346,12 @@ function initSupabase() {
 
   const authStateHandler = async (event, session) => {
       const previousUserId = currentUser?.id || null;
+      const logoutGuardActive =
+        typeof isAuthLogoutGuardActive === "function"
+          ? isAuthLogoutGuardActive()
+          : Boolean(window.klevbyAuthLogoutInProgress);
 
-      if (event === "SIGNED_OUT") {
+      if (event === "SIGNED_OUT" || logoutGuardActive) {
         currentUser = null;
       } else if (session && session.user) {
         currentUser = session.user;

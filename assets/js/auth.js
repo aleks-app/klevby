@@ -1,3 +1,81 @@
+const KLEVB_LOGOUT_RESTORE_GUARD_MS = 5000;
+const KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR = [
+  "sb-oecdshvozssadztcokog-auth-token",
+  "sb-klevby-auth-token",
+  "supabase.auth.token"
+];
+
+function getLogoutGuardNow() {
+  return Date.now();
+}
+
+function markAuthLogoutStarted() {
+  const now = getLogoutGuardNow();
+  authLogoutInProgress = true;
+  lastLogoutAt = now;
+  window.klevbyAuthLogoutInProgress = true;
+  window.klevbyLastLogoutAt = now;
+}
+
+function markAuthLogoutFinished() {
+  const now = getLogoutGuardNow();
+  authLogoutInProgress = false;
+  lastLogoutAt = Math.max(Number(lastLogoutAt || 0), now);
+  window.klevbyAuthLogoutInProgress = false;
+  window.klevbyLastLogoutAt = lastLogoutAt;
+}
+
+function clearAuthLogoutGuardForFreshLogin() {
+  authLogoutInProgress = false;
+  lastLogoutAt = 0;
+  window.klevbyAuthLogoutInProgress = false;
+  window.klevbyLastLogoutAt = 0;
+}
+
+function isAuthLogoutGuardActive() {
+  const marker = Math.max(
+    Number(lastLogoutAt || 0),
+    Number(window.klevbyLastLogoutAt || 0)
+  );
+
+  if (authLogoutInProgress || window.klevbyAuthLogoutInProgress) {
+    return true;
+  }
+
+  return Boolean(marker && getLogoutGuardNow() - marker < KLEVB_LOGOUT_RESTORE_GUARD_MS);
+}
+
+function clearPendingAuthRestore() {
+  if (authRestoreTimer) {
+    clearTimeout(authRestoreTimer);
+    authRestoreTimer = null;
+  }
+}
+
+function clearKnownAuthStorageKeys() {
+  const configuredKey = String(window.KLEVB_CONFIG?.SUPABASE_STORAGE_KEY || window.SUPABASE_STORAGE_KEY || "").trim();
+  const keys = [...new Set([configuredKey, ...KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR].filter(Boolean))];
+  const stores = [window.localStorage, window.sessionStorage].filter(Boolean);
+
+  stores.forEach((store) => {
+    keys.forEach((key) => {
+      try {
+        store.removeItem(key);
+      } catch (error) {
+        console.warn("Не удалось очистить auth storage key:", key, error);
+      }
+    });
+  });
+}
+
+function forceGuestAuthState() {
+  currentUser = null;
+  authReady = true;
+  window.klevbyAuthStatusNotice = "";
+  syncGlobalAuthState({ notify: true, forceNotify: true });
+  updateAuthStatus();
+}
+
 function cleanDisplayName(value) {
   return String(value || "")
     .trim()
@@ -91,6 +169,15 @@ function setAuthMode(mode) {
 async function restoreAuthState(reason = "manual", reloadData = false) {
   if (!supabaseClient || authRestoreInProgress) return currentUser;
 
+  if (isAuthLogoutGuardActive()) {
+    forceGuestAuthState();
+    if (reloadData) {
+      await loadPosts();
+      reloadPondsIfReady();
+    }
+    return null;
+  }
+
   const now = Date.now();
 
   if (reason !== "init" && now - lastAuthRestoreAt < 900) {
@@ -119,6 +206,11 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
       }
 
       restoredUser = userData?.user || null;
+    }
+
+    if (isAuthLogoutGuardActive()) {
+      forceGuestAuthState();
+      return null;
     }
 
     currentUser = restoredUser;
@@ -152,11 +244,19 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
 }
 
 function scheduleAuthRestore(reason = "resume", reloadData = false) {
-  clearTimeout(authRestoreTimer);
+  clearPendingAuthRestore();
+
+  if (isAuthLogoutGuardActive()) {
+    forceGuestAuthState();
+    return false;
+  }
 
   authRestoreTimer = setTimeout(() => {
+    authRestoreTimer = null;
     restoreAuthState(reason, reloadData);
   }, 250);
+
+  return true;
 }
 
 function setupAuthResumeHandlers() {
@@ -258,6 +358,9 @@ async function register() {
   }
 
   const activeSession = data?.session || null;
+  if (activeSession?.user) {
+    clearAuthLogoutGuardForFreshLogin();
+  }
   currentUser = activeSession?.user || null;
   authReady = true;
   syncGlobalAuthState();
@@ -324,6 +427,7 @@ async function login() {
     return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
   }
 
+  clearAuthLogoutGuardForFreshLogin();
   currentUser = data.user;
   authReady = true;
   window.klevbyAuthStatusNotice = "";
@@ -344,15 +448,29 @@ async function login() {
 }
 
 async function logout() {
-  await supabaseClient.auth.signOut();
-  currentUser = null;
-  authReady = true;
-  window.klevbyAuthStatusNotice = "";
-  syncGlobalAuthState();
-  updateAuthStatus();
-  setAuthMode("register");
-  await loadPosts();
-  reloadPondsIfReady();
+  markAuthLogoutStarted();
+  clearPendingAuthRestore();
+  forceGuestAuthState();
+
+  try {
+    if (supabaseClient?.auth?.signOut) {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        console.warn("Supabase signOut завершился с ошибкой:", error);
+      }
+    }
+  } catch (error) {
+    console.warn("Не удалось выйти из Supabase:", error);
+  } finally {
+    clearKnownAuthStorageKeys();
+    forceGuestAuthState();
+    setAuthMode("register");
+    await loadPosts();
+    reloadPondsIfReady();
+    markAuthLogoutFinished();
+  }
+
   alert("Ты вышел.");
 }
 

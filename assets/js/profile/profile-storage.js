@@ -17,15 +17,28 @@
     };
   }
 
+  function isMainAuthGuestAuthoritative() {
+    return Boolean(
+      (window.klevbyAuthLogoutInProgress || window.klevbyLastLogoutAt || window.klevbyAuthReady) &&
+      !window.currentUser &&
+      !window.klevbyCurrentUser &&
+      !window.klevbyUser
+    );
+  }
+
   function getCurrentProfileUser() {
-    return (
+    const mainUser =
       window.currentUser ||
       window.klevbyCurrentUser ||
       window.klevbyUser ||
       (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
-      getProfileUserFromStoredAuth() ||
-      null
-    );
+      null;
+
+    if (mainUser || isMainAuthGuestAuthoritative()) {
+      return mainUser;
+    }
+
+    return getProfileUserFromStoredAuth() || null;
   }
 
   function parseProfileAuthStorageValue(raw) {
