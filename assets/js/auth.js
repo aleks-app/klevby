@@ -902,6 +902,7 @@ async function register() {
 
   if (!activeSession) {
     savePendingSignup(email, nickname);
+    clearAuthCredentialFields({ password: true, code: false });
     window.klevbyAuthStatusNotice = "Письмо отправлено. Введите код из письма. Если писем несколько — используйте последний код.";
     setAuthMode("verify");
     updateAuthStatus();
@@ -910,6 +911,12 @@ async function register() {
   }
 
   window.klevbyAuthStatusNotice = "";
+  clearAuthCredentialFields({
+    email: true,
+    password: true,
+    code: true,
+    username: true
+  });
   updateAuthStatus();
   alert("Профиль создан. Ты вошёл в аккаунт.");
   await restoreAuthState("register", true);
@@ -989,6 +996,12 @@ async function verifySignupCode() {
 
   window.klevbyAuthStatusNotice = "";
   await restoreAuthState("verify", true);
+  clearAuthCredentialFields({
+    email: true,
+    password: true,
+    code: true,
+    username: true
+  });
   updateAuthStatus();
   fillAuthorLocal();
   reloadPondsIfReady();
