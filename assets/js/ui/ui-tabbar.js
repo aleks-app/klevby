@@ -119,19 +119,7 @@ function setMobileTabbarMode(mode) {
   });
 }
 
-function closeMobileMenuFromTabbar() {
-  if (typeof window.closeMobileMenuSafe === "function") {
-    window.closeMobileMenuSafe();
-    return;
-  }
-
-  if (typeof window.closeMobileMenu === "function") {
-    window.closeMobileMenu();
-  }
-}
-
 function goHomeTop() {
-  closeMobileMenuFromTabbar();
   setMobileTabbarMode("home");
   setMobileTabActive(0);
   showSection("home");
@@ -143,7 +131,6 @@ function goHomeTop() {
 }
 
 function goMobileFeed() {
-  closeMobileMenuFromTabbar();
   setMobileTabbarMode("home");
   setMobileTabActive(0);
   showSection("home");
@@ -151,7 +138,6 @@ function goMobileFeed() {
 }
 
 function goMobileCreate() {
-  closeMobileMenuFromTabbar();
   setMobileTabbarMode("home");
   setMobileTabActive(2);
   showSection("home");
@@ -159,14 +145,12 @@ function goMobileCreate() {
 }
 
 function goMobileMap() {
-  closeMobileMenuFromTabbar();
   setMobileTabbarMode("home");
   setMobileTabActive(1);
   showSection("map");
 }
 
 function goMobileWeather() {
-  closeMobileMenuFromTabbar();
   setMobileTabbarMode("home");
   setMobileTabActive(3);
   showSection("home");
