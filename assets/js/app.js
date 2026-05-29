@@ -6,7 +6,6 @@ const SUPABASE_STORAGE_KEY = KLEVB_CONFIG.SUPABASE_STORAGE_KEY || "sb-klevby-aut
 const TELEGRAM_GROUP = KLEVB_CONFIG.TELEGRAM_GROUP || "https://t.me/+W6eAuefzcJwwODEy";
 const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
 
-
 window.__klevbyCentralResumeRouter = true;
 
 window.klevbyAdminEmail = ADMIN_EMAIL;
@@ -310,7 +309,7 @@ function initSupabase() {
   }
 
   if (!window.KlevbySupabaseCore || typeof window.KlevbySupabaseCore.initClient !== "function") {
-    showStatus("Supabase core не загрузился. Обнови страницу.", true);
+    showStatus("Supabase клиент не удалось создать. Обнови страницу.", true);
     console.error("Klevby: Supabase core module is not available.");
     return false;
   }
@@ -355,52 +354,52 @@ function initSupabase() {
   };
 
   const authStateHandler = async (event, session) => {
-      const previousUserId = currentUser?.id || null;
-      const logoutGuardActive =
-        typeof isAuthLogoutGuardActive === "function"
-          ? isAuthLogoutGuardActive()
-          : Boolean(window.klevbyAuthLogoutInProgress);
+    const previousUserId = currentUser?.id || null;
+    const logoutGuardActive =
+      typeof isAuthLogoutGuardActive === "function"
+        ? isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
 
-      if (event === "SIGNED_OUT" || logoutGuardActive) {
-        currentUser = null;
+    if (event === "SIGNED_OUT" || logoutGuardActive) {
+      currentUser = null;
 
-        if (logoutGuardActive && typeof window.clearKnownAuthStorageKeys === "function") {
-          window.clearKnownAuthStorageKeys();
-        }
-      } else if (session && session.user) {
-        currentUser = session.user;
+      if (logoutGuardActive && typeof window.clearKnownAuthStorageKeys === "function") {
+        window.clearKnownAuthStorageKeys();
       }
+    } else if (session && session.user) {
+      currentUser = session.user;
+    }
 
-      authReady = true;
+    authReady = true;
 
-      const newUserId = currentUser?.id || null;
-      const userChanged = previousUserId !== newUserId;
+    const newUserId = currentUser?.id || null;
+    const userChanged = previousUserId !== newUserId;
 
-      syncGlobalAuthState({
-        notify: true,
-        forceNotify: userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT"
-      });
+    syncGlobalAuthState({
+      notify: true,
+      forceNotify: userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT"
+    });
 
-      if (typeof window.updateAuthStatus === "function") {
-        window.updateAuthStatus();
-      }
+    if (typeof window.updateAuthStatus === "function") {
+      window.updateAuthStatus();
+    }
 
-      if (typeof window.fillAuthorLocal === "function") {
-        window.fillAuthorLocal();
-      }
+    if (typeof window.fillAuthorLocal === "function") {
+      window.fillAuthorLocal();
+    }
 
-      if (typeof window.renderPosts === "function") {
-        window.renderPosts();
-      }
+    if (typeof window.renderPosts === "function") {
+      window.renderPosts();
+    }
 
-      if (typeof window.renderProfileFeed === "function") {
-        window.renderProfileFeed();
-      }
+    if (typeof window.renderProfileFeed === "function") {
+      window.renderProfileFeed();
+    }
 
-      if (userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        reloadPondsIfReady({ delay: 700 });
-      }
-    };
+    if (userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT") {
+      reloadPondsIfReady({ delay: 700 });
+    }
+  };
 
   if (window.KlevbySupabaseAuthService?.bindAuthStateListener) {
     window.KlevbySupabaseAuthService.bindAuthStateListener({
@@ -551,7 +550,35 @@ function getVisibleSectionName() {
   return "home";
 }
 
+function closeMobileMenuFromAppNavigation() {
+  try {
+    if (typeof window.closeMobileMenuSafe === "function") {
+      window.closeMobileMenuSafe();
+      return;
+    }
+
+    if (typeof window.closeMobileMenu === "function") {
+      window.closeMobileMenu();
+      return;
+    }
+
+    const menu = document.getElementById("mobileMenu");
+    const burger = document.getElementById("burgerBtn");
+
+    if (menu) menu.classList.remove("open");
+
+    if (burger) {
+      burger.classList.remove("open");
+      burger.setAttribute("aria-expanded", "false");
+    }
+  } catch (error) {
+    console.warn("Klevby navigation: не удалось закрыть мобильное меню.", error);
+  }
+}
+
 function showSection(section) {
+  closeMobileMenuFromAppNavigation();
+
   const safeSection = String(section || "home").trim();
 
   if (safeSection === "profile") {
@@ -694,6 +721,8 @@ function setProfileReturnMode(enabled) {
 }
 
 function setMode(mode) {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppTripActions();
 
   if (typeof actions.setMode === "function") {
@@ -714,6 +743,8 @@ function setMode(mode) {
 }
 
 function showCreatePostScreen(options = {}) {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppTripActions();
 
   if (typeof actions.showCreatePostScreen === "function") {
@@ -734,6 +765,8 @@ function showCreatePostScreen(options = {}) {
 }
 
 function showTripsBoard(mode = "all") {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppTripActions();
 
   if (typeof actions.showTripsBoard === "function") {
@@ -747,6 +780,8 @@ function showTripsBoard(mode = "all") {
 }
 
 function goMobileFeed() {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileFeed === "function") {
@@ -760,6 +795,8 @@ function goMobileFeed() {
 }
 
 function goMobileMap() {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileMap === "function") {
@@ -773,6 +810,8 @@ function goMobileMap() {
 }
 
 function goMobileCreate() {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileCreate === "function") {
@@ -787,6 +826,8 @@ function goMobileCreate() {
 }
 
 function goMobileWeather() {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppMobileActions();
 
   if (typeof actions.goMobileWeather === "function") {
@@ -810,6 +851,8 @@ function goMobileWeather() {
 }
 
 function goHomeTop() {
+  closeMobileMenuFromAppNavigation();
+
   const actions = getAppMobileActions();
 
   if (typeof actions.goHomeTop === "function") {
@@ -1056,6 +1099,7 @@ function getAppWindowExportMap() {
     clearProfileChromeIfNeeded,
     setMobileTabVisual,
     getVisibleSectionName,
+    closeMobileMenuFromAppNavigation,
     showSection,
     setMode,
     showTripsBoard,
