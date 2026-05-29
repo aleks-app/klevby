@@ -63,7 +63,7 @@ function setAuthMode(mode) {
 
   if (authMode === "login") {
     title.textContent = "Войти в профиль";
-    subtitle.textContent = "Войди через email и пароль. Никнейм подтянется из профиля.";
+    subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — сначала подтверди email по ссылке из письма, потом вернись в Klevby и войди.";
     usernameLabel.classList.add("hidden");
     usernameInput.classList.add("hidden");
     passwordInput.setAttribute("autocomplete", "current-password");
@@ -74,8 +74,8 @@ function setAuthMode(mode) {
       <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать профиль</button>
     `;
   } else {
-    title.textContent = "Создать профиль рыбака";
-    subtitle.textContent = "Никнейм будет виден в объявлениях и чате. Почта нужна для входа и подтверждения аккаунта.";
+    title.textContent = "Регистрация аккаунта Klevby";
+    subtitle.textContent = "Создай аккаунт через email и пароль. После регистрации открой письмо, подтверди email по ссылке (она может открыться в браузере), затем вернись в Klevby и войди.";
     usernameLabel.classList.remove("hidden");
     usernameInput.classList.remove("hidden");
     passwordInput.setAttribute("autocomplete", "new-password");
@@ -210,12 +210,15 @@ function updateAuthStatus() {
   }
 
   if (currentUser) {
+    window.klevbyAuthStatusNotice = "";
     const nickname = getUserNickname();
     status.textContent =
       "Ты вошёл: " +
       currentUser.email +
       (nickname ? " | Nickname: " + nickname : "") +
       (isAdmin() ? " | Админ включён" : "");
+  } else if (window.klevbyAuthStatusNotice) {
+    status.textContent = window.klevbyAuthStatusNotice;
   } else {
     status.textContent = "Ты не вошёл. Чтобы создать объявление — создай профиль или войди.";
   }
@@ -254,7 +257,8 @@ async function register() {
     return alert("Не удалось создать профиль: " + error.message);
   }
 
-  currentUser = data?.user || null;
+  const activeSession = data?.session || null;
+  currentUser = activeSession?.user || null;
   authReady = true;
   syncGlobalAuthState();
 
@@ -281,8 +285,26 @@ async function register() {
     nameInput.value = nickname;
   }
 
+  if (!activeSession) {
+    window.klevbyAuthStatusNotice = "Письмо отправлено. Откройте почту, подтвердите email, потом вернитесь в Klevby и войдите.";
+    setAuthMode("login");
+
+    const switchText = document.getElementById("authSwitchText");
+    if (switchText) {
+      switchText.innerHTML = `
+        После подтверждения email нажмите «Войти».
+        <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать другой профиль</button>
+      `;
+    }
+
+    updateAuthStatus();
+    reloadPondsIfReady();
+    return;
+  }
+
+  window.klevbyAuthStatusNotice = "";
   updateAuthStatus();
-  alert("Профиль создан. Если придёт письмо — подтверди почту, потом войди в аккаунт.");
+  alert("Профиль создан. Ты вошёл в аккаунт.");
   await restoreAuthState("register", true);
   reloadPondsIfReady();
   showSection("home");
@@ -299,11 +321,12 @@ async function login() {
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return alert("Не получилось войти. Проверь email и пароль.");
+    return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
   }
 
   currentUser = data.user;
   authReady = true;
+  window.klevbyAuthStatusNotice = "";
   syncGlobalAuthState();
 
   const nickname = getUserNickname();
@@ -324,6 +347,7 @@ async function logout() {
   await supabaseClient.auth.signOut();
   currentUser = null;
   authReady = true;
+  window.klevbyAuthStatusNotice = "";
   syncGlobalAuthState();
   updateAuthStatus();
   setAuthMode("register");
