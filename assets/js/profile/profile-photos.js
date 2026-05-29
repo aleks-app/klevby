@@ -593,10 +593,12 @@
 
   async function ensureProfilePhotosLoaded() {
     const beforeCount = getProfilePhotosForDisplay().length;
+    const loadedForUserBefore = profileRemoteLoadedForUserId;
     await loadRemoteProfilePhotosByUserId();
     const afterCount = getProfilePhotosForDisplay().length;
+    const loadedForUserAfter = profileRemoteLoadedForUserId;
 
-    if (afterCount !== beforeCount) {
+    if (afterCount !== beforeCount || loadedForUserBefore !== loadedForUserAfter) {
       renderProfilePhotos();
       window.dispatchEvent(new CustomEvent("klevby-profile-photos-updated"));
     }
@@ -632,7 +634,11 @@
     }
 
     renderProfilePhotos();
-    return ensureProfilePhotosLoaded();
+    return ensureProfilePhotosLoaded().then(() => {
+      renderProfilePhotos();
+      window.dispatchEvent(new CustomEvent("klevby-profile-photos-updated"));
+      return getProfilePhotosForDisplay();
+    });
   }
 
   function ensureProfilePhotoViewer() {

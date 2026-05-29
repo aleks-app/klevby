@@ -404,6 +404,10 @@ function initSupabase() {
       window.renderProfileFeed();
     }
 
+    if (event === "SIGNED_IN" && currentUser?.id) {
+      reloadProfilePhotosAfterAuthSignIn();
+    }
+
     if (userChanged || event === "SIGNED_IN" || event === "SIGNED_OUT") {
       reloadPondsIfReady({ delay: 700 });
     }
@@ -420,6 +424,25 @@ function initSupabase() {
 
   syncGlobalAuthState({ notify: true, forceNotify: true });
   return true;
+}
+
+
+function reloadProfilePhotosAfterAuthSignIn() {
+  const photos = window.KlevbyProfilePhotos;
+
+  if (typeof photos?.reloadProfilePhotosAfterLogin !== "function") {
+    return;
+  }
+
+  photos.reloadProfilePhotosAfterLogin()
+    .then(() => {
+      if (typeof window.updateKlevbyProfileView === "function") {
+        window.updateKlevbyProfileView();
+      }
+    })
+    .catch((error) => {
+      console.warn("Klevby auth: фото профиля не обновились после SIGNED_IN", error);
+    });
 }
 
 function showStatus(message, isError = false) {
