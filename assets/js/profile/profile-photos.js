@@ -25,7 +25,9 @@
   let profileRemotePhotos = [];
   let profileRemoteLoadedForUserId = "";
   let profileRemoteLoadInFlight = null;
+  let profileRemoteLoadInFlightForUserId = "";
   let profileRemoteLoadGeneration = 0;
+  let profilePhotosDirtyForUserId = "";
 
   function getCore() {
     return window.KlevbyProfileCore || {};
@@ -169,12 +171,13 @@
     });
   }
 
-  async function loadRemoteProfilePhotosByUserId() {
+  async function loadRemoteProfilePhotosByUserId(options = {}) {
     const userId = getCurrentProfileUserId();
+    const force = Boolean(options.force);
     const loadGeneration = profileRemoteLoadGeneration;
     if (!userId) return [];
-    if (profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
-    if (profileRemoteLoadInFlight) return profileRemoteLoadInFlight;
+    if (!force && profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
+    if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId === userId) return profileRemoteLoadInFlight;
 
     const client =
       window.supabaseClient ||
@@ -206,11 +209,13 @@
       if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
         profileRemotePhotos = fallbackPhotos;
         profileRemoteLoadedForUserId = userId;
+        if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
       }
 
       return profileRemotePhotos;
     }
 
+    profileRemoteLoadInFlightForUserId = userId;
     profileRemoteLoadInFlight = (async () => {
       try {
         const { data, error } = await client
@@ -234,12 +239,14 @@
 
         profileRemotePhotos = dedupeProfilePhotos(mapped);
         profileRemoteLoadedForUserId = userId;
+        if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
       } catch (error) {
         const fallbackPhotos = await loadViaFeedApiFallback();
         if (fallbackPhotos.length) {
           if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
             profileRemotePhotos = fallbackPhotos;
             profileRemoteLoadedForUserId = userId;
+            if (profilePhotosDirtyForUserId === userId) profilePhotosDirtyForUserId = "";
           }
         } else {
           console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", error);
@@ -247,6 +254,7 @@
       } finally {
         if (loadGeneration === profileRemoteLoadGeneration) {
           profileRemoteLoadInFlight = null;
+          profileRemoteLoadInFlightForUserId = "";
         }
       }
 
@@ -591,15 +599,38 @@
     contentCard.appendChild(gallery);
   }
 
-  async function ensureProfilePhotosLoaded() {
-    const beforeCount = getProfilePhotosForDisplay().length;
-    await loadRemoteProfilePhotosByUserId();
-    const afterCount = getProfilePhotosForDisplay().length;
+  async function ensureProfilePhotosLoaded(options = {}) {
+    const currentUserId = getCurrentProfileUserId();
+    if (!currentUserId) {
+      renderProfilePhotos();
+      return [];
+    }
 
-    if (afterCount !== beforeCount) {
+    const beforeCount = getProfilePhotosForDisplay().length;
+    const loadedForUserBefore = profileRemoteLoadedForUserId;
+    const dirtyForUserBefore = profilePhotosDirtyForUserId;
+    const shouldForceLoad =
+      Boolean(options.force) ||
+      profilePhotosDirtyForUserId === currentUserId ||
+      profileRemoteLoadedForUserId !== currentUserId;
+
+    await loadRemoteProfilePhotosByUserId({ force: shouldForceLoad });
+
+    const afterCount = getProfilePhotosForDisplay().length;
+    const loadedForUserAfter = profileRemoteLoadedForUserId;
+    const dirtyForUserAfter = profilePhotosDirtyForUserId;
+
+    if (
+      afterCount !== beforeCount ||
+      loadedForUserBefore !== loadedForUserAfter ||
+      dirtyForUserBefore !== dirtyForUserAfter ||
+      options.force
+    ) {
       renderProfilePhotos();
       window.dispatchEvent(new CustomEvent("klevby-profile-photos-updated"));
     }
+
+    return getProfilePhotosForDisplay();
   }
 
 
@@ -608,6 +639,8 @@
     profileRemotePhotos = [];
     profileRemoteLoadedForUserId = "";
     profileRemoteLoadInFlight = null;
+    profileRemoteLoadInFlightForUserId = "";
+    profilePhotosDirtyForUserId = "";
     saveProfilePhotos([]);
 
     const viewer = document.getElementById("profilePhotoViewer");
@@ -621,18 +654,31 @@
   function reloadProfilePhotosAfterLogin() {
     const userId = getCurrentProfileUserId();
 
-    profileRemoteLoadGeneration += 1;
-    profileRemotePhotos = [];
-    profileRemoteLoadedForUserId = "";
-    profileRemoteLoadInFlight = null;
-
     if (!userId) {
       renderProfilePhotos();
       return Promise.resolve([]);
     }
 
-    renderProfilePhotos();
-    return ensureProfilePhotosLoaded();
+    profilePhotosDirtyForUserId = userId;
+
+    if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId !== userId) {
+      profileRemoteLoadGeneration += 1;
+      profileRemoteLoadInFlight = null;
+      profileRemoteLoadInFlightForUserId = "";
+    }
+
+    return ensureProfilePhotosLoaded({ force: true });
+  }
+
+  function markProfilePhotosDirtyAfterLogin() {
+    const userId = getCurrentProfileUserId();
+
+    if (!userId) {
+      return Promise.resolve([]);
+    }
+
+    profilePhotosDirtyForUserId = userId;
+    return reloadProfilePhotosAfterLogin();
   }
 
   function ensureProfilePhotoViewer() {
@@ -903,6 +949,7 @@
     ensureProfilePhotosLoaded,
     resetProfilePhotosAfterLogout,
     reloadProfilePhotosAfterLogin,
+    markProfilePhotosDirtyAfterLogin,
     ensureProfilePhotoViewer,
     openProfilePhotoViewer,
     closeProfilePhotoViewer,

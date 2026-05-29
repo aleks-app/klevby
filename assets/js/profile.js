@@ -601,7 +601,7 @@ function updateKlevbyProfileView() {
 
   restoreLocalProfileAvatar();
   renderProfilePhotos();
-  ensureProfilePhotosLoaded();
+  ensureProfilePhotosLoaded({ reason: "profile_render" });
 }
 
 function countUserPosts(profileName) {
@@ -1194,11 +1194,11 @@ function getProfilePhotosForDisplay() {
   return readProfilePhotos();
 }
 
-function ensureProfilePhotosLoaded() {
+function ensureProfilePhotosLoaded(options = {}) {
   const photosModule = getProfilePhotos();
 
   if (photosModule && typeof photosModule.ensureProfilePhotosLoaded === "function") {
-    photosModule.ensureProfilePhotosLoaded().catch((error) => {
+    photosModule.ensureProfilePhotosLoaded(options).catch((error) => {
       console.warn("Klevby profile: Supabase фото профиля не загрузились, используем fallback.", error);
     });
   }
