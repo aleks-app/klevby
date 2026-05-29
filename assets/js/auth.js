@@ -5,6 +5,16 @@ const KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR = [
   "sb-klevby-auth-token",
   "supabase.auth.token"
 ];
+
+const KLEVB_PROFILE_LOGOUT_STORAGE_KEYS_TO_CLEAR = [
+  "klevby_profile_settings",
+  "klevby_profile_avatar",
+  "klevby_profile_name",
+  "klevby_profile_photos",
+  "klevby_profile_city",
+  "klevby_profile_telegram",
+  "klevby_profile_about"
+];
 const KLEVB_PENDING_SIGNUP_STORAGE_KEY = "klevby_pending_signup";
 const KLEVB_PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
 const KLEVB_SIGNUP_CODE_RESEND_COOLDOWN_MS = 55 * 1000;
@@ -174,16 +184,71 @@ function clearKnownAuthStorageKeys() {
   };
 }
 
-function forceGuestAuthState() {
-  currentUser = null;
-  authReady = true;
-  window.klevbyAuthStatusNotice = "";
-  syncGlobalAuthState({ notify: true, forceNotify: true });
-  updateAuthStatus();
+function clearProfileStorageAfterLogout() {
+  [window.localStorage, window.sessionStorage].filter(Boolean).forEach((store) => {
+    KLEVB_PROFILE_LOGOUT_STORAGE_KEYS_TO_CLEAR.forEach((key) => {
+      try {
+        store.removeItem(key);
+      } catch (error) {
+        console.warn("Не удалось очистить profile storage key после logout:", key, error);
+      }
+    });
+  });
+}
+
+function resetProfileAvatarUiAfterLogout() {
+  if (typeof window.KlevbyProfileAvatar?.resetProfileAvatarUi === "function") {
+    window.KlevbyProfileAvatar.resetProfileAvatarUi();
+    return;
+  }
+
+  const image = document.getElementById("profileAvatarImage");
+  const fallback = document.getElementById("profileAvatarFallback");
+  const mobileIcon = document.getElementById("mobileProfileAvatarIcon");
+
+  if (image) {
+    image.removeAttribute("src");
+    image.classList.add("hidden");
+  }
+
+  if (fallback) {
+    fallback.textContent = "👤";
+    fallback.classList.remove("hidden");
+  }
+
+  if (mobileIcon) {
+    mobileIcon.textContent = "👤";
+    mobileIcon.style.backgroundImage = "";
+    mobileIcon.style.backgroundSize = "";
+    mobileIcon.style.backgroundPosition = "";
+    mobileIcon.style.backgroundRepeat = "";
+  }
+}
+
+function resetGuestProfileAfterLogout() {
+  clearProfileStorageAfterLogout();
+  resetProfileAvatarUiAfterLogout();
 
   if (typeof window.updateKlevbyProfileView === "function") {
     window.updateKlevbyProfileView();
   }
+
+  if (typeof window.renderProfileFeed === "function") {
+    window.renderProfileFeed();
+  }
+}
+
+function forceGuestAuthState() {
+  currentUser = null;
+  authReady = true;
+  window.currentUser = null;
+  window.klevbyCurrentUser = null;
+  window.klevbyUser = null;
+  window.klevbyAuthReady = true;
+  window.klevbyAuthStatusNotice = "";
+  resetGuestProfileAfterLogout();
+  syncGlobalAuthState({ notify: true, forceNotify: true });
+  updateAuthStatus();
 }
 
 function withAuthLogoutTimeout(promise, timeoutMs, label) {
@@ -960,6 +1025,7 @@ window.scheduleAuthRestore = scheduleAuthRestore;
 window.setupAuthResumeHandlers = setupAuthResumeHandlers;
 window.initAuth = initAuth;
 window.updateAuthStatus = updateAuthStatus;
+window.resetGuestProfileAfterLogout = resetGuestProfileAfterLogout;
 window.register = register;
 window.verifySignupCode = verifySignupCode;
 window.resendSignupCode = resendSignupCode;
