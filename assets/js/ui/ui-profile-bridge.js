@@ -1,3 +1,35 @@
+function getModernProfileDelegate(methodName, fallbackFn, ownerNames) {
+  const modernOwnerNames = ownerNames || [
+    "KlevbyProfile",
+    "KlevbyProfileSettings",
+    "KlevbyProfileAvatar"
+  ];
+
+  for (const ownerName of modernOwnerNames) {
+    const owner = window[ownerName];
+    const method = owner && owner[methodName];
+
+    if (typeof method === "function" && method !== fallbackFn) {
+      return { owner, method };
+    }
+  }
+
+  return null;
+}
+
+function delegateToModernProfile(methodName, fallbackFn, args, ownerNames) {
+  const delegate = getModernProfileDelegate(methodName, fallbackFn, ownerNames);
+
+  if (!delegate) {
+    return { delegated: false, value: undefined };
+  }
+
+  return {
+    delegated: true,
+    value: delegate.method.apply(delegate.owner, args)
+  };
+}
+
 function getProfileAuthUser() {
   return window.currentUser || window.klevbyCurrentUser || window.klevbyUser || null;
 }
@@ -75,6 +107,15 @@ function renderGuestProfileView() {
 }
 
 function openKlevbyProfile() {
+  const delegated = delegateToModernProfile(
+    "openKlevbyProfile",
+    openKlevbyProfile,
+    arguments,
+    ["KlevbyProfile"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   if (isProfileGuestState() && openAuthFromGuestProfile()) {
     resetProfileAvatarIcon();
     return;
@@ -126,6 +167,15 @@ function hideKlevbyProfileSection() {
 }
 
 function updateKlevbyProfileView() {
+  const delegated = delegateToModernProfile(
+    "updateKlevbyProfileView",
+    updateKlevbyProfileView,
+    arguments,
+    ["KlevbyProfile"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   if (isProfileGuestState()) {
     renderGuestProfileView();
     return;
@@ -276,6 +326,15 @@ function formatTelegramLabel(value) {
 }
 
 function handleLocalAvatarUpload(event) {
+  const delegated = delegateToModernProfile(
+    "handleLocalAvatarUpload",
+    handleLocalAvatarUpload,
+    arguments,
+    ["KlevbyProfileAvatar", "KlevbyProfile"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   if (isProfileGuestState()) {
     if (event?.target) event.target.value = "";
     openAuthFromGuestProfile();
@@ -374,6 +433,15 @@ function resetProfileAvatarIcon() {
 }
 
 function triggerProfileAvatarInput() {
+  const delegated = delegateToModernProfile(
+    "triggerProfileAvatarInput",
+    triggerProfileAvatarInput,
+    arguments,
+    ["KlevbyProfile", "KlevbyProfileAvatar"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   if (isProfileGuestState()) {
     openAuthFromGuestProfile();
     return;
@@ -384,6 +452,15 @@ function triggerProfileAvatarInput() {
 }
 
 function openProfileSettingsModal() {
+  const delegated = delegateToModernProfile(
+    "openProfileSettingsModal",
+    openProfileSettingsModal,
+    arguments,
+    ["KlevbyProfileSettings", "KlevbyProfile"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   if (isProfileGuestState()) {
     openAuthFromGuestProfile();
     return;
@@ -404,6 +481,15 @@ function openProfileSettingsModal() {
 }
 
 function closeProfileSettingsModal(withMessage = true) {
+  const delegated = delegateToModernProfile(
+    "closeProfileSettingsModal",
+    closeProfileSettingsModal,
+    arguments,
+    ["KlevbyProfileSettings", "KlevbyProfile"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   const modal = document.getElementById("profileSettingsModal");
   const message = document.getElementById("profileSettingsMessage");
 
@@ -438,6 +524,15 @@ function syncProfileSettingsForm() {
 }
 
 function saveProfileSettings() {
+  const delegated = delegateToModernProfile(
+    "saveProfileSettings",
+    saveProfileSettings,
+    arguments,
+    ["KlevbyProfileSettings", "KlevbyProfile"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   const nameInput = document.getElementById("profileSettingsNameInput");
   const telegramInput = document.getElementById("profileSettingsTelegramInput");
   const cityInput = document.getElementById("profileSettingsCityInput");
@@ -487,6 +582,15 @@ function syncProfileInputsFromSettings(name, telegram, city) {
 }
 
 function logoutFromProfileSettings() {
+  const delegated = delegateToModernProfile(
+    "logoutFromProfileSettings",
+    logoutFromProfileSettings,
+    arguments,
+    ["KlevbyProfileSettings"]
+  );
+
+  if (delegated.delegated) return delegated.value;
+
   closeProfileSettingsModal(false);
 
   if (typeof logout === "function") {
