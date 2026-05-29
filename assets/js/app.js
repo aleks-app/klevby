@@ -343,8 +343,15 @@ function initSupabase() {
       const previousUserId = currentUser?.id || null;
 
       if (event === "SIGNED_OUT") {
-        currentUser = null;
+        if (typeof window.applyLocalLogoutState === "function") {
+          window.applyLocalLogoutState();
+        } else {
+          currentUser = null;
+        }
       } else if (session && session.user) {
+        if (typeof window.clearRecentLogoutMarker === "function") {
+          window.clearRecentLogoutMarker();
+        }
         currentUser = session.user;
       }
 
