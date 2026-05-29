@@ -864,6 +864,17 @@
       return Promise.resolve([]);
     }
 
+    const localPhotos = readProfilePhotos();
+    const ownedLocalPhotos = localPhotos.filter((item) => {
+      const ownerId = getPhotoOwnerId(item);
+      if (!ownerId) return false;
+      return isOwnProfilePhoto(item, { currentUserId: userId });
+    });
+
+    if (ownedLocalPhotos.length !== localPhotos.length) {
+      saveProfilePhotos(ownedLocalPhotos);
+    }
+
     profilePhotosDirtyForUserId = userId;
 
     if (profileRemoteLoadInFlight && profileRemoteLoadInFlightForUserId !== userId) {

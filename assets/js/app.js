@@ -374,6 +374,10 @@ function initSupabase() {
       if (logoutGuardActive && typeof window.clearKnownAuthStorageKeys === "function") {
         window.clearKnownAuthStorageKeys();
       }
+
+      if (typeof window.resetGuestProfileAfterLogout === "function") {
+        window.resetGuestProfileAfterLogout();
+      }
     } else if (session && session.user) {
       currentUser = session.user;
     }

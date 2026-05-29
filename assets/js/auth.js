@@ -1187,6 +1187,7 @@ window.setupAuthResumeHandlers = setupAuthResumeHandlers;
 window.initAuth = initAuth;
 window.updateAuthStatus = updateAuthStatus;
 window.resetGuestProfileAfterLogout = resetGuestProfileAfterLogout;
+window.reloadProfilePhotosAfterFreshLogin = reloadProfilePhotosAfterFreshLogin;
 window.register = register;
 window.verifySignupCode = verifySignupCode;
 window.resendSignupCode = resendSignupCode;

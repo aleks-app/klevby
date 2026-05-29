@@ -248,20 +248,22 @@
       return;
     }
 
-    try {
-      const savedAvatar = localStorage.getItem(KLEVB_PROFILE_AVATAR_KEY);
-
-      if (savedAvatar) {
-        setProfileAvatar(savedAvatar);
-      } else {
-        resetMobileProfileAvatar();
-      }
-    } catch (error) {
-      console.warn("Klevby profile: аватар не восстановился", error);
-    }
+    resetProfileAvatarUi();
 
     loadProfileAvatarFromSupabase().catch((error) => {
       console.warn("[KlevbyProfile] Не удалось подтянуть avatar_url из profiles, используем localStorage.", error);
+
+      try {
+        const savedAvatar = localStorage.getItem(KLEVB_PROFILE_AVATAR_KEY);
+
+        if (savedAvatar) {
+          setProfileAvatar(savedAvatar);
+        } else {
+          resetMobileProfileAvatar();
+        }
+      } catch (fallbackError) {
+        console.warn("Klevby profile: аватар не восстановился", fallbackError);
+      }
     });
   }
 

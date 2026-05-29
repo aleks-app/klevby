@@ -604,6 +604,10 @@
     notifyAuthChanged();
     await restoreMainAuthState("auth_profile_register");
 
+    if (typeof window.reloadProfilePhotosAfterFreshLogin === "function") {
+      window.reloadProfilePhotosAfterFreshLogin();
+    }
+
     showMessage("Профиль создан. Если Supabase попросит подтверждение — открой письмо на email.", false);
   }
 
@@ -635,6 +639,10 @@
       return;
     }
 
+    if (typeof window.clearAuthLogoutGuardForFreshLogin === "function") {
+      window.clearAuthLogoutGuardForFreshLogin();
+    }
+
     currentUser = data?.user || null;
 
     const nicknameFromInput = cleanNickname(getEl("usernameInput")?.value);
@@ -652,6 +660,10 @@
     updateStatus();
     notifyAuthChanged();
     await restoreMainAuthState("auth_profile_login");
+
+    if (typeof window.reloadProfilePhotosAfterFreshLogin === "function") {
+      window.reloadProfilePhotosAfterFreshLogin();
+    }
 
     showMessage("Вход выполнен.", false);
   }
@@ -686,21 +698,42 @@
   }
 
   async function logoutProfile() {
+    if (typeof window.logout === "function") {
+      setLoading(true);
+
+      try {
+        await window.logout();
+      } finally {
+        currentUser = null;
+        setLoading(false);
+        updateStatus();
+      }
+
+      return;
+    }
+
     if (!authDb) {
       showMessage("Supabase ещё не готов. Обнови страницу.", true);
       return;
     }
 
     setLoading(true);
-    await authDb.auth.signOut();
-    setLoading(false);
 
-    currentUser = null;
-    updateStatus();
-    notifyAuthChanged();
-    await restoreMainAuthState("auth_profile_logout");
+    try {
+      await authDb.auth.signOut();
+      currentUser = null;
 
-    showMessage("Ты вышел из аккаунта.", false);
+      if (typeof window.resetGuestProfileAfterLogout === "function") {
+        window.resetGuestProfileAfterLogout();
+      }
+
+      updateStatus();
+      notifyAuthChanged();
+      await restoreMainAuthState("auth_profile_logout");
+      showMessage("Ты вышел из аккаунта.", false);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function bindEvents() {
