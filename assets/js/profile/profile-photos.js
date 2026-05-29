@@ -25,6 +25,7 @@
   let profileRemotePhotos = [];
   let profileRemoteLoadedForUserId = "";
   let profileRemoteLoadInFlight = null;
+  let profileRemoteLoadGeneration = 0;
 
   function getCore() {
     return window.KlevbyProfileCore || {};
@@ -161,6 +162,7 @@
 
   async function loadRemoteProfilePhotosByUserId() {
     const userId = getCurrentProfileUserId();
+    const loadGeneration = profileRemoteLoadGeneration;
     if (!userId) return [];
     if (profileRemoteLoadedForUserId === userId) return profileRemotePhotos;
     if (profileRemoteLoadInFlight) return profileRemoteLoadInFlight;
@@ -190,8 +192,13 @@
     }
 
     if (!client || typeof client.from !== "function") {
-      profileRemotePhotos = await loadViaFeedApiFallback();
-      profileRemoteLoadedForUserId = userId;
+      const fallbackPhotos = await loadViaFeedApiFallback();
+
+      if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
+        profileRemotePhotos = fallbackPhotos;
+        profileRemoteLoadedForUserId = userId;
+      }
+
       return profileRemotePhotos;
     }
 
@@ -212,18 +219,26 @@
             .filter((item) => isOwnProfilePhoto(item, { currentUserId: userId }))
           : [];
 
+        if (loadGeneration !== profileRemoteLoadGeneration || userId !== getCurrentProfileUserId()) {
+          return profileRemotePhotos;
+        }
+
         profileRemotePhotos = dedupeProfilePhotos(mapped);
         profileRemoteLoadedForUserId = userId;
       } catch (error) {
         const fallbackPhotos = await loadViaFeedApiFallback();
         if (fallbackPhotos.length) {
-          profileRemotePhotos = fallbackPhotos;
-          profileRemoteLoadedForUserId = userId;
+          if (loadGeneration === profileRemoteLoadGeneration && userId === getCurrentProfileUserId()) {
+            profileRemotePhotos = fallbackPhotos;
+            profileRemoteLoadedForUserId = userId;
+          }
         } else {
           console.warn("[KlevbyProfilePhotos] Не удалось загрузить фото из Supabase, используем localStorage fallback.", error);
         }
       } finally {
-        profileRemoteLoadInFlight = null;
+        if (loadGeneration === profileRemoteLoadGeneration) {
+          profileRemoteLoadInFlight = null;
+        }
       }
 
       return profileRemotePhotos;
@@ -578,6 +593,22 @@
     }
   }
 
+
+  function resetProfilePhotosAfterLogout() {
+    profileRemoteLoadGeneration += 1;
+    profileRemotePhotos = [];
+    profileRemoteLoadedForUserId = "";
+    profileRemoteLoadInFlight = null;
+    saveProfilePhotos([]);
+
+    const viewer = document.getElementById("profilePhotoViewer");
+    if (viewer) {
+      viewer.classList.add("hidden");
+    }
+
+    renderProfilePhotos();
+  }
+
   function ensureProfilePhotoViewer() {
     let viewer = document.getElementById("profilePhotoViewer");
 
@@ -844,6 +875,7 @@
     renderProfilePhotos,
     getProfilePhotosForDisplay,
     ensureProfilePhotosLoaded,
+    resetProfilePhotosAfterLogout,
     ensureProfilePhotoViewer,
     openProfilePhotoViewer,
     closeProfilePhotoViewer,

@@ -229,6 +229,12 @@ function resetGuestProfileAfterLogout() {
   clearProfileStorageAfterLogout();
   resetProfileAvatarUiAfterLogout();
 
+  if (typeof window.KlevbyProfilePhotos?.resetProfilePhotosAfterLogout === "function") {
+    window.KlevbyProfilePhotos.resetProfilePhotosAfterLogout();
+  } else if (typeof window.KlevbyProfilePhotos?.renderProfilePhotos === "function") {
+    window.KlevbyProfilePhotos.renderProfilePhotos();
+  }
+
   if (typeof window.updateKlevbyProfileView === "function") {
     window.updateKlevbyProfileView();
   }
