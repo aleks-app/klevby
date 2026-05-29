@@ -60,6 +60,7 @@ function clearRecentLogoutMarker() {
 
 function markAuthLogoutStarted() {
   const now = getLogoutGuardNow();
+  window.klevbyForceGuestProfileUi = true;
   authLogoutInProgress = true;
   window.klevbyAuthLogoutInProgress = true;
   writeRecentLogoutMarker(now);
@@ -73,6 +74,7 @@ function markAuthLogoutFinished() {
 }
 
 function clearAuthLogoutGuardForFreshLogin() {
+  window.klevbyForceGuestProfileUi = false;
   authLogoutInProgress = false;
   lastLogoutAt = 0;
   window.klevbyAuthLogoutInProgress = false;
@@ -80,7 +82,20 @@ function clearAuthLogoutGuardForFreshLogin() {
   clearRecentLogoutMarker();
 }
 
+function prepareAuthForExplicitLogin() {
+  clearPendingAuthRestore();
+  clearAuthLogoutGuardForFreshLogin();
+  window.klevbyExplicitLoginInProgress = true;
+}
+
+function finishAuthExplicitLogin() {
+  window.klevbyExplicitLoginInProgress = false;
+  clearAuthLogoutGuardForFreshLogin();
+}
+
 function isAuthLogoutGuardActive() {
+  if (window.klevbyExplicitLoginInProgress) return false;
+
   const marker = readRecentLogoutMarker();
 
   if (authLogoutInProgress || window.klevbyAuthLogoutInProgress) {
@@ -196,6 +211,42 @@ function clearProfileStorageAfterLogout() {
   });
 }
 
+function resetLiveProfileDomAfterLogout() {
+  const textResets = {
+    profileNameText: "Гость",
+    profileStatusText: "Войдите, чтобы открыть свой профиль Klevby.",
+    profileAvatarFallback: "👤",
+    profilePhotosCount: "0",
+    profileReportsCount: "0",
+    profileTripsCount: "0",
+    profileFriendsCount: "0"
+  };
+
+  Object.entries(textResets).forEach(([id, value]) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  });
+
+  const avatarImage = document.getElementById("profileAvatarImage");
+  if (avatarImage) {
+    avatarImage.removeAttribute("src");
+    avatarImage.classList.add("hidden");
+  }
+
+  const avatarFallback = document.getElementById("profileAvatarFallback");
+  if (avatarFallback) {
+    avatarFallback.classList.remove("hidden");
+  }
+
+  document.querySelectorAll(".profile-photo-gallery").forEach((gallery) => {
+    gallery.remove();
+  });
+
+  document.querySelectorAll(".profile-empty-state").forEach((emptyState) => {
+    emptyState.classList.remove("hidden");
+  });
+}
+
 function resetProfileAvatarUiAfterLogout() {
   if (typeof window.KlevbyProfileAvatar?.resetProfileAvatarUi === "function") {
     window.KlevbyProfileAvatar.resetProfileAvatarUi();
@@ -226,8 +277,16 @@ function resetProfileAvatarUiAfterLogout() {
 }
 
 function resetGuestProfileAfterLogout() {
+  window.klevbyForceGuestProfileUi = true;
   clearProfileStorageAfterLogout();
+  resetLiveProfileDomAfterLogout();
   resetProfileAvatarUiAfterLogout();
+
+  if (typeof window.KlevbyProfilePhotos?.resetProfilePhotosAfterLogout === "function") {
+    window.KlevbyProfilePhotos.resetProfilePhotosAfterLogout();
+  } else if (typeof window.KlevbyProfilePhotos?.renderProfilePhotos === "function") {
+    window.KlevbyProfilePhotos.renderProfilePhotos();
+  }
 
   if (typeof window.updateKlevbyProfileView === "function") {
     window.updateKlevbyProfileView();
@@ -914,14 +973,17 @@ async function login() {
     return alert("Введи email и пароль.");
   }
 
+  prepareAuthForExplicitLogin();
+
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   if (error) {
+    window.klevbyExplicitLoginInProgress = false;
     return alert("Проверьте email и пароль. Если вы только зарегистрировались — сначала подтвердите письмо на почте.");
   }
 
   clearPendingSignup();
-  clearAuthLogoutGuardForFreshLogin();
+  finishAuthExplicitLogin();
   currentUser = data.user;
   authReady = true;
   window.klevbyAuthStatusNotice = "";
@@ -1019,6 +1081,7 @@ window.fillAuthorLocal = fillAuthorLocal;
 window.setAuthMode = setAuthMode;
 window.restoreAuthState = restoreAuthState;
 window.isAuthLogoutGuardActive = isAuthLogoutGuardActive;
+window.clearAuthLogoutGuardForFreshLogin = clearAuthLogoutGuardForFreshLogin;
 window.clearKnownAuthStorageKeys = clearKnownAuthStorageKeys;
 window.listAuthStorageKeys = listAuthStorageKeys;
 window.scheduleAuthRestore = scheduleAuthRestore;

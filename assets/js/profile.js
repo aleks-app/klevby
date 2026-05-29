@@ -30,7 +30,11 @@ function isProfileGuestState() {
       ? window.isAuthLogoutGuardActive()
       : Boolean(window.klevbyAuthLogoutInProgress);
 
-  return Boolean((window.klevbyAuthReady || window.authReady || recentLogout) && !getProfileAuthUserQuick());
+  if (recentLogout || window.klevbyForceGuestProfileUi) {
+    return true;
+  }
+
+  return Boolean((window.klevbyAuthReady || window.authReady) && !getProfileAuthUserQuick());
 }
 
 function openAuthFromGuestProfile() {
