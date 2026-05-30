@@ -914,12 +914,6 @@
 
         marketUser = result.data && result.data.user ? result.data.user : null;
 
-        if (marketUser) {
-          window.klevbyCurrentUser = marketUser;
-          window.currentUser = marketUser;
-          window.klevbyUser = marketUser;
-        }
-
         return marketUser;
       } catch (error) {
         if (String(error && error.message || "").includes("MARKET_TIMEOUT:auth.getUser")) {
