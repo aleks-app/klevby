@@ -1120,6 +1120,13 @@
 
     window.addEventListener("klevby-app-resumed", (event) => {
       const reason = String(event?.detail?.reason || "app_resumed");
+
+      if (window.__klevbyCentralResumeRouter) {
+        tryStartRealtimeSubscription();
+        restartFeedAutoRefresh();
+        return;
+      }
+
       handleAppResume(reason);
       restartFeedAutoRefresh();
     });
