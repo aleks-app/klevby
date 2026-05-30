@@ -210,26 +210,34 @@
 
       try {
         if (visibleSection === "home" || visibleSection === "profile") {
-          markFeedMainRefreshMarker("refreshCurrentScreenAfterResume", reason, {
-            action: "resume_feed_wake",
-            delay: isBurst ? 0 : 250,
-            homeVisible: visibleSection === "home"
-          });
-          const wakeFeedFn =
-            (typeof window.klevbyWakeFeed === "function" && window.klevbyWakeFeed) ||
-            (typeof window.refreshKlevbyFeedSilently === "function" && window.refreshKlevbyFeedSilently) ||
-            null;
+          if (!window.__klevbyCentralResumeRouter) {
+            markFeedMainRefreshMarker("refreshCurrentScreenAfterResume", reason, {
+              action: "resume_feed_wake",
+              delay: isBurst ? 0 : 250,
+              homeVisible: visibleSection === "home"
+            });
+            const wakeFeedFn =
+              (typeof window.klevbyWakeFeed === "function" && window.klevbyWakeFeed) ||
+              (typeof window.refreshKlevbyFeedSilently === "function" && window.refreshKlevbyFeedSilently) ||
+              null;
 
-          if (typeof wakeFeedFn === "function") {
-            const delay = isBurst ? 0 : 250;
-            setTimeout(() => {
-              try { wakeFeedFn(); } catch (error) { console.warn("Klevby: лента не обновилась после resume:", reason, error); }
-            }, delay);
-          } else if (typeof window.renderProfileFeed === "function") {
-            const delay = isBurst ? 0 : 250;
-            setTimeout(() => {
-              try { window.renderProfileFeed(); } catch (error) { console.warn("Klevby: лента не обновилась после resume:", reason, error); }
-            }, delay);
+            if (typeof wakeFeedFn === "function") {
+              const delay = isBurst ? 0 : 250;
+              setTimeout(() => {
+                try { wakeFeedFn(); } catch (error) { console.warn("Klevby: лента не обновилась после resume:", reason, error); }
+              }, delay);
+            } else if (typeof window.renderProfileFeed === "function") {
+              const delay = isBurst ? 0 : 250;
+              setTimeout(() => {
+                try { window.renderProfileFeed(); } catch (error) { console.warn("Klevby: лента не обновилась после resume:", reason, error); }
+              }, delay);
+            }
+          } else {
+            markKlevbyResumeDebug("app.refresh", reason, {
+              visibleSection,
+              isBurst,
+              feedWake: "deferred_to_klevby_app_resumed"
+            });
           }
 
           if (!isBurst && typeof window.syncLocalProfilePhotosToSupabaseFeed === "function") {
