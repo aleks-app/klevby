@@ -1,12 +1,12 @@
 // Touchbar icons: assets/icons/touchbar/*.svg
 const KLEVB_TAB_ICON_HOME = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg class="mobile-tab-svg mobile-tab-svg--home" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
   <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 </svg>`;
 
 const KLEVB_TAB_ICON_MAP = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg class="mobile-tab-svg mobile-tab-svg--map" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M 12.248 21.969 a 1 1 0 0 1 -0.849 -0.17 C 9.539 20.193 4 14.993 4 10 a 8 8 0 0 1 16 0 C 20 10.42 19.961 10.841 19.888 11.262" />
   <path d="m22 22-1.88-1.88" />
   <circle cx="12" cy="10" r="3" />
@@ -14,13 +14,13 @@ const KLEVB_TAB_ICON_MAP = `
 </svg>`;
 
 const KLEVB_TAB_ICON_PLUS = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg class="mobile-tab-svg mobile-tab-svg--plus" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 12h14" />
   <path d="M12 5v14" />
 </svg>`;
 
 const KLEVB_TAB_ICON_TRIPS = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg class="mobile-tab-svg mobile-tab-svg--trips" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8" />
   <path d="M7 14h.01" />
   <path d="M17 14h.01" />
@@ -30,7 +30,7 @@ const KLEVB_TAB_ICON_TRIPS = `
 </svg>`;
 
 const KLEVB_TAB_ICON_CHAT = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg class="mobile-tab-svg mobile-tab-svg--chat" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
   <path d="M7 11h10" />
   <path d="M7 15h6" />
