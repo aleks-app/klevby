@@ -1,6 +1,8 @@
 (function () {
   const FEED_DESKTOP_EAGER_LIMIT = 8;
   const FEED_DESKTOP_HIGH_PRIORITY_LIMIT = 5;
+  const FEED_MOBILE_EAGER_LIMIT = 4;
+  const FEED_MOBILE_HIGH_PRIORITY_LIMIT = 4;
 
   function getBaseUtils() {
     return window.KlevbyFeedUtils || {};
@@ -150,8 +152,12 @@
       : "";
 
     const useDesktopImageElement = isDesktopFeedMode();
-    const imageLoading = useDesktopImageElement && index < FEED_DESKTOP_EAGER_LIMIT ? "eager" : "lazy";
-    const imageFetchPriority = useDesktopImageElement && index < FEED_DESKTOP_HIGH_PRIORITY_LIMIT ? "high" : "auto";
+    const eagerLimit = useDesktopImageElement ? FEED_DESKTOP_EAGER_LIMIT : FEED_MOBILE_EAGER_LIMIT;
+    const highPriorityLimit = useDesktopImageElement
+      ? FEED_DESKTOP_HIGH_PRIORITY_LIMIT
+      : FEED_MOBILE_HIGH_PRIORITY_LIMIT;
+    const imageLoading = index < eagerLimit ? "eager" : "lazy";
+    const imageFetchPriority = index < highPriorityLimit ? "high" : "auto";
     const imageBackgroundAttr = useDesktopImageElement
       ? ""
       : ` style="background-image: url('${safeImage}')"`;
@@ -159,7 +165,7 @@
       ? `<img class="profile-feed-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
       : "";
     const mobileImageBaseHtml = !useDesktopImageElement
-      ? `<img class="profile-feed-mobile-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="lazy" decoding="async" draggable="false">`
+      ? `<img class="profile-feed-mobile-image-img" src="${safeImage}" alt="${safeImageAlt}" loading="${imageLoading}" decoding="async" fetchpriority="${imageFetchPriority}" draggable="false">`
       : "";
 
     const avatarHtml = avatar
