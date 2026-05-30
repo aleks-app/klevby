@@ -385,30 +385,87 @@ function resetProfileAvatarUiAfterLogout() {
   }
 }
 
-function resetGuestProfileAfterLogout() {
-  window.klevbyForceGuestProfileUi = true;
-  clearAuthCredentialFields({
-    email: true,
-    password: true,
-    code: true,
-    username: true
-  });
-  clearProfileStorageAfterLogout();
-  resetLiveProfileDomAfterLogout();
-  resetProfileAvatarUiAfterLogout();
+function authCredentialInputsAreActive() {
+  const ids = ["usernameInput", "emailInput", "passwordInput", "signupCodeInput"];
+  const active = document.activeElement;
 
-  if (typeof window.KlevbyProfilePhotos?.resetProfilePhotosAfterLogout === "function") {
-    window.KlevbyProfilePhotos.resetProfilePhotosAfterLogout();
-  } else if (typeof window.KlevbyProfilePhotos?.renderProfilePhotos === "function") {
-    window.KlevbyProfilePhotos.renderProfilePhotos();
+  return ids.some((id) => {
+    const input = document.getElementById(id);
+    if (!input) return false;
+    if (input === active) return true;
+    return String(input.value || "").trim().length > 0;
+  });
+}
+
+function isGuestAuthSessionState() {
+  return !(
+    currentUser ||
+    window.currentUser ||
+    window.klevbyCurrentUser ||
+    window.klevbyUser
+  );
+}
+
+function shouldPreserveAuthCredentialsDuringLogoutGuard(options = {}) {
+  if (Boolean(options.preserveCredentials)) return true;
+  if (Boolean(options.forceClearCredentials)) return false;
+  if (typeof isAuthLogoutGuardActive !== "function" || !isAuthLogoutGuardActive()) return false;
+  if (authLogoutInProgress || window.klevbyAuthLogoutInProgress) return false;
+  return authCredentialInputsAreActive();
+}
+
+function refreshGuestStateDuringLogoutGuard() {
+  clearKnownAuthStorageKeys();
+
+  if (
+    isGuestAuthSessionState() &&
+    !authLogoutInProgress &&
+    !window.klevbyAuthLogoutInProgress &&
+    authCredentialInputsAreActive()
+  ) {
+    currentUser = null;
+    authReady = true;
+    window.currentUser = null;
+    window.klevbyCurrentUser = null;
+    window.klevbyUser = null;
+    window.klevbyAuthReady = true;
+    window.klevbyForceGuestProfileUi = true;
+    updateAuthStatus();
+    return;
+  }
+
+  forceGuestAuthState();
+}
+
+function resetGuestProfileAfterLogout(options = {}) {
+  const preserveCredentials = shouldPreserveAuthCredentialsDuringLogoutGuard(options);
+
+  window.klevbyForceGuestProfileUi = true;
+
+  if (!preserveCredentials) {
+    clearAuthCredentialFields({
+      email: true,
+      password: true,
+      code: true,
+      username: true
+    });
+    clearProfileStorageAfterLogout();
+    resetLiveProfileDomAfterLogout();
+    resetProfileAvatarUiAfterLogout();
+
+    if (typeof window.KlevbyProfilePhotos?.resetProfilePhotosAfterLogout === "function") {
+      window.KlevbyProfilePhotos.resetProfilePhotosAfterLogout();
+    } else if (typeof window.KlevbyProfilePhotos?.renderProfilePhotos === "function") {
+      window.KlevbyProfilePhotos.renderProfilePhotos();
+    }
+
+    if (typeof window.renderProfileFeed === "function") {
+      window.renderProfileFeed();
+    }
   }
 
   if (typeof window.updateKlevbyProfileView === "function") {
     window.updateKlevbyProfileView();
-  }
-
-  if (typeof window.renderProfileFeed === "function") {
-    window.renderProfileFeed();
   }
 }
 
@@ -724,8 +781,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
   if (!supabaseClient || authRestoreInProgress) return currentUser;
 
   if (isAuthLogoutGuardActive()) {
-    clearKnownAuthStorageKeys();
-    forceGuestAuthState();
+    refreshGuestStateDuringLogoutGuard();
     if (reloadData) {
       await loadPosts();
       reloadPondsIfReady();
@@ -764,8 +820,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
     }
 
     if (isAuthLogoutGuardActive()) {
-      clearKnownAuthStorageKeys();
-      forceGuestAuthState();
+      refreshGuestStateDuringLogoutGuard();
       return null;
     }
 
@@ -806,8 +861,7 @@ function scheduleAuthRestore(reason = "resume", reloadData = false) {
   clearPendingAuthRestore();
 
   if (isAuthLogoutGuardActive()) {
-    clearKnownAuthStorageKeys();
-    forceGuestAuthState();
+    refreshGuestStateDuringLogoutGuard();
     return false;
   }
 
