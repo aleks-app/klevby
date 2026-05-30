@@ -845,10 +845,6 @@
     function syncGlobalChatUser() {
       return callChatUser("syncGlobalChatUser", () => {
         if (!currentChatUser || !currentChatUser.id) return;
-
-        window.klevbyCurrentUser = currentChatUser;
-        window.currentUser = currentChatUser;
-        window.klevbyUser = currentChatUser;
       });
     }
 
