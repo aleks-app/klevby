@@ -117,39 +117,51 @@
     font-weight: 650 !important;
   }
 
-  #homeSection .trust-bar {
-    gap: 12px !important;
+  #homeSection .hero-features {
+    margin-top: 10px !important;
   }
 
-  #homeSection .trust-item {
-    border: 1px solid rgba(244, 178, 74, 0.22) !important;
+  #homeSection .hero-features-title {
+    margin: 0 0 7px !important;
+    color: rgba(255, 248, 234, 0.68) !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+    text-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  #homeSection .hero-feature-chips {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  #homeSection .hero-feature-chip {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+    min-height: 30px !important;
+    padding: 7px 10px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(244, 178, 74, 0.20) !important;
     background:
-      radial-gradient(circle at 18% 0%, rgba(255, 196, 88, 0.10), transparent 38%),
-      linear-gradient(180deg, rgba(16, 28, 22, 0.94), rgba(8, 16, 13, 0.90)) !important;
+      linear-gradient(180deg, rgba(20, 30, 26, 0.94), rgba(10, 16, 14, 0.90)) !important;
+    color: rgba(255, 248, 234, 0.92) !important;
+    font-family: inherit !important;
+    font-size: 11.5px !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
     box-shadow:
-      0 0 0 1px rgba(255, 223, 156, 0.05) inset,
-      0 0 10px rgba(255, 174, 43, 0.08),
-      0 10px 22px rgba(0, 0, 0, 0.28) !important;
-    -webkit-tap-highlight-color: transparent;
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 4px 10px rgba(0, 0, 0, 0.18) !important;
+    -webkit-tap-highlight-color: transparent !important;
+    cursor: pointer !important;
   }
 
-  #homeSection .trust-item:active {
-    transform: scale(0.985);
-  }
-
-  #homeSection .trust-icon {
-    box-shadow:
-      0 0 0 1px rgba(255, 214, 143, 0.12),
-      0 0 8px rgba(255, 174, 43, 0.10) !important;
-  }
-
-  #homeSection .trust-value {
-    color: rgba(255, 239, 206, 0.98) !important;
-    text-shadow: 0 0 10px rgba(255, 174, 43, 0.10);
-  }
-
-  #homeSection .trust-label {
-    color: rgba(244, 251, 247, 0.70) !important;
+  #homeSection .hero-feature-chip:active {
+    transform: scale(0.985) !important;
   }
 
   #homeSection #forecastPanel.forecast-panel {
@@ -459,6 +471,16 @@
 
   #homeSection .hero-copy {
     min-height: 219px !important;
+  }
+
+  #homeSection .hero-feature-chips {
+    gap: 5px !important;
+  }
+
+  #homeSection .hero-feature-chip {
+    min-height: 29px !important;
+    padding: 6px 9px !important;
+    font-size: 11px !important;
   }
 
   #homeSection .home-mobile-feed-head {
