@@ -20,8 +20,6 @@ const APP_FILES = [
 ];
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
-
   event.waitUntil(
     precacheAppFiles()
   );
