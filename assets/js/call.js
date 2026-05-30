@@ -440,9 +440,6 @@
 
         if (data?.user) {
           currentUser = data.user;
-          window.klevbyCurrentUser = currentUser;
-          window.currentUser = currentUser;
-          window.klevbyUser = currentUser;
           return currentUser;
         }
 
