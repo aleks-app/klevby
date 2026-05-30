@@ -699,12 +699,6 @@
 
         currentMapUser = userResult.data && userResult.data.user ? userResult.data.user : null;
 
-        if (currentMapUser && currentMapUser.id) {
-          window.klevbyCurrentUser = currentMapUser;
-          window.currentUser = currentMapUser;
-          window.klevbyUser = currentMapUser;
-        }
-
         return currentMapUser;
       } catch (error) {
         if (!isAuthLockError(error)) {
@@ -1230,12 +1224,6 @@
       null;
 
     currentMapUser = user;
-
-    if (user && user.id) {
-      window.klevbyCurrentUser = user;
-      window.currentUser = user;
-      window.klevbyUser = user;
-    }
   });
 
   if (document.readyState === "loading") {
