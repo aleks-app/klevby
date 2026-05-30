@@ -114,6 +114,14 @@
     return requireProfileUtilsMethod("estimateDataUrlSizeKb")(dataUrl);
   }
 
+  // Auth ownership boundary (legacy fallback only — do not expand):
+  // app.js and auth.js own login/logout, session restore, and global currentUser.
+  // Profile must prefer klevbyGetCurrentUser / window.currentUser* first.
+  // getProfileStoredAuthData* helpers read Supabase keys from localStorage only as a
+  // last resort when globals or the Supabase client are not ready. Do not add new auth
+  // flows here; extend app.js/auth.js instead.
+  const KLEVB_PROFILE_STORED_AUTH_FALLBACK_BOUNDARY = "legacy-read-only";
+
   function getProfileStoredAuthData() {
     try {
       const preferredKeys = [
@@ -227,6 +235,7 @@
       return mainUser;
     }
 
+    // Stored-auth fallback only — see KLEVB_PROFILE_STORED_AUTH_FALLBACK_BOUNDARY above.
     return getProfileUserFromStoredAuth() || null;
   }
 
@@ -410,6 +419,7 @@
       }
     }
 
+    // Stored-auth fallback only — see KLEVB_PROFILE_STORED_AUTH_FALLBACK_BOUNDARY above.
     const storedUser = getProfileUserFromStoredAuth();
 
     if (storedUser?.id) {
@@ -552,6 +562,7 @@
     }
 
     if (!accessToken) {
+      // Stored-auth fallback only — see KLEVB_PROFILE_STORED_AUTH_FALLBACK_BOUNDARY above.
       const storedAuthData = getProfileStoredAuthData();
       const storedSession = getProfileSessionFromAuthData(storedAuthData);
       const storedToken = String(storedSession?.access_token || "");
