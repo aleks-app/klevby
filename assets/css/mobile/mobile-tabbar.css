@@ -211,6 +211,23 @@
     transform: translate(-50%, -50%);
   }
 
+  .mobile-tabbar .mobile-tab-create .mobile-tab-icon:has(.mobile-tab-svg)::before,
+  .mobile-tabbar .mobile-tab-create .mobile-tab-icon:has(.mobile-tab-svg)::after {
+    content: none;
+    display: none;
+  }
+
+  .mobile-tabbar .mobile-tab-create .mobile-tab-icon .mobile-tab-svg {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 1;
+    width: 23px;
+    height: 23px;
+    transform: translate(-50%, -50%);
+    color: #111111;
+  }
+
   .mobile-tabbar .mobile-tab-create .mobile-tab-icon::after {
     transform: translate(-50%, -50%) rotate(90deg);
   }
