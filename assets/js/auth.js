@@ -251,6 +251,58 @@ function reloadProfilePhotosAfterFreshLogin() {
     });
 }
 
+let klevbyLastKnownProfileUserId = null;
+
+function normalizeProfileUserId(userId) {
+  return String(userId || "").trim();
+}
+
+function handleProfileStorageOnAccountSwitch(previousUserId, nextUserId) {
+  const previousId = normalizeProfileUserId(previousUserId);
+  const nextId = normalizeProfileUserId(nextUserId);
+
+  if (!previousId || !nextId || previousId === nextId) {
+    return false;
+  }
+
+  clearProfileStorageAfterLogout();
+  reloadProfilePhotosAfterFreshLogin();
+
+  console.info("Klevby auth: profile storage reset after account switch.", {
+    previousUserId: previousId,
+    nextUserId: nextId
+  });
+
+  return true;
+}
+
+function syncKnownProfileUserId(nextUserId) {
+  const nextId = normalizeProfileUserId(nextUserId);
+  klevbyLastKnownProfileUserId = nextId || null;
+}
+
+function bindProfileAccountSwitchGuard() {
+  if (window.__klevbyProfileAccountSwitchBound) return;
+
+  window.__klevbyProfileAccountSwitchBound = true;
+
+  window.addEventListener("klevby-auth-changed", () => {
+    const nextUser =
+      (typeof window.klevbyGetCurrentUser === "function" && window.klevbyGetCurrentUser()) ||
+      window.currentUser ||
+      window.klevbyCurrentUser ||
+      window.klevbyUser ||
+      null;
+    const nextUserId = nextUser?.id || null;
+    const previousId = klevbyLastKnownProfileUserId;
+
+    handleProfileStorageOnAccountSwitch(previousId, nextUserId);
+    syncKnownProfileUserId(nextUserId);
+  });
+}
+
+bindProfileAccountSwitchGuard();
+
 function setLoginLoadingState(isLoading, statusText = "") {
   const loginBtn = document.getElementById("authLoginBtn");
 
@@ -726,6 +778,9 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
 
     const newUserId = currentUser?.id || null;
     const userChanged = previousUserId !== newUserId;
+
+    handleProfileStorageOnAccountSwitch(previousUserId, newUserId);
+    syncKnownProfileUserId(newUserId);
 
     if (reloadData || userChanged) {
       await loadPosts();
