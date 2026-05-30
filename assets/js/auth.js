@@ -21,6 +21,7 @@ const KLEVB_SIGNUP_CODE_RESEND_COOLDOWN_MS = 55 * 1000;
 
 let signupCodeResendUntil = 0;
 let klevbyLoginInProgress = false;
+let klevbySignupVerifyInProgress = false;
 
 function getLogoutGuardNow() {
   return Date.now();
@@ -1034,12 +1035,15 @@ async function register() {
 }
 
 async function verifySignupCode() {
+  if (klevbySignupVerifyInProgress) return;
+
   const pendingSignup = getPendingSignup();
   const email = String(pendingSignup?.email || document.getElementById("emailInput")?.value || "").trim();
   const codeInput = document.getElementById("signupCodeInput");
   const rawCode = String(codeInput?.value || "").trim();
   const compactCode = rawCode.replace(/\s+/g, "");
   const digitsOnly = compactCode.replace(/-/g, "");
+  const verifyBtn = document.getElementById("authVerifyBtn");
 
   if (!email) {
     return alert("Введите email для подтверждения.");
@@ -1053,69 +1057,98 @@ async function verifySignupCode() {
     return alert("Код должен содержать только цифры, пробелы или дефис. Проверьте код из последнего письма.");
   }
 
-  const tokenVariants = getSignupCodeTokenVariants(rawCode);
-  let lastError = null;
-  let verifiedData = null;
+  klevbySignupVerifyInProgress = true;
 
-  for (const token of tokenVariants) {
-    const { data, error } = await supabaseClient.auth.verifyOtp({
-      email,
-      token,
-      type: "signup"
-    });
-
-    if (!error) {
-      verifiedData = data;
-      lastError = null;
-      break;
-    }
-
-    lastError = error;
+  if (verifyBtn) {
+    verifyBtn.disabled = true;
   }
 
-  if (lastError) {
-    window.klevbyAuthStatusNotice = "Код не подошёл. Проверьте последний код из письма или отправьте код ещё раз.";
-    updateAuthStatus();
-    return alert("Код не подошёл: " + lastError.message);
-  }
+  try {
+    const tokenVariants = getSignupCodeTokenVariants(rawCode);
+    let lastError = null;
+    let verifiedData = null;
 
-  clearPendingSignup();
-  clearAuthLogoutGuardForFreshLogin();
-  currentUser = verifiedData?.session?.user || verifiedData?.user || null;
-  authReady = true;
-  syncGlobalAuthState();
+    for (const token of tokenVariants) {
+      const { data, error } = await supabaseClient.auth.verifyOtp({
+        email,
+        token,
+        type: "signup"
+      });
 
-  if (currentUser && pendingSignup?.nickname) {
-    const updateResult = await supabaseClient.auth.updateUser({
-      data: {
-        nickname: pendingSignup.nickname,
-        username: pendingSignup.nickname,
-        display_name: pendingSignup.nickname
+      if (!error) {
+        verifiedData = data;
+        lastError = null;
+        break;
       }
-    });
 
-    if (!updateResult.error) {
-      currentUser = updateResult.data?.user || currentUser;
-      syncGlobalAuthState();
+      lastError = error;
     }
 
-    localStorage.setItem("klevby_author_name", pendingSignup.nickname);
-    localStorage.setItem("klevby_chat_username", pendingSignup.nickname);
-  }
+    if (lastError) {
+      const normalizedEmail = email.toLowerCase();
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const sessionUser = sessionData?.session?.user || null;
+      const sessionEmail = String(sessionUser?.email || "").trim().toLowerCase();
 
-  window.klevbyAuthStatusNotice = "";
-  await restoreAuthState("verify", true);
-  clearAuthCredentialFields({
-    email: true,
-    password: true,
-    code: true,
-    username: true
-  });
-  updateAuthStatus();
-  fillAuthorLocal();
-  reloadPondsIfReady();
-  alert("Email подтверждён. Ты вошёл в аккаунт.");
-  showSection("home");
+      if (sessionUser && sessionEmail === normalizedEmail) {
+        verifiedData = {
+          session: sessionData.session,
+          user: sessionUser
+        };
+        lastError = null;
+      }
+    }
+
+    if (lastError) {
+      window.klevbyAuthStatusNotice = "Код не подошёл. Проверьте последний код из письма или отправьте код ещё раз.";
+      updateAuthStatus();
+      return alert("Код не подошёл: " + lastError.message);
+    }
+
+    clearPendingSignup();
+    clearAuthLogoutGuardForFreshLogin();
+    currentUser = verifiedData?.session?.user || verifiedData?.user || null;
+    authReady = true;
+    syncGlobalAuthState();
+
+    if (currentUser && pendingSignup?.nickname) {
+      const updateResult = await supabaseClient.auth.updateUser({
+        data: {
+          nickname: pendingSignup.nickname,
+          username: pendingSignup.nickname,
+          display_name: pendingSignup.nickname
+        }
+      });
+
+      if (!updateResult.error) {
+        currentUser = updateResult.data?.user || currentUser;
+        syncGlobalAuthState();
+      }
+
+      localStorage.setItem("klevby_author_name", pendingSignup.nickname);
+      localStorage.setItem("klevby_chat_username", pendingSignup.nickname);
+    }
+
+    window.klevbyAuthStatusNotice = "";
+    await restoreAuthState("verify", true);
+    clearAuthCredentialFields({
+      email: true,
+      password: true,
+      code: true,
+      username: true
+    });
+    updateAuthStatus();
+    fillAuthorLocal();
+    reloadPondsIfReady();
+    alert("Email подтверждён. Ты вошёл в аккаунт.");
+    showSection("home");
+  } finally {
+    klevbySignupVerifyInProgress = false;
+
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+    }
+  }
 }
 
 async function resendSignupCode() {
