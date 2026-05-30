@@ -80,10 +80,6 @@
     const user = getCurrentUser();
 
     if (!user || !user.id) return;
-
-    window.klevbyCurrentUser = user;
-    window.currentUser = user;
-    window.klevbyUser = user;
   }
 
   function isAuthLockError(error) {
