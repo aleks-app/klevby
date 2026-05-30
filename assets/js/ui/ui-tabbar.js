@@ -1,30 +1,40 @@
+// Touchbar icons: assets/icons/touchbar/*.svg
 const KLEVB_TAB_ICON_HOME = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M3 10.8 12 3l9 7.8" />
-  <path d="M5.4 9.7V21h13.2V9.7" />
-  <path d="M9.4 21v-6.2h5.2V21" />
+<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+  <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 </svg>`;
 
-const KLEVB_TAB_ICON_MAP_PIN = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 21s7-5.3 7-12a7 7 0 0 0-14 0c0 6.7 7 12 7 12Z" />
-  <circle cx="12" cy="9" r="2.4" />
+const KLEVB_TAB_ICON_MAP = `
+<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M 12.248 21.969 a 1 1 0 0 1 -0.849 -0.17 C 9.539 20.193 4 14.993 4 10 a 8 8 0 0 1 16 0 C 20 10.42 19.961 10.841 19.888 11.262" />
+  <path d="m22 22-1.88-1.88" />
+  <circle cx="12" cy="10" r="3" />
+  <circle cx="18" cy="18" r="3" />
 </svg>`;
 
-const KLEVB_TAB_ICON_CLOUD_SUN = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M16 7.2a4 4 0 0 1 4 4" />
-  <path d="M20.5 3.5 19 5" />
-  <path d="M22 11h-2" />
-  <path d="M16 1.8v2" />
-  <path d="M7.5 19.5h9.3a4 4 0 0 0 .2-8 5.7 5.7 0 0 0-10.9 1.7A3.2 3.2 0 0 0 7.5 19.5Z" />
+const KLEVB_TAB_ICON_PLUS = `
+<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 12h14" />
+  <path d="M12 5v14" />
+</svg>`;
+
+const KLEVB_TAB_ICON_TRIPS = `
+<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8" />
+  <path d="M7 14h.01" />
+  <path d="M17 14h.01" />
+  <rect width="18" height="8" x="3" y="10" rx="2" />
+  <path d="M5 18v2" />
+  <path d="M19 18v2" />
 </svg>`;
 
 const KLEVB_TAB_ICON_CHAT = `
-<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M5 5.5h14a2 2 0 0 1 2 2v8.2a2 2 0 0 1-2 2H9l-5 3v-13.2a2 2 0 0 1 2-2Z" />
-  <path d="M8 10.2h8" />
-  <path d="M8 13.6h5.4" />
+<svg class="mobile-tab-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
+  <path d="M7 11h10" />
+  <path d="M7 15h6" />
+  <path d="M7 7h8" />
 </svg>`;
 
 function setMobileTabbarMode(mode) {
@@ -45,20 +55,20 @@ function setMobileTabbarMode(mode) {
       action: goMobileFeed
     },
     {
-      icon: KLEVB_TAB_ICON_MAP_PIN,
+      icon: KLEVB_TAB_ICON_MAP,
       text: "Карта",
       action: goMobileMap
     },
     {
-      icon: "+",
+      icon: KLEVB_TAB_ICON_PLUS,
       text: "Создать",
       action: goMobileCreate,
       create: true
     },
     {
-      icon: KLEVB_TAB_ICON_CLOUD_SUN,
-      text: "Погода",
-      action: goMobileWeather
+      icon: KLEVB_TAB_ICON_TRIPS,
+      text: "Выезды",
+      action: goMobileTrips
     },
     {
       icon: KLEVB_TAB_ICON_CHAT,
@@ -150,6 +160,18 @@ function goMobileMap() {
   showSection("map");
 }
 
+function goMobileTrips() {
+  setMobileTabbarMode("home");
+
+  if (typeof setMode === "function") {
+    setMode("all");
+  } else if (typeof showSection === "function") {
+    showSection("trips");
+  }
+
+  setMobileTabActive(3);
+}
+
 function goMobileWeather() {
   setMobileTabbarMode("home");
   setMobileTabActive(3);
@@ -231,12 +253,23 @@ function goProfileSettings() {
   }, 140);
 }
 
+function initMobileTabbar() {
+  setMobileTabbarMode("home");
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initMobileTabbar);
+} else {
+  initMobileTabbar();
+}
+
 window.KlevbyUiTabbar = {
   setMobileTabbarMode,
   goHomeTop,
   goMobileFeed,
   goMobileCreate,
   goMobileMap,
+  goMobileTrips,
   goMobileWeather,
   goMobileProfile,
   goMobileChat,
@@ -251,6 +284,7 @@ window.goHomeTop = goHomeTop;
 window.goMobileFeed = goMobileFeed;
 window.goMobileCreate = goMobileCreate;
 window.goMobileMap = goMobileMap;
+window.goMobileTrips = goMobileTrips;
 window.goMobileWeather = goMobileWeather;
 window.goMobileProfile = goMobileProfile;
 window.goMobileChat = goMobileChat;
