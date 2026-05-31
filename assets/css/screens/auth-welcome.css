@@ -49,7 +49,7 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 #authSection .auth-welcome-bg {
   position: absolute;
   inset: 0;
-  background-image: url("../../images/welcome-hero-bg.png");
+  background-image: url("../../images/auth-bg-klevby-sunset.png");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center 22%;
