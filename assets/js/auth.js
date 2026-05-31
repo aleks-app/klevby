@@ -321,6 +321,34 @@ function setLoginLoadingState(isLoading, statusText = "") {
   }
 }
 
+function isAuthSectionVisible() {
+  const authSection = document.getElementById("authSection");
+  return Boolean(authSection && !authSection.classList.contains("hidden"));
+}
+
+function resetAuthFormUiState() {
+  klevbyLoginInProgress = false;
+  klevbySignupVerifyInProgress = false;
+  setLoginLoadingState(false);
+
+  const verifyBtn = document.getElementById("authVerifyBtn");
+  if (verifyBtn) {
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = "Подтвердить код";
+  }
+}
+
+function maybeResetAuthFormUiAfterRestore() {
+  if (!isAuthSectionVisible()) return;
+  if (currentUser && currentUser.id) return;
+
+  if (klevbyLoginInProgress || klevbySignupVerifyInProgress) {
+    if (!isAuthLogoutGuardActive()) return;
+  }
+
+  resetAuthFormUiState();
+}
+
 function resetLiveProfileDomAfterLogout() {
   const textResets = {
     profileNameText: "Гость",
@@ -710,6 +738,8 @@ function fillAuthorLocal() {
 }
 
 function setAuthMode(mode) {
+  resetAuthFormUiState();
+
   authMode = ["login", "register", "verify"].includes(mode) ? mode : "register";
 
   const title = document.getElementById("authTitle");
@@ -787,6 +817,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
       await loadPosts();
       reloadPondsIfReady();
     }
+    maybeResetAuthFormUiAfterRestore();
     return null;
   }
 
@@ -855,6 +886,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
     return currentUser;
   } finally {
     authRestoreInProgress = false;
+    maybeResetAuthFormUiAfterRestore();
   }
 }
 
@@ -1230,6 +1262,7 @@ async function logout() {
     const cleanupResult = clearKnownAuthStorageKeys();
     await verifySupabaseSessionClearedAfterLogout();
     forceGuestAuthState();
+    resetAuthFormUiState();
     setAuthMode("register");
     await loadPosts();
     reloadPondsIfReady();
