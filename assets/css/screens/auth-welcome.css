@@ -89,10 +89,29 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 }
 
 #authSection .auth-welcome-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   margin: 0;
+}
+
+#authSection .auth-welcome-logo-mark {
+  display: block;
+  width: clamp(54px, 14vw, 68px);
+  height: clamp(54px, 14vw, 68px);
+  flex: 0 0 auto;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42));
+  image-rendering: -webkit-optimize-contrast;
+}
+
+#authSection .auth-welcome-logo-text {
   font-size: clamp(28px, 7vw, 34px);
   font-weight: 900;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
+  line-height: 1;
   color: #fff8ea;
   text-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
@@ -305,8 +324,13 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
     padding-top: clamp(4px, 2vh, 18px);
   }
 
-  #authSection .auth-welcome-logo {
+  #authSection .auth-welcome-logo-text {
     font-size: clamp(30px, 8vw, 36px);
+  }
+
+  #authSection .auth-welcome-logo-mark {
+    width: clamp(54px, 15vw, 64px);
+    height: clamp(54px, 15vw, 64px);
   }
 
   #authSection .auth-welcome-tagline {
