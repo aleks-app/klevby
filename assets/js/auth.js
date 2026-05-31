@@ -770,18 +770,18 @@ function setAuthMode(mode) {
   resendBtn?.classList.add("hidden");
 
   if (authMode === "login") {
-    title.textContent = "Войти в профиль";
-    subtitle.textContent = "Войди через email и пароль. Если ты только зарегистрировался — сначала подтверди email кодом из письма или войди после подтверждения.";
+    title.textContent = "Войти в Klevby";
+    subtitle.textContent = "Сохраняй профиль, пиши в чат,\nсоздавай выезды и объявления.";
     passwordInput.setAttribute("autocomplete", "current-password");
     loginBtn.classList.remove("hidden");
     switchText.innerHTML = `
       Нет аккаунта?
-      <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать профиль</button>
+      <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('register')">Создать аккаунт</button>
     `;
   } else if (authMode === "verify") {
     fillPendingSignupInputs();
-    title.textContent = "Подтверждение email";
-    subtitle.textContent = "Введите код из письма прямо здесь. Если писем несколько — используйте последний код.";
+    title.textContent = "Подтверди email";
+    subtitle.textContent = "Введи код из письма,\nчтобы завершить регистрацию.";
     passwordLabel?.classList.add("hidden");
     passwordInput.classList.add("hidden");
     codeLabel?.classList.remove("hidden");
@@ -795,8 +795,8 @@ function setAuthMode(mode) {
     `;
     codeInput?.focus();
   } else {
-    title.textContent = "Регистрация аккаунта Klevby";
-    subtitle.textContent = "Создай аккаунт через email и пароль. После регистрации введи код из письма прямо в Klevby.";
+    title.textContent = "Создать аккаунт";
+    subtitle.textContent = "Придумай ник, укажи email\nи подтверди код из письма.";
     usernameLabel.classList.remove("hidden");
     usernameInput.classList.remove("hidden");
     passwordInput.setAttribute("autocomplete", "new-password");
