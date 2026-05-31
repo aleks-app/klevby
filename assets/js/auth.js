@@ -347,6 +347,72 @@ function maybeResetAuthFormUiAfterRestore() {
   }
 
   resetAuthFormUiState();
+  syncVisibleAuthCredentialInputs();
+}
+
+const KLEVB_AUTH_CREDENTIAL_INPUT_IDS = ["emailInput", "passwordInput"];
+const KLEVB_AUTH_AUTOFILL_ANIMATION = "klevby-auth-autofill-start";
+
+function syncAuthCredentialInputValue(input) {
+  if (!input) return "";
+
+  const value = String(input.value || "");
+  if (value) {
+    input.value = value;
+  }
+
+  try {
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  } catch (_) {}
+
+  return String(input.value || "").trim();
+}
+
+function readAuthCredentialInputValue(id) {
+  const input = document.getElementById(id);
+  return syncAuthCredentialInputValue(input);
+}
+
+function syncVisibleAuthCredentialInputs() {
+  if (!isAuthSectionVisible()) return;
+
+  KLEVB_AUTH_CREDENTIAL_INPUT_IDS.forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input || input.classList.contains("hidden")) return;
+    syncAuthCredentialInputValue(input);
+  });
+}
+
+function bindAuthCredentialInputNormalization() {
+  if (window.__klevbyAuthCredentialInputsBound) return;
+  window.__klevbyAuthCredentialInputsBound = true;
+
+  const handleCredentialInputEvent = (event) => {
+    syncAuthCredentialInputValue(event.currentTarget);
+  };
+
+  KLEVB_AUTH_CREDENTIAL_INPUT_IDS.forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+
+    ["input", "change", "paste", "focus", "blur"].forEach((type) => {
+      input.addEventListener(type, handleCredentialInputEvent);
+    });
+
+    input.addEventListener("animationstart", (event) => {
+      if (event.animationName === KLEVB_AUTH_AUTOFILL_ANIMATION) {
+        syncAuthCredentialInputValue(input);
+      }
+    });
+  });
+
+  window.addEventListener("pageshow", syncVisibleAuthCredentialInputs);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      syncVisibleAuthCredentialInputs();
+    }
+  });
 }
 
 function resetLiveProfileDomAfterLogout() {
@@ -806,6 +872,8 @@ function setAuthMode(mode) {
       <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
     `;
   }
+
+  requestAnimationFrame(syncVisibleAuthCredentialInputs);
 }
 
 async function restoreAuthState(reason = "manual", reloadData = false) {
@@ -907,6 +975,8 @@ function scheduleAuthRestore(reason = "resume", reloadData = false) {
 }
 
 async function initAuth() {
+  bindAuthCredentialInputNormalization();
+
   await restoreAuthState("init", false);
 
   if (window.location.hash.includes("access_token")) {
@@ -955,8 +1025,8 @@ function updateAuthStatus() {
 
 async function register() {
   const nickname = cleanDisplayName(document.getElementById("usernameInput").value);
-  const email = document.getElementById("emailInput").value.trim();
-  const password = document.getElementById("passwordInput").value.trim();
+  const email = readAuthCredentialInputValue("emailInput");
+  const password = readAuthCredentialInputValue("passwordInput");
 
   if (!nickname || !email || !password) {
     return alert("Введи Nickname, email и пароль.");
@@ -1046,7 +1116,7 @@ async function verifySignupCode() {
   if (klevbySignupVerifyInProgress) return;
 
   const pendingSignup = getPendingSignup();
-  const email = String(pendingSignup?.email || document.getElementById("emailInput")?.value || "").trim();
+  const email = String(pendingSignup?.email || readAuthCredentialInputValue("emailInput") || "").trim();
   const codeInput = document.getElementById("signupCodeInput");
   const rawCode = String(codeInput?.value || "").trim();
   const compactCode = rawCode.replace(/\s+/g, "");
@@ -1161,7 +1231,7 @@ async function verifySignupCode() {
 
 async function resendSignupCode() {
   const pendingSignup = getPendingSignup();
-  const email = String(pendingSignup?.email || document.getElementById("emailInput")?.value || "").trim();
+  const email = String(pendingSignup?.email || readAuthCredentialInputValue("emailInput") || "").trim();
   const secondsLeft = Math.ceil((signupCodeResendUntil - Date.now()) / 1000);
 
   if (!email) {
@@ -1194,9 +1264,8 @@ async function resendSignupCode() {
 async function login() {
   if (klevbyLoginInProgress) return;
 
-  const email = document.getElementById("emailInput").value.trim();
-  const passwordInput = document.getElementById("passwordInput");
-  const password = passwordInput ? passwordInput.value.trim() : "";
+  const email = readAuthCredentialInputValue("emailInput");
+  const password = readAuthCredentialInputValue("passwordInput");
 
   if (!email || !password) {
     return alert("Введи email и пароль.");
@@ -1277,7 +1346,7 @@ async function logout() {
 }
 
 async function sendRecovery() {
-  const email = document.getElementById("emailInput").value.trim();
+  const email = readAuthCredentialInputValue("emailInput");
 
   if (!email) {
     return alert("Введи email.");
