@@ -149,6 +149,8 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
   font-size: 13px;
   line-height: 1.35;
   font-weight: 600;
+  letter-spacing: 0.03em;
+  transform: translateX(4px);
   text-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
