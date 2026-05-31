@@ -11,7 +11,6 @@
 
   const KLEVB_FEED_VISIBLE_REFRESH_MS = 4000;
   const KLEVB_FEED_VISIBLE_STALE_REFRESH_MS = 60000;
-  const KLEVB_FEED_HIDDEN_REFRESH_MS = 30000;
   const KLEVB_FEED_DEBOUNCE_MS = 450;
   const KLEVB_FEED_RESUME_DELAYS = [0, 600, 1800, 4200, 8000];
 
@@ -1131,12 +1130,6 @@
       restartFeedAutoRefresh();
     });
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") {
-        startHiddenWakeRefresh();
-      }
-    });
-
     window.addEventListener("klevby-auth-changed", () => {
       queueFeedRefresh("auth_changed", 120, {
         force: true
@@ -1428,19 +1421,6 @@
     });
   }
 
-  function startHiddenWakeRefresh() {
-    if (klevbyFeedHiddenIntervalTimer) return;
-
-    klevbyFeedHiddenIntervalTimer = setInterval(() => {
-      if (document.visibilityState === "hidden") return;
-
-      clearInterval(klevbyFeedHiddenIntervalTimer);
-      klevbyFeedHiddenIntervalTimer = null;
-
-      handleAppResume("hidden_timer_resume");
-    }, KLEVB_FEED_HIDDEN_REFRESH_MS);
-  }
-
   async function stopRealtimeSubscription() {
     const api = getRealtimeApi();
 
@@ -1701,7 +1681,6 @@
     bindFeedRefreshHooks,
     startFeedAutoRefresh,
     restartFeedAutoRefresh,
-    startHiddenWakeRefresh,
     tryStartRealtimeSubscription,
     stopRealtimeSubscription,
     refreshFeedIfHomeVisible,
