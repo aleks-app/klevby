@@ -417,7 +417,7 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 
   #authSection .auth-welcome-panel,
   #authSection .auth-welcome-panel.panel {
-    margin-top: 4px;
+    margin-top: 20px;
     padding: 8px 0 0;
   }
 }

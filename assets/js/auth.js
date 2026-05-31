@@ -770,7 +770,7 @@ function setAuthMode(mode) {
   resendBtn?.classList.add("hidden");
 
   if (authMode === "login") {
-    title.textContent = "Войти в Klevby";
+    title.textContent = "Вход";
     subtitle.textContent = "Сохраняй профиль, пиши в чат,\nсоздавай выезды и объявления.";
     passwordInput.setAttribute("autocomplete", "current-password");
     loginBtn.classList.remove("hidden");
@@ -795,7 +795,7 @@ function setAuthMode(mode) {
     `;
     codeInput?.focus();
   } else {
-    title.textContent = "Создать аккаунт";
+    title.textContent = "Регистрация";
     subtitle.textContent = "Придумай ник, укажи email\nи подтверди код из письма.";
     usernameLabel.classList.remove("hidden");
     usernameInput.classList.remove("hidden");
