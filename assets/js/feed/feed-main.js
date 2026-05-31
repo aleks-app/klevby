@@ -1126,26 +1126,6 @@
       runMainResumeBurst(reason);
     });
 
-    if (!window.__klevbyCentralResumeRouter) {
-      window.addEventListener("focus", () => {
-        runMainResumeBurst("window_focus");
-      });
-
-      window.addEventListener("pageshow", () => {
-        runMainResumeBurst("page_show");
-      });
-
-      window.addEventListener("online", () => {
-        runMainResumeBurst("browser_online");
-      });
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          runMainResumeBurst("visibility_visible");
-        }
-      });
-    }
-
     window.addEventListener("klevby-feed-updated", (event) => {
       const detail = event?.detail || {};
       const action = String(detail?.action || "feed_updated");
