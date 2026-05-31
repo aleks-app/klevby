@@ -874,30 +874,6 @@ function scheduleAuthRestore(reason = "resume", reloadData = false) {
   return true;
 }
 
-function setupAuthResumeHandlers() {
-  if (window.__klevbyCentralResumeRouter) {
-    return;
-  }
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      scheduleAuthRestore("visibilitychange", true);
-    }
-  });
-
-  window.addEventListener("pageshow", () => {
-    scheduleAuthRestore("pageshow", true);
-  });
-
-  window.addEventListener("focus", () => {
-    scheduleAuthRestore("focus", false);
-  });
-
-  window.addEventListener("online", () => {
-    scheduleAuthRestore("online", true);
-  });
-}
-
 async function initAuth() {
   await restoreAuthState("init", false);
 
@@ -1325,7 +1301,6 @@ window.clearAuthLogoutGuardForFreshLogin = clearAuthLogoutGuardForFreshLogin;
 window.clearKnownAuthStorageKeys = clearKnownAuthStorageKeys;
 window.listAuthStorageKeys = listAuthStorageKeys;
 window.scheduleAuthRestore = scheduleAuthRestore;
-window.setupAuthResumeHandlers = setupAuthResumeHandlers;
 window.initAuth = initAuth;
 window.updateAuthStatus = updateAuthStatus;
 window.resetGuestProfileAfterLogout = resetGuestProfileAfterLogout;
