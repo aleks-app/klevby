@@ -251,30 +251,6 @@
       scheduleChatResume(reason);
     });
 
-    if (!window.__klevbyCentralResumeRouter) {
-      addListener(document, "visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          markKlevbyResumeDebug("chat.events.listener", "visibilitychange", { visibilityState: document.visibilityState });
-          scheduleChatResume("visibilitychange");
-        }
-      });
-
-      addListener(window, "pageshow", () => {
-        markKlevbyResumeDebug("chat.events.listener", "pageshow", { trigger: "pageshow" });
-        scheduleChatResume("pageshow");
-      });
-
-      addListener(window, "focus", () => {
-        markKlevbyResumeDebug("chat.events.listener", "focus", { trigger: "focus" });
-        scheduleChatResume("focus");
-      });
-
-      addListener(window, "online", () => {
-        scheduleChatResume("online");
-      });
-    }
-
-
     addListener(document, "pointerdown", async (event) => {
       const captureAction = getMenuActionTargetFromEvent(event);
       if (captureAction !== "delete") return;
