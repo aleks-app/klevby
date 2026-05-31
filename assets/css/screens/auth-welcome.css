@@ -104,17 +104,22 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 
 #authSection .auth-welcome-brand {
   width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   padding-top: clamp(8px, 3vh, 28px);
   flex: 0 0 auto;
 }
 
 #authSection .auth-welcome-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 5px;
   margin: 0;
+  width: fit-content;
+  max-width: 100%;
 }
 
 #authSection .auth-welcome-logo-mark {
@@ -137,7 +142,8 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 }
 
 #authSection .auth-welcome-tagline {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
+  max-width: 22em;
   color: rgba(255, 248, 234, 0.62);
   font-size: 13px;
   line-height: 1.35;
@@ -171,22 +177,22 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 
 #authSection .auth-welcome-panel h2,
 #authSection #authTitle {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   text-align: center;
-  font-size: clamp(22px, 5.6vw, 26px);
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-  font-weight: 800;
+  font-size: clamp(19px, 4.9vw, 22px);
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  font-weight: 700;
   color: #fff8ea;
   text-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 #authSection #authSubtitle {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   text-align: center;
   color: rgba(244, 251, 247, 0.72);
   font-size: 13px;
-  line-height: 1.42;
+  line-height: 1.38;
   font-weight: 600;
   white-space: pre-line;
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.48);
@@ -211,18 +217,24 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 }
 
 #authSection .auth-welcome-fields input {
-  margin: 0 0 10px;
+  box-sizing: border-box;
+  margin: 0 0 12px;
   min-height: 50px;
-  padding: 14px 16px;
+  padding: 15px 16px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(4, 8, 6, 0.52);
   color: #fff8ea;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.25;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+#authSection .auth-welcome-fields input:last-of-type {
+  margin-bottom: 0;
 }
 
 #authSection .auth-welcome-fields input::placeholder {
@@ -239,7 +251,7 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 22px;
 }
 
 #authSection .auth-welcome-primary {
@@ -253,6 +265,7 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0;
+  line-height: 1.2;
   box-shadow:
     0 14px 28px rgba(244, 122, 43, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -271,8 +284,8 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 #authSection .auth-welcome-secondary .auth-welcome-primary,
@@ -322,11 +335,11 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 }
 
 #authSection #authSwitchText {
-  margin-top: 14px;
+  margin-top: 10px;
   text-align: center;
-  color: rgba(255, 248, 234, 0.52);
+  color: rgba(255, 248, 234, 0.48);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.45;
   font-weight: 600;
 }
 
@@ -347,11 +360,11 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 }
 
 #authSection #authStatus {
-  margin-top: 12px;
+  margin-top: 8px;
   text-align: center;
-  color: rgba(255, 248, 234, 0.58);
-  font-size: 13px;
-  line-height: 1.45;
+  color: rgba(255, 248, 234, 0.48);
+  font-size: 12px;
+  line-height: 1.4;
   font-weight: 600;
 }
 
@@ -394,31 +407,45 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
     justify-content: flex-start;
     padding-top: calc(env(safe-area-inset-top) + max(12px, 2.5vh));
     padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-    gap: 12px;
+    gap: 0;
   }
 
   #authSection .auth-welcome-brand {
     padding-top: clamp(4px, 2vh, 18px);
   }
 
+  #authSection .auth-welcome-logo {
+    gap: 4px;
+  }
+
   #authSection .auth-welcome-logo-text {
-    font-size: clamp(32px, 8.4vw, 40px);
+    font-size: clamp(28px, 7.4vw, 34px);
   }
 
   #authSection .auth-welcome-logo-mark {
-    width: clamp(70px, 19vw, 86px);
-    height: clamp(70px, 19vw, 86px);
+    width: clamp(62px, 16.5vw, 76px);
+    height: clamp(62px, 16.5vw, 76px);
   }
 
   #authSection .auth-welcome-tagline {
     font-size: 13px;
-    margin-top: 8px;
+    margin-top: 7px;
+  }
+
+  #authSection #authTitle {
+    font-size: clamp(19px, 4.8vw, 21px);
+    margin-bottom: 8px;
+  }
+
+  #authSection #authSubtitle {
+    margin-bottom: 14px;
+    line-height: 1.36;
   }
 
   #authSection .auth-welcome-panel,
   #authSection .auth-welcome-panel.panel {
-    margin-top: 20px;
-    padding: 8px 0 0;
+    margin-top: clamp(28px, 6vh, 38px);
+    padding: 0;
   }
 }
 
