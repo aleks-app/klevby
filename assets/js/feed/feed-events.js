@@ -1131,34 +1131,11 @@
       restartFeedAutoRefresh();
     });
 
-    if (!window.__klevbyCentralResumeRouter) {
-      window.addEventListener("pageshow", () => {
-        handleAppResume("pageshow");
-      });
-
-      window.addEventListener("focus", () => {
-        handleAppResume("focus");
-      });
-
-      window.addEventListener("online", () => {
-        handleAppResume("online");
-      });
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          handleAppResume("visibility_visible");
-          restartFeedAutoRefresh();
-        } else {
-          startHiddenWakeRefresh();
-        }
-      });
-    } else {
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") {
-          startHiddenWakeRefresh();
-        }
-      });
-    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        startHiddenWakeRefresh();
+      }
+    });
 
     window.addEventListener("klevby-auth-changed", () => {
       queueFeedRefresh("auth_changed", 120, {
