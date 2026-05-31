@@ -389,15 +389,45 @@
     );
   }
 
-  function getMainUser() {
+  function getCentralUser() {
     return (
       (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
       window.klevbyCurrentUser ||
       window.currentUser ||
       window.klevbyUser ||
-      currentUser ||
       null
     );
+  }
+
+  function isCentralAuthGuestAuthoritative() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+
+    if (recentLogout) {
+      return true;
+    }
+
+    const centralUser = getCentralUser();
+    if (centralUser && centralUser.id) {
+      return false;
+    }
+
+    return Boolean(window.klevbyAuthReady || window.authReady);
+  }
+
+  function getMainUser() {
+    const centralUser = getCentralUser();
+    if (centralUser && centralUser.id) {
+      return centralUser;
+    }
+
+    if (isCentralAuthGuestAuthoritative()) {
+      return null;
+    }
+
+    return currentUser || null;
   }
 
   async function refreshUser(options = {}) {
@@ -409,6 +439,12 @@
 
     supabaseClient = mainClient || supabaseClient;
 
+    if (!mainUser && isCentralAuthGuestAuthoritative()) {
+      currentUser = null;
+      lastUserRefreshAt = now;
+      return null;
+    }
+
     if (mainUser && mainUser.id) {
       currentUser = mainUser;
       lastUserRefreshAt = now;
@@ -416,6 +452,10 @@
     }
 
     if (!force && currentUser && currentUser.id && now - lastUserRefreshAt < AUTH_REFRESH_THROTTLE_MS) {
+      if (isCentralAuthGuestAuthoritative()) {
+        currentUser = null;
+        return null;
+      }
       return currentUser;
     }
 
@@ -424,7 +464,11 @@
     }
 
     if (!mainClient?.auth?.getUser) {
-      return currentUser || null;
+      if (isCentralAuthGuestAuthoritative()) {
+        currentUser = null;
+        return null;
+      }
+      return getCentralUser() || currentUser || null;
     }
 
     lastUserRefreshAt = now;
@@ -435,18 +479,31 @@
 
         if (error) {
           warn("user refresh warning", error);
-          return currentUser || null;
+          if (isCentralAuthGuestAuthoritative()) {
+            currentUser = null;
+            return null;
+          }
+          return getCentralUser() || currentUser || null;
         }
 
-        if (data?.user) {
+        if (data?.user && !isCentralAuthGuestAuthoritative()) {
           currentUser = data.user;
           return currentUser;
         }
 
-        return currentUser || null;
+        if (isCentralAuthGuestAuthoritative()) {
+          currentUser = null;
+          return null;
+        }
+
+        return getCentralUser() || currentUser || null;
       } catch (error) {
         warn("user refresh failed", error);
-        return currentUser || null;
+        if (isCentralAuthGuestAuthoritative()) {
+          currentUser = null;
+          return null;
+        }
+        return getCentralUser() || currentUser || null;
       } finally {
         userRefreshPromise = null;
       }
@@ -1362,8 +1419,21 @@
     scheduleButtonUpdate();
   });
 
-  window.addEventListener("klevby-auth-changed", async () => {
-    await refreshUser({ force: true });
+  window.addEventListener("klevby-auth-changed", async (event) => {
+    const eventUser = event?.detail?.user || null;
+
+    if (eventUser && eventUser.id) {
+      currentUser = eventUser;
+      lastUserRefreshAt = Date.now();
+    } else if (isCentralAuthGuestAuthoritative()) {
+      currentUser = null;
+      lastUserRefreshAt = Date.now();
+    } else {
+      const centralUser = getCentralUser();
+      currentUser = centralUser && centralUser.id ? centralUser : null;
+      lastUserRefreshAt = Date.now();
+    }
+
     await resetPersonalChannel();
     await ensurePersonalChannel({ force: true });
     scheduleButtonUpdate();

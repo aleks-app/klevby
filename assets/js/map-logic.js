@@ -37,15 +37,45 @@
     );
   }
 
-  function getMainUser() {
+  function getCentralUser() {
     return (
       (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
       window.klevbyCurrentUser ||
       window.currentUser ||
       window.klevbyUser ||
-      currentMapUser ||
       null
     );
+  }
+
+  function isCentralAuthGuestAuthoritative() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+
+    if (recentLogout) {
+      return true;
+    }
+
+    const centralUser = getCentralUser();
+    if (centralUser && centralUser.id) {
+      return false;
+    }
+
+    return Boolean(window.klevbyAuthReady || window.authReady);
+  }
+
+  function getMainUser() {
+    const centralUser = getCentralUser();
+    if (centralUser && centralUser.id) {
+      return centralUser;
+    }
+
+    if (isCentralAuthGuestAuthoritative()) {
+      return null;
+    }
+
+    return currentMapUser || null;
   }
 
   function waitForMainSupabaseClient() {
@@ -664,6 +694,12 @@
 
     const mainUser = getMainUser();
 
+    if (!mainUser && isCentralAuthGuestAuthoritative()) {
+      currentMapUser = null;
+      lastUserRefreshAt = now;
+      return null;
+    }
+
     if (mainUser && mainUser.id) {
       currentMapUser = mainUser;
       lastUserRefreshAt = now;
@@ -671,10 +707,18 @@
     }
 
     if (!mapDb?.auth?.getUser) {
-      return currentMapUser || null;
+      if (isCentralAuthGuestAuthoritative()) {
+        currentMapUser = null;
+        return null;
+      }
+      return getCentralUser() || currentMapUser || null;
     }
 
     if (!force && currentMapUser && currentMapUser.id && now - lastUserRefreshAt < MAP_AUTH_REFRESH_THROTTLE_MS) {
+      if (isCentralAuthGuestAuthoritative()) {
+        currentMapUser = null;
+        return null;
+      }
       return currentMapUser;
     }
 
@@ -693,7 +737,7 @@
             console.warn("Klevby map: пользователь не получен:", userResult.error);
           }
 
-          currentMapUser = getMainUser() || currentMapUser || null;
+          currentMapUser = isCentralAuthGuestAuthoritative() ? null : (getMainUser() || null);
           return currentMapUser;
         }
 
@@ -705,7 +749,7 @@
           console.warn("Klevby map: ошибка получения пользователя:", error);
         }
 
-        currentMapUser = getMainUser() || currentMapUser || null;
+        currentMapUser = isCentralAuthGuestAuthoritative() ? null : (getMainUser() || null);
         return currentMapUser;
       } finally {
         userRefreshPromise = null;
@@ -1218,12 +1262,20 @@
   }
 
   window.addEventListener("klevby-auth-changed", function (event) {
-    const user =
-      event?.detail?.user ||
-      getMainUser() ||
-      null;
+    const eventUser = event?.detail?.user || null;
 
-    currentMapUser = user;
+    if (eventUser && eventUser.id) {
+      currentMapUser = eventUser;
+      return;
+    }
+
+    if (isCentralAuthGuestAuthoritative()) {
+      currentMapUser = null;
+      return;
+    }
+
+    const centralUser = getCentralUser();
+    currentMapUser = centralUser && centralUser.id ? centralUser : null;
   });
 
   if (document.readyState === "loading") {

@@ -66,15 +66,45 @@
     return manager;
   }
 
-  function getMainUser() {
+  function getCentralUser() {
     return (
       (typeof window.klevbyGetCurrentUser === "function" ? window.klevbyGetCurrentUser() : null) ||
       window.klevbyCurrentUser ||
       window.currentUser ||
       window.klevbyUser ||
-      marketUser ||
       null
     );
+  }
+
+  function isCentralAuthGuestAuthoritative() {
+    const recentLogout =
+      typeof window.isAuthLogoutGuardActive === "function"
+        ? window.isAuthLogoutGuardActive()
+        : Boolean(window.klevbyAuthLogoutInProgress);
+
+    if (recentLogout) {
+      return true;
+    }
+
+    const centralUser = getCentralUser();
+    if (centralUser && centralUser.id) {
+      return false;
+    }
+
+    return Boolean(window.klevbyAuthReady || window.authReady);
+  }
+
+  function getMainUser() {
+    const centralUser = getCentralUser();
+    if (centralUser && centralUser.id) {
+      return centralUser;
+    }
+
+    if (isCentralAuthGuestAuthoritative()) {
+      return null;
+    }
+
+    return marketUser || null;
   }
 
   function withMarketTimeout(promise, ms, label) {
@@ -877,6 +907,12 @@
 
     const mainUser = getMainUser();
 
+    if (!mainUser && isCentralAuthGuestAuthoritative()) {
+      marketUser = null;
+      marketLastUserRefreshAt = now;
+      return null;
+    }
+
     if (mainUser && mainUser.id) {
       marketUser = mainUser;
       marketLastUserRefreshAt = now;
@@ -884,11 +920,18 @@
     }
 
     if (!marketDb?.auth?.getUser) {
-      marketUser = null;
-      return null;
+      if (isCentralAuthGuestAuthoritative()) {
+        marketUser = null;
+        return null;
+      }
+      return getCentralUser() || marketUser || null;
     }
 
     if (!force && marketUser && marketUser.id && now - marketLastUserRefreshAt < MARKET_AUTH_REFRESH_THROTTLE_MS) {
+      if (isCentralAuthGuestAuthoritative()) {
+        marketUser = null;
+        return null;
+      }
       return marketUser;
     }
 
@@ -921,7 +964,7 @@
         } else {
           console.warn("Klevby барахолка: ошибка получения пользователя:", error);
         }
-        marketUser = getMainUser() || marketUser || null;
+        marketUser = isCentralAuthGuestAuthoritative() ? null : (getMainUser() || null);
         return marketUser;
       } finally {
         marketUserRefreshPromise = null;
@@ -2440,18 +2483,27 @@
     }
   }
 
-  window.addEventListener("klevby-auth-changed", function () {
-    const mainUser = getMainUser();
+  window.addEventListener("klevby-auth-changed", function (event) {
+    const eventUser = event?.detail?.user || null;
 
-    if (mainUser && mainUser.id) {
-      marketUser = mainUser;
+    if (eventUser && eventUser.id) {
+      marketUser = eventUser;
       updateMarketViewControls();
       renderMarketItems();
-    } else {
+      return;
+    }
+
+    if (isCentralAuthGuestAuthoritative()) {
       marketUser = null;
       updateMarketViewControls();
       renderMarketItems();
+      return;
     }
+
+    const centralUser = getCentralUser();
+    marketUser = centralUser && centralUser.id ? centralUser : null;
+    updateMarketViewControls();
+    renderMarketItems();
   });
 
   window.addEventListener("beforeunload", unsubscribeMarketRealtime);
