@@ -1315,18 +1315,6 @@ window.addEventListener("klevby-app-resumed", () => {
   scheduleProfileFeedRecoverySync("app_resumed", 2200);
 });
 
-if (!window.__klevbyCentralResumeRouter) {
-  window.addEventListener("pageshow", () => {
-    scheduleProfileFeedRecoverySync("pageshow", 2600);
-  });
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      scheduleProfileFeedRecoverySync("visibility_visible", 2400);
-    }
-  });
-}
-
 setTimeout(() => {
   scheduleProfileFeedRecoverySync("startup", 3200);
 }, 0);
