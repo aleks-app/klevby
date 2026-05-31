@@ -10,6 +10,7 @@
 @import url("./screens/home.css");
 @import url("./screens/secondary.css");
 @import url("./screens/profile.css");
+@import url("./screens/auth-welcome.css");
 
 @import url("./responsive/mobile.css");
 @import url("./mobile/mobile-tabbar.css");

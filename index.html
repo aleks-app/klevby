@@ -595,39 +595,54 @@
     </section>
 
     <section id="authSection" class="hidden">
-      <div class="panel">
-        <h2 id="authTitle">Регистрация аккаунта Klevby</h2>
-        <p id="authSubtitle" style="margin-top:-8px;color:rgba(244,251,247,0.66);font-weight:600;">
-          Создай аккаунт через email и пароль. После регистрации введи код из письма прямо в Klevby.
-        </p>
+      <div class="auth-welcome">
+        <div class="auth-welcome-bg" aria-hidden="true"></div>
+        <div class="auth-welcome-overlay" aria-hidden="true"></div>
 
-        <label id="usernameLabel" class="auth-label" for="usernameInput">Nickname</label>
-        <input id="usernameInput" type="text" placeholder="Например: alex822alex" autocomplete="nickname" maxlength="32" />
+        <div class="auth-welcome-inner">
+          <header class="auth-welcome-brand">
+            <div class="auth-welcome-logo">🎣💧 Klevby</div>
+            <p class="auth-welcome-tagline">Фото, отчёты, карта клёва, напарники и чат — всё для рыбалки в Беларуси.</p>
+          </header>
 
-        <label class="auth-label" for="emailInput">Email</label>
-        <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
+          <div class="auth-welcome-panel panel">
+            <h2 id="authTitle">Регистрация аккаунта Klevby</h2>
+            <p id="authSubtitle">Создай аккаунт через email и пароль. После регистрации введи код из письма прямо в Klevby.</p>
 
-        <label id="passwordLabel" class="auth-label" for="passwordInput">Пароль</label>
-        <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="new-password" />
+            <div class="auth-welcome-fields">
+              <label id="usernameLabel" class="auth-label" for="usernameInput">Nickname</label>
+              <input id="usernameInput" type="text" placeholder="Например: alex822alex" autocomplete="nickname" maxlength="32" />
 
-        <label id="signupCodeLabel" class="auth-label hidden" for="signupCodeInput">Код из письма</label>
-        <input id="signupCodeInput" class="hidden" type="text" placeholder="Код из письма" autocomplete="one-time-code" inputmode="numeric" maxlength="12" />
+              <label class="auth-label" for="emailInput">Email</label>
+              <input id="emailInput" type="email" placeholder="Email" autocomplete="email" />
 
-        <div class="actions">
-          <button id="authCreateBtn" class="small-btn green" onclick="register()">Создать профиль</button>
-          <button id="authLoginBtn" class="small-btn blue hidden" onclick="login()">Войти</button>
-          <button id="authVerifyBtn" class="small-btn blue hidden" onclick="verifySignupCode()">Подтвердить код</button>
-          <button id="authResendBtn" class="small-btn gray hidden" onclick="resendSignupCode()">Отправить код ещё раз</button>
-          <button class="small-btn yellow" onclick="sendRecovery()">Сбросить пароль</button>
-          <button class="small-btn red" onclick="logout()">Выйти</button>
+              <label id="passwordLabel" class="auth-label" for="passwordInput">Пароль</label>
+              <input id="passwordInput" type="password" placeholder="Пароль" autocomplete="new-password" />
+
+              <label id="signupCodeLabel" class="auth-label hidden" for="signupCodeInput">Код из письма</label>
+              <input id="signupCodeInput" class="hidden" type="text" placeholder="Код из письма" autocomplete="one-time-code" inputmode="numeric" maxlength="12" />
+            </div>
+
+            <div class="auth-welcome-actions actions">
+              <button id="authCreateBtn" class="auth-welcome-primary small-btn green" type="button" onclick="register()">Создать профиль</button>
+              <button id="authLoginBtn" class="auth-welcome-primary small-btn blue hidden" type="button" onclick="login()">Войти</button>
+              <button id="authVerifyBtn" class="auth-welcome-primary small-btn blue hidden" type="button" onclick="verifySignupCode()">Подтвердить код</button>
+
+              <div class="auth-welcome-secondary">
+                <button id="authResendBtn" class="small-btn gray hidden" type="button" onclick="resendSignupCode()">Отправить код ещё раз</button>
+                <button id="authRecoveryBtn" class="auth-welcome-link-btn" type="button" onclick="sendRecovery()">Забыли пароль?</button>
+                <button id="authLogoutBtn" class="auth-welcome-link-btn auth-welcome-logout" type="button" onclick="logout()">Выйти</button>
+              </div>
+            </div>
+
+            <div id="authSwitchText" class="auth-status">
+              Уже есть аккаунт?
+              <button class="small-btn gray" type="button" onclick="setAuthMode('login')">Войти</button>
+            </div>
+
+            <div id="authStatus" class="auth-status">Проверяем вход...</div>
+          </div>
         </div>
-
-        <div id="authSwitchText" class="auth-status" style="margin-top:16px;">
-          Уже есть аккаунт?
-          <button class="small-btn gray" style="min-height:36px;padding:8px 12px;margin-left:8px;" onclick="setAuthMode('login')">Войти</button>
-        </div>
-
-        <div id="authStatus" class="auth-status">Проверяем вход...</div>
       </div>
     </section>
 
