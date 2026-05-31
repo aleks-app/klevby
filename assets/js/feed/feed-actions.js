@@ -1537,22 +1537,6 @@
       recoverFeedAfterResume("klevby-app-resumed");
     });
 
-    if (!window.__klevbyCentralResumeRouter) {
-      window.addEventListener("pageshow", () => {
-        recoverFeedAfterResume("pageshow");
-      });
-
-      window.addEventListener("focus", () => {
-        recoverFeedAfterResume("focus", 220);
-      });
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          recoverFeedAfterResume("visibilitychange", 220);
-        }
-      });
-    }
-
     window.addEventListener("klevby-auth-changed", () => {
       viewerLikeState.clear();
 
