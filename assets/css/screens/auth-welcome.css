@@ -405,134 +405,47 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 
   #authSection .auth-welcome-inner {
     justify-content: flex-start;
-    align-items: stretch;
-    padding-top: calc(env(safe-area-inset-top) + 10.15dvh);
-    padding-inline: clamp(22px, 3.03vw, 32px);
+    padding-top: calc(env(safe-area-inset-top) + max(12px, 2.5vh));
     padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
     gap: 0;
   }
 
   #authSection .auth-welcome-brand {
-    width: 100%;
-    max-width: none;
-    padding-top: 0;
+    padding-top: clamp(4px, 2vh, 18px);
   }
 
-  /* Fish X≈207.6, Klevby X≈386.1 — centered group shifted ~30px left vs canvas center */
   #authSection .auth-welcome-logo {
-    gap: clamp(2px, 0.31vw, 4px);
-    transform: translateX(clamp(-24px, -3.19vw, -18px));
-    align-items: center;
+    gap: 4px;
   }
 
-  /* Fish: 175.6×183.2 @ 942px */
-  #authSection .auth-welcome-logo-mark {
-    width: clamp(112px, 18.64vw, 176px);
-    height: clamp(117px, 19.45vw, 183px);
-  }
-
-  /* Klevby wordmark: 59.2px @ 942px */
   #authSection .auth-welcome-logo-text {
-    font-size: clamp(44px, 6.28vw, 59px);
-    font-weight: 900;
-    line-height: 0.95;
+    font-size: clamp(28px, 7.4vw, 34px);
   }
 
-  /* Tagline: 20.7px, Y gap from logo ≈15.6px */
+  #authSection .auth-welcome-logo-mark {
+    width: clamp(62px, 16.5vw, 76px);
+    height: clamp(62px, 16.5vw, 76px);
+  }
+
   #authSection .auth-welcome-tagline {
-    margin-top: clamp(12px, 0.76dvh, 16px);
-    max-width: clamp(280px, 47.62vw, 449px);
-    font-size: clamp(16px, 2.20vw, 21px);
-    line-height: 1.35;
+    font-size: 13px;
+    margin-top: 7px;
   }
 
-  /* Title Y≈656.6 — tagline bottom Y≈439.7 → gap ≈216.9px (10.59dvh) */
+  #authSection #authTitle {
+    font-size: clamp(19px, 4.8vw, 21px);
+    margin-bottom: 8px;
+  }
+
+  #authSection #authSubtitle {
+    margin-bottom: 14px;
+    line-height: 1.36;
+  }
+
   #authSection .auth-welcome-panel,
   #authSection .auth-welcome-panel.panel {
-    width: 100%;
-    max-width: none;
-    margin-top: clamp(160px, 10.59dvh, 230px);
+    margin-top: clamp(28px, 6vh, 38px);
     padding: 0;
-  }
-
-  /* Title: 48.2px @ 942px, Y≈656.6 */
-  #authSection #authTitle {
-    font-size: clamp(38px, 5.12vw, 48px);
-    font-weight: 800;
-    line-height: 1.12;
-    margin-bottom: clamp(10px, 0.63dvh, 14px);
-  }
-
-  /* Subtitle: 20.7px, Y≈745.7 — gap from title ≈12.8px */
-  #authSection #authSubtitle {
-    font-size: clamp(16px, 2.20vw, 21px);
-    line-height: 1.45;
-    margin-bottom: clamp(10px, 0.62dvh, 14px);
-    max-width: clamp(320px, 44.2vw, 417px);
-    margin-inline: auto;
-  }
-
-  /* Fields: 877.8×134.2, X≈28.5 — flush stack, Y≈829.9/964.1/1097.3 */
-  #authSection .auth-welcome-fields input {
-    width: 100%;
-    height: clamp(58px, 14.25vw, 134px);
-    min-height: clamp(58px, 14.25vw, 134px);
-    margin-bottom: 0;
-    padding: 0 clamp(18px, 2.8vw, 28px);
-    font-size: clamp(16px, 2.2vw, 21px);
-    line-height: clamp(58px, 14.25vw, 134px);
-  }
-
-  #authSection .auth-welcome-fields input:last-of-type {
-    margin-bottom: 0;
-  }
-
-  /* Button: 877.8×134.2, Y≈1231 — flush after last field */
-  #authSection .auth-welcome-actions {
-    margin-top: 0;
-    gap: 0;
-  }
-
-  #authSection .auth-welcome-primary {
-    height: clamp(58px, 14.25vw, 134px);
-    min-height: clamp(58px, 14.25vw, 134px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 clamp(18px, 2.8vw, 28px);
-    font-size: clamp(16px, 2.2vw, 21px);
-  }
-
-  /* "Забыли пароль?" Y≈1618 — gap from button bottom ≈252.8px (12.34dvh) */
-  #authSection .auth-welcome-secondary {
-    margin-top: clamp(180px, 12.34dvh, 270px);
-    gap: clamp(8px, 0.45dvh, 12px);
-  }
-
-  #authSection .auth-welcome-link-btn {
-    font-size: clamp(16px, 2.25vw, 21px);
-    min-height: auto;
-    padding: 4px 8px;
-  }
-
-  /* "Уже есть аккаунт?" Y≈1696.5 — gap from forgot ≈44.9px */
-  #authSection #authSwitchText {
-    margin-top: clamp(28px, 2.19dvh, 50px);
-    font-size: clamp(17px, 2.36vw, 22px);
-    line-height: 1.45;
-  }
-
-  #authSection #authSwitchText .small-btn {
-    font-size: clamp(18px, 2.44vw, 23px);
-  }
-
-  /* Bottom status Y≈1777.4 */
-  #authSection #authStatus {
-    margin-top: clamp(28px, 2.2dvh, 50px);
-    font-size: clamp(16px, 2.23vw, 21px);
-    line-height: 1.45;
-    max-width: clamp(520px, 81.2vw, 765px);
-    margin-inline: auto;
   }
 }
 
