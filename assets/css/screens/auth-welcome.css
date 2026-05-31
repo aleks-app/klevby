@@ -415,16 +415,16 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
   }
 
   #authSection .auth-welcome-logo {
-    gap: 4px;
+    gap: 1px;
   }
 
   #authSection .auth-welcome-logo-text {
-    font-size: clamp(28px, 7.4vw, 34px);
+    font-size: clamp(30px, 7.7vw, 36px);
   }
 
   #authSection .auth-welcome-logo-mark {
-    width: clamp(62px, 16.5vw, 76px);
-    height: clamp(62px, 16.5vw, 76px);
+    width: clamp(70px, 18vw, 80px);
+    height: clamp(66px, 16.8vw, 78px);
   }
 
   #authSection .auth-welcome-tagline {
@@ -433,8 +433,9 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
   }
 
   #authSection #authTitle {
-    font-size: clamp(19px, 4.8vw, 21px);
+    font-size: clamp(30px, 8vw, 36px);
     margin-bottom: 8px;
+    font-weight: 800;
   }
 
   #authSection #authSubtitle {
@@ -444,8 +445,23 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 
   #authSection .auth-welcome-panel,
   #authSection .auth-welcome-panel.panel {
-    margin-top: clamp(28px, 6vh, 38px);
+    margin-top: clamp(52px, 7.2vh, 72px);
     padding: 0;
+  }
+
+  #authSection .auth-welcome-fields input,
+  #authSection .auth-welcome-primary {
+    width: min(calc(100% - 37px), 403px);
+    min-height: 55px;
+    height: 55px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #authSection .auth-welcome-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
