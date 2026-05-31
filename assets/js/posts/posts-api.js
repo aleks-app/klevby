@@ -955,27 +955,6 @@
     });
   });
 
-  if (!window.__klevbyCentralResumeRouter) {
-    window.addEventListener("pageshow", () => {
-      handlePostsResume("pageshow", {
-        ensureRealtime: true,
-        details: { trigger: "pageshow" }
-      });
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      handlePostsResume("visibilitychange", {
-        details: { visibilityState: document.visibilityState }
-      });
-    });
-
-    window.addEventListener("focus", () => {
-      handlePostsResume("focus", {
-        details: { trigger: "focus" }
-      });
-    });
-  }
-
   window.setInterval(() => {
     refreshPostsAutoSyncState("section_guard");
   }, 1000);
