@@ -11,7 +11,7 @@
 
 @media (max-width: 900px) {
   body {
-    padding-bottom: 100px;
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
     background: #020403;
   }
 

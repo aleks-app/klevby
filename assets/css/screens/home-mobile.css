@@ -482,6 +482,7 @@
 
   #homeSection #profileFeedSection.social-feed-grid {
     margin-top: 2px !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
