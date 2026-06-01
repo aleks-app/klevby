@@ -140,6 +140,25 @@
     line-height: 1.06;
   }
 
+  #homeSection .hero-title-brand,
+  #homeSection .hero-title-line {
+    display: block;
+  }
+
+  #homeSection .hero-title-brand {
+    font-size: 24px;
+    line-height: 1.05;
+    font-weight: 800 !important;
+    letter-spacing: -0.04em;
+  }
+
+  #homeSection .hero-title-line {
+    font-size: 29px;
+    line-height: 1.03;
+    font-weight: 800 !important;
+    letter-spacing: -0.95px;
+  }
+
   .hero h1::after {
     content: "";
     display: none;
