@@ -1346,3 +1346,31 @@ window.logout = logout;
 window.sendRecovery = sendRecovery;
 window.updatePassword = updatePassword;
 window.closeResetModal = closeResetModal;
+
+
+// TEMP auth skip button: remove when auth wall flow is finalized
+(function initTemporaryAuthSkipButton() {
+  function bindTemporaryAuthSkipButton() {
+    const skipBtn = document.getElementById("authSkipBtn");
+    if (!skipBtn || skipBtn.dataset.bound === "1") return;
+
+    skipBtn.dataset.bound = "1";
+    skipBtn.addEventListener("click", () => {
+      if (typeof showSection === "function") {
+        showSection("home");
+        return;
+      }
+
+      document.getElementById("authSection")?.classList.add("hidden");
+      document.getElementById("homeSection")?.classList.remove("hidden");
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindTemporaryAuthSkipButton, { once: true });
+  } else {
+    bindTemporaryAuthSkipButton();
+  }
+})();
+// /TEMP auth skip button
+
