@@ -1056,6 +1056,41 @@
     return true;
   }
 
+  function resolveMarketUserFromAuthEvent(event) {
+    const eventUser = event?.detail?.user || null;
+
+    if (eventUser && eventUser.id) {
+      return eventUser;
+    }
+
+    if (isCentralAuthGuestAuthoritative()) {
+      return null;
+    }
+
+    const centralUser = getCentralUser();
+    return centralUser && centralUser.id ? centralUser : null;
+  }
+
+  function marketGridHasRenderedCards() {
+    const grid = document.getElementById("marketItemsGrid");
+    return Boolean(grid && grid.querySelector(".market-card"));
+  }
+
+  function handleMarketAuthChanged(event) {
+    const prevUserId = marketUser?.id || null;
+    const nextUser = resolveMarketUserFromAuthEvent(event);
+    const nextUserId = nextUser?.id || null;
+
+    marketUser = nextUser;
+    updateMarketViewControls();
+
+    if (prevUserId === nextUserId && marketGridHasRenderedCards()) {
+      return;
+    }
+
+    renderMarketItems();
+  }
+
   function isMarketLoadStale() {
     if (!marketLoadPromise) return false;
     if (!marketLoadStartedAt) return false;
@@ -2483,28 +2518,7 @@
     }
   }
 
-  window.addEventListener("klevby-auth-changed", function (event) {
-    const eventUser = event?.detail?.user || null;
-
-    if (eventUser && eventUser.id) {
-      marketUser = eventUser;
-      updateMarketViewControls();
-      renderMarketItems();
-      return;
-    }
-
-    if (isCentralAuthGuestAuthoritative()) {
-      marketUser = null;
-      updateMarketViewControls();
-      renderMarketItems();
-      return;
-    }
-
-    const centralUser = getCentralUser();
-    marketUser = centralUser && centralUser.id ? centralUser : null;
-    updateMarketViewControls();
-    renderMarketItems();
-  });
+  window.addEventListener("klevby-auth-changed", handleMarketAuthChanged);
 
   window.addEventListener("beforeunload", unsubscribeMarketRealtime);
   window.addEventListener("klevby-app-resumed", function () {
