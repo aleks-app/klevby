@@ -122,46 +122,47 @@
   }
 
   #homeSection .hero-features-title {
-    margin: 0 0 7px !important;
-    color: rgba(255, 248, 234, 0.68) !important;
+    margin: 0 0 6px !important;
+    color: rgba(255, 248, 234, 0.72) !important;
     font-size: 12px !important;
-    line-height: 1.2 !important;
-    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    font-weight: 600 !important;
     letter-spacing: -0.01em !important;
-    text-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+    text-shadow: none !important;
   }
 
   #homeSection .hero-feature-chips {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 6px !important;
+    align-items: center !important;
+    gap: 8px 12px !important;
   }
 
   #homeSection .hero-feature-chip {
     appearance: none !important;
     -webkit-appearance: none !important;
     margin: 0 !important;
-    min-height: 30px !important;
-    padding: 7px 10px !important;
-    border-radius: 999px !important;
-    border: 1px solid rgba(244, 178, 74, 0.20) !important;
-    background:
-      linear-gradient(180deg, rgba(20, 30, 26, 0.94), rgba(10, 16, 14, 0.90)) !important;
-    color: rgba(255, 248, 234, 0.92) !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    color: rgba(255, 248, 234, 0.88) !important;
     font-family: inherit !important;
-    font-size: 11.5px !important;
-    line-height: 1 !important;
-    font-weight: 800 !important;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    font-weight: 500 !important;
     white-space: nowrap !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 4px 10px rgba(0, 0, 0, 0.18) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
     -webkit-tap-highlight-color: transparent !important;
     cursor: pointer !important;
   }
 
   #homeSection .hero-feature-chip:active {
-    transform: scale(0.985) !important;
+    transform: none !important;
+    opacity: 0.82 !important;
   }
 
   #homeSection #forecastPanel.forecast-panel {
@@ -474,13 +475,11 @@
   }
 
   #homeSection .hero-feature-chips {
-    gap: 5px !important;
+    gap: 7px 10px !important;
   }
 
   #homeSection .hero-feature-chip {
-    min-height: 29px !important;
-    padding: 6px 9px !important;
-    font-size: 11px !important;
+    font-size: 11.5px !important;
   }
 
   #homeSection .home-mobile-feed-head {
