@@ -26,6 +26,29 @@ header {
   text-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
 
+.logo.app-header-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+  white-space: normal;
+  text-shadow: none;
+}
+
+.logo.app-header-logo img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  object-position: center;
+}
+
 /* ВАЖНО: верхнее desktop-меню пока скрываем, чтобы не было дубля с меню в кнопке */
 nav {
   display: none !important;
