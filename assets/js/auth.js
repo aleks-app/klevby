@@ -925,12 +925,13 @@ async function initAuth() {
   setAuthMode(currentUser ? "login" : (pendingSignup ? "verify" : "register"));
   updateAuthStatus();
   fillAuthorLocal();
-  await loadPosts();
-  reloadPondsIfReady();
 
   if (!currentUser && typeof showSection === "function") {
     showSection("auth");
   }
+
+  await loadPosts();
+  reloadPondsIfReady();
 }
 
 function updateAuthStatus() {
