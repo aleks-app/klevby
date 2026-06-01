@@ -90,7 +90,7 @@
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 1px !important;
+    gap: 5px !important;
     margin: 0 0 7px !important;
     max-width: none !important;
     font-size: inherit !important;
@@ -103,7 +103,7 @@
   #homeSection .hero-title-brand {
     display: block !important;
     color: #fff !important;
-    font-size: 34px !important;
+    font-size: 39px !important;
     line-height: 1.04 !important;
     font-weight: 900 !important;
     letter-spacing: -0.04em !important;
@@ -502,7 +502,7 @@
   }
 
   #homeSection .hero-title-brand {
-    font-size: 31px !important;
+    font-size: 36px !important;
   }
 
   #homeSection .hero-title-line {
