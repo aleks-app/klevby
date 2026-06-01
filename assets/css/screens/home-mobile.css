@@ -103,7 +103,7 @@
   #homeSection .hero-title-brand {
     display: block !important;
     color: #fff !important;
-    font-size: 28px !important;
+    font-size: 34px !important;
     line-height: 1.04 !important;
     font-weight: 900 !important;
     letter-spacing: -0.04em !important;
@@ -502,7 +502,7 @@
   }
 
   #homeSection .hero-title-brand {
-    font-size: 26px !important;
+    font-size: 31px !important;
   }
 
   #homeSection .hero-title-line {
