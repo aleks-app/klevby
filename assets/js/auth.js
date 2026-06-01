@@ -927,6 +927,10 @@ async function initAuth() {
   fillAuthorLocal();
   await loadPosts();
   reloadPondsIfReady();
+
+  if (!currentUser && typeof showSection === "function") {
+    showSection("auth");
+  }
 }
 
 function updateAuthStatus() {
@@ -1270,6 +1274,10 @@ async function logout() {
 
     if (cleanupResult.remaining.length) {
       console.warn("Logout завершён, но часть auth storage keys осталась:", cleanupResult.remaining);
+    }
+
+    if (typeof showSection === "function") {
+      showSection("auth");
     }
   }
 
