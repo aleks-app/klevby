@@ -489,7 +489,7 @@ body:has(#authSection:not(.hidden)) > .mobile-tabbar {
 /* TEMP auth skip button: remove when auth wall flow is finalized */
 #authSection .auth-welcome-skip {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
   right: calc(env(safe-area-inset-right, 0px) + 14px);
   z-index: 6;
   min-height: 32px;
