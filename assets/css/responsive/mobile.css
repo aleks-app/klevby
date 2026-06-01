@@ -72,18 +72,19 @@
   }
 
   .logo.app-header-logo {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    margin-left: 4px;
     font-size: 0;
     line-height: 0;
     padding-top: 0;
   }
 
   .logo.app-header-logo img {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .hero {
@@ -452,17 +453,18 @@
   }
 
   .logo.app-header-logo {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    min-height: 46px;
+    margin-left: 4px;
     font-size: 0;
     line-height: 0;
   }
 
   .logo.app-header-logo img {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
   }
 
   .hero {
@@ -514,6 +516,21 @@
 }
 
 @media (max-width: 380px) {
+  .logo.app-header-logo {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin-left: 3px;
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .logo.app-header-logo img {
+    width: 44px;
+    height: 44px;
+  }
+
   .hero {
     min-height: 238px;
     padding: 13px;
