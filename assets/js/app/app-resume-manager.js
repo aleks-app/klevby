@@ -252,7 +252,13 @@
           else if (typeof window.renderPosts === "function") window.renderPosts();
         }
 
-        if (visibleSection === "market" && typeof window.klevbyLoadMarket === "function") window.klevbyLoadMarket();
+        if (visibleSection === "market") {
+          markKlevbyResumeDebug("app.refresh", reason, {
+            visibleSection,
+            isBurst,
+            marketReload: "deferred_to_klevby_app_resumed"
+          });
+        }
         if (visibleSection === "ponds") deps.reloadPondsIfReady?.({ force: true, delay: 250 });
         if (visibleSection === "map" && typeof window.klevbyReloadMap === "function") window.klevbyReloadMap();
 
