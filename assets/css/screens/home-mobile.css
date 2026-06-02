@@ -645,4 +645,111 @@
     border-radius: 14px !important;
     font-size: 13px !important;
   }
+
+  body:has(#feedSection:not(.hidden)) header .logo.app-header-logo {
+    display: none !important;
+  }
+
+  body:has(#feedSection:not(.hidden)) header .mobile-menu-wrap {
+    display: none !important;
+  }
+
+  body:has(#feedSection:not(.hidden)) header .mobile-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  body:has(#feedSection:not(.hidden)) header {
+    padding-bottom: 2px;
+  }
+
+  #feedSection {
+    position: relative;
+    z-index: 1;
+  }
+
+  #feedSection .feed-screen-shell {
+    margin-top: -2px;
+  }
+
+  #feedSection .feed-screen-header {
+    margin: 0 0 8px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  #feedSection .feed-screen-topbar {
+    position: relative;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  #feedSection .feed-screen-back-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 14px);
+    left: max(12px, calc((100vw - min(94vw, 1180px)) / 2 + 4px));
+    z-index: 2101;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid rgba(244, 178, 74, 0.22);
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 30% 0%, rgba(244, 178, 74, 0.22), transparent 44%),
+      rgba(8, 14, 12, 0.88);
+    color: #ffe2a5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  #feedSection .feed-screen-back-btn:active {
+    transform: scale(0.94);
+    filter: brightness(0.94);
+  }
+
+  #feedSection .feed-screen-back-icon {
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 800;
+  }
+
+  #feedSection .feed-screen-intro {
+    padding: 0 2px 6px;
+  }
+
+  #feedSection .feed-screen-title {
+    margin: 0 0 4px;
+    color: #fff8ea;
+    font-size: 26px;
+    font-weight: 950;
+    letter-spacing: -0.04em;
+    line-height: 1.08;
+    text-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  #feedSection .feed-screen-subtitle {
+    margin: 0;
+    color: rgba(255, 248, 234, 0.72);
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 650;
+  }
+
+  #feedSection #profileFeedSection.social-feed-grid {
+    margin-top: 0 !important;
+  }
 }

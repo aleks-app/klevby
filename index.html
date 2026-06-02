@@ -272,11 +272,14 @@
     <section id="feedSection" class="hidden" aria-label="Полная лента">
       <div class="feed-screen-shell">
         <header class="feed-screen-header">
-          <button class="small-btn ghost" type="button" onclick="showSection('home')">← На главную</button>
-          <div>
-            <div class="section-kicker">Лента</div>
-            <h2>Лента рыбаков</h2>
-            <p>Фото, отчёты и рыбацкие обновления.</p>
+          <div class="feed-screen-topbar">
+            <button class="feed-screen-back-btn" type="button" onclick="showSection('home')" aria-label="На главную">
+              <span class="feed-screen-back-icon" aria-hidden="true">←</span>
+            </button>
+          </div>
+          <div class="feed-screen-intro">
+            <h2 class="feed-screen-title">Лента рыбаков</h2>
+            <p class="feed-screen-subtitle">Фото, отчёты и рыбацкие обновления.</p>
           </div>
         </header>
 
