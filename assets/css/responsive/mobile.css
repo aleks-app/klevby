@@ -36,10 +36,7 @@
   }
 
   body:has(#homeSection:not(.hidden))::after {
-    opacity: 0.42;
-    background:
-      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.08), transparent 34%),
-      linear-gradient(180deg, rgba(2, 4, 3, 0.12) 0%, rgba(2, 4, 3, 0.34) 36%, rgba(2, 4, 3, 0.72) 100%);
+    opacity: 0;
   }
 
   header {
@@ -122,25 +119,19 @@
     z-index: 1;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
+    margin-top: calc(-1 * (env(safe-area-inset-top) + 86px));
     padding-left: calc(50vw - 50%);
     padding-right: calc(50vw - 50%);
-    background: transparent;
+    background-color: transparent;
+    background-image:
+      linear-gradient(180deg, rgba(2, 4, 3, 0.08) 0%, rgba(2, 4, 3, 0.18) 36%, rgba(2, 4, 3, 0.62) 68%, rgba(2, 4, 3, 0.92) 100%),
+      url("../../brand/home-screen-bg-orange-fisherman.png") top center / cover no-repeat;
+    background-repeat: no-repeat;
   }
 
   #homeSection::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: min(100svh, 820px);
-    z-index: 0;
-    pointer-events: none;
-    background-color: #1a1208;
-    background-image:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.02) 0%, rgba(2, 4, 3, 0.12) 42%, rgba(2, 4, 3, 0.48) 100%),
-      url("../../brand/home-screen-bg-orange-fisherman.png") top center / cover no-repeat;
-    background-repeat: no-repeat;
+    content: none;
+    display: none;
   }
 
   #homeSection .hero {
