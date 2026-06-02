@@ -146,7 +146,9 @@
   #homeSection #forecastPanel .forecast-head h2,
   #homeSection .mobile-weather-city::before,
   #homeSection #profileFeedSection.grid::before,
-  #homeSection #profileFeedSection.social-feed-grid::before {
+  #feedSection #profileFeedSection.grid::before,
+  #homeSection #profileFeedSection.social-feed-grid::before,
+  #feedSection #profileFeedSection.social-feed-grid::before{
     font-weight: 950 !important;
     letter-spacing: -0.045em !important;
     text-shadow: 0 12px 30px rgba(0, 0, 0, 0.42) !important;
@@ -278,16 +280,26 @@
   }
 
   #homeSection #profileFeedSection.grid::before,
-  #homeSection #profileFeedSection.social-feed-grid::before {
+  #feedSection #profileFeedSection.grid::before,
+  #homeSection #profileFeedSection.social-feed-grid::before,
+  #feedSection #profileFeedSection.social-feed-grid::before{
     content: "Лента" !important;
     display: block !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-title {
+  #feedSection #profileFeedSection.grid::before,
+  #feedSection #profileFeedSection.social-feed-grid::before {
+    content: none !important;
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-card {
+  #homeSection #profileFeedSection .profile-feed-title,
+  #feedSection #profileFeedSection .profile-feed-title{
+    display: none !important;
+  }
+
+  #homeSection #profileFeedSection .profile-feed-card,
+  #feedSection #profileFeedSection .profile-feed-card{
     position: relative !important;
     overflow: hidden !important;
     border-radius: 24px !important;
@@ -295,13 +307,15 @@
     border: 1px solid rgba(244, 178, 74, 0.18) !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-media {
+  #homeSection #profileFeedSection .profile-feed-media,
+  #feedSection #profileFeedSection .profile-feed-media{
     position: relative !important;
     overflow: hidden !important;
     background: #06110d !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-media::after {
+  #homeSection #profileFeedSection .profile-feed-media::after,
+  #feedSection #profileFeedSection .profile-feed-media::after{
     content: "" !important;
     position: absolute !important;
     left: 0 !important;
@@ -320,7 +334,8 @@
       ) !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-image {
+  #homeSection #profileFeedSection .profile-feed-image,
+  #feedSection #profileFeedSection .profile-feed-image{
     height: clamp(360px, 62vh, 460px) !important;
     min-height: 360px !important;
     max-height: none !important;
@@ -330,7 +345,9 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-image > .profile-feed-image-img,
-  #homeSection #profileFeedSection .profile-feed-image > .profile-feed-mobile-image-img {
+  #feedSection #profileFeedSection .profile-feed-image > .profile-feed-image-img,
+  #homeSection #profileFeedSection .profile-feed-image > .profile-feed-mobile-image-img,
+  #feedSection #profileFeedSection .profile-feed-image > .profile-feed-mobile-image-img{
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
@@ -338,7 +355,8 @@
     display: block !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-body {
+  #homeSection #profileFeedSection .profile-feed-body,
+  #feedSection #profileFeedSection .profile-feed-body{
     position: relative !important;
     z-index: 3 !important;
     display: grid !important;
@@ -354,7 +372,8 @@
     border-top: 1px solid rgba(255, 248, 234, 0.08) !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author {
+  #homeSection #profileFeedSection .profile-feed-author,
+  #feedSection #profileFeedSection .profile-feed-author{
     position: static !important;
     grid-area: author !important;
     width: auto !important;
@@ -372,19 +391,23 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-author .profile-feed-avatar-img,
-  #homeSection #profileFeedSection .profile-feed-author .profile-feed-avatar-fallback {
+  #feedSection #profileFeedSection .profile-feed-author .profile-feed-avatar-img,
+  #homeSection #profileFeedSection .profile-feed-author .profile-feed-avatar-fallback,
+  #feedSection #profileFeedSection .profile-feed-author .profile-feed-avatar-fallback{
     width: 40px !important;
     height: 40px !important;
     border: 1px solid rgba(244, 178, 74, 0.24) !important;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25) !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author-text {
+  #homeSection #profileFeedSection .profile-feed-author-text,
+  #feedSection #profileFeedSection .profile-feed-author-text{
     min-width: 0 !important;
     max-width: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author-name {
+  #homeSection #profileFeedSection .profile-feed-author-name,
+  #feedSection #profileFeedSection .profile-feed-author-name{
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -395,7 +418,8 @@
     text-shadow: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author-action {
+  #homeSection #profileFeedSection .profile-feed-author-action,
+  #feedSection #profileFeedSection .profile-feed-author-action{
     display: block !important;
     margin-top: 2px !important;
     color: rgba(255, 248, 234, 0.56) !important;
@@ -405,11 +429,14 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-title,
-  #homeSection #profileFeedSection .profile-feed-description {
+  #feedSection #profileFeedSection .profile-feed-title,
+  #homeSection #profileFeedSection .profile-feed-description,
+  #feedSection #profileFeedSection .profile-feed-description{
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags {
+  #homeSection #profileFeedSection .profile-feed-tags,
+  #feedSection #profileFeedSection .profile-feed-tags{
     grid-area: date !important;
     display: flex !important;
     justify-content: flex-end !important;
@@ -420,11 +447,13 @@
     flex-wrap: nowrap !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags .tag {
+  #homeSection #profileFeedSection .profile-feed-tags .tag,
+  #feedSection #profileFeedSection .profile-feed-tags .tag{
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags .tag:last-child {
+  #homeSection #profileFeedSection .profile-feed-tags .tag:last-child,
+  #feedSection #profileFeedSection .profile-feed-tags .tag:last-child{
     display: inline-flex !important;
     margin: 0 !important;
     white-space: nowrap !important;
@@ -440,7 +469,8 @@
       0 8px 18px rgba(0,0,0,0.16) !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-actions {
+  #homeSection #profileFeedSection .profile-feed-actions,
+  #feedSection #profileFeedSection .profile-feed-actions{
     grid-area: actions !important;
     width: 100% !important;
     display: grid !important;
@@ -455,12 +485,15 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-open-btn {
+  #homeSection #profileFeedSection .profile-feed-open-btn,
+  #feedSection #profileFeedSection .profile-feed-open-btn{
     display: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-like-btn,
-  #homeSection #profileFeedSection .profile-feed-comment-btn {
+  #feedSection #profileFeedSection .profile-feed-like-btn,
+  #homeSection #profileFeedSection .profile-feed-comment-btn,
+  #feedSection #profileFeedSection .profile-feed-comment-btn{
     min-height: 42px !important;
     width: 100% !important;
     padding: 8px 10px !important;
@@ -486,7 +519,9 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-like-btn.is-liked,
-  #homeSection #profileFeedSection .profile-feed-like-btn.liked {
+  #feedSection #profileFeedSection .profile-feed-like-btn.is-liked,
+  #homeSection #profileFeedSection .profile-feed-like-btn.liked,
+  #feedSection #profileFeedSection .profile-feed-like-btn.liked{
     color: #ffd76f !important;
     background:
       linear-gradient(180deg, rgba(255,215,111,0.15), rgba(255,215,111,0.055)),
@@ -494,7 +529,8 @@
     border-color: rgba(255,215,111,0.22) !important;
   }
 
-  #homeSection #profileFeedSection.social-feed-grid {
+  #homeSection #profileFeedSection.social-feed-grid,
+  #feedSection #profileFeedSection.social-feed-grid{
     position: relative !important;
     z-index: 1 !important;
     margin-top: 2px !important;
@@ -558,11 +594,13 @@
     font-size: 13px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-media::after {
+  #homeSection #profileFeedSection .profile-feed-media::after,
+  #feedSection #profileFeedSection .profile-feed-media::after{
     height: 86px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-image {
+  #homeSection #profileFeedSection .profile-feed-image,
+  #feedSection #profileFeedSection .profile-feed-image{
     height: clamp(350px, 60vh, 430px) !important;
     min-height: 350px !important;
     max-height: none !important;
@@ -570,30 +608,38 @@
   }
 
   #homeSection #profileFeedSection .profile-feed-image > .profile-feed-image-img,
-  #homeSection #profileFeedSection .profile-feed-image > .profile-feed-mobile-image-img {
+  #feedSection #profileFeedSection .profile-feed-image > .profile-feed-image-img,
+  #homeSection #profileFeedSection .profile-feed-image > .profile-feed-mobile-image-img,
+  #feedSection #profileFeedSection .profile-feed-image > .profile-feed-mobile-image-img{
     object-position: center 38% !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-body {
+  #homeSection #profileFeedSection .profile-feed-body,
+  #feedSection #profileFeedSection .profile-feed-body{
     padding: 15px 16px 17px !important;
     gap: 12px 10px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags {
+  #homeSection #profileFeedSection .profile-feed-tags,
+  #feedSection #profileFeedSection .profile-feed-tags{
     max-width: 40vw !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-actions {
+  #homeSection #profileFeedSection .profile-feed-actions,
+  #feedSection #profileFeedSection .profile-feed-actions{
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 7px !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-open-btn {
+  #homeSection #profileFeedSection .profile-feed-open-btn,
+  #feedSection #profileFeedSection .profile-feed-open-btn{
     display: none !important;
   }
 
   #homeSection #profileFeedSection .profile-feed-like-btn,
-  #homeSection #profileFeedSection .profile-feed-comment-btn {
+  #feedSection #profileFeedSection .profile-feed-like-btn,
+  #homeSection #profileFeedSection .profile-feed-comment-btn,
+  #feedSection #profileFeedSection .profile-feed-comment-btn{
     min-height: 40px !important;
     padding: 7px 8px !important;
     border-radius: 14px !important;
