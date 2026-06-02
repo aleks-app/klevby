@@ -143,8 +143,8 @@ function goHomeTop() {
 function goMobileFeed() {
   setMobileTabbarMode("home");
   setMobileTabActive(0);
-  showSection("home");
-  mobileScrollTo("postsSection");
+  showSection("feed");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function goMobileCreate() {
