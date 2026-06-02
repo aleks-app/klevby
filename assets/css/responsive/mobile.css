@@ -124,7 +124,7 @@
     padding-right: calc(50vw - 50%);
     background:
       linear-gradient(180deg, rgba(2, 4, 3, 0.08) 0%, rgba(2, 4, 3, 0.18) 36%, rgba(2, 4, 3, 0.62) 68%, rgba(2, 4, 3, 0.92) 100%),
-      url("../../brand/home-screen-bg-orange-fisherman.png") top center / cover no-repeat;
+      url("../../brand/home-screen-bg-orange-fisherman.png") top center / 100% auto no-repeat;
   }
 
   #homeSection::before {
