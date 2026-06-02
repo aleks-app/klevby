@@ -31,6 +31,17 @@
       linear-gradient(180deg, rgba(2,4,3,0.38) 0%, rgba(2,4,3,0.68) 32%, rgba(2,4,3,0.92) 72%, #020403 100%);
   }
 
+  body:has(#homeSection:not(.hidden))::before {
+    opacity: 0;
+  }
+
+  body:has(#homeSection:not(.hidden))::after {
+    opacity: 0.42;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(244,178,74,0.08), transparent 34%),
+      linear-gradient(180deg, rgba(2, 4, 3, 0.12) 0%, rgba(2, 4, 3, 0.34) 36%, rgba(2, 4, 3, 0.72) 100%);
+  }
+
   header {
     position: relative;
     top: auto;
@@ -108,18 +119,33 @@
 
   #homeSection {
     position: relative;
+    z-index: 1;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
     padding-left: calc(50vw - 50%);
     padding-right: calc(50vw - 50%);
-    background-color: #140d06;
+    background: transparent;
+  }
+
+  #homeSection::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: min(100svh, 820px);
+    z-index: 0;
+    pointer-events: none;
+    background-color: #1a1208;
     background-image:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.06) 0%, rgba(2, 4, 3, 0.18) 38%, rgba(2, 4, 3, 0.62) 100%),
+      linear-gradient(180deg, rgba(2, 4, 3, 0.02) 0%, rgba(2, 4, 3, 0.12) 42%, rgba(2, 4, 3, 0.48) 100%),
       url("../../brand/home-screen-bg-orange-fisherman.png") top center / cover no-repeat;
     background-repeat: no-repeat;
   }
 
   #homeSection .hero {
+    position: relative;
+    z-index: 1;
     margin: 0 0 8px;
     padding: calc(env(safe-area-inset-top) + 118px) 14px 18px;
     min-height: 0;
