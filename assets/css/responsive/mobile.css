@@ -122,11 +122,9 @@
     margin-top: calc(-1 * (env(safe-area-inset-top) + 86px));
     padding-left: calc(50vw - 50%);
     padding-right: calc(50vw - 50%);
-    background-color: transparent;
-    background-image:
+    background:
       linear-gradient(180deg, rgba(2, 4, 3, 0.08) 0%, rgba(2, 4, 3, 0.18) 36%, rgba(2, 4, 3, 0.62) 68%, rgba(2, 4, 3, 0.92) 100%),
       url("../../brand/home-screen-bg-orange-fisherman.png") top center / cover no-repeat;
-    background-repeat: no-repeat;
   }
 
   #homeSection::before {
