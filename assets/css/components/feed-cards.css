@@ -266,20 +266,24 @@
 }
 
 @media (min-width: 768px) {
-  #homeSection #profileFeedSection.social-feed-grid {
+  #homeSection #profileFeedSection.social-feed-grid,
+  #feedSection #profileFeedSection.social-feed-grid{
     align-items: start;
   }
 
-  #homeSection #profileFeedSection .profile-feed-card {
+  #homeSection #profileFeedSection .profile-feed-card,
+  #feedSection #profileFeedSection .profile-feed-card{
     min-height: 0;
   }
 
-  #homeSection #profileFeedSection .profile-feed-image {
+  #homeSection #profileFeedSection .profile-feed-image,
+  #feedSection #profileFeedSection .profile-feed-image{
     height: 420px;
     background-position: center center;
   }
 
-  #homeSection #profileFeedSection .profile-feed-body {
+  #homeSection #profileFeedSection .profile-feed-body,
+  #feedSection #profileFeedSection .profile-feed-body{
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
@@ -291,38 +295,46 @@
     padding: 14px 18px 16px;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author {
+  #homeSection #profileFeedSection .profile-feed-author,
+  #feedSection #profileFeedSection .profile-feed-author{
     grid-area: author;
     min-width: 0;
     margin: 0;
   }
 
   #homeSection #profileFeedSection .profile-feed-avatar-img,
-  #homeSection #profileFeedSection .profile-feed-avatar-fallback {
+  #feedSection #profileFeedSection .profile-feed-avatar-img,
+  #homeSection #profileFeedSection .profile-feed-avatar-fallback,
+  #feedSection #profileFeedSection .profile-feed-avatar-fallback{
     width: 40px;
     height: 40px;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author-name {
+  #homeSection #profileFeedSection .profile-feed-author-name,
+  #feedSection #profileFeedSection .profile-feed-author-name{
     font-size: 15.5px;
     line-height: 1.12;
   }
 
-  #homeSection #profileFeedSection .profile-feed-author-action {
+  #homeSection #profileFeedSection .profile-feed-author-action,
+  #feedSection #profileFeedSection .profile-feed-author-action{
     margin-top: 2px;
     font-size: 12px;
     line-height: 1.15;
   }
 
-  #homeSection #profileFeedSection .profile-feed-title {
+  #homeSection #profileFeedSection .profile-feed-title,
+  #feedSection #profileFeedSection .profile-feed-title{
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-description {
+  #homeSection #profileFeedSection .profile-feed-description,
+  #feedSection #profileFeedSection .profile-feed-description{
     display: none !important;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags {
+  #homeSection #profileFeedSection .profile-feed-tags,
+  #feedSection #profileFeedSection .profile-feed-tags{
     grid-area: tags;
     justify-content: flex-end;
     align-items: center;
@@ -332,13 +344,15 @@
     white-space: nowrap;
   }
 
-  #homeSection #profileFeedSection .profile-feed-tags .tag {
+  #homeSection #profileFeedSection .profile-feed-tags .tag,
+  #feedSection #profileFeedSection .profile-feed-tags .tag{
     padding: 7px 10px;
     font-size: 12px;
     line-height: 1;
   }
 
-  #homeSection #profileFeedSection .profile-feed-actions {
+  #homeSection #profileFeedSection .profile-feed-actions,
+  #feedSection #profileFeedSection .profile-feed-actions{
     grid-area: actions;
     margin-top: 0;
   }
