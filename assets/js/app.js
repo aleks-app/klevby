@@ -646,7 +646,7 @@ function showSection(section) {
   hideAllAppSectionsExcept(activeId);
   syncGlobalAuthState();
 
-  if (safeSection === "home") {
+  if (safeSection === "home" || safeSection === "feed") {
     setMobileTabVisual(0);
 
     if (typeof window.renderProfileFeed === "function") {
