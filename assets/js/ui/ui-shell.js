@@ -1,5 +1,5 @@
 const APP_MOBILE_MENU_ITEMS = [
-  { label: "Лента", action: () => callWindowFunction("showSection", ["home"]) },
+  { label: "Лента", action: () => callWindowFunction("showSection", ["feed"]) },
   { label: "Напарники", action: () => callWindowFunction("setMode", ["all"]) },
   { label: "Барахолка", action: () => callWindowFunction("showSection", ["market"]) },
   { label: "Платные пруды", action: () => callWindowFunction("showSection", ["ponds"]) },

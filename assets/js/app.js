@@ -504,6 +504,7 @@ function getAppSections() {
 
   return [
     "homeSection",
+    "feedSection",
     "tripsSection",
     "createSection",
     "marketSection",
@@ -630,6 +631,7 @@ function showSection(section) {
 
   const sectionMap = {
     home: "homeSection",
+    feed: "feedSection",
     trips: "tripsSection",
     create: "createSection",
     market: "marketSection",
