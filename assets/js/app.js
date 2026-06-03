@@ -622,6 +622,8 @@ function showSection(section) {
 
   const safeSection = String(section || "home").trim();
 
+  document.body.classList.toggle("feed-section-open", safeSection === "feed");
+
   if (safeSection === "profile") {
     if (typeof window.openKlevbyProfile === "function") {
       window.openKlevbyProfile();
