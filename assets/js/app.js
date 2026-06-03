@@ -557,6 +557,24 @@ function clearProfileChromeIfNeeded(section) {
   }
 }
 
+function setAppChromeMode(mode) {
+  const navigation = getAppNavigation();
+
+  if (typeof navigation.setAppChromeMode === "function") {
+    return navigation.setAppChromeMode(mode);
+  }
+
+  const cleanMode = mode === "feed" ? "feed" : "home";
+  const header = document.querySelector("header");
+
+  if (header) {
+    header.setAttribute("data-chrome-mode", cleanMode);
+  }
+
+  document.body.setAttribute("data-app-chrome-mode", cleanMode);
+  return cleanMode;
+}
+
 function setMobileTabVisual(index) {
   const navigation = getAppNavigation();
 
@@ -622,7 +640,7 @@ function showSection(section) {
 
   const safeSection = String(section || "home").trim();
 
-  document.body.classList.toggle("feed-section-open", safeSection === "feed");
+  setAppChromeMode(safeSection === "feed" ? "feed" : "home");
 
   if (safeSection === "profile") {
     if (typeof window.openKlevbyProfile === "function") {
@@ -1143,6 +1161,7 @@ function getAppWindowExportMap() {
     clearProfileChromeIfNeeded,
     setMobileTabVisual,
     getVisibleSectionName,
+    setAppChromeMode,
     closeMobileMenuFromAppNavigation,
     showSection,
     setMode,

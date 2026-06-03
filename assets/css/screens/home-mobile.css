@@ -646,30 +646,18 @@
     font-size: 13px !important;
   }
 
-  body.feed-section-open header .logo.app-header-logo {
-    display: none !important;
-  }
-
-  body.feed-section-open header .mobile-menu-wrap {
-    display: none !important;
-  }
-
-  body.feed-section-open header .mobile-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  body.feed-section-open header {
+  body[data-app-chrome-mode="feed"] header {
     padding: calc(env(safe-area-inset-top) + 8px) 0 0;
     background: transparent;
   }
 
-  body.feed-section-open header .header-inner {
+  body[data-app-chrome-mode="feed"] header .header-inner {
     min-height: 40px;
     align-items: center;
   }
 
-  body.feed-section-open header .mobile-profile-btn {
+  body[data-app-chrome-mode="feed"] header .app-header-back-btn,
+  body[data-app-chrome-mode="feed"] header .mobile-profile-btn {
     width: 40px;
     height: 40px;
     min-width: 40px;
@@ -677,11 +665,13 @@
     border-radius: 15px;
   }
 
+  body[data-app-chrome-mode="feed"] header .app-header-back-icon {
+    font-size: 18px;
+  }
+
   #feedSection {
     position: relative;
     z-index: 1;
-    margin-top: calc(-1 * (env(safe-area-inset-top) + 52px));
-    padding-top: calc(env(safe-area-inset-top) + 48px);
   }
 
   #feedSection .feed-screen-shell {
@@ -694,53 +684,6 @@
     background: transparent;
     border: 0;
     box-shadow: none;
-  }
-
-  #feedSection .feed-screen-topbar {
-    height: 0;
-    overflow: visible;
-    margin: 0;
-    padding: 0;
-  }
-
-  #feedSection .feed-screen-back-btn {
-    appearance: none;
-    -webkit-appearance: none;
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 8px);
-    left: max(12px, calc((100vw - min(94vw, 1180px)) / 2 + 4px));
-    z-index: 2101;
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0;
-    border: 1px solid rgba(244, 178, 74, 0.22);
-    border-radius: 15px;
-    background:
-      radial-gradient(circle at 30% 0%, rgba(244, 178, 74, 0.22), transparent 44%),
-      rgba(8, 14, 12, 0.88);
-    color: #ffe2a5;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-
-  #feedSection .feed-screen-back-btn:active {
-    transform: scale(0.94);
-    filter: brightness(0.94);
-  }
-
-  #feedSection .feed-screen-back-icon {
-    font-size: 18px;
-    line-height: 1;
-    font-weight: 800;
   }
 
   #feedSection .feed-screen-intro {
