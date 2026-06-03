@@ -406,6 +406,69 @@ nav {
   filter: brightness(0.94);
 }
 
+.app-header-leading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.app-header-back-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: none;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 1px solid rgba(244, 178, 74, 0.22);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 30% 0%, rgba(244, 178, 74, 0.22), transparent 44%),
+    rgba(8, 14, 12, 0.88);
+  color: #ffe2a5;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.app-header-back-btn:active {
+  transform: scale(0.94);
+  filter: brightness(0.94);
+}
+
+.app-header-back-icon {
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+header[data-chrome-mode="home"] .app-header-back-btn {
+  display: none;
+}
+
+header[data-chrome-mode="feed"] .logo.app-header-logo {
+  display: none !important;
+}
+
+header[data-chrome-mode="feed"] .app-header-back-btn {
+  display: inline-flex;
+}
+
+header[data-chrome-mode="feed"] .mobile-menu-wrap {
+  display: none !important;
+}
+
+header[data-chrome-mode="feed"] .mobile-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .mobile-header-actions {
     gap: 10px;

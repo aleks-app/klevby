@@ -111,7 +111,7 @@
   <script src="assets/js/pwa-manifest.js?v=20260503-4"></script>
 </head>
 
-<body>
+<body data-app-chrome-mode="home">
   <div id="appSplash" class="app-splash" aria-hidden="true">
     <div class="splash-logo">
       <span class="splash-k">K</span>
@@ -125,10 +125,22 @@
     </div>
   </div>
 
-  <header>
+  <header data-chrome-mode="home">
     <div class="wrap header-inner">
-      <div class="logo app-header-logo" aria-label="Klevby">
-        <img src="assets/brand/klevby-fish-logo.png" alt="" aria-hidden="true" decoding="async" />
+      <div class="app-header-leading">
+        <div class="logo app-header-logo" aria-label="Klevby">
+          <img src="assets/brand/klevby-fish-logo.png" alt="" aria-hidden="true" decoding="async" />
+        </div>
+
+        <button
+          class="app-header-back-btn"
+          id="appHeaderBackBtn"
+          type="button"
+          onclick="showSection('home')"
+          aria-label="На главную"
+        >
+          <span class="app-header-back-icon" aria-hidden="true">←</span>
+        </button>
       </div>
 
       <nav>
@@ -272,11 +284,6 @@
     <section id="feedSection" class="hidden" aria-label="Полная лента">
       <div class="feed-screen-shell">
         <header class="feed-screen-header">
-          <div class="feed-screen-topbar">
-            <button class="feed-screen-back-btn" type="button" onclick="showSection('home')" aria-label="На главную">
-              <span class="feed-screen-back-icon" aria-hidden="true">←</span>
-            </button>
-          </div>
           <div class="feed-screen-intro">
             <h2 class="feed-screen-title">Лента рыбаков</h2>
             <p class="feed-screen-subtitle">Фото, отчёты и рыбацкие обновления.</p>
