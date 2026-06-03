@@ -660,20 +660,36 @@
   }
 
   body:has(#feedSection:not(.hidden)) header {
-    padding-bottom: 2px;
+    padding: calc(env(safe-area-inset-top) + 8px) 0 0;
+    background: transparent;
+  }
+
+  body:has(#feedSection:not(.hidden)) header .header-inner {
+    min-height: 40px;
+    align-items: center;
+  }
+
+  body:has(#feedSection:not(.hidden)) header .mobile-profile-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 15px;
   }
 
   #feedSection {
     position: relative;
     z-index: 1;
+    margin-top: calc(-1 * (env(safe-area-inset-top) + 52px));
+    padding-top: calc(env(safe-area-inset-top) + 48px);
   }
 
   #feedSection .feed-screen-shell {
-    margin-top: -2px;
+    margin-top: 0;
   }
 
   #feedSection .feed-screen-header {
-    margin: 0 0 8px;
+    margin: 0 0 4px;
     padding: 0;
     background: transparent;
     border: 0;
@@ -681,8 +697,8 @@
   }
 
   #feedSection .feed-screen-topbar {
-    position: relative;
-    min-height: 0;
+    height: 0;
+    overflow: visible;
     margin: 0;
     padding: 0;
   }
@@ -691,16 +707,16 @@
     appearance: none;
     -webkit-appearance: none;
     position: fixed;
-    top: calc(env(safe-area-inset-top) + 14px);
+    top: calc(env(safe-area-inset-top) + 8px);
     left: max(12px, calc((100vw - min(94vw, 1180px)) / 2 + 4px));
     z-index: 2101;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
     padding: 0;
     border: 1px solid rgba(244, 178, 74, 0.22);
-    border-radius: 16px;
+    border-radius: 15px;
     background:
       radial-gradient(circle at 30% 0%, rgba(244, 178, 74, 0.22), transparent 44%),
       rgba(8, 14, 12, 0.88);
@@ -722,34 +738,37 @@
   }
 
   #feedSection .feed-screen-back-icon {
-    font-size: 20px;
+    font-size: 18px;
     line-height: 1;
     font-weight: 800;
   }
 
   #feedSection .feed-screen-intro {
-    padding: 0 2px 6px;
+    padding: 0 2px 2px;
   }
 
   #feedSection .feed-screen-title {
-    margin: 0 0 4px;
+    margin: 0 0 3px;
     color: #fff8ea;
-    font-size: 26px;
+    font-size: 25px;
     font-weight: 950;
     letter-spacing: -0.04em;
-    line-height: 1.08;
+    line-height: 1.06;
     text-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
   }
 
   #feedSection .feed-screen-subtitle {
     margin: 0;
     color: rgba(255, 248, 234, 0.72);
-    font-size: 14px;
-    line-height: 1.35;
+    font-size: 13.5px;
+    line-height: 1.32;
     font-weight: 650;
   }
 
+  #feedSection #profileFeedSection.grid,
   #feedSection #profileFeedSection.social-feed-grid {
     margin-top: 0 !important;
+    margin-bottom: 20px !important;
+    gap: 12px !important;
   }
 }
