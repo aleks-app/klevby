@@ -646,30 +646,30 @@
     font-size: 13px !important;
   }
 
-  body:has(#feedSection:not(.hidden)) header .logo.app-header-logo {
+  body.feed-section-open header .logo.app-header-logo {
     display: none !important;
   }
 
-  body:has(#feedSection:not(.hidden)) header .mobile-menu-wrap {
+  body.feed-section-open header .mobile-menu-wrap {
     display: none !important;
   }
 
-  body:has(#feedSection:not(.hidden)) header .mobile-actions {
+  body.feed-section-open header .mobile-actions {
     width: 100%;
     justify-content: flex-end;
   }
 
-  body:has(#feedSection:not(.hidden)) header {
+  body.feed-section-open header {
     padding: calc(env(safe-area-inset-top) + 8px) 0 0;
     background: transparent;
   }
 
-  body:has(#feedSection:not(.hidden)) header .header-inner {
+  body.feed-section-open header .header-inner {
     min-height: 40px;
     align-items: center;
   }
 
-  body:has(#feedSection:not(.hidden)) header .mobile-profile-btn {
+  body.feed-section-open header .mobile-profile-btn {
     width: 40px;
     height: 40px;
     min-width: 40px;
