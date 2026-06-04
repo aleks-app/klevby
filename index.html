@@ -318,22 +318,37 @@
         <div class="bite-line bite-medium-line" id="biteForecast">Прогноз средний, нужно пробовать.</div>
       </div>
 
-      <section class="home-weather-card" aria-label="Погода для рыбалки">
+      <section class="home-weather-card" aria-label="Погода для рыбалки" data-weather-mode="cloudy">
         <div class="home-weather-strip">
           <div class="home-weather-main" aria-label="Краткая погода">
-            <button class="home-weather-chip" id="homeWeatherTempChip" type="button" aria-label="Температура">
-              <span class="home-weather-chip-icon" aria-hidden="true">
-                <img src="assets/icons/weather/cloud-sun.svg" alt="" class="home-weather-icon-img" decoding="async" />
-              </span>
-              <span class="home-weather-chip-value">—</span>
-            </button>
+            <div class="home-weather-primary">
+              <img
+                id="homeWeatherModeIcon"
+                class="home-weather-mode-icon"
+                src="assets/icons/weather/cloud-sun.svg"
+                alt=""
+                decoding="async"
+              />
 
-            <button class="home-weather-chip" id="homeWeatherWindChip" type="button" aria-label="Ветер">
-              <span class="home-weather-chip-icon" aria-hidden="true">
-                <img src="assets/icons/weather/wind-light.svg" alt="" class="home-weather-icon-img" decoding="async" />
-              </span>
-              <span class="home-weather-chip-value">—</span>
-            </button>
+              <div class="home-weather-primary-copy">
+                <button class="home-weather-chip home-weather-chip-temp" id="homeWeatherTempChip" type="button" aria-label="Температура">
+                  <span class="home-weather-chip-value">—</span>
+                </button>
+                <p class="home-weather-condition" id="homeWeatherCondition">Облачно</p>
+              </div>
+            </div>
+
+            <div class="home-weather-divider" aria-hidden="true"></div>
+
+            <div class="home-weather-stats">
+              <button class="home-weather-chip home-weather-chip-wind" id="homeWeatherWindChip" type="button" aria-label="Ветер">
+                <span class="home-weather-chip-icon" aria-hidden="true">
+                  <img src="assets/icons/weather/wind-light.svg" alt="" class="home-weather-icon-img" decoding="async" />
+                </span>
+                <span class="home-weather-chip-value">—</span>
+              </button>
+              <p class="home-weather-pressure" id="homeWeatherPressure">—</p>
+            </div>
           </div>
 
           <details class="home-weather-details">

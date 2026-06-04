@@ -52,6 +52,94 @@ function updateMobileWeatherChips({ tempText, windText, biteText }) {
   }
 }
 
+function formatHomeWeatherPressureText(pressureMm) {
+  const pressure = Number(pressureMm);
+
+  if (!Number.isFinite(pressure)) {
+    return "—";
+  }
+
+  return `${pressure} мм рт. ст.`;
+}
+
+function updateMobileWeatherStrip({ tempText, windText, biteText, pressureMm }) {
+  updateMobileWeatherChips({ tempText, windText, biteText });
+
+  const pressureEl = document.getElementById("homeWeatherPressure");
+
+  if (pressureEl) {
+    pressureEl.textContent = formatHomeWeatherPressureText(pressureMm);
+  }
+}
+
+function getWeatherMode(main, description) {
+  const text = `${main || ""} ${description || ""}`.toLowerCase();
+
+  if (text.includes("rain") || text.includes("drizzle") || text.includes("дожд")) {
+    return "rainy";
+  }
+
+  if (
+    text.includes("cloud") ||
+    text.includes("облач") ||
+    text.includes("пасмур") ||
+    text.includes("туман") ||
+    text.includes("mist") ||
+    text.includes("fog")
+  ) {
+    return "cloudy";
+  }
+
+  return "sunny";
+}
+
+const HOME_WEATHER_MODE_LABELS = {
+  sunny: { panel: "☀️ Солнце", card: "Солнечно" },
+  cloudy: { panel: "☁️ Облачно", card: "Облачно" },
+  rainy: { panel: "🌧️ Дождь", card: "Дождь" }
+};
+
+const HOME_WEATHER_MODE_ICONS = {
+  sunny: "assets/icons/weather/sun.svg",
+  cloudy: "assets/icons/weather/cloud-sun.svg",
+  rainy: "assets/icons/weather/cloud-rain-wind.svg"
+};
+
+function applyWeatherMode(mode) {
+  const safeMode = HOME_WEATHER_MODE_LABELS[mode] ? mode : "cloudy";
+  const panel = document.getElementById("forecastPanel");
+  const mobileCondition = document.getElementById("mobileWeatherCondition");
+  const homeCard = document.querySelector("#homeSection .home-weather-card");
+  const conditionEl = document.getElementById("homeWeatherCondition");
+  const modeIcon = document.getElementById("homeWeatherModeIcon");
+  const labels = HOME_WEATHER_MODE_LABELS[safeMode];
+
+  if (panel) {
+    panel.classList.remove("weather-sunny", "weather-cloudy", "weather-rainy");
+    panel.classList.add(`weather-${safeMode}`);
+  }
+
+  if (mobileCondition) {
+    mobileCondition.textContent = labels.panel;
+  }
+
+  if (homeCard) {
+    homeCard.dataset.weatherMode = safeMode;
+  }
+
+  if (conditionEl) {
+    conditionEl.textContent = labels.card;
+  }
+
+  if (modeIcon && HOME_WEATHER_MODE_ICONS[safeMode]) {
+    modeIcon.src = HOME_WEATHER_MODE_ICONS[safeMode];
+  }
+}
+
+function setWeatherAnimation(main, description) {
+  applyWeatherMode(getWeatherMode(main, description));
+}
+
 function updateBiteForecast(pressureMm) {
   const el = document.getElementById("biteForecast");
   const result = getBiteForecastByPressure(pressureMm);
@@ -87,50 +175,6 @@ function windDirection(deg) {
 
   const dirs = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"];
   return dirs[Math.round(deg / 45) % 8];
-}
-
-function setWeatherAnimation(main, description) {
-  const panel = document.getElementById("forecastPanel");
-  const mobileCondition = document.getElementById("mobileWeatherCondition");
-
-  if (!panel) return;
-
-  const text = `${main || ""} ${description || ""}`.toLowerCase();
-
-  panel.classList.remove("weather-sunny", "weather-cloudy", "weather-rainy");
-
-  if (text.includes("rain") || text.includes("drizzle") || text.includes("дожд")) {
-    panel.classList.add("weather-rainy");
-
-    if (mobileCondition) {
-      mobileCondition.textContent = "🌧️ Дождь";
-    }
-
-    return;
-  }
-
-  if (
-    text.includes("cloud") ||
-    text.includes("облач") ||
-    text.includes("пасмур") ||
-    text.includes("туман") ||
-    text.includes("mist") ||
-    text.includes("fog")
-  ) {
-    panel.classList.add("weather-cloudy");
-
-    if (mobileCondition) {
-      mobileCondition.textContent = "☁️ Облачно";
-    }
-
-    return;
-  }
-
-  panel.classList.add("weather-sunny");
-
-  if (mobileCondition) {
-    mobileCondition.textContent = "☀️ Солнце";
-  }
 }
 
 async function fetchWeather() {
@@ -182,10 +226,11 @@ async function fetchWeather() {
     status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
 
     updateBiteForecast(pressureMm);
-    updateMobileWeatherChips({
+    updateMobileWeatherStrip({
       tempText,
       windText,
-      biteText: biteResult.shortText
+      biteText: biteResult.shortText,
+      pressureMm
     });
 
     setWeatherAnimation(main, description);
@@ -205,10 +250,11 @@ async function fetchWeather() {
     moonEl.textContent = getMoonPhaseName();
 
     updateBiteForecast(fallbackPressureMm);
-    updateMobileWeatherChips({
+    updateMobileWeatherStrip({
       tempText: fallbackTempText,
       windText: fallbackWindText,
-      biteText: fallbackBiteResult.shortText
+      biteText: fallbackBiteResult.shortText,
+      pressureMm: fallbackPressureMm
     });
 
     setWeatherAnimation("Clouds", "облачно");

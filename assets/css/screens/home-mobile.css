@@ -492,8 +492,8 @@
   #homeSection .home-weather-strip {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 40px;
+    gap: 8px;
+    min-height: 52px;
   }
 
   #homeSection .home-weather-main {
@@ -507,6 +507,89 @@
 
   #homeSection .home-weather-strip:has(.home-weather-details[open]) .home-weather-main {
     display: none;
+  }
+
+  #homeSection .home-weather-primary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  #homeSection .home-weather-mode-icon {
+    display: block;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+
+  #homeSection .home-weather-primary-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  #homeSection .home-weather-chip-temp {
+    gap: 0;
+    font-size: 22px;
+    line-height: 1.02;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  #homeSection .home-weather-condition {
+    margin: 0;
+    color: rgba(255, 248, 234, 0.62);
+    font-size: 11.5px;
+    line-height: 1.2;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  #homeSection .home-weather-divider {
+    flex: 0 0 1px;
+    align-self: stretch;
+    width: 1px;
+    min-height: 38px;
+    margin: 2px 0;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.14) 18%,
+      rgba(255, 255, 255, 0.14) 82%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+
+  #homeSection .home-weather-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  #homeSection .home-weather-chip-wind {
+    gap: 5px;
+    font-size: 12px;
+    line-height: 1.15;
+    font-weight: 800;
+  }
+
+  #homeSection .home-weather-pressure {
+    margin: 0;
+    color: rgba(255, 248, 234, 0.72);
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
   }
 
   #homeSection .home-weather-details {
@@ -632,13 +715,18 @@
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 750;
     pointer-events: none;
   }
 
   #homeSection .home-weather-details[open] .home-weather-chip-bite {
     display: inline-flex;
+  }
+
+  #homeSection .home-weather-chip-bite .home-weather-icon-img {
+    width: 20px;
+    height: 20px;
   }
 
   #homeSection .home-weather-bite-label {
@@ -975,20 +1063,34 @@
   #homeSection .home-weather-card {
     width: calc(100% - 16px);
     margin: 0 auto 14px;
-    padding: 9px 12px;
+    padding: 8px 12px;
   }
 
   #homeSection .home-weather-strip {
-    min-height: 38px;
-    gap: 8px;
+    min-height: 48px;
+    gap: 6px;
   }
 
-  #homeSection .home-weather-main {
-    gap: 8px;
+  #homeSection .home-weather-mode-icon {
+    width: 30px;
+    height: 30px;
   }
 
-  #homeSection .home-weather-chip {
-    font-size: 12px;
+  #homeSection .home-weather-chip-temp {
+    font-size: 20px;
+  }
+
+  #homeSection .home-weather-condition,
+  #homeSection .home-weather-pressure {
+    font-size: 10.5px;
+  }
+
+  #homeSection .home-weather-chip-wind {
+    font-size: 11px;
+  }
+
+  #homeSection .home-weather-divider {
+    min-height: 34px;
   }
 
   #homeSection .home-weather-details-toggle {
