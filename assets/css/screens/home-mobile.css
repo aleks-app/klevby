@@ -64,8 +64,7 @@
     padding-left: calc(50vw - 50%) !important;
     padding-right: calc(50vw - 50%) !important;
     background:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.08) 0%, rgba(2, 4, 3, 0.18) 34%, rgba(2, 4, 3, 0.64) 66%, rgba(2, 4, 3, 0.92) 100%),
-      url("../../brand/home-screen-bg-orange-fisherman.png") center -60px / 100% auto no-repeat !important;
+      linear-gradient(180deg, rgba(2, 4, 3, 0.98) 0%, rgba(2, 4, 3, 1) 100%) !important;
   }
 
   #homeSection::before {
@@ -87,9 +86,9 @@
     padding: calc(env(safe-area-inset-top) + 124px) 26px 24px !important;
     border-radius: 0 !important;
     overflow: visible !important;
-    background: transparent !important;
-    background-color: transparent !important;
-    background-image: none !important;
+    background:
+      linear-gradient(180deg, rgba(2, 4, 3, 0.08) 0%, rgba(2, 4, 3, 0.18) 34%, rgba(2, 4, 3, 0.64) 66%, rgba(2, 4, 3, 0.92) 100%),
+      url("../../brand/home-screen-bg-orange-fisherman.png") center -95px / 100% auto no-repeat !important;
     border: 0 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
@@ -1036,8 +1035,6 @@
     min-height: 334px !important;
     padding: calc(env(safe-area-inset-top) + 120px) 22px 23px !important;
     border-radius: 0 !important;
-    background: transparent !important;
-    background-image: none !important;
     border: 0 !important;
     box-shadow: none !important;
   }
