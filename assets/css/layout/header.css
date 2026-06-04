@@ -470,6 +470,10 @@ header[data-chrome-mode="feed"] .mobile-actions {
 }
 
 @media (max-width: 900px) {
+  body[data-app-chrome-mode="home"] header {
+    padding: env(safe-area-inset-top) 0 5px;
+  }
+
   .mobile-header-actions {
     gap: 10px;
   }
