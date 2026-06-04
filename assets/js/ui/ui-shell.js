@@ -187,6 +187,12 @@ function updateHomeFloatButton() {
     return;
   }
 
+  if (visibleSection === "feed") {
+    setHomeFloatButtonMode(btn, "");
+    btn.classList.remove("show");
+    return;
+  }
+
   setHomeFloatButtonMode(btn, "back");
   btn.classList.add("show");
 }
