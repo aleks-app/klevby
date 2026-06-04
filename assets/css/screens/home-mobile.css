@@ -19,7 +19,7 @@
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (display-mode: standalone) {
   html:has(#homeSection:not(.hidden)),
   body:has(#homeSection:not(.hidden)) {
     height: 100dvh;
@@ -27,14 +27,31 @@
     overscroll-behavior-y: none;
   }
 
-  html:has(#homeSection:not(.hidden)) {
-    background: #020403;
-  }
-
   body:has(#homeSection:not(.hidden)) #homeSection {
     min-height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  html.pwa-standalone:has(#homeSection:not(.hidden)),
+  body.pwa-installed:has(#homeSection:not(.hidden)) {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection {
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  html:has(#homeSection:not(.hidden)) {
+    background: #020403;
   }
 
   header {
