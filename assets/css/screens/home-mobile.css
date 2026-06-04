@@ -555,6 +555,10 @@
       linear-gradient(180deg, #171412 0%, #111111 48%, #080808 100%);
   }
 
+  #feedSection .feed-screen-title {
+    color: #F47A2B !important;
+  }
+
   #feedSection .feed-screen-shell {
     margin-top: -72px;
   }
