@@ -492,15 +492,16 @@
   #homeSection .home-weather-strip {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-height: 52px;
   }
 
   #homeSection .home-weather-main {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+    column-gap: 12px;
     flex: 1 1 auto;
     align-items: center;
-    gap: 10px;
     min-width: 0;
     order: 1;
   }
@@ -514,7 +515,7 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
-    flex: 1 1 auto;
+    max-width: 100%;
   }
 
   #homeSection .home-weather-mode-icon {
@@ -551,11 +552,11 @@
   }
 
   #homeSection .home-weather-divider {
-    flex: 0 0 1px;
-    align-self: stretch;
     width: 1px;
     min-height: 38px;
     margin: 2px 0;
+    justify-self: stretch;
+    align-self: center;
     background: linear-gradient(
       180deg,
       rgba(255, 255, 255, 0) 0%,
@@ -572,7 +573,7 @@
     justify-content: center;
     gap: 3px;
     min-width: 0;
-    flex: 0 1 auto;
+    padding-right: 6px;
   }
 
   #homeSection .home-weather-chip-wind {
@@ -599,12 +600,13 @@
   #homeSection .home-weather-details-toggle {
     order: 10;
     flex: 0 0 36px;
+    align-self: center;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 36px;
     height: 36px;
-    margin: 0;
+    margin: 0 0 0 2px;
     padding: 0;
     list-style: none;
     border: 1px solid rgba(244, 178, 74, 0.18);
@@ -1068,7 +1070,15 @@
 
   #homeSection .home-weather-strip {
     min-height: 48px;
-    gap: 6px;
+    gap: 8px;
+  }
+
+  #homeSection .home-weather-main {
+    column-gap: 10px;
+  }
+
+  #homeSection .home-weather-stats {
+    padding-right: 4px;
   }
 
   #homeSection .home-weather-mode-icon {
