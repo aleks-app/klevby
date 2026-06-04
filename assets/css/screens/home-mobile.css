@@ -1327,12 +1327,12 @@
 
 @media (max-width: 767px) and (max-height: 820px) {
   #homeSection .hero {
-    min-height: 286px !important;
+    min-height: 278px !important;
     padding: calc(env(safe-area-inset-top) + 108px) 26px 24px !important;
   }
 
   #homeSection .hero-copy {
-    min-height: 188px !important;
+    min-height: 182px !important;
   }
 
   #homeSection .hero-title-brand {
@@ -1349,7 +1349,7 @@
   }
 
   #homeSection .home-quick-action-card {
-    min-height: 94px;
+    min-height: 90px;
     padding: 10px 6px 10px;
   }
 
