@@ -20,6 +20,15 @@
 }
 
 @media (max-width: 767px) {
+  html:has(#homeSection:not(.hidden)),
+  body:has(#homeSection:not(.hidden)) {
+    overscroll-behavior-y: none;
+  }
+
+  html:has(#homeSection:not(.hidden)) {
+    background: #020403;
+  }
+
   header {
     background: transparent !important;
     background-color: transparent !important;
