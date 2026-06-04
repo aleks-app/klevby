@@ -11,6 +11,10 @@
   display: none;
 }
 
+#homeSection .home-quick-actions {
+  display: none;
+}
+
 @media (max-width: 767px) {
   header {
     background: transparent !important;
@@ -206,6 +210,84 @@
   #homeSection .hero-feature-chip:active {
     transform: none !important;
     opacity: 0.82 !important;
+  }
+
+  #homeSection .home-quick-actions {
+    display: block;
+    position: relative;
+    z-index: 2;
+    margin: 2px 18px 16px;
+    padding: 0;
+  }
+
+  #homeSection .home-quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #homeSection .home-quick-action-card {
+    appearance: none;
+    -webkit-appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 92px;
+    margin: 0;
+    padding: 12px 6px 11px;
+    border: 1px solid rgba(244, 178, 74, 0.16);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(244, 122, 43, 0.14), transparent 52%),
+      linear-gradient(180deg, rgba(22, 20, 18, 0.94) 0%, rgba(10, 10, 10, 0.98) 100%);
+    color: #fff8ea;
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.30),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 0.16s ease,
+      opacity 0.16s ease,
+      border-color 0.16s ease;
+  }
+
+  #homeSection .home-quick-action-card:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+    border-color: rgba(244, 178, 74, 0.28);
+  }
+
+  #homeSection .home-quick-action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: rgba(244, 122, 43, 0.12);
+    border: 1px solid rgba(244, 122, 43, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  #homeSection .home-quick-action-icon img {
+    width: 22px;
+    height: 22px;
+    display: block;
+    filter: invert(52%) sepia(72%) saturate(2200%) hue-rotate(353deg) brightness(104%) contrast(98%);
+  }
+
+  #homeSection .home-quick-action-label {
+    max-width: 100%;
+    color: rgba(255, 248, 234, 0.94);
+    font-size: 10.5px;
+    line-height: 1.22;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    text-align: center;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   }
 
   #homeSection #forecastPanel.forecast-panel {
