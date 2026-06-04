@@ -221,7 +221,7 @@
     position: relative;
     z-index: 2;
     width: calc(100% - 16px);
-    margin: 2px auto 16px;
+    margin: -14px auto 14px;
     padding: 0;
   }
 
