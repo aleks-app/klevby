@@ -554,6 +554,10 @@
       radial-gradient(circle at 50% 0%, rgba(244, 122, 43, 0.14), transparent 36%),
       linear-gradient(180deg, #171412 0%, #111111 48%, #080808 100%);
   }
+
+  #feedSection .feed-screen-shell {
+    margin-top: -128px;
+  }
 }
 
 @media (max-width: 390px) {
