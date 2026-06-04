@@ -169,7 +169,7 @@
   }
 
   #homeSection .hero-features {
-    margin-top: 4px !important;
+    display: none !important;
   }
 
   #homeSection .hero-features-title {
