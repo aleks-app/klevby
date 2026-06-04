@@ -485,8 +485,8 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
-  #homeSection .home-weather-card:has(.home-weather-details[open]) {
-    padding-bottom: 44px;
+  #homeSection:not(.hidden) ~ .footer {
+    display: none !important;
   }
 
   #homeSection .home-weather-strip {
@@ -502,14 +502,20 @@
     align-items: center;
     gap: 10px;
     min-width: 0;
+    order: 1;
+  }
+
+  #homeSection .home-weather-strip:has(.home-weather-details[open]) .home-weather-main {
+    display: none;
   }
 
   #homeSection .home-weather-details {
-    flex: 0 0 auto;
-    position: static;
+    display: contents;
   }
 
   #homeSection .home-weather-details-toggle {
+    order: 10;
+    flex: 0 0 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -540,15 +546,19 @@
   }
 
   #homeSection .home-weather-details-arrow {
-    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 21px;
     line-height: 1;
     font-weight: 800;
-    transform: translateX(1px);
     transition: transform 0.16s ease;
   }
 
   #homeSection .home-weather-details[open] .home-weather-details-arrow {
-    transform: rotate(90deg) translateX(1px);
+    transform: rotate(90deg);
   }
 
   #homeSection .home-weather-chip {
@@ -594,19 +604,19 @@
   }
 
   #homeSection .home-weather-chip-bite {
-    position: absolute;
-    left: 14px;
-    right: 14px;
-    bottom: 10px;
+    order: 1;
+    flex: 1 1 auto;
     display: none;
     align-items: center;
     justify-content: flex-start;
     gap: 6px;
-    padding: 8px 10px;
-    border: 1px solid rgba(244, 178, 74, 0.12);
-    border-radius: 12px;
-    background: rgba(12, 18, 16, 0.72);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     font-size: 12.5px;
     font-weight: 750;
     pointer-events: none;
@@ -953,10 +963,6 @@
     padding: 9px 12px;
   }
 
-  #homeSection .home-weather-card:has(.home-weather-details[open]) {
-    padding-bottom: 42px;
-  }
-
   #homeSection .home-weather-strip {
     min-height: 38px;
     gap: 8px;
@@ -971,6 +977,7 @@
   }
 
   #homeSection .home-weather-details-toggle {
+    flex: 0 0 34px;
     width: 34px;
     height: 34px;
     border-radius: 11px;
@@ -981,9 +988,6 @@
   }
 
   #homeSection .home-weather-chip-bite {
-    left: 12px;
-    right: 12px;
-    bottom: 9px;
     font-size: 12px;
   }
 
