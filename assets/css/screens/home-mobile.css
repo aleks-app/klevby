@@ -20,6 +20,10 @@
 }
 
 @media (max-width: 767px) {
+  body[data-app-chrome-mode="home"] {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
   header {
     background: transparent !important;
     background-color: transparent !important;
