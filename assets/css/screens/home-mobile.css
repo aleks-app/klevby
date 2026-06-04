@@ -721,7 +721,7 @@
 
   #feedSection .feed-screen-title {
     margin: 0 0 3px;
-    color: #F47A2B;
+    color: #F47A2B !important;
     font-size: 25px;
     font-weight: 950;
     letter-spacing: -0.04em;
