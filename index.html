@@ -319,25 +319,30 @@
       </div>
 
       <section class="home-weather-card" aria-label="Погода для рыбалки">
-        <div class="home-weather-card-head">
-          <h2 class="home-weather-card-title">Сегодня для рыбалки</h2>
-        </div>
+        <div class="home-weather-strip">
+          <div class="home-weather-main" aria-label="Краткая погода">
+            <button class="home-weather-chip" id="homeWeatherTempChip" type="button" aria-label="Температура">
+              <span class="home-weather-chip-icon">🌡️</span>
+              <span class="home-weather-chip-value">—</span>
+            </button>
 
-        <div class="home-weather-chips" aria-label="Краткая погода">
-          <button class="home-weather-chip" id="homeWeatherTempChip" type="button" aria-label="Температура">
-            <span class="home-weather-chip-icon">🌡️</span>
-            <span class="home-weather-chip-value">—</span>
-          </button>
+            <button class="home-weather-chip" id="homeWeatherWindChip" type="button" aria-label="Ветер">
+              <span class="home-weather-chip-icon">💨</span>
+              <span class="home-weather-chip-value">—</span>
+            </button>
+          </div>
 
-          <button class="home-weather-chip" id="homeWeatherWindChip" type="button" aria-label="Ветер">
-            <span class="home-weather-chip-icon">💨</span>
-            <span class="home-weather-chip-value">—</span>
-          </button>
+          <details class="home-weather-details">
+            <summary class="home-weather-details-toggle" aria-label="Показать прогноз клёва">
+              <span class="home-weather-details-arrow">›</span>
+            </summary>
 
-          <button class="home-weather-chip home-weather-chip-bite" id="homeWeatherBiteChip" type="button" aria-label="Прогноз клёва">
-            <span class="home-weather-chip-icon">🐟</span>
-            <span class="home-weather-chip-value">Клёв</span>
-          </button>
+            <button class="home-weather-chip home-weather-chip-bite" id="homeWeatherBiteChip" type="button" aria-label="Прогноз клёва">
+              <span class="home-weather-chip-icon">🐟</span>
+              <span class="home-weather-bite-label">Клёв:</span>
+              <span class="home-weather-chip-value">—</span>
+            </button>
+          </details>
         </div>
       </section>
 
