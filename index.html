@@ -322,23 +322,31 @@
         <div class="home-weather-strip">
           <div class="home-weather-main" aria-label="Краткая погода">
             <button class="home-weather-chip" id="homeWeatherTempChip" type="button" aria-label="Температура">
-              <span class="home-weather-chip-icon">🌡️</span>
+              <span class="home-weather-chip-icon" aria-hidden="true">
+                <img src="assets/icons/weather/cloud-sun.svg" alt="" class="home-weather-icon-img" decoding="async" />
+              </span>
               <span class="home-weather-chip-value">—</span>
             </button>
 
             <button class="home-weather-chip" id="homeWeatherWindChip" type="button" aria-label="Ветер">
-              <span class="home-weather-chip-icon">💨</span>
+              <span class="home-weather-chip-icon" aria-hidden="true">
+                <img src="assets/icons/weather/wind.svg" alt="" class="home-weather-icon-img" decoding="async" />
+              </span>
               <span class="home-weather-chip-value">—</span>
             </button>
           </div>
 
           <details class="home-weather-details">
             <summary class="home-weather-details-toggle" aria-label="Показать прогноз клёва">
-              <span class="home-weather-details-arrow">›</span>
+              <span class="home-weather-details-arrow" aria-hidden="true">
+                <img src="assets/icons/weather/chevron-right.svg" alt="" class="home-weather-chevron-img" decoding="async" />
+              </span>
             </summary>
 
             <button class="home-weather-chip home-weather-chip-bite" id="homeWeatherBiteChip" type="button" aria-label="Прогноз клёва">
-              <span class="home-weather-chip-icon">🐟</span>
+              <span class="home-weather-chip-icon" aria-hidden="true">
+                <img src="assets/icons/weather/fish.svg" alt="" class="home-weather-icon-img" decoding="async" />
+              </span>
               <span class="home-weather-bite-label">Клёв:</span>
               <span class="home-weather-chip-value">—</span>
             </button>
