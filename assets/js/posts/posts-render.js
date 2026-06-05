@@ -311,8 +311,23 @@
 
     return date.toLocaleDateString("ru-RU", {
       day: "2-digit",
-      month: "short"
+      month: "long"
     });
+  }
+
+  function formatTripWhen(post) {
+    const tripDateText = formatTripDate(post?.trip_date);
+    const tripTime = String(post?.trip_time || "").trim();
+
+    if (tripDateText && tripTime) {
+      return `${tripDateText} · ${tripTime}`;
+    }
+
+    if (tripDateText) {
+      return tripDateText;
+    }
+
+    return "Дата не указана";
   }
 
   function isMobileFilterViewport() {
@@ -1059,7 +1074,7 @@
     const name = post?.name || "Рыбак";
     const city = post?.city || "";
     const destination = post?.destination || "";
-    const tripTime = post?.trip_time || "";
+    const tripWhenText = formatTripWhen(post);
     const tripDateText = formatTripDate(post?.trip_date);
     const transport = post?.transport || "";
     const seats = post?.seats || "";
@@ -1092,15 +1107,6 @@
         </button>
       `;
 
-    const date = post?.created_at
-      ? new Date(post.created_at).toLocaleString("ru-RU", {
-          day: "2-digit",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit"
-        })
-      : "";
-
     return `
       <div
         class="card trip-card ${canManage ? "can-manage" : ""}"
@@ -1120,7 +1126,7 @@
           <div class="trip-facts">
             <div class="trip-fact">
               <div class="trip-fact-label">Когда</div>
-              <div class="trip-fact-value">${escapeHtml(tripTime || tripDateText || date || "Не указано")}</div>
+              <div class="trip-fact-value">${escapeHtml(tripWhenText)}</div>
             </div>
 
             <div class="trip-fact">
@@ -1165,7 +1171,8 @@
     openPostModalSafe,
     isPostExpired,
     sortActivePosts,
-    setMobileFilterExpanded
+    setMobileFilterExpanded,
+    formatTripWhen
   };
 
   ensurePostsRenderStyles();

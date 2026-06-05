@@ -420,7 +420,12 @@
 
     const image = getCardImage(post);
     const tg = cleanTelegram(post.telegram);
-    const date = post.created_at
+    const tripWhenText =
+      typeof window.KlevbyPostsRender?.formatTripWhen === "function"
+        ? window.KlevbyPostsRender.formatTripWhen(post)
+        : "Дата не указана";
+
+    const createdAtText = post.created_at
       ? new Date(post.created_at).toLocaleString("ru-RU", {
           day: "2-digit",
           month: "long",
@@ -440,11 +445,11 @@
     metaEl.innerHTML = `
       ${post.city ? `<span class="post-modal-pill">📍 Откуда: ${escapeHtml(post.city)}</span>` : ""}
       ${post.destination ? `<span class="post-modal-pill">🗺️ Куда: ${escapeHtml(post.destination)}</span>` : ""}
-      ${post.trip_time ? `<span class="post-modal-pill">🕒 Когда: ${escapeHtml(post.trip_time)}</span>` : ""}
+      <span class="post-modal-pill">🕒 Когда: ${escapeHtml(tripWhenText)}</span>
       ${fishingType ? `<span class="post-modal-pill">🎣 ${escapeHtml(fishingType)}</span>` : ""}
       ${post.transport ? `<span class="post-modal-pill">🚗 ${escapeHtml(post.transport)}</span>` : ""}
       ${post.seats ? `<span class="post-modal-pill">👥 ${escapeHtml(post.seats)}</span>` : ""}
-      ${date ? `<span class="post-modal-pill">Создано: ${escapeHtml(date)}</span>` : ""}
+      ${createdAtText ? `<span class="post-modal-pill">Создано: ${escapeHtml(createdAtText)}</span>` : ""}
       ${tg ? `<span class="post-modal-pill">Telegram</span>` : ""}
       ${ownPost ? `<span class="post-modal-pill">Моё объявление</span>` : ""}
     `;
