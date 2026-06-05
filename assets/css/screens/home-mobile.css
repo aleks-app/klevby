@@ -840,6 +840,21 @@
     font-weight: 850;
   }
 
+  #homeSection .home-weather-details[open] .home-weather-chip-bite {
+    gap: 8px;
+    line-height: 1.2;
+    align-items: center;
+    min-height: 36px;
+  }
+
+  #homeSection .home-weather-details[open] .home-weather-bite-label {
+    color: rgba(255, 248, 234, 0.94);
+  }
+
+  #homeSection .home-weather-strip:has(.home-weather-details[open]) .home-weather-details-toggle {
+    margin-left: 10px;
+  }
+
   #homeSection #profileFeedSection.grid::before,
   #feedSection #profileFeedSection.grid::before,
   #homeSection #profileFeedSection.social-feed-grid::before,
