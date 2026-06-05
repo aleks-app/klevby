@@ -841,10 +841,12 @@
   }
 
   #homeSection .home-weather-details[open] .home-weather-chip-bite {
+    flex: 1 1 auto;
     gap: 8px;
     line-height: 1.2;
     align-items: center;
     min-height: 36px;
+    min-width: 0;
   }
 
   #homeSection .home-weather-details[open] .home-weather-bite-label {
@@ -852,7 +854,7 @@
   }
 
   #homeSection .home-weather-strip:has(.home-weather-details[open]) .home-weather-details-toggle {
-    margin-left: 10px;
+    margin-left: auto;
   }
 
   #homeSection #profileFeedSection.grid::before,
