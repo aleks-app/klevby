@@ -87,7 +87,10 @@
   }
 
   function setAppChromeMode(mode) {
-    const cleanMode = mode === "feed" ? "feed" : "home";
+    const cleanMode =
+      mode === "feed" ? "feed" :
+      mode === "inner" ? "inner" :
+      "home";
     const header = document.querySelector("header");
 
     if (header) {

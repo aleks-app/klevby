@@ -1290,18 +1290,22 @@
     font-size: 13px !important;
   }
 
-  body[data-app-chrome-mode="feed"] header {
+  body[data-app-chrome-mode="feed"] header,
+  body[data-app-chrome-mode="inner"] header {
     padding: calc(env(safe-area-inset-top) + 8px) 0 0;
     background: transparent;
   }
 
-  body[data-app-chrome-mode="feed"] header .header-inner {
+  body[data-app-chrome-mode="feed"] header .header-inner,
+  body[data-app-chrome-mode="inner"] header .header-inner {
     min-height: 40px;
     align-items: center;
   }
 
   body[data-app-chrome-mode="feed"] header .app-header-back-btn,
-  body[data-app-chrome-mode="feed"] header .mobile-profile-btn {
+  body[data-app-chrome-mode="feed"] header .mobile-profile-btn,
+  body[data-app-chrome-mode="inner"] header .app-header-back-btn,
+  body[data-app-chrome-mode="inner"] header .mobile-profile-btn {
     width: 40px;
     height: 40px;
     min-width: 40px;
@@ -1309,7 +1313,8 @@
     border-radius: 15px;
   }
 
-  body[data-app-chrome-mode="feed"] header .app-header-back-icon {
+  body[data-app-chrome-mode="feed"] header .app-header-back-icon,
+  body[data-app-chrome-mode="inner"] header .app-header-back-icon {
     font-size: 18px;
   }
 

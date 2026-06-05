@@ -564,7 +564,10 @@ function setAppChromeMode(mode) {
     return navigation.setAppChromeMode(mode);
   }
 
-  const cleanMode = mode === "feed" ? "feed" : "home";
+  const cleanMode =
+    mode === "feed" ? "feed" :
+    mode === "inner" ? "inner" :
+    "home";
   const header = document.querySelector("header");
 
   if (header) {
@@ -640,7 +643,11 @@ function showSection(section) {
 
   const safeSection = String(section || "home").trim();
 
-  setAppChromeMode(safeSection === "feed" ? "feed" : "home");
+  setAppChromeMode(
+    safeSection === "home" ? "home" :
+    safeSection === "feed" ? "feed" :
+    "inner"
+  );
 
   if (safeSection === "profile") {
     if (typeof window.openKlevbyProfile === "function") {
