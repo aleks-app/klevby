@@ -1436,7 +1436,7 @@
 @media (min-width: 391px) and (max-width: 767px) and (min-height: 821px) {
   body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text,
   html.pwa-standalone:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text {
-    margin-top: 5px;
+    margin-top: 8px;
     line-height: 1.36;
   }
 
