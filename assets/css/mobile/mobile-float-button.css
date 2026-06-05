@@ -91,3 +91,10 @@
     font-size: 24px;
   }
 }
+
+body[data-app-chrome-mode="inner"] #homeFloatBtn.home-float-btn,
+body[data-app-chrome-mode="inner"] #homeFloatBtn.home-float-btn.show {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}

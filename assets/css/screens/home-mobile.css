@@ -1313,9 +1313,10 @@
     border-radius: 15px;
   }
 
-  body[data-app-chrome-mode="feed"] header .app-header-back-icon,
-  body[data-app-chrome-mode="inner"] header .app-header-back-icon {
-    font-size: 18px;
+  body[data-app-chrome-mode="feed"] header .app-header-back-icon img,
+  body[data-app-chrome-mode="inner"] header .app-header-back-icon img {
+    width: 18px;
+    height: 18px;
   }
 
   #feedSection {

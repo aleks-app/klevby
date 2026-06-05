@@ -193,6 +193,12 @@ function updateHomeFloatButton() {
     return;
   }
 
+  if (document.body.getAttribute("data-app-chrome-mode") === "inner") {
+    setHomeFloatButtonMode(btn, "");
+    btn.classList.remove("show");
+    return;
+  }
+
   setHomeFloatButtonMode(btn, "back");
   btn.classList.add("show");
 }
