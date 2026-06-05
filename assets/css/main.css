@@ -3,6 +3,7 @@
 @import url("./layout/header.css");
 @import url("./layout/bottom-nav.css");
 
+@import url("./components/app-surface-gate.css");
 @import url("./components/buttons-forms.css");
 @import url("./components/feed-cards.css");
 @import url("./components/modals-install.css");

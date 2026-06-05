@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" class="">
 <head>
+  <script src="assets/js/app/app-surface-gate.js?v=20260605-app-surface-gate-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     if (!window.supabase) {
@@ -97,7 +98,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260603-feed-section-header-cache-1">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260605-app-surface-gate-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,6 +113,15 @@
 </head>
 
 <body data-app-chrome-mode="home">
+  <section id="desktopBlockedScreen" aria-labelledby="desktopBlockedTitle">
+    <div class="desktop-blocked-card">
+      <img class="desktop-blocked-logo" src="assets/brand/klevby-fish-logo.png" alt="Klevby" />
+      <h1 id="desktopBlockedTitle">Klevby — мобильное приложение для рыбаков.</h1>
+      <p>Откройте Klevby с телефона или установите Android-приложение.</p>
+    </div>
+  </section>
+
+  <div id="klevbyAppRoot">
   <div id="appSplash" class="app-splash" aria-hidden="true">
     <div class="splash-logo">
       <span class="splash-k">K</span>
@@ -884,6 +894,7 @@
     <button class="mobile-tab-btn mobile-tab-create" onclick="goMobileCreate()"><span class="mobile-tab-icon"></span><span class="mobile-tab-text">Создать</span></button>
     <button class="mobile-tab-btn" onclick="goMobileTrips()"><span class="mobile-tab-icon"></span><span class="mobile-tab-text">Выезды</span></button>
     <button id="nav-chat" class="mobile-tab-btn"><span class="mobile-tab-icon"></span><span class="mobile-tab-text">Чат</span></button>
+  </div>
   </div>
 
   <script src="assets/js/config.js?v=20260503-4" defer></script>

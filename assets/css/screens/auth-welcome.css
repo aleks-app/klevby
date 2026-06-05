@@ -6,10 +6,10 @@ body:has(#authSection:not(.hidden)) {
   background: #040807;
 }
 
-body:has(#authSection:not(.hidden)) > header,
-body:has(#authSection:not(.hidden)) > #homeFloatBtn,
-body:has(#authSection:not(.hidden)) > #installBanner,
-body:has(#authSection:not(.hidden)) > .mobile-tabbar {
+body:has(#authSection:not(.hidden)) #klevbyAppRoot > header,
+body:has(#authSection:not(.hidden)) #klevbyAppRoot > #homeFloatBtn,
+body:has(#authSection:not(.hidden)) #klevbyAppRoot > #installBanner,
+body:has(#authSection:not(.hidden)) #klevbyAppRoot > .mobile-tabbar {
   display: none !important;
 }
 
