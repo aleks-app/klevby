@@ -22,6 +22,14 @@
   function setMode(mode, dependencies = {}) {
     const nextMode = normalizeMode(mode);
 
+    if (nextMode === "mine") {
+      if (typeof dependencies.setMineTripsMode === "function") {
+        dependencies.setMineTripsMode("active");
+      } else if (typeof window.KlevbyPostsState?.setMineTripsMode === "function") {
+        window.KlevbyPostsState.setMineTripsMode("active");
+      }
+    }
+
     if (typeof dependencies.setViewMode === "function") {
       dependencies.setViewMode(nextMode);
     } else {
@@ -32,6 +40,24 @@
       dependencies.showSection("trips");
     } else if (typeof window.showSection === "function") {
       window.showSection("trips");
+    }
+
+    if (typeof window.renderPosts === "function") {
+      window.renderPosts();
+    }
+
+    return nextMode;
+  }
+
+  function setMineTripsMode(mode, dependencies = {}) {
+    const nextMode = mode === "expired" ? "expired" : "active";
+
+    if (typeof dependencies.setMineTripsMode === "function") {
+      dependencies.setMineTripsMode(nextMode);
+    } else if (typeof window.KlevbyPostsState?.setMineTripsMode === "function") {
+      window.KlevbyPostsState.setMineTripsMode(nextMode);
+    } else {
+      window.klevbyMineTripsMode = nextMode;
     }
 
     if (typeof window.renderPosts === "function") {
@@ -73,6 +99,7 @@
 
   window.KlevbyAppTripActions = {
     setMode,
+    setMineTripsMode,
     showTripsBoard,
     showCreatePostScreen,
     setProfileReturnMode

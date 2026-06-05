@@ -77,3 +77,11 @@ test("partition membership does not depend on input order", () => {
 
   assert.deepEqual(canonicalize(forward), canonicalize(reversed));
 });
+
+test("mine trips mode defaults to active and only accepts expired", () => {
+  assert.equal(state.getMineTripsMode(), "active");
+  assert.equal(state.setMineTripsMode("expired"), "expired");
+  assert.equal(state.getMineTripsMode(), "expired");
+  assert.equal(state.setMineTripsMode("unexpected"), "active");
+  assert.equal(state.getMineTripsMode(), "active");
+});

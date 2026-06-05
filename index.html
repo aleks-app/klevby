@@ -98,7 +98,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260605-desktop-cleanup-1">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260605-mine-trips-archive-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -421,6 +421,23 @@
       </div>
 
       <div id="statusLine" class="info-line">Загрузка объявлений...</div>
+
+      <div id="mineTripsSwitcher" class="mine-trips-switcher hidden" role="group" aria-label="Показать мои актуальные или прошедшие выезды">
+        <button
+          class="mine-trips-switcher-btn is-active"
+          type="button"
+          data-mine-trips-mode="active"
+          aria-pressed="true"
+          onclick="setMineTripsMode('active')"
+        >Актуальные</button>
+        <button
+          class="mine-trips-switcher-btn"
+          type="button"
+          data-mine-trips-mode="expired"
+          aria-pressed="false"
+          onclick="setMineTripsMode('expired')"
+        >Прошедшие <span id="mineExpiredTripsCount" class="mine-trips-count hidden"></span></button>
+      </div>
 
       <div class="filter-card">
         <div class="filter-title">
@@ -897,10 +914,10 @@
   <script src="assets/js/weather.js?v=20260503-4" defer></script>
   <script src="assets/js/pwa.js?v=20260524-pwa-update-pr8-1" defer></script>
   <script src="assets/js/auth.js?v=20260529-auth-credential-clearing-1" defer></script>
-  <script src="assets/js/posts/posts-state.js?v=20260605-posts-lifecycle-partitions-1" defer></script>
+  <script src="assets/js/posts/posts-state.js?v=20260605-mine-trips-archive-1" defer></script>
   <script src="assets/js/posts/posts-utils.js?v=20260515-trip-card-images-1" defer></script>
   <script src="assets/js/posts/posts-api.js?v=20260524-posts-resume-owner-pr13-1" defer></script>
-  <script src="assets/js/posts/posts-render.js?v=20260605-posts-lifecycle-partitions-1" defer></script>
+  <script src="assets/js/posts/posts-render.js?v=20260605-mine-trips-archive-1" defer></script>
   <script src="assets/js/posts/posts-modal.js?v=20260515-posts-modal-owner-icons-1" defer></script>
   <script src="assets/js/posts/posts-form.js?v=20260515-posts-form-trip-date-required-ui-1" defer></script>
   <script src="assets/js/posts/posts-actions.js?v=20260515-posts-actions-rest-auth-1" defer></script>
@@ -962,7 +979,7 @@
   <script src="assets/js/app/app-ui-helpers.js?v=20260513-app-ui-helpers-split-1" defer></script>
   <script src="assets/js/app/app-filters.js?v=20260513-app-filters-split-1" defer></script>
   <script src="assets/js/app/app-global-events.js?v=20260513-app-global-events-split-1" defer></script>
-  <script src="assets/js/app/app-trip-actions.js?v=20260513-app-trip-actions-split-1" defer></script>
+  <script src="assets/js/app/app-trip-actions.js?v=20260605-mine-trips-archive-1" defer></script>
   <script src="assets/js/app/app-window-exports.js?v=20260603-feed-section-split-cache-1" defer></script>
   <script src="assets/js/app/app-ponds-bridge.js?v=20260513-app-ponds-bridge-split-1" defer></script>
   <script src="assets/js/supabase/supabase-core.js?v=20260524-supabase-auth-pr2-1" defer></script>
@@ -971,7 +988,7 @@
   <script src="assets/js/supabase/supabase-realtime-manager.js?v=20260524-supabase-realtime-pr3-1" defer></script>
   <script src="assets/js/app/app-resume-manager.js?v=20260524-feed-observability-pr26-1" defer></script>
   <script src="assets/js/app/app-viewport-debug.js?v=20260530-viewport-debug-1" defer></script>
-  <script src="assets/js/app.js?v=20260605-desktop-cleanup-1" defer></script>
+  <script src="assets/js/app.js?v=20260605-mine-trips-archive-1" defer></script>
   <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
   <script src="assets/js/chat-state.js?v=20260506-1" defer></script>
   <script src="assets/js/chat-push.js?v=20260504-1" defer></script>
