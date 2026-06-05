@@ -1007,7 +1007,7 @@
         <div class="info-line">
           ${emptyText}
           <div style="margin-top:12px;">
-            <button class="small-btn green" type="button" onclick="showSection('create')">Создать выезд</button>
+            <button class="small-btn green" type="button" onclick="showCreatePostScreen()">Создать выезд</button>
           </div>
         </div>
       `;
