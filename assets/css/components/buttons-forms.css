@@ -332,50 +332,110 @@ textarea {
 }
 
 .mine-trips-switcher {
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
-  display: inline-grid;
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   margin: 14px 0 0;
   padding: 4px;
-  border: 1px solid rgba(244,178,74,0.14);
-  border-radius: 16px;
-  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(244,178,74,0.11);
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(244,178,74,0.10), transparent 34%),
+    var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .mine-trips-switcher-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
   min-height: 44px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: calc(var(--radius-card) - 6px);
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 14px;
   font-weight: 800;
+  line-height: 1.2;
   cursor: pointer;
-  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .mine-trips-switcher-btn.is-active {
-  background: rgba(244,178,74,0.16);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(244,178,74,0.12), transparent 58%),
+    rgba(255,255,255,0.08);
   color: var(--text);
-  box-shadow: inset 0 0 0 1px rgba(244,178,74,0.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(244,178,74,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.mine-trips-switcher-btn:active {
+  transform: scale(0.985);
+  filter: brightness(0.96);
+}
+
+.mine-trips-switcher-btn:focus-visible {
+  outline: 0;
+  box-shadow:
+    0 0 0 3px rgba(244,178,74,0.16),
+    inset 0 0 0 1px rgba(244,178,74,0.20);
 }
 
 .mine-trips-count {
   display: inline-flex;
-  min-width: 20px;
-  height: 20px;
-  margin-left: 4px;
-  padding: 0 6px;
+  flex: 0 0 auto;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0 5px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: rgba(255,255,255,0.10);
-  font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.08);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
   line-height: 1;
+}
+
+.mine-trips-switcher-btn.is-active .mine-trips-count {
+  border-color: rgba(244,178,74,0.18);
+  background: rgba(244,178,74,0.12);
+  color: var(--text);
+}
+
+@media (max-width: 430px) {
+  .mine-trips-switcher-btn {
+    font-size: 13px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .mine-trips-count {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
 }
 
 .filter-card {
