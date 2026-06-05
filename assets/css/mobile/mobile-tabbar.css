@@ -241,7 +241,7 @@
       linear-gradient(180deg, #f09a58 0%, #f47a2b 58%, #d8611f 100%);
     border: 1px solid rgba(255, 255, 255, 0.16);
 
-    color: #111111;
+    color: #fff8ea;
     font-size: 0;
     line-height: 0;
     font-weight: 900;
@@ -266,7 +266,7 @@
     height: 5px;
 
     border-radius: 999px;
-    background: #111111;
+    background: #fff8ea;
 
     transform: translate(-50%, -50%);
   }
@@ -285,7 +285,7 @@
     width: 20px;
     height: 20px;
     transform: translate(-50%, -50%);
-    color: #111111;
+    color: #fff8ea;
     stroke-width: 2.1;
   }
 
