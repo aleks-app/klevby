@@ -5,6 +5,88 @@
   let postsInitialLoadStarted = false;
   let postsInitialLoadDone = false;
 
+  function normalizeTripDate(value) {
+    const raw = String(value || "").trim();
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+
+    if (!match) {
+      return "";
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return "";
+    }
+
+    return raw;
+  }
+
+  function getTodayIso(now = new Date()) {
+    const date = now instanceof Date ? now : new Date(now);
+
+    if (!Number.isFinite(date.getTime())) {
+      return "";
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function getTripLifecycle(post, todayIso = getTodayIso()) {
+    const tripDate = normalizeTripDate(post?.trip_date);
+    const normalizedToday = normalizeTripDate(todayIso) || getTodayIso();
+
+    if (!tripDate) {
+      return "undated";
+    }
+
+    return tripDate < normalizedToday ? "expired" : "active";
+  }
+
+  function isOwnedBy(post, ownerId) {
+    return Boolean(ownerId && post?.owner_id && String(post.owner_id) === String(ownerId));
+  }
+
+  function partitionTrips(posts, options = {}) {
+    const safePosts = Array.isArray(posts) ? posts : [];
+    const safeOptions = options && typeof options === "object" ? options : {};
+    const todayIso = normalizeTripDate(safeOptions.todayIso) || getTodayIso();
+    const ownerId = safeOptions.ownerId ?? null;
+    const partitions = {
+      activeAll: [],
+      expiredAll: [],
+      undatedAll: [],
+      activeMine: [],
+      expiredMine: [],
+      undatedMine: []
+    };
+
+    safePosts.forEach((post) => {
+      const lifecycle = getTripLifecycle(post, todayIso);
+      const allKey = `${lifecycle}All`;
+
+      partitions[allKey].push(post);
+
+      if (isOwnedBy(post, ownerId)) {
+        const mineKey = `${lifecycle}Mine`;
+        partitions[mineKey].push(post);
+      }
+    });
+
+    return partitions;
+  }
+
   function getOwnerId() {
     const user =
       (typeof currentUser !== "undefined" && currentUser)
@@ -168,6 +250,10 @@
   }
 
   window.KlevbyPostsState = {
+    normalizeTripDate,
+    getTodayIso,
+    getTripLifecycle,
+    partitionTrips,
     getOwnerId,
     getCurrentUserSafe,
     getCurrentAuthReady,
