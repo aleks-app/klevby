@@ -85,6 +85,30 @@ async function expectPhoneOrientation(page, orientation) {
 }
 
 test.describe('app surface gate', () => {
+  test('defers app runtime callbacks on blocked desktop until the surface becomes allowed', async ({ page, baseURL }) => {
+    await configureDeviceSignals(page);
+    await page.setViewportSize({ width: 901, height: 844 });
+    await openApp(page, baseURL);
+    await expectSurface(page, 'desktop-blocked');
+
+    await page.evaluate(() => {
+      window.__surfaceAllowedCallbackRuns = 0;
+      window.KlevbyAppSurface.runWhenAllowed(() => {
+        window.__surfaceAllowedCallbackRuns += 1;
+      });
+    });
+
+    await expect.poll(() => page.evaluate(() => window.__surfaceAllowedCallbackRuns)).toBe(0);
+
+    await page.setViewportSize({ width: 900, height: 844 });
+    await expectSurface(page, 'mobile-allowed');
+    await expect.poll(() => page.evaluate(() => window.__surfaceAllowedCallbackRuns)).toBe(1);
+
+    await page.setViewportSize({ width: 901, height: 844 });
+    await page.setViewportSize({ width: 900, height: 844 });
+    await expect.poll(() => page.evaluate(() => window.__surfaceAllowedCallbackRuns)).toBe(1);
+  });
+
   test('allows widths up to 900px and blocks wider desktop viewports without replacing app state', async ({ page, baseURL }) => {
     await configureDeviceSignals(page);
     await page.setViewportSize({ width: 390, height: 844 });

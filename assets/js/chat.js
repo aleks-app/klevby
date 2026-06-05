@@ -37,11 +37,21 @@
     });
   }
 
-  waitForSharedSupabaseClient()
-    .then((client) => setupChat(client))
-    .catch((error) => {
-      console.error("Klevby chat: не удалось запустить чат:", error);
-    });
+  function startChat() {
+    waitForSharedSupabaseClient()
+      .then((client) => setupChat(client))
+      .catch((error) => {
+        console.error("Klevby chat: не удалось запустить чат:", error);
+      });
+  }
+
+  const appSurface = window.KlevbyAppSurface;
+
+  if (appSurface && typeof appSurface.runWhenAllowed === "function") {
+    appSurface.runWhenAllowed(startChat);
+  } else {
+    startChat();
+  }
 
   function setupChat(chatDb) {
     injectExtraChatStyles();

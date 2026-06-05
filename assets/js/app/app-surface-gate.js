@@ -121,13 +121,48 @@
 
   const isPhone = classifyPhone();
 
+  function isAppSurfaceAllowed() {
+    return document.documentElement.dataset.appSurface !== BLOCKED_SURFACE;
+  }
+
+  function runWhenAllowed(callback) {
+    if (typeof callback !== "function") return;
+
+    if (isAppSurfaceAllowed()) {
+      callback();
+      return;
+    }
+
+    function handleSurfaceChange(event) {
+      if (!event.detail || event.detail.isAllowed !== true) return;
+
+      window.removeEventListener("klevby:app-surface-change", handleSurfaceChange);
+      callback();
+    }
+
+    window.addEventListener("klevby:app-surface-change", handleSurfaceChange);
+  }
+
   function updateAppSurface() {
     const root = document.documentElement;
     const isAllowed = isPhone || isNativeApp() || isStandalonePwa() || isMobileViewport();
 
+    const nextSurface = isAllowed ? ALLOWED_SURFACE : BLOCKED_SURFACE;
+    const previousSurface = root.dataset.appSurface || "";
+
     root.dataset.deviceClass = isPhone ? PHONE_DEVICE : NON_PHONE_DEVICE;
     root.dataset.phoneOrientation = getPhoneOrientation();
-    root.dataset.appSurface = isAllowed ? ALLOWED_SURFACE : BLOCKED_SURFACE;
+    root.dataset.appSurface = nextSurface;
+
+    if (previousSurface && previousSurface !== nextSurface) {
+      window.dispatchEvent(new CustomEvent("klevby:app-surface-change", {
+        detail: {
+          isAllowed,
+          previousSurface,
+          surface: nextSurface
+        }
+      }));
+    }
   }
 
   function addMediaChangeListener(mediaQuery) {
@@ -143,6 +178,11 @@
       // The resize and orientationchange listeners remain as fallbacks.
     }
   }
+
+  window.KlevbyAppSurface = Object.freeze({
+    isAllowed: isAppSurfaceAllowed,
+    runWhenAllowed
+  });
 
   updateAppSurface();
   window.addEventListener("resize", updateAppSurface, { passive: true });

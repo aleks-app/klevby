@@ -1209,7 +1209,7 @@
     document.addEventListener("click", (event) => {
       const target = event.target;
       const element = target && target.closest
-        ? target.closest("[data-section], [data-target], .bottom-nav button, .mobile-tabbar button, .tabbar button, .nav-btn")
+        ? target.closest("[data-section], [data-target], .bottom-nav button, .mobile-tabbar button, .tabbar button")
         : null;
 
       if (!element) return;
@@ -1470,10 +1470,22 @@
     console.log("Klevby feed main light desktop starter loaded");
   }
 
+  function startFeedWhenAllowed() {
+    const appSurface = window.KlevbyAppSurface;
+    const startFeed = () => setTimeout(initKlevbyFeed, 0);
+
+    if (appSurface && typeof appSurface.runWhenAllowed === "function") {
+      appSurface.runWhenAllowed(startFeed);
+      return;
+    }
+
+    startFeed();
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initKlevbyFeed);
+    document.addEventListener("DOMContentLoaded", startFeedWhenAllowed);
   } else {
-    setTimeout(initKlevbyFeed, 0);
+    startFeedWhenAllowed();
   }
 
   window.KlevbyFeedMain = {

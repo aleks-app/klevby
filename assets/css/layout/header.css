@@ -50,81 +50,11 @@ header {
   object-position: center;
 }
 
-/* ВАЖНО: верхнее desktop-меню пока скрываем, чтобы не было дубля с меню в кнопке */
-nav {
-  display: none !important;
-}
-
-.nav-btn,
 .burger-btn,
 .mobile-menu-item,
 .mobile-profile-btn,
 .home-float-btn {
   appearance: none;
-}
-
-.nav-btn {
-  box-sizing: border-box;
-  width: auto;
-  height: 42px;
-  padding: 0 16px;
-  background: linear-gradient(180deg, rgba(39, 35, 27, 0.98), rgba(18, 22, 19, 0.98));
-  border: 1px solid rgba(244,178,74,0.12);
-  border-top-color: rgba(255,255,255,0.10);
-  border-radius: var(--radius-ui);
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.22s ease;
-  box-shadow:
-    0 8px 20px rgba(0,0,0,0.24),
-    inset 0 1px 0 rgba(255,255,255,0.07);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  white-space: nowrap;
-}
-
-.nav-btn:hover,
-.nav-btn.active {
-  color: #ffffff;
-  background: linear-gradient(180deg, rgba(61, 48, 30, 1), rgba(27, 28, 22, 1));
-  border-color: rgba(244,178,74,0.22);
-  box-shadow:
-    0 10px 24px rgba(0,0,0,0.28),
-    0 0 24px rgba(244,178,74,0.10),
-    inset 0 1px 0 rgba(255,255,255,0.08);
-  transform: translateY(-1px);
-}
-
-.nav-auth {
-  height: 42px;
-  padding: 0 16px;
-  color: #ffffff;
-  border: 1px solid rgba(244,178,74,0.12);
-  border-top-color: rgba(255,255,255,0.10);
-  background: linear-gradient(180deg, rgba(39, 35, 27, 0.98), rgba(18, 22, 19, 0.98));
-  box-shadow:
-    0 8px 20px rgba(0,0,0,0.22),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-  font-weight: 700;
-}
-
-.install-nav-btn {
-  color: #ffffff !important;
-  border: 1px solid rgba(244,178,74,0.12) !important;
-  border-top-color: rgba(255,255,255,0.10) !important;
-  background: linear-gradient(180deg, rgba(39, 35, 27, 0.98), rgba(18, 22, 19, 0.98)) !important;
-  box-shadow:
-    0 8px 20px rgba(0,0,0,0.22),
-    inset 0 1px 0 rgba(255,255,255,0.06) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  font-weight: 700;
 }
 
 .mobile-header-actions {
