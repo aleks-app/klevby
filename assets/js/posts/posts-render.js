@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260515-posts-render-mobile-filter-telegram-fix-1";
+  const POSTS_RENDER_VERSION = "20260605-posts-lifecycle-partitions-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   let mobileFilterExpanded = false;
@@ -229,32 +229,33 @@
   }
 
   function normalizeTripDate(value) {
-    const raw = String(value || "").trim();
+    const state = getState();
 
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      return raw;
+    if (typeof state.normalizeTripDate === "function") {
+      return state.normalizeTripDate(value);
     }
 
     return "";
   }
 
-  function getTodayLocalIso() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
+  function partitionTrips(posts, options = {}) {
+    const state = getState();
 
-    return `${year}-${month}-${day}`;
-  }
-
-  function isPostExpired(post, todayIso = getTodayLocalIso()) {
-    const tripDate = normalizeTripDate(post?.trip_date);
-
-    if (!tripDate) {
-      return false;
+    if (typeof state.partitionTrips === "function") {
+      return state.partitionTrips(posts, options);
     }
 
-    return tripDate < todayIso;
+    const safePosts = Array.isArray(posts) ? posts : [];
+    const ownerId = options.ownerId ?? null;
+
+    return {
+      activeAll: [],
+      expiredAll: [],
+      undatedAll: safePosts,
+      activeMine: [],
+      expiredMine: [],
+      undatedMine: safePosts.filter((post) => isOwnPost(post, ownerId))
+    };
   }
 
   function getCreatedAtTime(post) {
@@ -263,13 +264,13 @@
     return Number.isFinite(time) ? time : 0;
   }
 
-  function sortActivePosts(posts, todayIso = getTodayLocalIso()) {
+  function sortActivePosts(posts) {
     return [...posts].sort((a, b) => {
       const aTripDate = normalizeTripDate(a?.trip_date);
       const bTripDate = normalizeTripDate(b?.trip_date);
 
-      const aHasActiveDate = Boolean(aTripDate && aTripDate >= todayIso);
-      const bHasActiveDate = Boolean(bTripDate && bTripDate >= todayIso);
+      const aHasActiveDate = Boolean(aTripDate);
+      const bHasActiveDate = Boolean(bTripDate);
 
       if (aHasActiveDate && bHasActiveDate) {
         if (aTripDate !== bTripDate) {
@@ -900,7 +901,6 @@
     const telegramOnly = document.getElementById("telegramOnly")?.checked;
     const ownerId = getOwnerId();
     const mode = getCurrentViewMode();
-    const todayIso = getTodayLocalIso();
 
     if (!allPosts.length && (!hasPostsInitialLoadDone() || hasActivePostsLoad())) {
       showStatusSafe("Загрузка объявлений...");
@@ -927,10 +927,16 @@
       return;
     }
 
-    const activePosts = allPosts.filter((post) => !isPostExpired(post, todayIso));
-    const expiredCount = Math.max(0, allPosts.length - activePosts.length);
+    const tripPartitions = partitionTrips(allPosts, { ownerId });
+    const visiblePosts = mode === "mine"
+      ? [...tripPartitions.activeMine, ...tripPartitions.undatedMine]
+      : [...tripPartitions.activeAll, ...tripPartitions.undatedAll];
+    const expiredCount = mode === "mine"
+      ? tripPartitions.expiredMine.length
+      : tripPartitions.expiredAll.length;
+    const relevantTripCount = visiblePosts.length + expiredCount;
 
-    let filtered = sortActivePosts(activePosts, todayIso);
+    let filtered = sortActivePosts(visiblePosts);
 
     updateMobileFilterSummary({
       mode,
@@ -942,7 +948,6 @@
     });
 
     if (mode === "mine") {
-      filtered = filtered.filter((post) => isOwnPost(post, ownerId));
       showStatusSafe(
         expiredCount
           ? `Сейчас показаны: мои актуальные выезды. Старые выезды скрыты: ${expiredCount}.`
@@ -986,15 +991,17 @@
     if (!filtered.length) {
       let emptyText = "Пока актуальных объявлений о выездах нет.";
 
-      if (activePosts.length && allPosts.length) {
+      if (visiblePosts.length) {
         emptyText = "По фильтрам ничего не найдено.";
-      } else if (allPosts.length && expiredCount === allPosts.length) {
-        emptyText = "Все выезды уже прошли. Новые актуальные объявления появятся здесь.";
+      } else if (relevantTripCount && expiredCount === relevantTripCount) {
+        emptyText = mode === "mine"
+          ? "Все ваши выезды уже прошли. Новые актуальные выезды появятся здесь."
+          : "Все выезды уже прошли. Новые актуальные объявления появятся здесь.";
       }
 
       console.info("Klevby posts: empty render state", {
         allCount: allPosts.length,
-        activeCount: activePosts.length,
+        visibleCount: visiblePosts.length,
         expiredCount,
         mode,
         search,
@@ -1169,7 +1176,6 @@
     cardHtml,
     openTelegramSafe,
     openPostModalSafe,
-    isPostExpired,
     sortActivePosts,
     setMobileFilterExpanded,
     formatTripWhen
