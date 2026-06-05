@@ -1093,7 +1093,7 @@ const setupKlevbyAppLifecycle = appResumeManager?.setupKlevbyAppLifecycle || (()
 
 setupAppGlobalEvents();
 
-document.addEventListener("DOMContentLoaded", async function () {
+async function initKlevbyApp() {
   try {
     patchProfileOpenForExtraSections();
     patchProfileShortcutActions();
@@ -1150,7 +1150,20 @@ document.addEventListener("DOMContentLoaded", async function () {
       appResumeManager.markBootCompleted();
     }
   }
-});
+}
+
+function startKlevbyAppWhenAllowed() {
+  const appSurface = window.KlevbyAppSurface;
+
+  if (appSurface && typeof appSurface.runWhenAllowed === "function") {
+    appSurface.runWhenAllowed(initKlevbyApp);
+    return;
+  }
+
+  initKlevbyApp();
+}
+
+document.addEventListener("DOMContentLoaded", startKlevbyAppWhenAllowed);
 
 patchProfileOpenForExtraSections();
 patchProfileShortcutActions();

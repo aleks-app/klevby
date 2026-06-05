@@ -468,24 +468,6 @@ body:has(#authSection:not(.hidden)) #klevbyAppRoot > .mobile-tabbar {
   }
 }
 
-@media (min-width: 901px) {
-  #authSection .auth-welcome-bg {
-    background-size: cover;
-    background-position: 66% 18%;
-  }
-
-  #authSection .auth-welcome-inner {
-    justify-content: center;
-    padding-top: calc(env(safe-area-inset-top) + 28px);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 32px);
-  }
-
-  #authSection .auth-welcome-panel,
-  #authSection .auth-welcome-panel.panel {
-    padding: 12px 2px 0;
-  }
-}
-
 /* TEMP auth skip button: remove when auth wall flow is finalized */
 #authSection .auth-welcome-skip {
   position: fixed;

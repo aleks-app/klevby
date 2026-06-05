@@ -2527,9 +2527,20 @@
     });
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initMarket);
-  } else {
+  function startMarketWhenAllowed() {
+    const appSurface = window.KlevbyAppSurface;
+
+    if (appSurface && typeof appSurface.runWhenAllowed === "function") {
+      appSurface.runWhenAllowed(initMarket);
+      return;
+    }
+
     initMarket();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startMarketWhenAllowed);
+  } else {
+    startMarketWhenAllowed();
   }
 })();
