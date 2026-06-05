@@ -1,10 +1,8 @@
 html.pwa-standalone .pwa-install-trigger,
-html.pwa-standalone .install-nav-btn,
 html.pwa-standalone .install-hero-btn,
 html.pwa-standalone .install-button,
 html.pwa-standalone .app-button,
 body.pwa-installed .pwa-install-trigger,
-body.pwa-installed .install-nav-btn,
 body.pwa-installed .install-hero-btn {
   display: none !important;
   visibility: hidden !important;

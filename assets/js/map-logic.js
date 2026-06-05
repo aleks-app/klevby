@@ -1278,9 +1278,20 @@
     currentMapUser = centralUser && centralUser.id ? centralUser : null;
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initMapLogic);
-  } else {
+  function startMapWhenAllowed() {
+    const appSurface = window.KlevbyAppSurface;
+
+    if (appSurface && typeof appSurface.runWhenAllowed === "function") {
+      appSurface.runWhenAllowed(initMapLogic);
+      return;
+    }
+
     initMapLogic();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startMapWhenAllowed);
+  } else {
+    startMapWhenAllowed();
   }
 })();
