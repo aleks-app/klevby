@@ -150,8 +150,15 @@ function goMobileFeed() {
 function goMobileCreate() {
   setMobileTabbarMode("home");
   setMobileTabActive(2);
-  showSection("home");
-  mobileScrollTo("createPanel");
+
+  if (typeof window.showCreatePostScreen === "function") {
+    window.showCreatePostScreen();
+    return;
+  }
+
+  if (typeof window.showSection === "function") {
+    window.showSection("create");
+  }
 }
 
 function goMobileMap() {
