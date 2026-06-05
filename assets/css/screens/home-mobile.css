@@ -1428,3 +1428,10 @@
     min-height: 44px;
   }
 }
+
+@media (min-width: 391px) and (max-width: 767px) and (min-height: 821px) {
+  body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-weather-card,
+  html.pwa-standalone:has(#homeSection:not(.hidden)) #homeSection .home-weather-card {
+    transform: translateY(1px);
+  }
+}
