@@ -1245,6 +1245,8 @@
 
   async function initMapLogic() {
     injectMapStyles();
+
+    const mapEl = prepareMapContainer();
     showMapState("loading");
 
     mapDb = getMainSupabaseClient();
@@ -1260,7 +1262,7 @@
 
     await loadYandexMapsApi();
 
-    const mapEl = prepareMapContainer();
+    mapEl.innerHTML = "";
     createMap(mapEl);
 
     window.klevbyReloadMap = refreshMapView;
