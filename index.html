@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" class="">
 <head>
-  <script src="assets/js/app/app-surface-gate.js?v=20260605-app-surface-gate-1"></script>
+  <script src="assets/js/app/app-surface-gate.js?v=20260605-portrait-required-1"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     if (!window.supabase) {
@@ -98,7 +98,7 @@
   <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260605-app-surface-gate-1">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260605-portrait-required-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -118,6 +118,14 @@
       <img class="desktop-blocked-logo" src="assets/brand/klevby-fish-logo.png" alt="Klevby" />
       <h1 id="desktopBlockedTitle">Klevby — мобильное приложение для рыбаков.</h1>
       <p>Откройте Klevby с телефона или установите Android-приложение.</p>
+    </div>
+  </section>
+
+  <section id="portraitRequiredScreen" role="dialog" aria-modal="true" aria-labelledby="portraitRequiredTitle" aria-describedby="portraitRequiredText">
+    <div class="portrait-required-card">
+      <div class="portrait-required-icon" aria-hidden="true">↻</div>
+      <h1 id="portraitRequiredTitle">Поверните телефон вертикально</h1>
+      <p id="portraitRequiredText">Klevby работает как мобильное приложение. Верните телефон в портретный режим, чтобы продолжить.</p>
     </div>
   </section>
 

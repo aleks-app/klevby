@@ -1,4 +1,5 @@
-#desktopBlockedScreen {
+#desktopBlockedScreen,
+#portraitRequiredScreen {
   display: none;
 }
 
@@ -41,5 +42,48 @@ html[data-app-surface="desktop-blocked"] #desktopBlockedScreen {
   color: rgba(255, 255, 255, 0.78);
   font-size: 18px;
   line-height: 1.6;
+  margin: 0;
+}
+
+html[data-device-class="phone"][data-phone-orientation="landscape"][data-app-surface="mobile-allowed"] #portraitRequiredScreen {
+  align-items: center;
+  background:
+    radial-gradient(circle at top, rgba(255, 177, 0, 0.2), transparent 48%),
+    #080808;
+  box-sizing: border-box;
+  color: #ffffff;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  position: fixed;
+  text-align: center;
+  touch-action: none;
+  z-index: 2147483647;
+}
+
+.portrait-required-card {
+  max-width: 560px;
+}
+
+.portrait-required-icon {
+  font-size: clamp(44px, 12vh, 76px);
+  line-height: 1;
+  margin-bottom: 18px;
+}
+
+.portrait-required-card h1 {
+  font-size: clamp(24px, 7vw, 38px);
+  line-height: 1.15;
+  margin: 0 0 14px;
+}
+
+.portrait-required-card p {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(15px, 4vw, 18px);
+  line-height: 1.55;
   margin: 0;
 }
