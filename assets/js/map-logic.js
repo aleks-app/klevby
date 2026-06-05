@@ -496,7 +496,7 @@
     const mapSection = document.getElementById("mapSection");
     if (!mapSection) return null;
 
-    return document.getElementById("map") || mapSection.querySelector(".map-placeholder");
+    return mapSection.querySelector("#map");
   }
 
   function showMapState(state) {
@@ -529,21 +529,10 @@
       throw new Error("Не найдена секция #mapSection");
     }
 
-    let mapEl = document.getElementById("map");
+    const mapEl = getMapSurface();
 
     if (!mapEl) {
-      const oldPlaceholder = mapSection.querySelector(".map-placeholder");
-
-      if (oldPlaceholder) {
-        oldPlaceholder.id = "map";
-        oldPlaceholder.className = "";
-        oldPlaceholder.innerHTML = "";
-        mapEl = oldPlaceholder;
-      } else {
-        mapEl = document.createElement("div");
-        mapEl.id = "map";
-        mapSection.appendChild(mapEl);
-      }
+      throw new Error("Не найден контейнер #map внутри #mapSection");
     }
 
     mapEl.innerHTML = "";
