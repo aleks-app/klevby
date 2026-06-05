@@ -18,7 +18,7 @@
   let pendingSpotCoords = null;
   let cachedFishingSpots = [];
   let activeSpotFilter = "all";
-  let initStarted = false;
+  let mapInitPromise = null;
 
   let currentMapUser = null;
   let userRefreshPromise = null;
@@ -228,6 +228,32 @@
         background: linear-gradient(135deg, #42d986, #1fae68);
         color: #03150c;
         border-color: rgba(66,217,134,0.28);
+      }
+
+      .klevby-map-state {
+        min-height: 220px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 24px;
+        text-align: center;
+        color: rgba(244,251,247,0.82);
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .klevby-map-retry {
+        min-height: 42px;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #42d986, #1fae68);
+        color: #03150c;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
       }
 
       .klevby-map-modal {
@@ -466,12 +492,41 @@
     document.head.appendChild(style);
   }
 
+  function getMapSurface() {
+    const mapSection = document.getElementById("mapSection");
+    if (!mapSection) return null;
+
+    return document.getElementById("map") || mapSection.querySelector(".map-placeholder");
+  }
+
+  function showMapState(state) {
+    if (mapInstance) return;
+
+    const mapSurface = getMapSurface();
+    if (!mapSurface) return;
+
+    if (state === "loading") {
+      mapSurface.innerHTML = '<div class="klevby-map-state">Загружаем карту…</div>';
+      return;
+    }
+
+    mapSurface.innerHTML = `
+      <div class="klevby-map-state">
+        <div>Карта временно недоступна</div>
+        <button class="klevby-map-retry" type="button">Повторить</button>
+      </div>
+    `;
+
+    mapSurface.querySelector(".klevby-map-retry")?.addEventListener("click", function () {
+      window.klevbyEnsureMapInitialized?.().catch(function () {});
+    });
+  }
+
   function prepareMapContainer() {
     const mapSection = document.getElementById("mapSection");
 
     if (!mapSection) {
-      console.error("Не найдена секция #mapSection");
-      return null;
+      throw new Error("Не найдена секция #mapSection");
     }
 
     let mapEl = document.getElementById("map");
@@ -491,6 +546,7 @@
       }
     }
 
+    mapEl.innerHTML = "";
     mapEl.style.width = "100%";
     mapEl.style.maxWidth = "100%";
     mapEl.style.boxSizing = "border-box";
@@ -836,6 +892,8 @@
   }
 
   function createMap(mapEl) {
+    if (mapInstance) return mapInstance;
+
     mapInstance = new ymaps.Map(mapEl, {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
@@ -867,6 +925,8 @@
         mapInstance.container.fitToViewport();
       }
     }, 500);
+
+    return mapInstance;
   }
 
   async function loadFishingSpots() {
@@ -1146,8 +1206,16 @@
   async function reloadMapData() {
     if (!mapReady || !mapDb) return;
 
-    await loadFishingSpots();
-    await loadPostMarkers();
+    const results = await Promise.allSettled([
+      loadFishingSpots(),
+      loadPostMarkers()
+    ]);
+
+    results.forEach(function (result) {
+      if (result.status === "rejected") {
+        console.warn("Не удалось обновить часть данных карты:", result.reason);
+      }
+    });
 
     setTimeout(function () {
       if (mapInstance && mapInstance.container) {
@@ -1156,46 +1224,9 @@
     }, 300);
   }
 
-  function patchShowSection() {
-    if (window.__klevbyMapShowSectionPatched) return;
-    if (typeof window.showSection !== "function") return;
-
-    const originalShowSection = window.showSection;
-
-    window.showSection = function (section) {
-      originalShowSection(section);
-
-      if (section === "map") {
-        setTimeout(function () {
-          if (mapInstance && mapInstance.container) {
-            mapInstance.container.fitToViewport();
-          }
-
-          reloadMapData();
-        }, 300);
-      }
-    };
-
-    window.__klevbyMapShowSectionPatched = true;
-  }
-
-  function patchMobileMapButton() {
-    const mapButton = document.querySelector('.mobile-tab-btn[onclick="goMobileMap()"]');
-
-    if (!mapButton) return;
-
-    if (mapButton.dataset.klevbyMapBound === "true") return;
-    mapButton.dataset.klevbyMapBound = "true";
-
-    mapButton.addEventListener("click", function () {
-      setTimeout(function () {
-        if (mapInstance && mapInstance.container) {
-          mapInstance.container.fitToViewport();
-        }
-
-        reloadMapData();
-      }, 500);
-    });
+  function refreshMapView() {
+    if (!mapInstance) return Promise.resolve();
+    return reloadMapData();
   }
 
   async function deleteFishingSpot(id) {
@@ -1224,42 +1255,65 @@
   }
 
   async function initMapLogic() {
-    if (initStarted) return;
-    initStarted = true;
+    injectMapStyles();
+    showMapState("loading");
 
-    try {
-      injectMapStyles();
+    mapDb = getMainSupabaseClient();
 
-      mapDb = getMainSupabaseClient();
-
-      if (!mapDb) {
-        mapDb = await waitForMainSupabaseClient();
-      }
-
-      const mainUser = getMainUser();
-      if (mainUser && mainUser.id) {
-        currentMapUser = mainUser;
-      }
-
-      const mapEl = prepareMapContainer();
-      if (!mapEl) return;
-
-      await loadYandexMapsApi();
-
-      createMap(mapEl);
-      patchShowSection();
-      patchMobileMapButton();
-
-      await reloadMapData();
-
-      window.klevbyReloadMap = reloadMapData;
-      window.klevbyDeleteFishingSpot = deleteFishingSpot;
-
-      console.log("Klevby карта ловли запущена.");
-    } catch (error) {
-      console.error("Ошибка запуска карты:", error);
+    if (!mapDb) {
+      mapDb = await waitForMainSupabaseClient();
     }
+
+    const mainUser = getMainUser();
+    if (mainUser && mainUser.id) {
+      currentMapUser = mainUser;
+    }
+
+    await loadYandexMapsApi();
+
+    const mapEl = prepareMapContainer();
+    createMap(mapEl);
+
+    window.klevbyReloadMap = refreshMapView;
+    window.klevbyDeleteFishingSpot = deleteFishingSpot;
+
+    await reloadMapData();
+
+    console.log("Klevby карта ловли запущена.");
+    return mapInstance;
   }
+
+  function ensureMapInitialized() {
+    if (mapInitPromise) return mapInitPromise;
+
+    if (mapInstance) {
+      return refreshMapView().then(function () {
+        return mapInstance;
+      });
+    }
+
+    mapInitPromise = initMapLogic()
+      .then(function (instance) {
+        mapInitPromise = null;
+        return instance;
+      })
+      .catch(function (error) {
+        mapInitPromise = null;
+
+        const failedScript = document.querySelector('script[src*="api-maps.yandex.ru"]');
+        if (!window.ymaps && failedScript) {
+          failedScript.remove();
+        }
+
+        showMapState("failed");
+        console.error("Ошибка запуска карты:", error);
+        throw error;
+      });
+
+    return mapInitPromise;
+  }
+
+  window.klevbyEnsureMapInitialized = ensureMapInitialized;
 
   window.addEventListener("klevby-auth-changed", function (event) {
     const eventUser = event?.detail?.user || null;
@@ -1277,21 +1331,4 @@
     const centralUser = getCentralUser();
     currentMapUser = centralUser && centralUser.id ? centralUser : null;
   });
-
-  function startMapWhenAllowed() {
-    const appSurface = window.KlevbyAppSurface;
-
-    if (appSurface && typeof appSurface.runWhenAllowed === "function") {
-      appSurface.runWhenAllowed(initMapLogic);
-      return;
-    }
-
-    initMapLogic();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", startMapWhenAllowed);
-  } else {
-    startMapWhenAllowed();
-  }
 })();
