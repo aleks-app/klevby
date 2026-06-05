@@ -1430,6 +1430,11 @@
 }
 
 @media (min-width: 391px) and (max-width: 767px) and (min-height: 821px) {
+  body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text,
+  html.pwa-standalone:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text {
+    margin-top: 5px;
+  }
+
   body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-weather-card,
   html.pwa-standalone:has(#homeSection:not(.hidden)) #homeSection .home-weather-card {
     transform: translateY(1px);
