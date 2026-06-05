@@ -1217,25 +1217,7 @@
         upsertPostInLocalState(savedPost, activeEditingId);
       }
 
-      clearForm();
-
-      if (typeof window.fillAuthorLocal === "function") {
-        window.fillAuthorLocal();
-      }
-
-      setCurrentEditingId(null);
-
-      const formTitle = document.getElementById("formTitle");
-      const cancelEditBtn = document.getElementById("cancelEditBtn");
-
-      if (formTitle) {
-        formTitle.innerText = "Создать выезд";
-      }
-
-      if (cancelEditBtn) {
-        cancelEditBtn.classList.add("hidden");
-      }
-
+      resetCreateMode({ clearFields: true });
       showFormMessageSafe(wasEditing ? "Выезд обновлён." : "Выезд создан.");
 
       setCurrentViewMode("all");
@@ -1324,9 +1306,7 @@
       cancelEditBtn.classList.remove("hidden");
     }
 
-    if (typeof window.showCreatePostScreen === "function") {
-      window.showCreatePostScreen();
-    } else if (typeof window.showSection === "function") {
+    if (typeof window.showSection === "function") {
       window.showSection("create");
     }
 
@@ -1335,14 +1315,7 @@
     }
   }
 
-  function cancelEdit() {
-    setCurrentEditingId(null);
-    clearForm();
-
-    if (typeof window.fillAuthorLocal === "function") {
-      window.fillAuthorLocal();
-    }
-
+  function normalizeCreateModeUi() {
     const formTitle = document.getElementById("formTitle");
     const cancelEditBtn = document.getElementById("cancelEditBtn");
 
@@ -1355,6 +1328,33 @@
     }
 
     showFormMessageSafe("");
+  }
+
+  function resetCreateMode({ clearFields = false } = {}) {
+    setCurrentEditingId(null);
+
+    if (clearFields) {
+      clearForm();
+
+      if (typeof window.fillAuthorLocal === "function") {
+        window.fillAuthorLocal();
+      }
+    }
+
+    normalizeCreateModeUi();
+  }
+
+  function enterCreateMode({ preserveDraft = true } = {}) {
+    const currentEditingId = getCurrentEditingId();
+    const isEditing = currentEditingId !== null && currentEditingId !== undefined;
+
+    resetCreateMode({
+      clearFields: isEditing || !preserveDraft
+    });
+  }
+
+  function cancelEdit() {
+    enterCreateMode({ preserveDraft: false });
   }
 
   function clearForm() {
@@ -1386,6 +1386,7 @@
     ensureUserForPostAction,
     savePost,
     editPost,
+    enterCreateMode,
     cancelEdit,
     clearForm
   };

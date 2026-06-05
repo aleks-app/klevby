@@ -56,6 +56,12 @@
       }
     }
 
+    if (typeof dependencies.enterCreateMode === "function") {
+      dependencies.enterCreateMode();
+    } else if (typeof window.KlevbyPostsForm?.enterCreateMode === "function") {
+      window.KlevbyPostsForm.enterCreateMode();
+    }
+
     if (typeof dependencies.showSection === "function") {
       dependencies.showSection("create");
     } else if (typeof window.showSection === "function") {

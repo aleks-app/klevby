@@ -819,6 +819,7 @@ function showCreatePostScreen(options = {}) {
   if (typeof actions.showCreatePostScreen === "function") {
     return actions.showCreatePostScreen(options, {
       setProfileReturnMode,
+      enterCreateMode: window.KlevbyPostsForm?.enterCreateMode,
       showSection
     });
   }
@@ -827,6 +828,10 @@ function showCreatePostScreen(options = {}) {
 
   if (fromProfile) {
     setProfileReturnMode(true);
+  }
+
+  if (typeof window.KlevbyPostsForm?.enterCreateMode === "function") {
+    window.KlevbyPostsForm.enterCreateMode();
   }
 
   showSection("create");
