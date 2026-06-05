@@ -741,11 +741,9 @@ function showSection(section) {
   if (safeSection === "map") {
     setMobileTabVisual(1);
 
-    if (typeof window.klevbyReloadMap === "function") {
-      setTimeout(() => {
-        window.klevbyReloadMap();
-      }, 300);
-    }
+    window.klevbyEnsureMapInitialized?.().catch((error) => {
+      console.warn("Klevby map: не удалось открыть карту:", error);
+    });
   }
 
   setTimeout(() => {
