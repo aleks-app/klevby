@@ -230,44 +230,8 @@
         border-color: rgba(66,217,134,0.28);
       }
 
-      #mapSection .map-placeholder {
-        min-height: 520px;
-        height: 65vh;
-        padding: 0;
-        display: block;
-        border: 0;
-        border-radius: 16px;
-        overflow: hidden;
-        background:
-          radial-gradient(circle at 18% 0%, rgba(244,178,74,0.10), transparent 38%),
-          linear-gradient(180deg, #0b1210 0%, #07100d 100%);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.28);
-      }
-
-      #mapSection .map-placeholder .map-card {
-        display: none;
-      }
-
-      .klevby-map-surface {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        min-height: 520px;
-        height: 65vh;
-        border-radius: 16px;
-        overflow: hidden;
-        padding: 0;
-        border: 0;
-        display: block;
-        background:
-          radial-gradient(circle at 18% 0%, rgba(244,178,74,0.10), transparent 38%),
-          linear-gradient(180deg, #0b1210 0%, #07100d 100%);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.28);
-      }
-
       .klevby-map-state {
-        min-height: inherit;
-        height: 100%;
+        min-height: 220px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -275,37 +239,21 @@
         gap: 14px;
         padding: 24px;
         text-align: center;
-        color: rgba(255,248,234,0.82);
+        color: rgba(244,251,247,0.82);
         font-size: 16px;
         font-weight: 700;
-        line-height: 1.45;
-      }
-
-      .klevby-map-state--loading {
-        letter-spacing: -0.1px;
       }
 
       .klevby-map-retry {
-        min-height: 44px;
+        min-height: 42px;
         padding: 10px 18px;
-        border: 1px solid rgba(244,178,74,0.22);
+        border: 0;
         border-radius: 14px;
-        background:
-          radial-gradient(circle at 30% 0%, rgba(244,178,74,0.18), transparent 44%),
-          rgba(255,255,255,0.08);
-        color: #fff8ea;
+        background: linear-gradient(135deg, #42d986, #1fae68);
+        color: #03150c;
         font: inherit;
         font-weight: 800;
         cursor: pointer;
-        transition:
-          transform 0.12s ease,
-          filter 0.12s ease,
-          background 0.12s ease;
-      }
-
-      .klevby-map-retry:active {
-        transform: scale(0.98);
-        filter: brightness(0.96);
       }
 
       .klevby-map-modal {
@@ -504,14 +452,6 @@
         margin-top: 8px;
       }
 
-      @media (max-width: 767px) {
-        #mapSection .map-placeholder,
-        .klevby-map-surface {
-          min-height: 360px;
-          height: 58vh;
-        }
-      }
-
       @media (max-width: 520px) {
         #mapFilters {
           display: grid;
@@ -559,23 +499,14 @@
     return document.getElementById("map") || mapSection.querySelector(".map-placeholder");
   }
 
-  function normalizeMapSurfaceForState(mapSurface) {
-    if (!mapSurface) return;
-
-    mapSurface.classList.remove("map-placeholder");
-    mapSurface.classList.add("klevby-map-surface");
-  }
-
   function showMapState(state) {
     if (mapInstance) return;
 
     const mapSurface = getMapSurface();
     if (!mapSurface) return;
 
-    normalizeMapSurfaceForState(mapSurface);
-
     if (state === "loading") {
-      mapSurface.innerHTML = '<div class="klevby-map-state klevby-map-state--loading">Загружаем карту…</div>';
+      mapSurface.innerHTML = '<div class="klevby-map-state">Загружаем карту…</div>';
       return;
     }
 
@@ -605,7 +536,7 @@
 
       if (oldPlaceholder) {
         oldPlaceholder.id = "map";
-        oldPlaceholder.className = "klevby-map-surface";
+        oldPlaceholder.className = "";
         oldPlaceholder.innerHTML = "";
         mapEl = oldPlaceholder;
       } else {
@@ -615,17 +546,16 @@
       }
     }
 
-    mapEl.classList.add("klevby-map-surface");
     mapEl.innerHTML = "";
     mapEl.style.width = "100%";
     mapEl.style.maxWidth = "100%";
     mapEl.style.boxSizing = "border-box";
-    mapEl.style.minHeight = "";
-    mapEl.style.height = "";
-    mapEl.style.borderRadius = "";
-    mapEl.style.overflow = "";
-    mapEl.style.boxShadow = "";
-    mapEl.style.background = "";
+    mapEl.style.minHeight = "520px";
+    mapEl.style.height = "65vh";
+    mapEl.style.borderRadius = "16px";
+    mapEl.style.overflow = "hidden";
+    mapEl.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
+    mapEl.style.background = "#0b171d";
 
     addMapHint(mapSection);
     addMapFilters(mapSection);
@@ -1401,6 +1331,4 @@
     const centralUser = getCentralUser();
     currentMapUser = centralUser && centralUser.id ? centralUser : null;
   });
-
-  injectMapStyles();
 })();
