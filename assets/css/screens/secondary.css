@@ -43,45 +43,12 @@
   min-height: 180px;
 }
 
-.map-placeholder {
+#map {
   min-height: 410px;
   border-radius: var(--radius-card);
-  border: 0;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(0,0,0,0.72), rgba(0,0,0,0.22)),
-    url("https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1600&q=85") center/cover no-repeat;
-  display: flex;
-  align-items: flex-end;
-  padding: 30px;
+  background: #0b171d;
   box-shadow: var(--shadow);
-}
-
-.map-card {
-  max-width: 620px;
-  background: rgba(14,20,18,0.84);
-  border: 0;
-  border-radius: var(--radius-card);
-  padding: 28px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.24);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.map-card h2 {
-  margin: 0 0 10px;
-  font-size: 30px;
-  letter-spacing: -0.6px;
-  color: var(--text);
-  font-weight: 800 !important;
-}
-
-.map-card p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
-  font-size: 16px;
-  font-weight: 500;
 }
 /* Market hero premium image */
 #marketSection .market-hero {
