@@ -526,6 +526,10 @@
     letter-spacing: -0.01em;
   }
 
+  #homeSection .home-feed-preview-text-extra {
+    display: none;
+  }
+
   #homeSection .home-feed-preview-actions {
     display: flex;
     align-items: center;
@@ -1433,6 +1437,12 @@
   body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text,
   html.pwa-standalone:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text {
     margin-top: 5px;
+    line-height: 1.36;
+  }
+
+  body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text-extra,
+  html.pwa-standalone:has(#homeSection:not(.hidden)) #homeSection .home-feed-preview-text-extra {
+    display: inline;
   }
 
   body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection .home-weather-card,
