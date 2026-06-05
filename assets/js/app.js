@@ -797,11 +797,17 @@ function setMode(mode) {
   if (typeof actions.setMode === "function") {
     return actions.setMode(mode, {
       setViewMode: setAppViewMode,
+      setMineTripsMode: window.KlevbyPostsState?.setMineTripsMode,
       showSection
     });
   }
 
   setAppViewMode(mode);
+
+  if (viewMode === "mine") {
+    window.KlevbyPostsState?.setMineTripsMode?.("active");
+  }
+
   showSection("trips");
 
   if (typeof window.renderPosts === "function") {
@@ -809,6 +815,29 @@ function setMode(mode) {
   }
 
   return viewMode;
+}
+
+function setMineTripsMode(mode) {
+  const actions = getAppTripActions();
+  const setStateMode = window.KlevbyPostsState?.setMineTripsMode;
+
+  if (typeof actions.setMineTripsMode === "function") {
+    return actions.setMineTripsMode(mode, {
+      setMineTripsMode: setStateMode
+    });
+  }
+
+  const nextMode = typeof setStateMode === "function"
+    ? setStateMode(mode)
+    : (mode === "expired" ? "expired" : "active");
+
+  window.klevbyMineTripsMode = nextMode;
+
+  if (typeof window.renderPosts === "function") {
+    window.renderPosts();
+  }
+
+  return nextMode;
 }
 
 function showCreatePostScreen(options = {}) {
@@ -846,6 +875,7 @@ function showTripsBoard(mode = "all") {
   if (typeof actions.showTripsBoard === "function") {
     return actions.showTripsBoard(mode, {
       setViewMode: setAppViewMode,
+      setMineTripsMode: window.KlevbyPostsState?.setMineTripsMode,
       showSection
     });
   }
@@ -1190,6 +1220,7 @@ function getAppWindowExportMap() {
     closeMobileMenuFromAppNavigation,
     showSection,
     setMode,
+    setMineTripsMode,
     showTripsBoard,
     showCreatePostScreen,
     goMobileFeed,

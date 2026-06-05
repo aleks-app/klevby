@@ -4,6 +4,7 @@
   let postsPendingForceReload = false;
   let postsInitialLoadStarted = false;
   let postsInitialLoadDone = false;
+  let mineTripsMode = "active";
 
   function normalizeTripDate(value) {
     const raw = String(value || "").trim();
@@ -161,6 +162,20 @@
     window.klevbyViewMode = safeMode;
   }
 
+  function normalizeMineTripsMode(mode) {
+    return mode === "expired" ? "expired" : "active";
+  }
+
+  function getMineTripsMode() {
+    return normalizeMineTripsMode(window.klevbyMineTripsMode || mineTripsMode);
+  }
+
+  function setMineTripsMode(mode) {
+    mineTripsMode = normalizeMineTripsMode(mode);
+    window.klevbyMineTripsMode = mineTripsMode;
+    return mineTripsMode;
+  }
+
   function getCurrentEditingId() {
     if (typeof editingId !== "undefined") {
       return editingId;
@@ -261,6 +276,9 @@
     setPostsArray,
     getCurrentViewMode,
     setCurrentViewMode,
+    normalizeMineTripsMode,
+    getMineTripsMode,
+    setMineTripsMode,
     getCurrentEditingId,
     setCurrentEditingId,
     getActiveModalPost,
@@ -286,4 +304,6 @@
   window.setPostsArray = setPostsArray;
   window.getCurrentViewMode = getCurrentViewMode;
   window.setCurrentViewMode = setCurrentViewMode;
+  window.getMineTripsMode = getMineTripsMode;
+  window.setMineTripsMode = setMineTripsMode;
 })();

@@ -1,5 +1,5 @@
 (function () {
-  const POSTS_RENDER_VERSION = "20260605-posts-lifecycle-partitions-1";
+  const POSTS_RENDER_VERSION = "20260605-mine-trips-archive-1";
   const TELEGRAM_ICON_SRC = "assets/img/telegram.png";
 
   let mobileFilterExpanded = false;
@@ -54,6 +54,16 @@
     }
 
     return window.klevbyViewMode || "all";
+  }
+
+  function getMineTripsMode() {
+    const state = getState();
+
+    if (typeof state.getMineTripsMode === "function") {
+      return state.getMineTripsMode();
+    }
+
+    return window.klevbyMineTripsMode === "expired" ? "expired" : "active";
   }
 
   function hasActivePostsLoad() {
@@ -353,21 +363,44 @@
   function getMobileFilterSummary(context = {}) {
     const activeCount = getActiveFilterCount(context);
     const mode = context.mode || "all";
+    const mineTripsMode = context.mineTripsMode === "expired" ? "expired" : "active";
     const expiredCount = Number(context.expiredCount || 0);
 
     if (activeCount) {
       return `Фильтр включён: ${activeCount}`;
     }
 
+    if (mode === "mine" && mineTripsMode === "expired") {
+      return "Мои прошедшие выезды";
+    }
+
     if (mode === "mine") {
       return expiredCount
-        ? `Мои актуальные · архив скрыт: ${expiredCount}`
+        ? `Мои актуальные · Прошедшие: ${expiredCount}`
         : "Мои актуальные выезды";
     }
 
-    return expiredCount
-      ? `Актуальные · архив скрыт: ${expiredCount}`
-      : "Все актуальные объявления";
+    return "Все актуальные объявления";
+  }
+
+  function updateMineTripsSwitcher(mode, mineTripsMode, expiredCount = 0) {
+    const switcher = document.getElementById("mineTripsSwitcher");
+    if (!switcher) return;
+
+    const isMine = mode === "mine";
+    switcher.classList.toggle("hidden", !isMine);
+
+    switcher.querySelectorAll("[data-mine-trips-mode]").forEach((button) => {
+      const isActive = button.dataset.mineTripsMode === mineTripsMode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+
+    const count = document.getElementById("mineExpiredTripsCount");
+    if (count) {
+      count.textContent = expiredCount ? String(expiredCount) : "";
+      count.classList.toggle("hidden", !expiredCount);
+    }
   }
 
   function setMobileFilterExpanded(value) {
@@ -901,12 +934,15 @@
     const telegramOnly = document.getElementById("telegramOnly")?.checked;
     const ownerId = getOwnerId();
     const mode = getCurrentViewMode();
+    const mineTripsMode = getMineTripsMode();
 
     if (!allPosts.length && (!hasPostsInitialLoadDone() || hasActivePostsLoad())) {
       showStatusSafe("Загрузка объявлений...");
+      updateMineTripsSwitcher(mode, mineTripsMode, 0);
 
       updateMobileFilterSummary({
         mode,
+        mineTripsMode,
         search,
         selectedCity,
         selectedType,
@@ -928,18 +964,21 @@
     }
 
     const tripPartitions = partitionTrips(allPosts, { ownerId });
+    const activeMine = [...tripPartitions.activeMine, ...tripPartitions.undatedMine];
+    const activeAll = [...tripPartitions.activeAll, ...tripPartitions.undatedAll];
+    const expiredCount = tripPartitions.expiredMine.length;
     const visiblePosts = mode === "mine"
-      ? [...tripPartitions.activeMine, ...tripPartitions.undatedMine]
-      : [...tripPartitions.activeAll, ...tripPartitions.undatedAll];
-    const expiredCount = mode === "mine"
-      ? tripPartitions.expiredMine.length
-      : tripPartitions.expiredAll.length;
-    const relevantTripCount = visiblePosts.length + expiredCount;
+      ? (mineTripsMode === "expired" ? tripPartitions.expiredMine : activeMine)
+      : activeAll;
 
-    let filtered = sortActivePosts(visiblePosts);
+    let filtered = mineTripsMode === "expired" && mode === "mine"
+      ? [...visiblePosts]
+      : sortActivePosts(visiblePosts);
 
+    updateMineTripsSwitcher(mode, mineTripsMode, expiredCount);
     updateMobileFilterSummary({
       mode,
+      mineTripsMode,
       search,
       selectedCity,
       selectedType,
@@ -947,18 +986,16 @@
       expiredCount
     });
 
-    if (mode === "mine") {
+    if (mode === "mine" && mineTripsMode === "expired") {
+      showStatusSafe("Сейчас показаны: мои прошедшие выезды.");
+    } else if (mode === "mine") {
       showStatusSafe(
         expiredCount
-          ? `Сейчас показаны: мои актуальные выезды. Старые выезды скрыты: ${expiredCount}.`
+          ? `Сейчас показаны: мои актуальные выезды. Прошедшие: ${expiredCount}.`
           : "Сейчас показаны: мои актуальные выезды."
       );
     } else {
-      showStatusSafe(
-        expiredCount
-          ? `Сейчас показаны: актуальные выезды. Старые выезды скрыты: ${expiredCount}.`
-          : "Сейчас показаны: все актуальные объявления о выездах."
-      );
+      showStatusSafe("Сейчас показаны: все актуальные объявления о выездах.");
     }
 
     if (search) {
@@ -993,10 +1030,12 @@
 
       if (visiblePosts.length) {
         emptyText = "По фильтрам ничего не найдено.";
-      } else if (relevantTripCount && expiredCount === relevantTripCount) {
-        emptyText = mode === "mine"
-          ? "Все ваши выезды уже прошли. Новые актуальные выезды появятся здесь."
-          : "Все выезды уже прошли. Новые актуальные объявления появятся здесь.";
+      } else if (mode === "mine" && mineTripsMode === "expired") {
+        emptyText = "Прошедших выездов пока нет.";
+      } else if (mode === "mine" && expiredCount) {
+        emptyText = "Актуальных выездов пока нет, но у вас есть прошедшие. Откройте вкладку «Прошедшие».";
+      } else if (mode === "mine") {
+        emptyText = "Актуальных выездов пока нет.";
       }
 
       console.info("Klevby posts: empty render state", {
@@ -1004,6 +1043,7 @@
         visibleCount: visiblePosts.length,
         expiredCount,
         mode,
+        mineTripsMode,
         search,
         selectedCity,
         selectedType,
