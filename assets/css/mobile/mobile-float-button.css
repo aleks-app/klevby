@@ -7,7 +7,7 @@
   .home-float-btn {
     top: auto;
     right: 14px;
-    bottom: calc(92px + env(safe-area-inset-bottom));
+    bottom: var(--klevby-float-bottom-offset);
     width: 44px;
     height: 44px;
     min-height: 44px;
@@ -80,7 +80,7 @@
 @media (max-width: 380px) {
   .home-float-btn {
     right: 12px;
-    bottom: calc(90px + env(safe-area-inset-bottom));
+    bottom: var(--klevby-float-bottom-offset);
     width: 42px;
     height: 42px;
     min-height: 42px;
