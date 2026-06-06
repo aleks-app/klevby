@@ -638,6 +638,20 @@ function closeMobileMenuFromAppNavigation() {
   }
 }
 
+let coldHomeBootPresentationFinalized = false;
+
+function finalizeColdHomeBootPresentation() {
+  if (coldHomeBootPresentationFinalized) return false;
+
+  const homeScreenOwner = window.KlevbyHomeScreenOwner;
+  if (typeof homeScreenOwner?.isHomeScreenActive !== "function") return false;
+  if (!homeScreenOwner.isHomeScreenActive()) return false;
+
+  coldHomeBootPresentationFinalized = true;
+  showSection("home");
+  return true;
+}
+
 function showSection(section) {
   closeMobileMenuFromAppNavigation();
 
@@ -1182,6 +1196,8 @@ async function initKlevbyApp() {
     if (appResumeManager && typeof appResumeManager.markBootCompleted === "function") {
       appResumeManager.markBootCompleted();
     }
+
+    finalizeColdHomeBootPresentation();
   }
 }
 
