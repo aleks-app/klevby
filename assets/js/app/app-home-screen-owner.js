@@ -21,6 +21,8 @@
   let syncFrame = 0;
   let observer = null;
   let hasCapturedFirstSync = false;
+  let standaloneViewportReady = false;
+  let deferredStandaloneHeight = 0;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -168,15 +170,38 @@
     return matchesMobileSurface();
   }
 
+  function clearLockState(root, body) {
+    root.removeAttribute(LOCK_ATTRIBUTE);
+    body.removeAttribute(LOCK_ATTRIBUTE);
+    homeScreenLocked = false;
+  }
+
+  function shouldDeferStandaloneHomeLock() {
+    if (!isStandalonePwa() || standaloneViewportReady) return false;
+
+    const height = updateAppHeight();
+    if (height) deferredStandaloneHeight = Math.max(deferredStandaloneHeight, height);
+
+    if (document.readyState === "complete") {
+      standaloneViewportReady = true;
+      return false;
+    }
+
+    return true;
+  }
+
   function setLockState(shouldLock) {
     const root = document.documentElement;
     const body = document.body;
     if (!root || !body) return;
 
     if (!shouldLock) {
-      root.removeAttribute(LOCK_ATTRIBUTE);
-      body.removeAttribute(LOCK_ATTRIBUTE);
-      homeScreenLocked = false;
+      clearLockState(root, body);
+      return;
+    }
+
+    if (shouldDeferStandaloneHomeLock()) {
+      clearLockState(root, body);
       return;
     }
 
@@ -209,7 +234,17 @@
   }
 
   function handleViewportChange() {
-    updateAppHeight();
+    const height = updateAppHeight();
+
+    if (
+      isStandalonePwa() &&
+      !standaloneViewportReady &&
+      (document.readyState === "complete" ||
+        (deferredStandaloneHeight && height > deferredStandaloneHeight))
+    ) {
+      standaloneViewportReady = true;
+    }
+
     scheduleSync();
   }
 
@@ -238,6 +273,7 @@
 
     window.addEventListener("resize", handleViewportChange, { passive: true });
     window.addEventListener("orientationchange", handleViewportChange, { passive: true });
+    window.addEventListener("load", handleViewportChange, { passive: true });
     window.addEventListener("pageshow", handleViewportChange, { passive: true });
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) handleViewportChange();
