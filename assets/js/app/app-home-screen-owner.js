@@ -20,6 +20,8 @@
   let homeScreenLocked = false;
   let syncFrame = 0;
   let observer = null;
+  let coldHomePresentationSyncDone = false;
+  let coldHomePresentationSyncFrame = 0;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -202,6 +204,41 @@
     });
   }
 
+  function runColdHomePresentationSync() {
+    coldHomePresentationSyncFrame = 0;
+
+    if (coldHomePresentationSyncDone) return;
+    if (!isHomeScreenActive()) return;
+
+    coldHomePresentationSyncDone = true;
+    updateAppHeight();
+    scheduleSync();
+  }
+
+  function scheduleColdHomePresentationSync() {
+    if (coldHomePresentationSyncDone || coldHomePresentationSyncFrame) return;
+
+    coldHomePresentationSyncFrame = window.requestAnimationFrame(() => {
+      coldHomePresentationSyncFrame = window.requestAnimationFrame(runColdHomePresentationSync);
+    });
+  }
+
+  function observeSplashPresentation() {
+    const splash = document.getElementById("appSplash");
+    if (!splash || typeof MutationObserver !== "function") return;
+
+    const splashObserver = new MutationObserver(() => {
+      if (!splash.classList.contains("hide") && splash.parentNode) return;
+      scheduleColdHomePresentationSync();
+    });
+
+    splashObserver.observe(splash, { attributes: true, attributeFilter: ["class"] });
+
+    if (splash.parentNode) {
+      splashObserver.observe(splash.parentNode, { childList: true });
+    }
+  }
+
   function handleViewportChange() {
     updateAppHeight();
     scheduleSync();
@@ -228,10 +265,13 @@
 
     updateAppHeight();
     observeStateOwners();
+    observeSplashPresentation();
 
     window.addEventListener("resize", handleViewportChange, { passive: true });
     window.addEventListener("orientationchange", handleViewportChange, { passive: true });
+    window.addEventListener("load", scheduleColdHomePresentationSync, { passive: true });
     window.addEventListener("pageshow", handleViewportChange, { passive: true });
+    window.addEventListener("pageshow", scheduleColdHomePresentationSync, { passive: true });
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) handleViewportChange();
     });
@@ -242,6 +282,7 @@
     }
 
     syncHomeScreenState();
+    scheduleColdHomePresentationSync();
   }
 
   window.KlevbyHomeScreenOwner = Object.freeze({
