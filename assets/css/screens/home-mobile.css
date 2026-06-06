@@ -19,6 +19,36 @@
   display: none;
 }
 
+@media (max-width: 767px) and (display-mode: standalone) {
+  html:has(#homeSection:not(.hidden)),
+  body:has(#homeSection:not(.hidden)) {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  body:has(#homeSection:not(.hidden)) #homeSection {
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  html.pwa-standalone:has(#homeSection:not(.hidden)),
+  body.pwa-installed:has(#homeSection:not(.hidden)) {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection {
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 @media (max-width: 767px) {
   html:has(#homeSection:not(.hidden)) {
     background: #020403;
@@ -61,11 +91,6 @@
 
   body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) header .header-inner {
     transform: translateY(0);
-  }
-
-  body:has(#homeSection:not(.hidden)) #homeSection {
-    min-height: 100vh;
-    min-height: 100svh;
   }
 
   #homeSection {
@@ -1349,6 +1374,31 @@
 }
 
 @media (max-width: 390px) and (max-height: 820px) {
+  body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) header .header-inner {
+    transform: translateY(4px);
+  }
+
+  html:has(#homeSection:not(.hidden)),
+  body:has(#homeSection:not(.hidden)) {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  body:has(#homeSection:not(.hidden)) {
+    padding-bottom: 0;
+  }
+
+  body:has(#homeSection:not(.hidden)) #homeSection {
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  #homeSection {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+
   #homeSection .hero {
     min-height: 272px !important;
     padding: calc(env(safe-area-inset-top) + 108px) 22px 23px !important;
@@ -1395,6 +1445,10 @@
   #homeSection .home-feed-preview-image,
   #homeSection .home-feed-preview-image img {
     min-height: 100px;
+  }
+
+  #homeSection .home-weather-card {
+    transform: translateY(-5px);
   }
 
   #homeSection .home-weather-strip {

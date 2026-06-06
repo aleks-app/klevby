@@ -11,7 +11,7 @@
 
 @media (max-width: 900px) {
   body {
-    padding-bottom: var(--klevby-content-bottom-reserve);
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
     background: #020403;
   }
 
@@ -37,10 +37,6 @@
 
   body:has(#homeSection:not(.hidden))::after {
     opacity: 0;
-  }
-
-  #pwaUpdateBanner {
-    bottom: var(--klevby-overlay-bottom) !important;
   }
 
   header {
@@ -612,12 +608,5 @@
 
   .badge {
     font-size: 10.8px;
-  }
-}
-
-@media (max-width: 380px) {
-  :root {
-    --klevby-touchbar-height: 64px;
-    --klevby-touchbar-bottom-gap: 14px;
   }
 }

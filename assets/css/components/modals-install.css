@@ -71,7 +71,7 @@ body.pwa-installed .install-hero-btn {
 .install-banner {
   position: fixed;
   left: 50%;
-  bottom: var(--klevby-overlay-bottom, 18px);
+  bottom: 18px;
   z-index: 1200;
   width: min(92%, 560px);
   transform: translateX(-50%) translateY(140%);

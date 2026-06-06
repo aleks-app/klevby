@@ -5,7 +5,7 @@
 
 @media (max-width: 520px) {
   .install-banner {
-    bottom: var(--klevby-overlay-bottom);
+    bottom: 100px;
     padding: 16px;
   }
 
