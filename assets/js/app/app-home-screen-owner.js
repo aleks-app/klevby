@@ -26,14 +26,49 @@
     return Number.isFinite(height) && height > 0 ? height : 0;
   }
 
+  function isStandalonePwa() {
+    if (isNativeApp()) return false;
+
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (root?.classList.contains("pwa-standalone")) return true;
+    if (body?.classList.contains("pwa-installed")) return true;
+
+    try {
+      if (
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(display-mode: standalone)").matches
+      ) {
+        return true;
+      }
+    } catch (_) {}
+
+    return navigator.standalone === true;
+  }
+
+  function resolveAppHeight(root) {
+    const visualViewportHeight = getPositiveHeight(window.visualViewport?.height);
+    const innerHeight = getPositiveHeight(window.innerHeight);
+    const clientHeight = getPositiveHeight(root.clientHeight);
+
+    if (isNativeApp()) {
+      return visualViewportHeight || innerHeight || clientHeight;
+    }
+
+    if (isStandalonePwa()) {
+      const layoutHeight = Math.max(innerHeight, clientHeight);
+      return layoutHeight || visualViewportHeight;
+    }
+
+    return visualViewportHeight || innerHeight || clientHeight;
+  }
+
   function updateAppHeight() {
     const root = document.documentElement;
     if (!root) return 0;
 
-    const visualViewportHeight = getPositiveHeight(window.visualViewport?.height);
-    const innerHeight = getPositiveHeight(window.innerHeight);
-    const clientHeight = getPositiveHeight(root.clientHeight);
-    const height = visualViewportHeight || innerHeight || clientHeight;
+    const height = resolveAppHeight(root);
 
     if (!height) return 0;
 
