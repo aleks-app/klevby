@@ -671,6 +671,11 @@ function showSection(section) {
 
   clearProfileChromeIfNeeded(safeSection);
   hideAllAppSectionsExcept(activeId);
+
+  if (typeof window.KlevbyHomeScreenOwner?.syncHomeScreenState === "function") {
+    window.KlevbyHomeScreenOwner.syncHomeScreenState();
+  }
+
   syncGlobalAuthState();
 
   if (safeSection === "home" || safeSection === "feed") {
