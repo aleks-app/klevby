@@ -156,7 +156,7 @@ function ensurePwaUpdateBanner() {
   banner.id = "pwaUpdateBanner";
   banner.setAttribute("role", "status");
   banner.setAttribute("aria-live", "polite");
-  banner.style.cssText = "position:fixed;left:12px;right:12px;z-index:9999;background:#111;color:#fff;padding:10px 12px;border-radius:12px;display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;";
+  banner.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#111;color:#fff;padding:10px 12px;border-radius:12px;display:none;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;";
 
   const text = document.createElement("span");
   text.textContent = "Доступно обновление приложения";
