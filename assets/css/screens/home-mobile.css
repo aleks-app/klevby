@@ -1516,3 +1516,25 @@
     display: inline;
   }
 }
+
+@media (max-width: 900px) {
+  html[data-home-screen-lock="true"],
+  body[data-home-screen-lock="true"] {
+    height: var(--klevby-app-height, 100dvh) !important;
+    min-height: var(--klevby-app-height, 100dvh) !important;
+    max-height: var(--klevby-app-height, 100dvh) !important;
+    overflow: hidden !important;
+    overscroll-behavior-y: none;
+  }
+
+  body[data-home-screen-lock="true"] {
+    padding-bottom: 0;
+  }
+
+  body[data-home-screen-lock="true"] #homeSection:not(.hidden) {
+    height: var(--klevby-app-height, 100dvh) !important;
+    min-height: var(--klevby-app-height, 100dvh) !important;
+    max-height: var(--klevby-app-height, 100dvh) !important;
+    overflow: hidden !important;
+  }
+}
