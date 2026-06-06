@@ -204,15 +204,35 @@
     });
   }
 
+  function applyColdHomeNavigationPresentation() {
+    const navigation = window.KlevbyAppNavigation;
+    if (!navigation) return false;
+
+    try {
+      if (typeof navigation.setAppChromeMode === "function") {
+        navigation.setAppChromeMode("home");
+      }
+
+      if (typeof navigation.hideAllAppSectionsExcept === "function") {
+        navigation.hideAllAppSectionsExcept(HOME_SECTION_ID);
+      }
+    } catch (_) {
+      return false;
+    }
+
+    return true;
+  }
+
   function runColdHomePresentationSync() {
     coldHomePresentationSyncFrame = 0;
 
     if (coldHomePresentationSyncDone) return;
     if (!isHomeScreenActive()) return;
+    if (!applyColdHomeNavigationPresentation()) return;
 
     coldHomePresentationSyncDone = true;
     updateAppHeight();
-    scheduleSync();
+    syncHomeScreenState();
   }
 
   function scheduleColdHomePresentationSync() {
