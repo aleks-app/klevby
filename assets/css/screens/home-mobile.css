@@ -1473,6 +1473,30 @@
   }
 }
 
+@media (min-width: 391px) and (max-width: 767px) {
+  /*
+   * HOME WEATHER — wider mobile horizontal chrome (391px+).
+   * Tighter internal strip layout to match feed preview usable width; no vertical density changes.
+   */
+  #homeSection .home-weather-strip {
+    gap: 8px;
+  }
+
+  #homeSection .home-weather-main {
+    column-gap: 10px;
+  }
+
+  #homeSection .home-weather-stats {
+    padding-right: 4px;
+  }
+
+  #homeSection .home-weather-details-toggle {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+  }
+}
+
 @media (min-width: 391px) and (max-width: 767px) and (min-height: 821px) {
   /*
    * HOME FIXED-FIT TOKENS — tall iPhone PWA baseline (accepted visual tune).
