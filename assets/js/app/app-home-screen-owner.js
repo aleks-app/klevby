@@ -20,6 +20,7 @@
   let homeScreenLocked = false;
   let syncFrame = 0;
   let observer = null;
+  let hasCapturedFirstSync = false;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -191,6 +192,11 @@
 
   function syncHomeScreenState() {
     setLockState(isHomeScreenActive());
+
+    if (!hasCapturedFirstSync) {
+      hasCapturedFirstSync = true;
+      window.KlevbyShellDebug?.capture("first syncHomeScreenState()");
+    }
   }
 
   function scheduleSync() {
@@ -225,6 +231,7 @@
   function init() {
     if (initialized) return;
     initialized = true;
+    window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
     updateAppHeight();
     observeStateOwners();

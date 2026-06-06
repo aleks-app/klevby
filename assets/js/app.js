@@ -641,21 +641,41 @@ function closeMobileMenuFromAppNavigation() {
 let coldHomeBootPresentationFinalized = false;
 
 function finalizeColdHomeBootPresentation() {
-  if (coldHomeBootPresentationFinalized) return false;
+  const shellDebug = window.KlevbyShellDebug;
+  shellDebug?.capture("finalizeColdHomeBootPresentation() start");
 
-  const homeScreenOwner = window.KlevbyHomeScreenOwner;
-  if (typeof homeScreenOwner?.isHomeScreenActive !== "function") return false;
-  if (!homeScreenOwner.isHomeScreenActive()) return false;
+  let result = false;
+  let reason = "already-finalized";
 
-  coldHomeBootPresentationFinalized = true;
-  showSection("home");
-  return true;
+  if (!coldHomeBootPresentationFinalized) {
+    const homeScreenOwner = window.KlevbyHomeScreenOwner;
+
+    if (typeof homeScreenOwner?.isHomeScreenActive !== "function") {
+      reason = "home-screen-owner-unavailable";
+    } else if (!homeScreenOwner.isHomeScreenActive()) {
+      reason = "home-screen-inactive";
+    } else {
+      coldHomeBootPresentationFinalized = true;
+      showSection("home");
+      result = true;
+      reason = "finalized";
+    }
+  }
+
+  shellDebug?.capture("finalizeColdHomeBootPresentation() end", { result, reason });
+  return result;
 }
 
 function showSection(section) {
-  closeMobileMenuFromAppNavigation();
-
   const safeSection = String(section || "home").trim();
+  const previousSection = getVisibleSectionName();
+  const shouldCaptureShellSection = safeSection === "home" || safeSection === "feed";
+
+  if (shouldCaptureShellSection) {
+    window.KlevbyShellDebug?.capture(`showSection("${safeSection}") start`, { previousSection });
+  }
+
+  closeMobileMenuFromAppNavigation();
 
   setAppChromeMode(
     safeSection === "home" ? "home" :
@@ -773,6 +793,14 @@ function showSection(section) {
 
   if (safeSection !== "create") {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  if (shouldCaptureShellSection) {
+    window.KlevbyShellDebug?.capture(`showSection("${safeSection}") end`, { previousSection });
+
+    if (safeSection === "home" && previousSection === "feed") {
+      window.KlevbyShellDebug?.capture("after Feed → Home return");
+    }
   }
 }
 
