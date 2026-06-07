@@ -66,6 +66,34 @@
     return JSON.stringify(window.klevbyAndroidDiagnostics.collect(), null, 2);
   }
 
+  function getLayoutRect(element) {
+    if (!element) return null;
+
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      height: rect.height,
+      y: rect.y,
+      width: rect.width
+    };
+  }
+
+  function getVerticalGap(upperRect, lowerRect) {
+    if (!upperRect || !lowerRect) return null;
+    return lowerRect.top - upperRect.bottom;
+  }
+
+  function getSelectedComputedStyles(element, properties) {
+    if (!element) return null;
+
+    const styles = getComputedStyle(element);
+    return properties.reduce((selectedStyles, property) => {
+      selectedStyles[property] = styles[property];
+      return selectedStyles;
+    }, {});
+  }
+
   function copyWithTextarea(text) {
     const textarea = document.createElement("textarea");
     textarea.value = text;
@@ -102,6 +130,23 @@
       const bodyStyles = body ? getComputedStyle(body) : null;
       const htmlStyles = getComputedStyle(html);
       const touchBarStyles = touchBar ? getComputedStyle(touchBar) : null;
+      const homeElements = {
+        hero: document.querySelector("#homeSection .hero"),
+        heroCopy: document.querySelector("#homeSection .hero-copy"),
+        quickActions: document.querySelector("#homeSection .home-quick-actions"),
+        quickActionsGrid: document.querySelector("#homeSection .home-quick-actions-grid"),
+        feedPreview: document.querySelector("#homeSection .home-feed-preview"),
+        feedHeader: document.querySelector("#homeSection .home-feed-preview-head"),
+        feedCard: document.querySelector("#homeSection .home-feed-preview-card"),
+        feedContent: document.querySelector("#homeSection .home-feed-preview-content"),
+        feedImage: document.querySelector("#homeSection .home-feed-preview-image"),
+        weatherCard: document.querySelector("#homeSection .home-weather-card"),
+        weatherStrip: document.querySelector("#homeSection .home-weather-strip"),
+        touchBar
+      };
+      const homeRects = Object.fromEntries(
+        Object.entries(homeElements).map(([name, element]) => [name, getLayoutRect(element)])
+      );
 
       return {
         timestamp: new Date().toISOString(),
@@ -135,6 +180,80 @@
           : null,
         homeSection: home ? home.getBoundingClientRect() : null,
         touchBar: touchBar ? touchBar.getBoundingClientRect() : null,
+        homeLayout: {
+          ...homeRects,
+          gaps: {
+            gapHeroToQuick: getVerticalGap(homeRects.hero, homeRects.quickActions),
+            gapQuickToFeed: getVerticalGap(homeRects.quickActions, homeRects.feedPreview),
+            gapFeedHeaderToCard: getVerticalGap(homeRects.feedHeader, homeRects.feedCard),
+            gapFeedCardToWeather: getVerticalGap(homeRects.feedCard, homeRects.weatherCard),
+            gapWeatherToTouchBar: getVerticalGap(homeRects.weatherCard, homeRects.touchBar),
+            gapWeatherStripToTouchBar: getVerticalGap(homeRects.weatherStrip, homeRects.touchBar)
+          },
+          variables: {
+            "--klevby-app-height": htmlStyles.getPropertyValue("--klevby-app-height").trim(),
+            "--klevby-home-bottom-reserve": htmlStyles
+              .getPropertyValue("--klevby-home-bottom-reserve")
+              .trim(),
+            "--klevby-bottom-chrome-total": htmlStyles
+              .getPropertyValue("--klevby-bottom-chrome-total")
+              .trim(),
+            "--klevby-touchbar-height": htmlStyles
+              .getPropertyValue("--klevby-touchbar-height")
+              .trim(),
+            "--klevby-touchbar-bottom-offset": htmlStyles
+              .getPropertyValue("--klevby-touchbar-bottom-offset")
+              .trim(),
+            "--klevby-home-section-gap": htmlStyles
+              .getPropertyValue("--klevby-home-section-gap")
+              .trim(),
+            "--klevby-home-hero-pad-top": htmlStyles
+              .getPropertyValue("--klevby-home-hero-pad-top")
+              .trim(),
+            "--klevby-home-hero-copy-min-h": htmlStyles
+              .getPropertyValue("--klevby-home-hero-copy-min-h")
+              .trim(),
+            "--klevby-home-quick-min-h": htmlStyles
+              .getPropertyValue("--klevby-home-quick-min-h")
+              .trim(),
+            "--klevby-home-feed-image-min-h": htmlStyles
+              .getPropertyValue("--klevby-home-feed-image-min-h")
+              .trim(),
+            "--klevby-home-weather-strip-min-h": htmlStyles
+              .getPropertyValue("--klevby-home-weather-strip-min-h")
+              .trim(),
+            "--klevby-home-weather-nudge-y": htmlStyles
+              .getPropertyValue("--klevby-home-weather-nudge-y")
+              .trim()
+          },
+          computedStyles: {
+            hero: getSelectedComputedStyles(homeElements.hero, [
+              "minHeight",
+              "paddingTop",
+              "paddingBottom"
+            ]),
+            quickActions: getSelectedComputedStyles(homeElements.quickActions, [
+              "marginTop",
+              "marginBottom"
+            ]),
+            feedPreview: getSelectedComputedStyles(homeElements.feedPreview, [
+              "marginTop",
+              "marginBottom"
+            ]),
+            feedCard: getSelectedComputedStyles(homeElements.feedCard, [
+              "paddingTop",
+              "paddingBottom",
+              "gap"
+            ]),
+            weatherCard: getSelectedComputedStyles(homeElements.weatherCard, [
+              "marginTop",
+              "marginBottom",
+              "paddingTop",
+              "paddingBottom",
+              "transform"
+            ])
+          }
+        },
         body: body ? body.getBoundingClientRect() : null,
         html: html.getBoundingClientRect(),
         scroll: {
