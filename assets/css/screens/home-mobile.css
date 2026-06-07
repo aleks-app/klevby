@@ -1413,7 +1413,7 @@
     --klevby-home-feed-card-min-h: 118px;
     --klevby-home-feed-image-min-h: 100px;
     --klevby-home-weather-strip-min-h: 44px;
-    --klevby-home-bottom-reserve: 104px;
+    --klevby-home-bottom-reserve: var(--klevby-bottom-chrome-total);
     --klevby-home-header-nudge-y: 4px;
     --klevby-home-weather-nudge-y: -5px;
   }
@@ -1436,7 +1436,7 @@
   }
 
   :root[data-home-density="compact"] #homeSection {
-    padding-bottom: calc(var(--klevby-home-bottom-reserve) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--klevby-home-bottom-reserve);
   }
 
   :root[data-home-density="compact"] #homeSection .hero-title-brand {

@@ -1,4 +1,4 @@
-@import url("./base/global.css");
+@import url("./base/global.css?v=20260607-bottom-chrome-contract-1");
 
 @import url("./layout/header.css");
 @import url("./layout/bottom-nav.css");
@@ -14,7 +14,7 @@
 @import url("./screens/auth-welcome.css");
 
 @import url("./responsive/mobile.css");
-@import url("./mobile/mobile-tabbar.css");
+@import url("./mobile/mobile-tabbar.css?v=20260607-bottom-chrome-contract-1");
 @import url("./mobile/mobile-float-button.css");
 @import url("./mobile/mobile-posts.css");
 @import url("./mobile/mobile-modals.css");
@@ -22,4 +22,4 @@
 @import url("./mobile/mobile-profile-feed.css");
 @import url("./mobile/mobile-market.css");
 @import url("./mobile/mobile-create.css");
-@import url("./screens/home-mobile.css?v=20260607-home-density-owner-1");
+@import url("./screens/home-mobile.css?v=20260607-bottom-chrome-contract-1");

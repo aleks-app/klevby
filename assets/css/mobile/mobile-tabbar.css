@@ -8,10 +8,10 @@
     position: fixed;
     left: 16px;
     right: 16px;
-    bottom: max(16px, env(safe-area-inset-bottom));
+    bottom: var(--klevby-touchbar-bottom-offset);
     z-index: 1100;
 
-    height: 66px;
+    height: var(--klevby-touchbar-height);
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: stretch;
@@ -302,8 +302,6 @@
   .mobile-tabbar {
     left: 12px;
     right: 12px;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    height: 64px;
     padding: 6px 8px;
     border-radius: 26px;
   }
