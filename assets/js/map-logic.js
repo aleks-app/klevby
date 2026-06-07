@@ -9,6 +9,10 @@
 
   const DEFAULT_CENTER = [53.9023, 27.5619]; // Минск
   const DEFAULT_ZOOM = 7;
+  const MAPLIBRE_VERSION = "5.24.0";
+  const MAPLIBRE_SCRIPT_URL = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
+  const MAPLIBRE_STYLESHEET_URL = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`;
+  const DEFAULT_MAPTILER_STYLE_URL = "https://api.maptiler.com/maps/streets-v2-dark/style.json";
 
   let mapDb = null;
   let mapInstance = null;
@@ -19,6 +23,8 @@
   let cachedFishingSpots = [];
   let activeSpotFilter = "all";
   let mapInitPromise = null;
+  let activeMapProvider = null;
+  let maplibreSpotMarkers = [];
 
   let currentMapUser = null;
   let userRefreshPromise = null;
@@ -27,6 +33,9 @@
   const MAP_AUTH_REFRESH_THROTTLE_MS = 8000;
   const YANDEX_API_LOAD_TIMEOUT_MS = 15000;
   const YANDEX_SCRIPT_SELECTOR = 'script[src*="api-maps.yandex.ru"]';
+  const MAPLIBRE_API_LOAD_TIMEOUT_MS = 15000;
+  const MAPLIBRE_SCRIPT_SELECTOR = 'script[data-klevby-maplibre="true"]';
+  const MAPLIBRE_STYLESHEET_SELECTOR = 'link[data-klevby-maplibre="true"]';
 
   const geocodeCache = {};
 
@@ -133,6 +142,104 @@
     v = v.replace(/[^a-zA-Z0-9_]/g, "");
 
     return v;
+  }
+
+  function getMapProviderConfig() {
+    const config = window.KLEVB_CONFIG || {};
+    const requestedProvider = String(window.KLEVB_MAP_PROVIDER || config.MAP_PROVIDER || "yandex").toLowerCase();
+    const maptilerKey = String(window.KLEVB_MAPTILER_KEY || config.MAPTILER_API_KEY || "").trim();
+    const maptilerStyleUrl = String(
+      window.KLEVB_MAPTILER_STYLE_URL || config.MAPTILER_STYLE_URL || DEFAULT_MAPTILER_STYLE_URL
+    ).trim();
+
+    if (requestedProvider !== "maplibre") {
+      return { provider: "yandex", requestedProvider, maptilerKey, maptilerStyleUrl };
+    }
+
+    if (!maptilerKey) {
+      console.warn("Klevby Map: MapLibre выбран, но MAPTILER_API_KEY не задан. Используем Yandex fallback.");
+      return { provider: "yandex", requestedProvider, maptilerKey, maptilerStyleUrl };
+    }
+
+    return { provider: "maplibre", requestedProvider, maptilerKey, maptilerStyleUrl };
+  }
+
+  function getMapTilerStyleUrl(styleUrl, apiKey) {
+    if (styleUrl.includes("{key}")) {
+      return styleUrl.replaceAll("{key}", encodeURIComponent(apiKey));
+    }
+
+    const url = new URL(styleUrl, window.location.href);
+    url.searchParams.set("key", apiKey);
+    return url.toString();
+  }
+
+  function isMapLibreApiUsable() {
+    return Boolean(
+      window.maplibregl &&
+      typeof window.maplibregl.Map === "function" &&
+      typeof window.maplibregl.Marker === "function" &&
+      typeof window.maplibregl.Popup === "function"
+    );
+  }
+
+  function loadMapLibreApi() {
+    if (isMapLibreApiUsable()) return Promise.resolve();
+
+    return new Promise(function (resolve, reject) {
+      let script = document.querySelector(MAPLIBRE_SCRIPT_SELECTOR);
+      let stylesheet = document.querySelector(MAPLIBRE_STYLESHEET_SELECTOR);
+      let settled = false;
+
+      const finish = function (error) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+
+        if (script) {
+          script.removeEventListener("load", handleScriptLoad);
+          script.removeEventListener("error", handleScriptError);
+        }
+
+        if (error) reject(error);
+        else resolve();
+      };
+
+      const handleScriptLoad = function () {
+        if (isMapLibreApiUsable()) finish();
+        else finish(new Error("MapLibre GL JS loaded, but its API is not usable"));
+      };
+
+      const handleScriptError = function () {
+        finish(new Error("MapLibre GL JS not loaded"));
+      };
+
+      const timeoutId = setTimeout(function () {
+        finish(new Error("MapLibre GL JS load timed out"));
+      }, MAPLIBRE_API_LOAD_TIMEOUT_MS);
+
+      if (!stylesheet) {
+        stylesheet = document.createElement("link");
+        stylesheet.rel = "stylesheet";
+        stylesheet.href = MAPLIBRE_STYLESHEET_URL;
+        stylesheet.dataset.klevbyMaplibre = "true";
+        document.head.appendChild(stylesheet);
+      }
+
+      if (!script) {
+        script = document.createElement("script");
+        script.src = MAPLIBRE_SCRIPT_URL;
+        script.async = true;
+        script.dataset.klevbyMaplibre = "true";
+      }
+
+      script.addEventListener("load", handleScriptLoad);
+      script.addEventListener("error", handleScriptError);
+
+      if (!script.isConnected) {
+        document.head.appendChild(script);
+      }
+    });
   }
 
   function isYandexMapsApiUsable() {
@@ -742,6 +849,50 @@
         margin-top: 8px;
       }
 
+      .klevby-maplibre-marker {
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 3px solid #fff8ea;
+        border-radius: 50% 50% 50% 0;
+        background: #2f8f68;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.46);
+        cursor: pointer;
+        transform: rotate(-45deg);
+      }
+
+      .klevby-maplibre-marker[data-spot-tone="paid"] {
+        background: #d99a2b;
+      }
+
+      .klevby-maplibre-marker[data-spot-tone="warning"] {
+        background: #d9534f;
+      }
+
+      .klevby-maplibre-marker[data-spot-tone="good"] {
+        background: #45aa72;
+      }
+
+      .klevby-maptiler-logo {
+        display: block;
+        height: 24px;
+        padding: 4px 6px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+      }
+
+      .klevby-maptiler-logo img {
+        display: block;
+        width: auto;
+        height: 16px;
+      }
+
+      #map .maplibregl-ctrl-bottom-left,
+      #map .maplibregl-ctrl-bottom-right {
+        z-index: 3;
+      }
+
       @media (max-width: 520px) {
         .klevby-map-modal {
           align-items: flex-end;
@@ -1256,8 +1407,10 @@
     await loadFishingSpots();
   }
 
-  function createMap(mapEl) {
+  function createYandexMap(mapEl) {
     if (mapInstance) return mapInstance;
+
+    activeMapProvider = "yandex";
 
     mapInstance = new ymaps.Map(mapEl, {
       center: DEFAULT_CENTER,
@@ -1294,8 +1447,88 @@
     return mapInstance;
   }
 
+  function addMapTilerLogo(map) {
+    const logoControl = {
+      onAdd: function () {
+        const link = document.createElement("a");
+        const image = document.createElement("img");
+
+        link.className = "klevby-maptiler-logo";
+        link.href = "https://www.maptiler.com/";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", "MapTiler");
+
+        image.src = "https://api.maptiler.com/resources/logo.svg";
+        image.alt = "MapTiler";
+        link.appendChild(image);
+
+        this.container = link;
+        return link;
+      },
+      onRemove: function () {
+        this.container?.remove();
+      }
+    };
+
+    map.addControl(logoControl, "bottom-left");
+  }
+
+  function createMapLibreMap(mapEl, providerConfig) {
+    if (mapInstance) return Promise.resolve(mapInstance);
+
+    return new Promise(function (resolve, reject) {
+      let settled = false;
+      const styleUrl = getMapTilerStyleUrl(providerConfig.maptilerStyleUrl, providerConfig.maptilerKey);
+      const timeoutId = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        reject(new Error("MapLibre/MapTiler initialization timed out"));
+      }, MAPLIBRE_API_LOAD_TIMEOUT_MS);
+      const map = new window.maplibregl.Map({
+        container: mapEl,
+        style: styleUrl,
+        center: [DEFAULT_CENTER[1], DEFAULT_CENTER[0]],
+        zoom: DEFAULT_ZOOM,
+        attributionControl: true
+      });
+
+      mapInstance = map;
+      activeMapProvider = "maplibre";
+
+      map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      addMapTilerLogo(map);
+
+      map.on("click", function (event) {
+        handleMapClick([event.lngLat.lat, event.lngLat.lng]);
+      });
+
+      map.once("load", function () {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        mapReady = true;
+        map.resize();
+        resolve(map);
+      });
+
+      map.on("error", function (event) {
+        const error = event?.error || new Error("MapLibre map failed to load");
+
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeoutId);
+          reject(error);
+          return;
+        }
+
+        console.warn("Klevby MapLibre: ошибка карты:", error);
+      });
+    });
+  }
+
   async function loadFishingSpots() {
-    if (!spotsCollection || !mapDb) return;
+    if (!mapReady || !mapDb) return;
 
     const result = await mapDb
       .from("fishing_spots")
@@ -1312,6 +1545,13 @@
   }
 
   function renderFishingSpots(spots) {
+    if (!mapReady || !mapInstance) return;
+
+    if (activeMapProvider === "maplibre") {
+      renderMapLibreFishingSpots(spots);
+      return;
+    }
+
     if (!spotsCollection) return;
 
     spotsCollection.removeAll();
@@ -1336,6 +1576,59 @@
         spotsCollection.add(placemark);
       } catch (error) {
         console.warn("Не удалось поставить метку точки ловли:", spot?.id, error);
+      }
+    });
+  }
+
+  function getMapLibreSpotTone(spotType) {
+    const type = String(spotType || "").toLowerCase();
+
+    if (type.includes("плат")) return "paid";
+    if (type.includes("осторож")) return "warning";
+    if (type.includes("клёв") || type.includes("клев")) return "good";
+
+    return "free";
+  }
+
+  function clearMapLibreSpotMarkers() {
+    maplibreSpotMarkers.forEach(function (marker) {
+      marker.remove();
+    });
+    maplibreSpotMarkers = [];
+  }
+
+  function renderMapLibreFishingSpots(spots) {
+    clearMapLibreSpotMarkers();
+
+    const filtered = filterFishingSpots(spots || []);
+
+    filtered.forEach(function (spot) {
+      const lat = Number(spot.lat);
+      const lng = Number(spot.lng);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      try {
+        const markerElement = document.createElement("button");
+        const popup = new window.maplibregl.Popup({ offset: 18 }).setHTML(getFishingSpotBalloonHtml(spot));
+
+        markerElement.type = "button";
+        markerElement.className = "klevby-maplibre-marker";
+        markerElement.dataset.spotTone = getMapLibreSpotTone(spot.spot_type);
+        markerElement.title = String(spot.name || "Точка ловли");
+        markerElement.setAttribute("aria-label", markerElement.title);
+        markerElement.addEventListener("click", function (event) {
+          event.stopPropagation();
+        });
+
+        const marker = new window.maplibregl.Marker({ element: markerElement, anchor: "bottom" })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(mapInstance);
+
+        maplibreSpotMarkers.push(marker);
+      } catch (error) {
+        console.warn("Не удалось поставить MapLibre-метку точки ловли:", spot?.id, error);
       }
     });
   }
@@ -1448,7 +1741,7 @@
   }
 
   async function loadPostMarkers() {
-    if (!postsCollection || !mapDb) return;
+    if (activeMapProvider !== "yandex" || !postsCollection || !mapDb) return;
 
     postsCollection.removeAll();
 
@@ -1587,7 +1880,9 @@
     });
 
     setTimeout(function () {
-      if (mapInstance && mapInstance.container) {
+      if (activeMapProvider === "maplibre" && mapInstance && typeof mapInstance.resize === "function") {
+        mapInstance.resize();
+      } else if (mapInstance && mapInstance.container) {
         mapInstance.container.fitToViewport();
       }
     }, 300);
@@ -1626,18 +1921,40 @@
   function cleanupPartialMapInitialization() {
     const partialMap = mapInstance;
 
+    clearMapLibreSpotMarkers();
     mapInstance = null;
     mapReady = false;
     postsCollection = null;
     spotsCollection = null;
+    activeMapProvider = null;
 
-    if (partialMap && typeof partialMap.destroy === "function") {
+    if (partialMap && (typeof partialMap.remove === "function" || typeof partialMap.destroy === "function")) {
       try {
-        partialMap.destroy();
+        if (typeof partialMap.remove === "function") partialMap.remove();
+        else partialMap.destroy();
       } catch (error) {
         console.warn("Не удалось очистить частично созданную карту:", error);
       }
     }
+  }
+
+  async function initializeSelectedProvider(mapEl) {
+    const providerConfig = getMapProviderConfig();
+
+    if (providerConfig.provider === "maplibre") {
+      try {
+        await loadMapLibreApi();
+        await createMapLibreMap(mapEl, providerConfig);
+        return;
+      } catch (error) {
+        console.warn("Klevby Map: MapLibre/MapTiler не запустился, используем Yandex fallback:", error);
+        cleanupPartialMapInitialization();
+        mapEl.innerHTML = "";
+      }
+    }
+
+    await loadYandexMapsApi();
+    createYandexMap(mapEl);
   }
 
   async function initMapLogic() {
@@ -1657,17 +1974,15 @@
       currentMapUser = mainUser;
     }
 
-    await loadYandexMapsApi();
-
     mapEl.innerHTML = "";
-    createMap(mapEl);
+    await initializeSelectedProvider(mapEl);
 
     window.klevbyReloadMap = refreshMapView;
     window.klevbyDeleteFishingSpot = deleteFishingSpot;
 
     await reloadMapData();
 
-    console.log("Klevby карта ловли запущена.");
+    console.log("Klevby карта ловли запущена. Провайдер:", activeMapProvider);
     return mapInstance;
   }
 
@@ -1692,6 +2007,12 @@
         const failedScript = document.querySelector(YANDEX_SCRIPT_SELECTOR);
         if (!isYandexMapsApiUsable() && failedScript) {
           failedScript.remove();
+        }
+
+        const failedMapLibreScript = document.querySelector(MAPLIBRE_SCRIPT_SELECTOR);
+        if (!isMapLibreApiUsable() && failedMapLibreScript) {
+          failedMapLibreScript.remove();
+          document.querySelector(MAPLIBRE_STYLESHEET_SELECTOR)?.remove();
         }
 
         showMapState("failed");
