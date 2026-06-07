@@ -6,6 +6,12 @@ window.KLEVB_CONFIG = {
   ADMIN_EMAIL: "al822alex@gmail.com",
   WEATHER_API_KEY: "2b08e3fec07f3dd6a25cf6862ab4b030",
 
+  // Map provider foundation. Keep "yandex" until a browser-safe MapTiler key is set.
+  // To test MapLibre, set MAP_PROVIDER to "maplibre" and add the key below.
+  MAP_PROVIDER: "yandex",
+  MAPTILER_API_KEY: "",
+  MAPTILER_STYLE_URL: "https://api.maptiler.com/maps/streets-v2-dark/style.json",
+
   CARD_IMAGES: [
     "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
     "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&w=900&q=80",
