@@ -581,15 +581,6 @@
     }
 
     mapEl.innerHTML = "";
-    mapEl.style.width = "100%";
-    mapEl.style.maxWidth = "100%";
-    mapEl.style.boxSizing = "border-box";
-    mapEl.style.minHeight = "520px";
-    mapEl.style.height = "65vh";
-    mapEl.style.borderRadius = "16px";
-    mapEl.style.overflow = "hidden";
-    mapEl.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
-    mapEl.style.background = "#0b171d";
 
     addMapHint(mapSection);
     addMapFilters(mapSection);
@@ -598,8 +589,33 @@
     return mapEl;
   }
 
+  function getMapStatusHost(mapSection) {
+    const existingHost = mapSection.querySelector("#mapStatusHost");
+    if (existingHost) return existingHost;
+
+    const mapScreen = mapSection.querySelector(".map-screen") || mapSection;
+    const host = document.createElement("div");
+    host.id = "mapStatusHost";
+    host.className = "map-status-host";
+    host.setAttribute("aria-live", "polite");
+    mapScreen.prepend(host);
+    return host;
+  }
+
+  function getMapFiltersHost(mapSection) {
+    const existingHost = mapSection.querySelector("#mapFiltersHost");
+    if (existingHost) return existingHost;
+
+    const mapStage = mapSection.querySelector(".map-stage") || mapSection;
+    const host = document.createElement("div");
+    host.id = "mapFiltersHost";
+    host.className = "map-filters-host";
+    mapStage.appendChild(host);
+    return host;
+  }
+
   function addMapHint(mapSection) {
-    if (document.getElementById("mapHint")) return;
+    if (mapSection.querySelector("#mapHint")) return;
 
     const hint = document.createElement("div");
     hint.id = "mapHint";
@@ -610,11 +626,11 @@
       Для сохранения нужно быть залогиненным на сайте.
     `;
 
-    mapSection.insertBefore(hint, mapSection.firstChild);
+    getMapStatusHost(mapSection).appendChild(hint);
   }
 
   function addMapFilters(mapSection) {
-    if (document.getElementById("mapFilters")) return;
+    if (mapSection.querySelector("#mapFilters")) return;
 
     const filters = document.createElement("div");
     filters.id = "mapFilters";
@@ -627,13 +643,7 @@
       <button class="map-filter-btn" data-filter="warning">Осторожно</button>
     `;
 
-    const mapEl = document.getElementById("map");
-
-    if (mapEl) {
-      mapSection.insertBefore(filters, mapEl);
-    } else {
-      mapSection.appendChild(filters);
-    }
+    getMapFiltersHost(mapSection).appendChild(filters);
 
     filters.querySelectorAll(".map-filter-btn").forEach(function (button) {
       button.addEventListener("click", function () {
