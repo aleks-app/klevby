@@ -568,8 +568,16 @@
     gap: 8px;
   }
 
-  #map {
-    min-height: 360px;
+  #mapSection {
+    --map-surface-min-height: 360px;
+  }
+
+  .map-screen {
+    padding-top: 8px;
+  }
+
+  .map-stage {
+    padding: 8px;
   }
 }
 

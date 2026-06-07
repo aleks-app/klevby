@@ -43,12 +43,50 @@
   min-height: 180px;
 }
 
-#map {
-  min-height: 410px;
+#mapSection {
+  --map-surface-min-height: 410px;
+  --map-surface-height: 65vh;
+}
+
+.map-screen {
+  width: 100%;
+  padding: 12px 0 calc(24px + var(--klevby-bottom-chrome-total));
+  background: #080908;
+}
+
+.map-stage {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(244, 178, 74, 0.14);
   border-radius: var(--radius-card);
-  overflow: hidden;
-  background: #0b171d;
+  background: #121313;
   box-shadow: var(--shadow);
+}
+
+.map-status-host:empty,
+.map-filters-host:empty {
+  display: none;
+}
+
+.map-status-host,
+.map-filters-host {
+  width: 100%;
+}
+
+#map {
+  width: 100%;
+  max-width: 100%;
+  height: var(--map-surface-height);
+  min-height: var(--map-surface-min-height);
+  overflow: hidden;
+  border-radius: 16px;
+  background: #0d0f0f;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+}
+
+.map-filters-host:not(:empty) {
+  padding-top: 14px;
 }
 /* Market hero premium image */
 #marketSection .market-hero {

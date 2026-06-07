@@ -761,7 +761,13 @@
     </section>
 
     <section id="mapSection" class="hidden">
-      <div id="map"></div>
+      <div class="map-screen">
+        <div id="mapStatusHost" class="map-status-host" aria-live="polite"></div>
+        <div class="map-stage">
+          <div id="map"></div>
+          <div id="mapFiltersHost" class="map-filters-host"></div>
+        </div>
+      </div>
     </section>
 
     <section id="authSection" class="hidden">
