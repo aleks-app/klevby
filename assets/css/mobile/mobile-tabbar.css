@@ -4,6 +4,10 @@
 */
 
 @media (max-width: 900px) {
+  body[data-app-chrome-mode="map"] .mobile-tabbar {
+    display: none;
+  }
+
   .mobile-tabbar {
     position: fixed;
     left: 16px;

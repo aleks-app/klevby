@@ -89,6 +89,7 @@
   function setAppChromeMode(mode) {
     const cleanMode =
       mode === "feed" ? "feed" :
+      mode === "map" ? "map" :
       mode === "inner" ? "inner" :
       "home";
     const header = document.querySelector("header");
@@ -97,6 +98,7 @@
       header.setAttribute("data-chrome-mode", cleanMode);
     }
 
+    document.documentElement.setAttribute("data-app-chrome-mode", cleanMode);
     document.body.setAttribute("data-app-chrome-mode", cleanMode);
 
     if (cleanMode === "feed") {

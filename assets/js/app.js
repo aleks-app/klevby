@@ -566,6 +566,7 @@ function setAppChromeMode(mode) {
 
   const cleanMode =
     mode === "feed" ? "feed" :
+    mode === "map" ? "map" :
     mode === "inner" ? "inner" :
     "home";
   const header = document.querySelector("header");
@@ -574,6 +575,7 @@ function setAppChromeMode(mode) {
     header.setAttribute("data-chrome-mode", cleanMode);
   }
 
+  document.documentElement.setAttribute("data-app-chrome-mode", cleanMode);
   document.body.setAttribute("data-app-chrome-mode", cleanMode);
   return cleanMode;
 }
@@ -680,6 +682,7 @@ function showSection(section) {
   setAppChromeMode(
     safeSection === "home" ? "home" :
     safeSection === "feed" ? "feed" :
+    safeSection === "map" ? "map" :
     "inner"
   );
 

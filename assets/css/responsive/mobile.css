@@ -39,6 +39,75 @@
     opacity: 0;
   }
 
+  html[data-app-chrome-mode="map"],
+  body[data-app-chrome-mode="map"] {
+    width: 100%;
+    height: var(--klevby-app-height, 100dvh);
+    min-height: var(--klevby-app-height, 100dvh);
+    max-height: var(--klevby-app-height, 100dvh);
+    overflow: hidden;
+  }
+
+  body[data-app-chrome-mode="map"] {
+    padding-bottom: 0;
+    background: #060706;
+  }
+
+  body[data-app-chrome-mode="map"]::before,
+  body[data-app-chrome-mode="map"]::after {
+    opacity: 0;
+  }
+
+  body[data-app-chrome-mode="map"] #klevbyAppRoot {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body[data-app-chrome-mode="map"] #klevbyAppRoot > header {
+    flex: 0 0 auto;
+  }
+
+  body[data-app-chrome-mode="map"] #klevbyAppRoot > main.wrap {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body[data-app-chrome-mode="map"] #mapSection,
+  body[data-app-chrome-mode="map"] .map-screen {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  body[data-app-chrome-mode="map"] .map-screen {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  body[data-app-chrome-mode="map"] .map-stage {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  body[data-app-chrome-mode="map"] #map {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+
   header {
     position: relative;
     top: auto;
