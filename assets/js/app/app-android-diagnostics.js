@@ -170,6 +170,7 @@
           body: body?.getAttribute("data-home-screen-lock") || null
         },
         chromeMode: body?.getAttribute("data-app-chrome-mode") || null,
+        homeDensity: html.getAttribute("data-home-density") || null,
         compactMediaQuery: window.matchMedia("(max-width: 390px) and (max-height: 820px)").matches,
         homeScrollDiff: home ? home.scrollHeight - home.clientHeight : null
       };
