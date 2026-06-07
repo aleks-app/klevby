@@ -86,6 +86,7 @@
 .map-status-host,
 .map-filters-host {
   width: 100%;
+  min-width: 0;
 }
 
 #map {
@@ -100,7 +101,7 @@
 }
 
 .map-filters-host:not(:empty) {
-  padding-top: 14px;
+  padding-top: 8px;
 }
 /* Market hero premium image */
 #marketSection .market-hero {

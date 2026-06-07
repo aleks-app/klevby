@@ -233,46 +233,132 @@
 
     style.textContent = `
       #mapHint {
-        margin: 14px 0;
-        padding: 14px 16px;
-        border-radius: 16px;
-        background: rgba(255,255,255,0.055);
-        color: rgba(244,251,247,0.78);
-        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 6px 0 8px;
+        padding: 9px 12px;
+        border: 1px solid rgba(255, 248, 234, 0.08);
+        border-radius: 14px;
+        background: rgba(24, 25, 23, 0.82);
+        color: #fff8ea;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+      }
+
+      .map-hint-icon,
+      .map-filter-icon {
+        display: block;
+        flex: 0 0 auto;
+        background-color: currentColor;
+        -webkit-mask: var(--map-icon) center / contain no-repeat;
+        mask: var(--map-icon) center / contain no-repeat;
+      }
+
+      .map-hint-icon {
+        width: 18px;
+        height: 18px;
+        color: #f28c28;
+        --map-icon: url("assets/icons/map/location.svg");
+      }
+
+      .map-hint-copy {
+        min-width: 0;
+      }
+
+      .map-hint-title {
+        display: block;
+        color: #fff8ea;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.15;
+      }
+
+      .map-hint-subtitle {
+        display: block;
+        margin-top: 2px;
+        color: rgba(255, 248, 234, 0.68);
+        font-size: 11px;
         font-weight: 600;
-        line-height: 1.5;
+        line-height: 1.25;
       }
 
       #mapFilters {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: 0 0 14px;
+        gap: 7px;
+        width: 100%;
+        margin: 0;
+        padding: 0 1px 2px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #mapFilters::-webkit-scrollbar {
+        display: none;
       }
 
       .map-filter-btn {
-        min-height: 38px;
-        padding: 8px 12px;
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 14px;
-        background: rgba(255,255,255,0.055);
-        color: rgba(244,251,247,0.72);
-        font-size: 13px;
-        font-weight: 700;
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        padding: 6px 10px;
+        border: 1px solid rgba(255, 248, 234, 0.1);
+        border-radius: 999px;
+        background: rgba(24, 25, 23, 0.9);
+        color: rgba(255, 248, 234, 0.72);
+        font-size: 12px;
+        font-weight: 750;
+        line-height: 1;
+        white-space: nowrap;
         cursor: pointer;
-        transition: 0.22s ease;
+        touch-action: manipulation;
+        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+      }
+
+      .map-filter-icon {
+        width: 16px;
+        height: 16px;
+      }
+
+      .map-filter-icon--all {
+        --map-icon: url("assets/icons/map/filter.svg");
+      }
+
+      .map-filter-icon--free {
+        --map-icon: url("assets/icons/map/free.svg");
+      }
+
+      .map-filter-icon--paid {
+        --map-icon: url("assets/icons/map/paid.svg");
+      }
+
+      .map-filter-icon--good {
+        --map-icon: url("assets/icons/map/fish.svg");
+      }
+
+      .map-filter-icon--warning {
+        --map-icon: url("assets/icons/map/warning.svg");
       }
 
       .map-filter-btn:hover {
-        transform: translateY(-1px);
-        background: rgba(255,255,255,0.085);
-        color: #ffffff;
+        background: rgba(255, 248, 234, 0.09);
+        border-color: rgba(255, 248, 234, 0.16);
+        color: #fff8ea;
+      }
+
+      .map-filter-btn:focus-visible {
+        outline: 2px solid rgba(242, 140, 40, 0.72);
+        outline-offset: 2px;
       }
 
       .map-filter-btn.active {
-        background: linear-gradient(135deg, #42d986, #1fae68);
-        color: #03150c;
-        border-color: rgba(66,217,134,0.28);
+        background: #f28c28;
+        color: #17130e;
+        border-color: #f28c28;
       }
 
       .klevby-map-state {
@@ -498,15 +584,6 @@
       }
 
       @media (max-width: 520px) {
-        #mapFilters {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-        }
-
-        .map-filter-btn {
-          width: 100%;
-        }
-
         .klevby-map-modal {
           align-items: flex-end;
           padding: 10px;
@@ -621,9 +698,11 @@
     hint.id = "mapHint";
 
     hint.innerHTML = `
-      🗺️ <b style="color:#fff;">Карта ловли:</b>
-      нажми на место на карте, чтобы добавить точку, где можно ловить.
-      Для сохранения нужно быть залогиненным на сайте.
+      <span class="map-hint-icon" aria-hidden="true"></span>
+      <span class="map-hint-copy">
+        <strong class="map-hint-title">Карта ловли</strong>
+        <span class="map-hint-subtitle">Нажми на карту, чтобы добавить точку. Сохранение — после входа.</span>
+      </span>
     `;
 
     getMapStatusHost(mapSection).appendChild(hint);
@@ -635,12 +714,29 @@
     const filters = document.createElement("div");
     filters.id = "mapFilters";
 
+    filters.setAttribute("role", "group");
+    filters.setAttribute("aria-label", "Фильтры точек на карте");
     filters.innerHTML = `
-      <button class="map-filter-btn active" data-filter="all">Все точки</button>
-      <button class="map-filter-btn" data-filter="free">Бесплатные</button>
-      <button class="map-filter-btn" data-filter="paid">Платные</button>
-      <button class="map-filter-btn" data-filter="good">Хороший клёв</button>
-      <button class="map-filter-btn" data-filter="warning">Осторожно</button>
+      <button class="map-filter-btn active" type="button" data-filter="all" aria-pressed="true">
+        <span class="map-filter-icon map-filter-icon--all" aria-hidden="true"></span>
+        <span>Все точки</span>
+      </button>
+      <button class="map-filter-btn" type="button" data-filter="free" aria-pressed="false">
+        <span class="map-filter-icon map-filter-icon--free" aria-hidden="true"></span>
+        <span>Бесплатные</span>
+      </button>
+      <button class="map-filter-btn" type="button" data-filter="paid" aria-pressed="false">
+        <span class="map-filter-icon map-filter-icon--paid" aria-hidden="true"></span>
+        <span>Платные</span>
+      </button>
+      <button class="map-filter-btn" type="button" data-filter="good" aria-pressed="false">
+        <span class="map-filter-icon map-filter-icon--good" aria-hidden="true"></span>
+        <span>Хороший клёв</span>
+      </button>
+      <button class="map-filter-btn" type="button" data-filter="warning" aria-pressed="false">
+        <span class="map-filter-icon map-filter-icon--warning" aria-hidden="true"></span>
+        <span>Осторожно</span>
+      </button>
     `;
 
     getMapFiltersHost(mapSection).appendChild(filters);
@@ -650,7 +746,9 @@
         activeSpotFilter = button.getAttribute("data-filter") || "all";
 
         filters.querySelectorAll(".map-filter-btn").forEach(function (btn) {
-          btn.classList.toggle("active", btn === button);
+          const isActive = btn === button;
+          btn.classList.toggle("active", isActive);
+          btn.setAttribute("aria-pressed", String(isActive));
         });
 
         renderFishingSpots(cachedFishingSpots);
