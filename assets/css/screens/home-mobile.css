@@ -571,10 +571,39 @@
   }
 
   #homeSection .home-feed-preview-action {
-    color: rgba(255, 248, 234, 0.72);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 12px;
     font-weight: 750;
     line-height: 1;
+  }
+
+  #homeSection .home-feed-preview-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+  }
+
+  #homeSection .home-feed-preview-action-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  #homeSection .home-feed-preview-action-count {
+    color: rgba(255, 242, 218, 0.78);
+  }
+
+  #homeSection .home-feed-preview-action--like .home-feed-preview-action-icon {
+    color: #f47a2b;
+  }
+
+  #homeSection .home-feed-preview-action--comment .home-feed-preview-action-icon {
+    color: rgba(255, 242, 218, 0.78);
   }
 
   #homeSection .home-feed-preview-image {
