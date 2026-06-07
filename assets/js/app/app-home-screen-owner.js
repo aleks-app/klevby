@@ -3,6 +3,8 @@
 
   const HOME_SECTION_ID = "homeSection";
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
+  const HOME_DENSITY_ATTRIBUTE = "data-home-density";
+  const HOME_COMPACT_HEIGHT_MAX = 820;
   const MOBILE_QUERY = "(max-width: 900px)";
   const FALLBACK_APP_SECTION_IDS = [
     "homeSection",
@@ -77,6 +79,10 @@
 
     const roundedHeight = Math.round(height);
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
+    root.setAttribute(
+      HOME_DENSITY_ATTRIBUTE,
+      height <= HOME_COMPACT_HEIGHT_MAX ? "compact" : "standard"
+    );
     return roundedHeight;
   }
 
