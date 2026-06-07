@@ -180,8 +180,8 @@
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 5px !important;
-    margin: 0 0 7px !important;
+    gap: 8px !important;
+    margin: 0 0 11px !important;
     max-width: none !important;
     font-size: inherit !important;
     line-height: 1 !important;
@@ -215,6 +215,7 @@
     font-size: 15px !important;
     line-height: 1.45 !important;
     font-weight: 500 !important;
+    max-width: 19.5em !important;
     margin: 0 0 8px !important;
     text-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
   }
