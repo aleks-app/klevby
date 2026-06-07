@@ -103,6 +103,118 @@
 .map-filters-host:not(:empty) {
   padding-top: 8px;
 }
+
+#map .maplibregl-ctrl-top-right {
+  top: 10px;
+  right: 10px;
+}
+
+#map .maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid rgba(244, 122, 43, 0.58);
+  border-radius: 14px;
+  background: rgba(21, 22, 21, 0.94);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 248, 234, 0.04),
+    0 0 18px rgba(244, 122, 43, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#map .maplibregl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+  background-color: transparent;
+}
+
+#map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(244, 122, 43, 0.32);
+}
+
+#map .maplibregl-ctrl-group button:hover,
+#map .maplibregl-ctrl-group button:focus-visible {
+  background-color: rgba(244, 122, 43, 0.17);
+}
+
+#map .maplibregl-ctrl-group button:focus-visible {
+  outline: 2px solid #f47a2b;
+  outline-offset: -3px;
+}
+
+#map .maplibregl-ctrl-icon {
+  filter: invert(92%) sepia(14%) saturate(449%) hue-rotate(334deg) brightness(108%) contrast(102%);
+  opacity: 0.94;
+}
+
+#map .maplibregl-ctrl-bottom-left {
+  left: 6px;
+  bottom: 5px;
+  z-index: 3;
+}
+
+#map .maplibregl-ctrl-bottom-right {
+  right: 6px;
+  bottom: 5px;
+  z-index: 3;
+  max-width: calc(100% - 88px);
+}
+
+#map .maplibregl-ctrl-attrib {
+  margin: 0;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 248, 234, 0.08);
+  border-radius: 6px;
+  background: rgba(13, 15, 15, 0.76);
+  color: rgba(255, 248, 234, 0.64);
+  font: 500 9px/1.25 Montserrat, sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+#map .maplibregl-ctrl-attrib a {
+  color: rgba(255, 248, 234, 0.78);
+  text-decoration-color: rgba(244, 122, 43, 0.48);
+  text-underline-offset: 2px;
+}
+
+#map .maplibregl-ctrl-attrib a:hover,
+#map .maplibregl-ctrl-attrib a:focus-visible {
+  color: #fff8ea;
+  text-decoration-color: #f47a2b;
+}
+
+#map .klevby-maptiler-logo {
+  display: block;
+  height: 20px;
+  margin: 0;
+  padding: 3px 5px;
+  border: 1px solid rgba(255, 248, 234, 0.08);
+  border-radius: 6px;
+  background: rgba(13, 15, 15, 0.76);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  opacity: 0.78;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+#map .klevby-maptiler-logo:hover,
+#map .klevby-maptiler-logo:focus-visible {
+  opacity: 1;
+}
+
+#map .klevby-maptiler-logo:focus-visible {
+  outline: 2px solid #f47a2b;
+  outline-offset: 2px;
+}
+
+#map .klevby-maptiler-logo img {
+  display: block;
+  width: auto;
+  height: 12px;
+  filter: brightness(0) invert(95%) sepia(10%) saturate(485%) hue-rotate(334deg) brightness(107%);
+}
 /* Market hero premium image */
 #marketSection .market-hero {
   position: relative;
