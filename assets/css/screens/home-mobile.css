@@ -1407,16 +1407,15 @@
    */
   :root[data-home-density="compact"] {
     --klevby-home-hero-min-h: 272px;
-    --klevby-home-hero-pad-top: 102px;
-    --klevby-home-hero-copy-min-h: 178px;
-    --klevby-home-quick-min-h: 84px;
-    --klevby-home-section-gap: 10px;
+    --klevby-home-hero-pad-top: 108px;
+    --klevby-home-hero-copy-min-h: 186px;
+    --klevby-home-quick-min-h: 88px;
     --klevby-home-feed-card-min-h: 118px;
-    --klevby-home-feed-image-min-h: 96px;
-    --klevby-home-weather-strip-min-h: 42px;
+    --klevby-home-feed-image-min-h: 100px;
+    --klevby-home-weather-strip-min-h: 44px;
     --klevby-home-bottom-reserve: var(--klevby-bottom-chrome-total);
     --klevby-home-header-nudge-y: 4px;
-    --klevby-home-weather-nudge-y: 0px;
+    --klevby-home-weather-nudge-y: -5px;
   }
 
   :root[data-home-density="compact"]:has(#homeSection:not(.hidden)),
@@ -1464,21 +1463,12 @@
     height: 34px;
   }
 
-  :root[data-home-density="compact"] #homeSection .home-feed-preview-head {
-    margin-bottom: 5px;
-  }
-
   :root[data-home-density="compact"] #homeSection .home-feed-preview-card {
-    gap: 6px;
-    padding: 10px;
+    padding: 12px;
   }
 
   :root[data-home-density="compact"] #homeSection .home-feed-preview-content {
     grid-template-columns: minmax(0, 1fr) 102px;
-  }
-
-  :root[data-home-density="compact"] #homeSection .home-weather-card {
-    padding: 8px 12px;
   }
 }
 
