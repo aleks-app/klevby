@@ -873,21 +873,6 @@
         background: #45aa72;
       }
 
-      .klevby-maptiler-logo {
-        display: block;
-        height: 24px;
-        padding: 4px 6px;
-        border-radius: 5px;
-        background: rgba(255, 255, 255, 0.92);
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
-      }
-
-      .klevby-maptiler-logo img {
-        display: block;
-        width: auto;
-        height: 16px;
-      }
-
       #map .maplibregl-ctrl-bottom-left,
       #map .maplibregl-ctrl-bottom-right {
         z-index: 3;
@@ -1447,6 +1432,67 @@
     return mapInstance;
   }
 
+  function getRussianLabelExpression(value) {
+    if (!Array.isArray(value)) return value;
+
+    if (value[0] === "get" && typeof value[1] === "string") {
+      const fieldName = value[1];
+
+      if (fieldName === "name") {
+        return ["coalesce", ["get", "name:ru"], ["get", "name"]];
+      }
+
+      if (["name:latin", "name:en", "name_en"].includes(fieldName)) {
+        return ["coalesce", ["get", "name:ru"], ["get", "name"], value];
+      }
+
+      return value;
+    }
+
+    let changed = false;
+    const localizedValue = value.map(function (part) {
+      const localizedPart = getRussianLabelExpression(part);
+      if (localizedPart !== part) changed = true;
+      return localizedPart;
+    });
+
+    return changed ? localizedValue : value;
+  }
+
+  function localizeMapLibreLabels(map) {
+    const style = map.getStyle();
+    const layers = Array.isArray(style?.layers) ? style.layers : [];
+
+    layers.forEach(function (layer) {
+      const textField = layer?.layout?.["text-field"];
+      if (!textField) return;
+
+      const localizedTextField = getRussianLabelExpression(textField);
+      if (localizedTextField === textField) return;
+
+      try {
+        map.setLayoutProperty(layer.id, "text-field", localizedTextField);
+      } catch (error) {
+        console.warn("Klevby MapLibre: не удалось локализовать слой карты:", layer.id, error);
+      }
+    });
+  }
+
+  function localizeMapLibreNavigationControl(mapEl) {
+    const zoomInButton = mapEl.querySelector(".maplibregl-ctrl-zoom-in");
+    const zoomOutButton = mapEl.querySelector(".maplibregl-ctrl-zoom-out");
+
+    if (zoomInButton) {
+      zoomInButton.title = "Приблизить";
+      zoomInButton.setAttribute("aria-label", "Приблизить карту");
+    }
+
+    if (zoomOutButton) {
+      zoomOutButton.title = "Отдалить";
+      zoomOutButton.setAttribute("aria-label", "Отдалить карту");
+    }
+  }
+
   function addMapTilerLogo(map) {
     const logoControl = {
       onAdd: function () {
@@ -1490,14 +1536,16 @@
         style: styleUrl,
         center: [DEFAULT_CENTER[1], DEFAULT_CENTER[0]],
         zoom: DEFAULT_ZOOM,
-        attributionControl: true
+        attributionControl: false
       });
 
       mapInstance = map;
       activeMapProvider = "maplibre";
 
       map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(new window.maplibregl.AttributionControl({ compact: false }), "bottom-right");
       addMapTilerLogo(map);
+      localizeMapLibreNavigationControl(mapEl);
 
       map.on("click", function (event) {
         handleMapClick([event.lngLat.lat, event.lngLat.lng]);
@@ -1507,6 +1555,7 @@
         if (settled) return;
         settled = true;
         clearTimeout(timeoutId);
+        localizeMapLibreLabels(map);
         mapReady = true;
         map.resize();
         resolve(map);
