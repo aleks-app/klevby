@@ -51,7 +51,21 @@
 .map-screen {
   width: 100%;
   padding: 12px 0 calc(24px + var(--klevby-bottom-chrome-total));
-  background: #080908;
+  background-color: #060706;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(2, 4, 3, 0.9) 0%,
+      rgba(5, 7, 6, 0.84) 38%,
+      rgba(6, 8, 7, 0.92) 100%
+    ),
+    radial-gradient(circle at 14% 0%, rgba(244, 122, 43, 0.1), transparent 42%),
+    radial-gradient(circle at 86% 12%, rgba(244, 178, 74, 0.06), transparent 46%),
+    linear-gradient(180deg, rgba(4, 6, 5, 0.76) 0%, rgba(2, 3, 3, 0.88) 100%),
+    url("../../img/map-screen-bg-dark-river.png");
+  background-position: center center, center top, center top, center center, center center;
+  background-size: cover, cover, cover, cover, cover;
+  background-repeat: no-repeat;
 }
 
 .map-stage {

@@ -9,7 +9,7 @@
 @import url("./components/modals-install.css");
 
 @import url("./screens/home.css");
-@import url("./screens/secondary.css");
+@import url("./screens/secondary.css?v=20260607-map-screen-bg-1");
 @import url("./screens/profile.css");
 @import url("./screens/auth-welcome.css");
 
