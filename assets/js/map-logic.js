@@ -282,50 +282,208 @@
         line-height: 1.25;
       }
 
-      #mapFilters {
-        display: flex;
-        gap: 7px;
+      #mapActions {
+        position: relative;
+        z-index: 12;
         width: 100%;
-        margin: 0;
-        padding: 0 1px 2px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        overscroll-behavior-x: contain;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
       }
 
-      #mapFilters::-webkit-scrollbar {
+      .map-action-bar {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+      }
+
+      .map-action-btn {
+        display: inline-flex;
+        min-width: 0;
+        min-height: 54px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 7px;
+        border: 1px solid rgba(244, 122, 43, 0.42);
+        border-radius: 15px;
+        background:
+          linear-gradient(180deg, rgba(36, 36, 36, 0.98), rgba(21, 21, 21, 0.98));
+        color: #f4f1ee;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.045),
+          0 5px 16px rgba(0, 0, 0, 0.22),
+          0 0 0 1px rgba(244, 122, 43, 0.035);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 780;
+        line-height: 1.05;
+        text-align: center;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+      }
+
+      .map-action-btn:hover,
+      .map-action-btn[aria-expanded="true"],
+      .map-action-btn.is-active {
+        border-color: rgba(244, 122, 43, 0.78);
+        background:
+          linear-gradient(180deg, rgba(45, 34, 27, 0.98), rgba(25, 22, 20, 0.98));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 248, 234, 0.06),
+          0 5px 18px rgba(0, 0, 0, 0.25),
+          0 0 14px rgba(244, 122, 43, 0.12);
+      }
+
+      .map-action-btn.is-unavailable {
+        border-color: rgba(240, 154, 88, 0.26);
+        color: rgba(244, 241, 238, 0.8);
+      }
+
+      .map-action-btn:focus-visible,
+      .map-filter-option:focus-visible,
+      .map-filter-sheet-close:focus-visible {
+        outline: 2px solid rgba(244, 122, 43, 0.82);
+        outline-offset: 2px;
+      }
+
+      .map-action-icon,
+      .map-filter-icon,
+      .map-filter-sheet-close-icon {
+        display: block;
+        flex: 0 0 auto;
+        background-color: currentColor;
+        -webkit-mask: var(--map-icon) center / contain no-repeat;
+        mask: var(--map-icon) center / contain no-repeat;
+      }
+
+      .map-action-icon {
+        width: 20px;
+        height: 20px;
+        color: #f47a2b;
+      }
+
+      .map-action-icon--filter,
+      .map-filter-icon--all {
+        --map-icon: url("assets/icons/map/filter.svg");
+      }
+
+      .map-action-icon--location {
+        --map-icon: url("assets/icons/map/location.svg");
+      }
+
+      .map-action-icon--layers {
+        --map-icon: url("assets/icons/map/layers.svg");
+      }
+
+      .map-filter-sheet {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 10px);
+        left: 0;
+        z-index: 2;
+        padding: 14px;
+        border: 1px solid rgba(244, 122, 43, 0.48);
+        border-radius: 20px;
+        background:
+          radial-gradient(circle at 12% 0%, rgba(244, 122, 43, 0.1), transparent 42%),
+          rgba(21, 21, 21, 0.985);
+        box-shadow:
+          0 18px 44px rgba(0, 0, 0, 0.46),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 0 20px rgba(244, 122, 43, 0.08);
+        color: #fff8ea;
+      }
+
+      .map-filter-sheet[hidden] {
         display: none;
       }
 
-      .map-filter-btn {
-        display: inline-flex;
-        flex: 0 0 auto;
+      .map-filter-sheet-head {
+        display: flex;
         align-items: center;
-        gap: 6px;
-        min-height: 32px;
-        padding: 6px 10px;
-        border: 1px solid rgba(255, 248, 234, 0.1);
-        border-radius: 999px;
-        background: rgba(24, 25, 23, 0.9);
-        color: rgba(255, 248, 234, 0.72);
-        font-size: 12px;
-        font-weight: 750;
-        line-height: 1;
-        white-space: nowrap;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 11px;
+      }
+
+      .map-filter-sheet-title {
+        margin: 0;
+        color: #fff8ea;
+        font-size: 16px;
+        font-weight: 850;
+        letter-spacing: -0.2px;
+      }
+
+      .map-filter-sheet-close {
+        display: inline-grid;
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(240, 154, 88, 0.28);
+        border-radius: 12px;
+        background: #242424;
+        color: #f47a2b;
         cursor: pointer;
         touch-action: manipulation;
-        transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+      }
+
+      .map-filter-sheet-close-icon {
+        width: 18px;
+        height: 18px;
+        --map-icon: url("assets/icons/map/close.svg");
+      }
+
+      .map-filter-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .map-filter-option {
+        display: flex;
+        min-width: 0;
+        min-height: 46px;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 11px;
+        border: 1px solid rgba(255, 248, 234, 0.1);
+        border-radius: 14px;
+        background: #1b1b1b;
+        color: rgba(244, 241, 238, 0.82);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 760;
+        line-height: 1.15;
+        text-align: left;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+      }
+
+      .map-filter-option:first-child {
+        grid-column: 1 / -1;
+      }
+
+      .map-filter-option:hover {
+        border-color: rgba(240, 154, 88, 0.4);
+        color: #fff8ea;
+      }
+
+      .map-filter-option.active {
+        border-color: rgba(244, 122, 43, 0.78);
+        background: rgba(244, 122, 43, 0.1);
+        color: #fff8ea;
+        box-shadow:
+          inset 3px 0 0 #f47a2b,
+          0 0 14px rgba(244, 122, 43, 0.08);
       }
 
       .map-filter-icon {
-        width: 16px;
-        height: 16px;
-      }
-
-      .map-filter-icon--all {
-        --map-icon: url("assets/icons/map/filter.svg");
+        width: 18px;
+        height: 18px;
+        color: #f47a2b;
       }
 
       .map-filter-icon--free {
@@ -344,21 +502,22 @@
         --map-icon: url("assets/icons/map/warning.svg");
       }
 
-      .map-filter-btn:hover {
-        background: rgba(255, 248, 234, 0.09);
-        border-color: rgba(255, 248, 234, 0.16);
-        color: #fff8ea;
-      }
+      @media (max-width: 380px) {
+        .map-action-bar {
+          gap: 6px;
+        }
 
-      .map-filter-btn:focus-visible {
-        outline: 2px solid rgba(242, 140, 40, 0.72);
-        outline-offset: 2px;
-      }
+        .map-action-btn {
+          min-height: 52px;
+          gap: 5px;
+          padding-inline: 5px;
+          font-size: 11px;
+        }
 
-      .map-filter-btn.active {
-        background: #f28c28;
-        color: #17130e;
-        border-color: #f28c28;
+        .map-action-icon {
+          width: 18px;
+          height: 18px;
+        }
       }
 
       .klevby-map-state {
@@ -660,7 +819,7 @@
     mapEl.innerHTML = "";
 
     addMapHint(mapSection);
-    addMapFilters(mapSection);
+    addMapActions(mapSection);
     createSpotModal();
 
     return mapEl;
@@ -708,52 +867,116 @@
     getMapStatusHost(mapSection).appendChild(hint);
   }
 
-  function addMapFilters(mapSection) {
-    if (mapSection.querySelector("#mapFilters")) return;
+  function addMapActions(mapSection) {
+    if (mapSection.querySelector("#mapActions")) return;
 
-    const filters = document.createElement("div");
-    filters.id = "mapFilters";
-
-    filters.setAttribute("role", "group");
-    filters.setAttribute("aria-label", "Фильтры точек на карте");
-    filters.innerHTML = `
-      <button class="map-filter-btn active" type="button" data-filter="all" aria-pressed="true">
-        <span class="map-filter-icon map-filter-icon--all" aria-hidden="true"></span>
-        <span>Все точки</span>
-      </button>
-      <button class="map-filter-btn" type="button" data-filter="free" aria-pressed="false">
-        <span class="map-filter-icon map-filter-icon--free" aria-hidden="true"></span>
-        <span>Бесплатные</span>
-      </button>
-      <button class="map-filter-btn" type="button" data-filter="paid" aria-pressed="false">
-        <span class="map-filter-icon map-filter-icon--paid" aria-hidden="true"></span>
-        <span>Платные</span>
-      </button>
-      <button class="map-filter-btn" type="button" data-filter="good" aria-pressed="false">
-        <span class="map-filter-icon map-filter-icon--good" aria-hidden="true"></span>
-        <span>Хороший клёв</span>
-      </button>
-      <button class="map-filter-btn" type="button" data-filter="warning" aria-pressed="false">
-        <span class="map-filter-icon map-filter-icon--warning" aria-hidden="true"></span>
-        <span>Осторожно</span>
-      </button>
+    const controls = document.createElement("div");
+    controls.id = "mapActions";
+    controls.innerHTML = `
+      <div class="map-action-bar" role="group" aria-label="Действия на карте">
+        <button class="map-action-btn" type="button" data-map-action="filters" aria-expanded="false" aria-controls="mapFilterSheet">
+          <span class="map-action-icon map-action-icon--filter" aria-hidden="true"></span>
+          <span>Фильтры</span>
+        </button>
+        <button class="map-action-btn is-unavailable" type="button" data-map-action="location" aria-label="Моё место, функция готовится">
+          <span class="map-action-icon map-action-icon--location" aria-hidden="true"></span>
+          <span>Моё место</span>
+        </button>
+        <button class="map-action-btn is-unavailable" type="button" data-map-action="layers" aria-label="Слои, функция готовится">
+          <span class="map-action-icon map-action-icon--layers" aria-hidden="true"></span>
+          <span>Слои</span>
+        </button>
+      </div>
+      <section id="mapFilterSheet" class="map-filter-sheet" aria-labelledby="mapFilterSheetTitle" hidden>
+        <div class="map-filter-sheet-head">
+          <h2 id="mapFilterSheetTitle" class="map-filter-sheet-title">Фильтры точек</h2>
+          <button class="map-filter-sheet-close" type="button" aria-label="Закрыть фильтры">
+            <span class="map-filter-sheet-close-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="map-filter-options" role="group" aria-label="Фильтры точек на карте">
+          <button class="map-filter-option" type="button" data-filter="all" aria-pressed="false">
+            <span class="map-filter-icon map-filter-icon--all" aria-hidden="true"></span>
+            <span>Все точки</span>
+          </button>
+          <button class="map-filter-option" type="button" data-filter="free" aria-pressed="false">
+            <span class="map-filter-icon map-filter-icon--free" aria-hidden="true"></span>
+            <span>Бесплатные</span>
+          </button>
+          <button class="map-filter-option" type="button" data-filter="paid" aria-pressed="false">
+            <span class="map-filter-icon map-filter-icon--paid" aria-hidden="true"></span>
+            <span>Платные</span>
+          </button>
+          <button class="map-filter-option" type="button" data-filter="good" aria-pressed="false">
+            <span class="map-filter-icon map-filter-icon--good" aria-hidden="true"></span>
+            <span>Хороший клёв</span>
+          </button>
+          <button class="map-filter-option" type="button" data-filter="warning" aria-pressed="false">
+            <span class="map-filter-icon map-filter-icon--warning" aria-hidden="true"></span>
+            <span>Осторожно</span>
+          </button>
+        </div>
+      </section>
     `;
 
-    getMapFiltersHost(mapSection).appendChild(filters);
+    const filterButton = controls.querySelector('[data-map-action="filters"]');
+    const filterSheet = controls.querySelector("#mapFilterSheet");
+    const closeButton = controls.querySelector(".map-filter-sheet-close");
+    const filterOptions = controls.querySelectorAll(".map-filter-option");
 
-    filters.querySelectorAll(".map-filter-btn").forEach(function (button) {
+    const syncActiveFilter = function () {
+      filterOptions.forEach(function (button) {
+        const isActive = button.getAttribute("data-filter") === activeSpotFilter;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+
+      filterButton.classList.toggle("is-active", activeSpotFilter !== "all");
+    };
+
+    const setFilterSheetOpen = function (isOpen) {
+      filterSheet.hidden = !isOpen;
+      filterButton.setAttribute("aria-expanded", String(isOpen));
+
+      if (isOpen) {
+        filterSheet.querySelector('.map-filter-option[aria-pressed="true"]')?.focus();
+      }
+    };
+
+    filterButton.addEventListener("click", function () {
+      setFilterSheetOpen(filterSheet.hidden);
+    });
+
+    closeButton.addEventListener("click", function () {
+      setFilterSheetOpen(false);
+      filterButton.focus();
+    });
+
+    filterOptions.forEach(function (button) {
       button.addEventListener("click", function () {
         activeSpotFilter = button.getAttribute("data-filter") || "all";
-
-        filters.querySelectorAll(".map-filter-btn").forEach(function (btn) {
-          const isActive = btn === button;
-          btn.classList.toggle("active", isActive);
-          btn.setAttribute("aria-pressed", String(isActive));
-        });
-
+        syncActiveFilter();
         renderFishingSpots(cachedFishingSpots);
+        setFilterSheetOpen(false);
+        filterButton.focus();
       });
     });
+
+    controls.querySelectorAll('[data-map-action="location"], [data-map-action="layers"]').forEach(function (button) {
+      button.addEventListener("click", function () {
+        console.info("Klevby Map: действие «" + button.textContent.trim() + "» подготовлено для будущей реализации.");
+      });
+    });
+
+    controls.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !filterSheet.hidden) {
+        setFilterSheetOpen(false);
+        filterButton.focus();
+      }
+    });
+
+    syncActiveFilter();
+    getMapFiltersHost(mapSection).appendChild(controls);
   }
 
   function createSpotModal() {
