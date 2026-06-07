@@ -8,8 +8,8 @@ window.KLEVB_CONFIG = {
 
   // Map provider foundation. Keep "yandex" until a browser-safe MapTiler key is set.
   // To test MapLibre, set MAP_PROVIDER to "maplibre" and add the key below.
-  MAP_PROVIDER: "yandex",
-  MAPTILER_API_KEY: "",
+  MAP_PROVIDER: "maplibre",
+  MAPTILER_API_KEY: "python3 - <<'PY'",
   MAPTILER_STYLE_URL: "https://api.maptiler.com/maps/streets-v2-dark/style.json",
 
   CARD_IMAGES: [
