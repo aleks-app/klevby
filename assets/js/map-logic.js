@@ -25,6 +25,8 @@
   let lastUserRefreshAt = 0;
 
   const MAP_AUTH_REFRESH_THROTTLE_MS = 8000;
+  const YANDEX_API_LOAD_TIMEOUT_MS = 15000;
+  const YANDEX_SCRIPT_SELECTOR = 'script[src*="api-maps.yandex.ru"]';
 
   const geocodeCache = {};
 
@@ -133,50 +135,93 @@
     return v;
   }
 
+  function isYandexMapsApiUsable() {
+    return Boolean(
+      window.ymaps &&
+      typeof window.ymaps.ready === "function" &&
+      typeof window.ymaps.Map === "function" &&
+      typeof window.ymaps.GeoObjectCollection === "function" &&
+      typeof window.ymaps.Placemark === "function"
+    );
+  }
+
   function loadYandexMapsApi() {
     return new Promise(function (resolve, reject) {
-      if (window.ymaps) {
-        window.ymaps.ready(resolve);
-        return;
-      }
+      let script = document.querySelector(YANDEX_SCRIPT_SELECTOR);
+      let settled = false;
 
-      const existingScript = document.querySelector('script[src*="api-maps.yandex.ru"]');
+      const finish = function (error) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
 
-      if (existingScript) {
-        existingScript.addEventListener("load", function () {
-          if (window.ymaps) {
-            window.ymaps.ready(resolve);
-          } else {
-            reject(new Error("Yandex Maps API loaded, but ymaps is missing"));
-          }
-        });
+        if (script) {
+          script.removeEventListener("load", handleScriptLoad);
+          script.removeEventListener("error", handleScriptError);
+        }
 
-        existingScript.addEventListener("error", reject);
-        return;
-      }
-
-      const script = document.createElement("script");
-
-      const apiKeyPart = YANDEX_API_KEY
-        ? "apikey=" + encodeURIComponent(YANDEX_API_KEY) + "&"
-        : "";
-
-      script.src = "https://api-maps.yandex.ru/2.1/?" + apiKeyPart + "lang=ru_RU";
-      script.async = true;
-
-      script.onload = function () {
-        if (window.ymaps) {
-          window.ymaps.ready(resolve);
+        if (error) {
+          reject(error);
         } else {
-          reject(new Error("Yandex Maps API loaded, but ymaps is missing"));
+          resolve();
         }
       };
 
-      script.onerror = function () {
-        reject(new Error("Yandex Maps API not loaded"));
+      const waitForYandexReady = function () {
+        if (!isYandexMapsApiUsable()) {
+          finish(new Error("Yandex Maps API loaded, but ymaps is not usable"));
+          return;
+        }
+
+        try {
+          window.ymaps.ready(function () {
+            if (isYandexMapsApiUsable()) {
+              finish();
+            } else {
+              finish(new Error("Yandex Maps API is not usable after ready"));
+            }
+          });
+        } catch (error) {
+          finish(error);
+        }
       };
 
-      document.head.appendChild(script);
+      const handleScriptLoad = function () {
+        waitForYandexReady();
+      };
+
+      const handleScriptError = function () {
+        finish(new Error("Yandex Maps API not loaded"));
+      };
+
+      const timeoutId = setTimeout(function () {
+        finish(new Error("Yandex Maps API load timed out"));
+      }, YANDEX_API_LOAD_TIMEOUT_MS);
+
+      if (isYandexMapsApiUsable()) {
+        waitForYandexReady();
+        return;
+      }
+
+      const shouldAppendScript = !script;
+
+      if (shouldAppendScript) {
+        script = document.createElement("script");
+
+        const apiKeyPart = YANDEX_API_KEY
+          ? "apikey=" + encodeURIComponent(YANDEX_API_KEY) + "&"
+          : "";
+
+        script.src = "https://api-maps.yandex.ru/2.1/?" + apiKeyPart + "lang=ru_RU";
+        script.async = true;
+      }
+
+      script.addEventListener("load", handleScriptLoad);
+      script.addEventListener("error", handleScriptError);
+
+      if (shouldAppendScript) {
+        document.head.appendChild(script);
+      }
     });
   }
 
@@ -945,18 +990,22 @@
     filtered.forEach(function (spot) {
       if (!spot.lat || !spot.lng) return;
 
-      const placemark = new ymaps.Placemark(
-        [spot.lat, spot.lng],
-        {
-          balloonContent: getFishingSpotBalloonHtml(spot),
-          hintContent: escapeHtml(spot.name || "Точка ловли")
-        },
-        {
-          preset: getSpotPreset(spot.spot_type)
-        }
-      );
+      try {
+        const placemark = new ymaps.Placemark(
+          [spot.lat, spot.lng],
+          {
+            balloonContent: getFishingSpotBalloonHtml(spot),
+            hintContent: escapeHtml(spot.name || "Точка ловли")
+          },
+          {
+            preset: getSpotPreset(spot.spot_type)
+          }
+        );
 
-      spotsCollection.add(placemark);
+        spotsCollection.add(placemark);
+      } catch (error) {
+        console.warn("Не удалось поставить метку точки ловли:", spot?.id, error);
+      }
     });
   }
 
@@ -1243,6 +1292,23 @@
     await loadFishingSpots();
   }
 
+  function cleanupPartialMapInitialization() {
+    const partialMap = mapInstance;
+
+    mapInstance = null;
+    mapReady = false;
+    postsCollection = null;
+    spotsCollection = null;
+
+    if (partialMap && typeof partialMap.destroy === "function") {
+      try {
+        partialMap.destroy();
+      } catch (error) {
+        console.warn("Не удалось очистить частично созданную карту:", error);
+      }
+    }
+  }
+
   async function initMapLogic() {
     injectMapStyles();
 
@@ -1290,9 +1356,10 @@
       })
       .catch(function (error) {
         mapInitPromise = null;
+        cleanupPartialMapInitialization();
 
-        const failedScript = document.querySelector('script[src*="api-maps.yandex.ru"]');
-        if (!window.ymaps && failedScript) {
+        const failedScript = document.querySelector(YANDEX_SCRIPT_SELECTOR);
+        if (!isYandexMapsApiUsable() && failedScript) {
           failedScript.remove();
         }
 
