@@ -38,6 +38,13 @@
   --klevby-bottom-chrome-total: calc(var(--klevby-touchbar-bottom-offset) + var(--klevby-touchbar-height));
 }
 
+@media (max-width: 380px) {
+  :root {
+    --klevby-touchbar-height: 64px;
+    --klevby-touchbar-bottom-gap: 14px;
+  }
+}
+
 html {
   scroll-behavior: smooth;
   background: #000000;
