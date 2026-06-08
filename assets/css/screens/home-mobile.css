@@ -1563,9 +1563,17 @@
    * Published by the Home owner from measured app height; Android compact stays separate.
    */
   :root[data-home-density="pwa-short"] {
+    --klevby-home-pwa-short-base-y: -10px;
+    --klevby-home-pwa-short-balance-y: clamp(
+      0px,
+      calc((var(--klevby-app-height, 874px) - 874px) + (var(--klevby-app-height, 874px) - 874px)),
+      32px
+    );
     --klevby-home-hero-min-h: 294px;
     --klevby-home-hero-pad-top: 112px;
-    --klevby-home-hero-copy-min-h: 208px;
+    --klevby-home-hero-copy-min-h: calc(
+      208px + var(--klevby-home-pwa-short-base-y) + var(--klevby-home-pwa-short-balance-y)
+    );
     --klevby-home-quick-min-h: 96px;
     --klevby-home-section-gap: 10px;
     --klevby-home-feed-card-min-h: 136px;
