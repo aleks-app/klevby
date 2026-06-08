@@ -2,6 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "klevbyAndroidDiagnosticsEnabled";
+  const PWA_STORAGE_KEY = "klevbyPwaHomeDiagnosticsEnabled";
   const BUTTON_CONTAINER_ID = "klevbyAndroidDiagnosticsControls";
   const LOGO_TAP_TARGET = 7;
   const LOGO_TAP_RESET_MS = 4000;
@@ -15,9 +16,9 @@
   let logoTapResetTimer = 0;
   let logoActivationBound = false;
 
-  function readStorageEnabled() {
+  function readStorageKeyEnabled(storageKey) {
     try {
-      return window.localStorage.getItem(STORAGE_KEY) === "1";
+      return window.localStorage.getItem(storageKey) === "1";
     } catch (_) {
       return false;
     }
@@ -25,16 +26,33 @@
 
   function setStorageEnabled(enabled) {
     try {
+      const storageKey = isStandaloneMode() ? PWA_STORAGE_KEY : STORAGE_KEY;
       if (enabled) {
-        window.localStorage.setItem(STORAGE_KEY, "1");
+        window.localStorage.setItem(storageKey, "1");
       } else {
         window.localStorage.removeItem(STORAGE_KEY);
+        window.localStorage.removeItem(PWA_STORAGE_KEY);
       }
     } catch (_) {}
   }
 
+  function isStandaloneMode() {
+    return (
+      window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches
+    );
+  }
+
+  function isIphone() {
+    return /iPhone/i.test(navigator.userAgent);
+  }
+
   function isDiagnosticsEnabled() {
-    return hasExplicitDebugFlag || readStorageEnabled();
+    return (
+      hasExplicitDebugFlag ||
+      readStorageKeyEnabled(STORAGE_KEY) ||
+      (isStandaloneMode() && readStorageKeyEnabled(PWA_STORAGE_KEY))
+    );
   }
 
   function getCapacitorNativeState() {
@@ -66,6 +84,18 @@
     return JSON.stringify(window.klevbyAndroidDiagnostics.collect(), null, 2);
   }
 
+  function getDiagnosticsName() {
+    return isIphone() && isStandaloneMode()
+      ? "Klevby iPhone PWA Home Diagnostics"
+      : "Klevby Android Diagnostics";
+  }
+
+  function getDiagnosticsFilename() {
+    return isIphone() && isStandaloneMode()
+      ? "klevby-iphone-pwa-home-diagnostics.json"
+      : "klevby-android-diagnostics.json";
+  }
+
   function getLayoutRect(element) {
     if (!element) return null;
 
@@ -82,6 +112,49 @@
   function getVerticalGap(upperRect, lowerRect) {
     if (!upperRect || !lowerRect) return null;
     return lowerRect.top - upperRect.bottom;
+  }
+
+  function getElementAttributes(element) {
+    if (!element) return null;
+
+    return Object.fromEntries(
+      Array.from(element.attributes).map((attribute) => [attribute.name, attribute.value])
+    );
+  }
+
+  function getSafeAreaDiagnostics(htmlStyles) {
+    const probe = document.createElement("div");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText = [
+      "position:fixed",
+      "visibility:hidden",
+      "pointer-events:none",
+      "padding-top:env(safe-area-inset-top, 0px)",
+      "padding-right:env(safe-area-inset-right, 0px)",
+      "padding-bottom:env(safe-area-inset-bottom, 0px)",
+      "padding-left:env(safe-area-inset-left, 0px)"
+    ].join(";");
+    document.body?.appendChild(probe);
+
+    const probeStyles = probe.isConnected ? getComputedStyle(probe) : null;
+    const diagnostics = {
+      cssVariables: {
+        "--klevby-bottom-safe-area": htmlStyles
+          .getPropertyValue("--klevby-bottom-safe-area")
+          .trim()
+      },
+      resolvedEnvironmentInsets: probeStyles
+        ? {
+            top: probeStyles.paddingTop,
+            right: probeStyles.paddingRight,
+            bottom: probeStyles.paddingBottom,
+            left: probeStyles.paddingLeft
+          }
+        : null
+    };
+
+    probe.remove();
+    return diagnostics;
   }
 
   function getSelectedComputedStyles(element, properties) {
@@ -131,6 +204,7 @@
       const htmlStyles = getComputedStyle(html);
       const touchBarStyles = touchBar ? getComputedStyle(touchBar) : null;
       const homeElements = {
+        homeSection: home,
         hero: document.querySelector("#homeSection .hero"),
         heroCopy: document.querySelector("#homeSection .hero-copy"),
         quickActions: document.querySelector("#homeSection .home-quick-actions"),
@@ -147,6 +221,8 @@
       const homeRects = Object.fromEntries(
         Object.entries(homeElements).map(([name, element]) => [name, getLayoutRect(element)])
       );
+      homeRects.mobileTabbar = homeRects.touchBar;
+      const safeArea = getSafeAreaDiagnostics(htmlStyles);
 
       return {
         timestamp: new Date().toISOString(),
@@ -158,13 +234,22 @@
             ? capacitor.getPlatform()
             : "browser",
         isNativePlatform,
+        standalone: isStandaloneMode(),
+        pwa: {
+          isStandalone: isStandaloneMode(),
+          navigatorStandalone: window.navigator.standalone === true,
+          displayModeStandalone: window.matchMedia("(display-mode: standalone)").matches,
+          isIphone: isIphone()
+        },
         debugFlags: {
           klevbyAndroidDebug: hasAndroidDebugFlag,
           klevbyViewportDebug: hasViewportDebugFlag,
-          klevbyAndroidDiagnosticsEnabled: readStorageEnabled()
+          klevbyAndroidDiagnosticsEnabled: readStorageKeyEnabled(STORAGE_KEY),
+          klevbyPwaHomeDiagnosticsEnabled: readStorageKeyEnabled(PWA_STORAGE_KEY)
         },
         userAgent: navigator.userAgent,
         dpr: window.devicePixelRatio,
+        devicePixelRatio: window.devicePixelRatio,
         innerWidth: window.innerWidth,
         innerHeight: window.innerHeight,
         outerWidth: window.outerWidth,
@@ -178,8 +263,8 @@
               scale: window.visualViewport.scale
             }
           : null,
-        homeSection: home ? home.getBoundingClientRect() : null,
-        touchBar: touchBar ? touchBar.getBoundingClientRect() : null,
+        homeSection: homeRects.homeSection,
+        touchBar: homeRects.touchBar,
         homeLayout: {
           ...homeRects,
           gaps: {
@@ -190,6 +275,7 @@
             gapWeatherToTouchBar: getVerticalGap(homeRects.weatherCard, homeRects.touchBar),
             gapWeatherStripToTouchBar: getVerticalGap(homeRects.weatherStrip, homeRects.touchBar)
           },
+          safeArea,
           variables: {
             "--klevby-app-height": htmlStyles.getPropertyValue("--klevby-app-height").trim(),
             "--klevby-home-bottom-reserve": htmlStyles
@@ -251,14 +337,28 @@
               "paddingTop",
               "paddingBottom",
               "transform"
-            ])
+            ]),
+            mobileTabbar: getSelectedComputedStyles(homeElements.touchBar, ["bottom", "height"])
           }
         },
         body: body ? body.getBoundingClientRect() : null,
         html: html.getBoundingClientRect(),
+        attributes: {
+          root: getElementAttributes(html),
+          body: getElementAttributes(body)
+        },
         scroll: {
           bodyScrollTop: body ? body.scrollTop : null,
+          bodyScrollHeight: body ? body.scrollHeight : null,
+          bodyClientHeight: body ? body.clientHeight : null,
+          bodyScrollWidth: body ? body.scrollWidth : null,
+          bodyClientWidth: body ? body.clientWidth : null,
           documentElementScrollTop: html.scrollTop,
+          documentElementScrollHeight: html.scrollHeight,
+          documentElementClientHeight: html.clientHeight,
+          documentElementScrollWidth: html.scrollWidth,
+          documentElementClientWidth: html.clientWidth,
+          windowScrollX: window.scrollX,
           windowScrollY: window.scrollY
         },
         computedStyles: {
@@ -283,7 +383,9 @@
               }
             : null
         },
-        appHeight: htmlStyles.getPropertyValue("--klevby-app-height"),
+        safeArea,
+        appHeight: htmlStyles.getPropertyValue("--klevby-app-height").trim(),
+        "--klevby-app-height": htmlStyles.getPropertyValue("--klevby-app-height").trim(),
         homeScreenLock: {
           root: html.getAttribute("data-home-screen-lock") || null,
           body: body?.getAttribute("data-home-screen-lock") || null
@@ -302,7 +404,7 @@
       const link = document.createElement("a");
 
       link.href = objectUrl;
-      link.download = "klevby-android-diagnostics.json";
+      link.download = getDiagnosticsFilename();
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -311,7 +413,7 @@
 
     diag.copyJSON = async function () {
       const json = getDiagnosticsJson();
-      console.log("[Klevby Android Diagnostics]", json);
+      console.log(`[${getDiagnosticsName()}]`, json);
 
       try {
         if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
@@ -327,7 +429,7 @@
       if (!navigator.share || typeof navigator.share !== "function") return false;
 
       const json = getDiagnosticsJson();
-      const file = new File([json], "klevby-android-diagnostics.json", {
+      const file = new File([json], getDiagnosticsFilename(), {
         type: "application/json"
       });
 
@@ -335,7 +437,7 @@
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: "Klevby Android Diagnostics"
+            title: getDiagnosticsName()
           });
           return true;
         }
@@ -343,7 +445,7 @@
 
       try {
         await navigator.share({
-          title: "Klevby Android Diagnostics",
+          title: getDiagnosticsName(),
           text: json
         });
         return true;
@@ -409,7 +511,7 @@
     container.style.gap = "6px";
     container.style.maxWidth = "220px";
 
-    const downloadButton = createDiagnosticsButton("Save Android Diagnostics", () => {
+    const downloadButton = createDiagnosticsButton(`Save ${getDiagnosticsName()}`, () => {
       window.klevbyAndroidDiagnostics.saveJSON();
     });
     container.appendChild(downloadButton);
@@ -449,14 +551,15 @@
     setStorageEnabled(true);
     initDiagnosticsModule();
     showDiagnosticsControls();
-    console.log("[Klevby Android Diagnostics] Enabled via logo gesture.");
+    console.log(`[${getDiagnosticsName()}] Enabled via logo gesture.`);
   }
 
   function bindLogoActivation() {
     if (logoActivationBound) return;
 
     const { isNativePlatform } = getCapacitorNativeState();
-    if (!isNativePlatform) return;
+    const isIphonePwa = isIphone() && isStandaloneMode();
+    if (!isNativePlatform && !isIphonePwa) return;
 
     const logo = document.querySelector(".logo.app-header-logo, .logo.app-header-logo img");
     if (!logo) return;
@@ -498,7 +601,7 @@
       }
 
       window.addEventListener("load", showControls, { once: true });
-      console.log("[Klevby Android Diagnostics] Opt-in diagnostics loaded.");
+      console.log(`[${getDiagnosticsName()}] Opt-in diagnostics loaded.`);
       return;
     }
 
