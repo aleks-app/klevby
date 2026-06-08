@@ -5,6 +5,8 @@
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
   const HOME_COMPACT_HEIGHT_MAX = 820;
+  const IPHONE_PWA_SHORT_HEIGHT_ENTER = 920;
+  const IPHONE_PWA_SHORT_HEIGHT_EXIT = 930;
   const MOBILE_QUERY = "(max-width: 900px)";
   const FALLBACK_APP_SECTION_IDS = [
     "homeSection",
@@ -25,6 +27,7 @@
   let hasCapturedFirstSync = false;
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
+  let isIphonePwaShort = false;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -50,6 +53,28 @@
     } catch (_) {}
 
     return navigator.standalone === true;
+  }
+
+  function isStandaloneIphonePwa() {
+    if (!isStandalonePwa()) return false;
+
+    return /iPhone/i.test(navigator.userAgent || "");
+  }
+
+  function resolveHomeDensity(height) {
+    if (isStandaloneIphonePwa()) {
+      if (height < IPHONE_PWA_SHORT_HEIGHT_ENTER) {
+        isIphonePwaShort = true;
+      } else if (height >= IPHONE_PWA_SHORT_HEIGHT_EXIT) {
+        isIphonePwaShort = false;
+      }
+
+      if (isIphonePwaShort) return "pwa-short";
+    } else {
+      isIphonePwaShort = false;
+    }
+
+    return height <= HOME_COMPACT_HEIGHT_MAX ? "compact" : "standard";
   }
 
   function resolveAppHeight(root) {
@@ -79,10 +104,7 @@
 
     const roundedHeight = Math.round(height);
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
-    root.setAttribute(
-      HOME_DENSITY_ATTRIBUTE,
-      height <= HOME_COMPACT_HEIGHT_MAX ? "compact" : "standard"
-    );
+    root.setAttribute(HOME_DENSITY_ATTRIBUTE, resolveHomeDensity(height));
     return roundedHeight;
   }
 
