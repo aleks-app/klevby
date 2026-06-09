@@ -1579,6 +1579,17 @@
     --klevby-home-feed-card-min-h: 136px;
     --klevby-home-feed-image-min-h: 116px;
     --klevby-home-weather-strip-min-h: 48px;
+    --klevby-home-pwa-short-title-size: 32px;
+    --klevby-home-pwa-short-title-line-height: 1.04;
+    --klevby-home-pwa-short-title-tracking: -0.035em;
+  }
+
+  :root[data-home-density="pwa-short"] #homeSection .hero-title-line {
+    max-width: 100% !important;
+    font-size: var(--klevby-home-pwa-short-title-size) !important;
+    line-height: var(--klevby-home-pwa-short-title-line-height) !important;
+    letter-spacing: var(--klevby-home-pwa-short-title-tracking) !important;
+    white-space: nowrap !important;
   }
 
   :root[data-home-density="pwa-short"] #homeSection .home-feed-preview-text {
