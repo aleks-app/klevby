@@ -4,8 +4,6 @@
   const HOME_SECTION_ID = "homeSection";
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
-  const HOME_LAYOUT_ATTRIBUTE = "data-home-layout";
-  const IPHONE_PWA_HOME_LAYOUT = "iphone-pwa";
   const HOME_COMPACT_HEIGHT_MAX = 820;
   const IPHONE_PWA_SHORT_HEIGHT_ENTER = 920;
   const IPHONE_PWA_SHORT_HEIGHT_EXIT = 930;
@@ -63,15 +61,6 @@
     return /iPhone/i.test(navigator.userAgent || "");
   }
 
-  function publishHomeLayout(root) {
-    if (isStandaloneIphonePwa()) {
-      root.setAttribute(HOME_LAYOUT_ATTRIBUTE, IPHONE_PWA_HOME_LAYOUT);
-      return;
-    }
-
-    root.removeAttribute(HOME_LAYOUT_ATTRIBUTE);
-  }
-
   function resolveHomeDensity(height) {
     if (isStandaloneIphonePwa()) {
       if (height < IPHONE_PWA_SHORT_HEIGHT_ENTER) {
@@ -108,8 +97,6 @@
   function updateAppHeight() {
     const root = document.documentElement;
     if (!root) return 0;
-
-    publishHomeLayout(root);
 
     const height = resolveAppHeight(root);
 
