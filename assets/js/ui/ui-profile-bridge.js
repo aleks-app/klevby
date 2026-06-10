@@ -92,7 +92,7 @@ function renderGuestProfileView() {
 
   if (nameNode) nameNode.textContent = "Гость";
   if (fallbackNode) fallbackNode.textContent = "👤";
-  if (statusNode) statusNode.textContent = "Войдите, чтобы открыть свой профиль Klevby.";
+  if (statusNode) statusNode.textContent = "Войдите, чтобы открыть свой профиль Klevgo.";
   if (reportsNode) reportsNode.textContent = "0";
   if (tripsNode) tripsNode.textContent = "0";
   if (photosNode) photosNode.textContent = "0";
@@ -215,7 +215,7 @@ function updateKlevbyProfileView() {
 
     statusNode.textContent = statusParts.length
       ? statusParts.join(" • ")
-      : (about ? about : "🎣 Рыбак Klevby");
+      : (about ? about : "🎣 Рыбак Klevgo");
   }
 
   try {

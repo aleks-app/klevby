@@ -107,7 +107,7 @@ function renderGuestProfileView() {
   const friendsNode = document.getElementById("profileFriendsCount");
 
   if (nameNode) nameNode.textContent = "Гость";
-  if (statusNode) statusNode.textContent = "Войдите, чтобы открыть свой профиль Klevby.";
+  if (statusNode) statusNode.textContent = "Войдите, чтобы открыть свой профиль Klevgo.";
   if (fallbackNode) fallbackNode.textContent = "👤";
   if (reportsNode) reportsNode.textContent = "0";
   if (tripsNode) tripsNode.textContent = "0";
@@ -583,7 +583,7 @@ function updateKlevbyProfileView() {
     } else if (about) {
       statusNode.textContent = about;
     } else {
-      statusNode.textContent = "🎣 Рыбак Klevby";
+      statusNode.textContent = "🎣 Рыбак Klevgo";
     }
   }
 

@@ -36,8 +36,8 @@ test('read-only mobile smoke test for main navigation', async ({ page, baseURL }
   expect(loadedOrigin, 'Loaded page origin should match targetUrl origin').toBe(expectedOrigin);
   await expect(page.locator('body')).toBeVisible();
 
-  const titleOrFeed = page.getByText(/Klevby|Лента/i).first();
-  await expect(titleOrFeed, 'Klevby/Лента marker should be visible').toBeVisible();
+  const titleOrFeed = page.getByText(/KlevGo|Лента/i).first();
+  await expect(titleOrFeed, 'KlevGo/Лента marker should be visible').toBeVisible();
 
   const navOrButtons = page.locator(
     'nav, .bottom-nav, [class*="bottom"], button:has-text("Лента"), button:has-text("Профиль"), button:has-text("Чат")'

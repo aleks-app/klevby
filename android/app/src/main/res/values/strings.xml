@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Klevby</string>
-    <string name="title_activity_main">Klevby</string>
+    <string name="app_name">KlevGo</string>
+    <string name="title_activity_main">KlevGo</string>
     <string name="package_name">com.klevby.app</string>
     <string name="custom_url_scheme">com.klevby.app</string>
 </resources>

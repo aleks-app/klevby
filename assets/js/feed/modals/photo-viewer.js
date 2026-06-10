@@ -392,7 +392,7 @@
         <div class="klevby-feed-viewer-info">
           <div>
             <strong id="klevbyFeedPhotoViewerTitle">Фото с рыбалки</strong>
-            <span id="klevbyFeedPhotoViewerMeta">Лента Klevby</span>
+            <span id="klevbyFeedPhotoViewerMeta">Лента Klevgo</span>
           </div>
 
           <div class="klevby-feed-viewer-actions">

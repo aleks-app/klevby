@@ -86,8 +86,8 @@
 
   function getDiagnosticsName() {
     return isIphone() && isStandaloneMode()
-      ? "Klevby iPhone PWA Home Diagnostics"
-      : "Klevby Android Diagnostics";
+      ? "KlevGo iPhone PWA Home Diagnostics"
+      : "KlevGo Android Diagnostics";
   }
 
   function getDiagnosticsFilename() {
