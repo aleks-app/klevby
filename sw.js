@@ -69,8 +69,8 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "Klevby",
-    message: "Новое уведомление Klevby 🎣",
+    title: "KlevGo",
+    message: "Новое уведомление Klevgo 🎣",
     url: "/",
     icon: "/assets/img/klevby-icon-512.png",
     badge: "/assets/img/klevby-icon-512.png"
@@ -95,13 +95,13 @@ self.addEventListener("push", (event) => {
       }
     }
   } catch (error) {
-    payload.message = "Новое уведомление Klevby 🎣";
+    payload.message = "Новое уведомление Klevgo 🎣";
   }
 
-  const title = payload.title || "Klevby";
+  const title = payload.title || "KlevGo";
 
   const options = {
-    body: payload.message || payload.body || "Новое уведомление Klevby 🎣",
+    body: payload.message || payload.body || "Новое уведомление Klevgo 🎣",
     icon: payload.icon || "/assets/img/klevby-icon-512.png",
     badge: payload.badge || "/assets/img/klevby-icon-512.png",
     data: {

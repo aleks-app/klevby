@@ -20,7 +20,7 @@
               <div class="public-profile-avatar" data-klevby-public-avatar>🎣</div>
               <div>
                 <div class="public-profile-name" data-klevby-public-name>Рыбак</div>
-                <div class="public-profile-subtitle">🎣 Рыбак Klevby</div>
+                <div class="public-profile-subtitle">🎣 Рыбак Klevgo</div>
               </div>
             </div>
             <div class="public-profile-stats" data-klevby-public-stats></div>

@@ -296,7 +296,7 @@
 
       const body = {
         user_id: String(receiverUserId),
-        title: "Klevby",
+        title: "KlevGo",
         message: `${cleanDisplayName(senderName) || "Новое сообщение"}: ${shortText || "Новое личное сообщение"}`,
         url: "https://klevby.com/"
       };

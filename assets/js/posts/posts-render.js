@@ -1146,7 +1146,7 @@
         <button
           class="small-btn green trip-telegram-btn"
           type="button"
-          title="Открыть Telegram-чат Klevby"
+          title="Открыть Telegram-чат Klevgo"
           onclick="event.stopPropagation(); window.KlevbyPostsRender.openTelegramSafe()"
         >
           ${telegramIcon}

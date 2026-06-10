@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.klevby.app',
-  appName: 'Klevby',
+  appName: 'KlevGo',
   webDir: 'www'
 };
 

@@ -276,7 +276,7 @@
       <div class="home-empty-card">
         <div class="home-empty-icon">📸</div>
         <h3>В ленте пока нет фото</h3>
-        <p>Добавь первое фото в профиле — оно появится в общей ленте Klevby.</p>
+        <p>Добавь первое фото в профиле — оно появится в общей ленте Klevgo.</p>
         <div class="actions">
           <button class="small-btn green" type="button" onclick="openKlevbyProfileSafe()">Открыть профиль</button>
           <button class="small-btn gray" type="button" onclick="setMode('all')">Напарники</button>

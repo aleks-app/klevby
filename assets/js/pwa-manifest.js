@@ -12,8 +12,8 @@
   const iconUrl = "assets/img/klevby-icon-512.png";
 
   const manifest = {
-    name: "Klevby",
-    short_name: "Klevby",
+    name: "KlevGo",
+    short_name: "KlevGo",
     description: "Карта клева и поиск напарника на рыбалку в Беларуси",
     start_url: "./index.html",
     scope: "./",

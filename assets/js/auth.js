@@ -352,7 +352,7 @@ function maybeResetAuthFormUiAfterRestore() {
 function resetLiveProfileDomAfterLogout() {
   const textResets = {
     profileNameText: "Гость",
-    profileStatusText: "Войдите, чтобы открыть свой профиль Klevby.",
+    profileStatusText: "Войдите, чтобы открыть свой профиль Klevgo.",
     profileAvatarFallback: "👤",
     profilePhotosCount: "0",
     profileReportsCount: "0",

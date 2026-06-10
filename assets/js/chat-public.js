@@ -432,7 +432,7 @@
 
       if (chatAvatar) chatAvatar.textContent = "🎣";
       if (chatTitle) chatTitle.textContent = "Чат рыбаков";
-      if (chatSubtitle) chatSubtitle.textContent = "Общий разговор Klevby";
+      if (chatSubtitle) chatSubtitle.textContent = "Общий разговор Klevgo";
 
       if (input) {
         input.placeholder = "Напиши сообщение...";

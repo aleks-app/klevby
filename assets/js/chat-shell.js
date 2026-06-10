@@ -15,7 +15,7 @@
             <div class="klevby-chat-avatar" id="chatAvatar">🎣</div>
             <div class="klevby-chat-title-wrap">
               <div class="klevby-chat-title" id="chatTitle">Чат рыбаков</div>
-              <div class="klevby-chat-subtitle" id="chatSubtitle">Общий разговор Klevby</div>
+              <div class="klevby-chat-subtitle" id="chatSubtitle">Общий разговор Klevgo</div>
             </div>
           </div>
 
