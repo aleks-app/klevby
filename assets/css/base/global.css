@@ -320,3 +320,8 @@ a {
   color: #ffffff;
 }
 
+
+/* Force Home hero subtitle to pure white */
+#homeSection .hero-title .hero-title-line {
+  color: #ffffff;
+}
