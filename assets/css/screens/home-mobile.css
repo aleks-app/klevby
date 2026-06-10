@@ -1637,3 +1637,8 @@
 #homeSection .hero-title .hero-title-line {
   color: #ffffff !important;
 }
+
+/* Soften Home hero subtitle weight */
+#homeSection .hero-title .hero-title-line {
+  font-weight: 700 !important;
+}
