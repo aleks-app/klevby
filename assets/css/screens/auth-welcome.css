@@ -138,8 +138,20 @@ body:has(#authSection:not(.hidden)) #klevbyAppRoot > .mobile-tabbar {
   font-weight: 900;
   letter-spacing: 0.01em;
   line-height: 1;
-  color: #fff8ea;
   text-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+#authSection .auth-welcome-logo-main,
+#authSection .auth-welcome-logo-accent {
+  font-weight: inherit;
+}
+
+#authSection .auth-welcome-logo-main {
+  color: #ffffff;
+}
+
+#authSection .auth-welcome-logo-accent {
+  color: #F47A2B;
 }
 
 #authSection .auth-welcome-tagline {
