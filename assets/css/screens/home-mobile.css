@@ -1632,3 +1632,8 @@
     overflow: hidden !important;
   }
 }
+
+/* Force Home hero subtitle to pure white after mobile overrides */
+#homeSection .hero-title .hero-title-line {
+  color: #ffffff !important;
+}
