@@ -306,3 +306,17 @@ a {
   font-size: 14px;
   font-weight: 600;
 }
+
+/* KlevGo Home hero brand colors */
+.hero-title-brand-main {
+  color: #ffffff;
+}
+
+.hero-title-brand-accent {
+  color: #F47A2B;
+}
+
+.hero-title-line {
+  color: #ffffff;
+}
+
