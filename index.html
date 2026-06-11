@@ -253,56 +253,71 @@
           <button type="button" class="home-feed-preview-link" onclick="goMobileFeed()">Смотреть всё &gt;</button>
         </div>
 
-        <article class="home-feed-preview-card" onclick="goMobileFeed()" role="link" tabindex="0" aria-label="Открыть полную ленту">
-          <div class="home-feed-preview-top">
-            <div class="home-feed-preview-meta">
-              <span class="home-feed-preview-avatar" aria-hidden="true">
-                <img src="assets/img/public-profile-hero.jpg" alt="" decoding="async" />
-              </span>
-              <div class="home-feed-preview-meta-text">
-                <div class="home-feed-preview-author">Александр</div>
-                <div class="home-feed-preview-location">30 мая в 06:45 · Минская обл.</div>
-              </div>
-            </div>
-            <span class="home-feed-preview-menu-dots" aria-hidden="true">•••</span>
-          </div>
-
-          <div class="home-feed-preview-content">
-            <div class="home-feed-preview-body">
-              <p class="home-feed-preview-text">
-                Утренний клёв на Свислочи.<br />
-                Щука активна на воблеры.<br />
-                Делись отчётами в Klevgo<span class="home-feed-preview-text-extra"><br />Сохраняй места и уловы</span>
-              </p>
-
-              <div class="home-feed-preview-actions" aria-hidden="true">
-                <span class="home-feed-preview-action home-feed-preview-action--like">
-                  <span class="home-feed-preview-action-icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>
-                    </svg>
+        <div class="home-feed-preview-rotator" id="homeFeedPreviewRotator">
+          <div class="home-feed-preview-rotator-viewport">
+            <article class="home-feed-preview-card home-feed-preview-slide home-feed-preview-slide--feed is-active" onclick="goMobileFeed()" role="link" tabindex="0" aria-label="Открыть полную ленту">
+              <div class="home-feed-preview-top">
+                <div class="home-feed-preview-meta">
+                  <span class="home-feed-preview-avatar" aria-hidden="true">
+                    <img src="assets/img/public-profile-hero.jpg" alt="" decoding="async" />
                   </span>
-                  <span class="home-feed-preview-action-count">32</span>
-                </span>
-                <span class="home-feed-preview-action home-feed-preview-action--comment">
-                  <span class="home-feed-preview-action-icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>
-                      <path d="M8 12h.01"/>
-                      <path d="M12 12h.01"/>
-                      <path d="M16 12h.01"/>
-                    </svg>
-                  </span>
-                  <span class="home-feed-preview-action-count">7</span>
-                </span>
+                  <div class="home-feed-preview-meta-text">
+                    <div class="home-feed-preview-author">Александр</div>
+                    <div class="home-feed-preview-location">30 мая в 06:45 · Минская обл.</div>
+                  </div>
+                </div>
+                <span class="home-feed-preview-menu-dots" aria-hidden="true">•••</span>
               </div>
-            </div>
 
-            <div class="home-feed-preview-image">
-              <img src="assets/img/home/home-feed-preview.png" alt="" decoding="async" />
-            </div>
+              <div class="home-feed-preview-content">
+                <div class="home-feed-preview-body">
+                  <p class="home-feed-preview-text">
+                    Утренний клёв на Свислочи.<br />
+                    Щука активна на воблеры.<br />
+                    Делись отчётами в Klevgo<span class="home-feed-preview-text-extra"><br />Сохраняй места и уловы</span>
+                  </p>
+
+                  <div class="home-feed-preview-actions" aria-hidden="true">
+                    <span class="home-feed-preview-action home-feed-preview-action--like">
+                      <span class="home-feed-preview-action-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>
+                        </svg>
+                      </span>
+                      <span class="home-feed-preview-action-count">32</span>
+                    </span>
+                    <span class="home-feed-preview-action home-feed-preview-action--comment">
+                      <span class="home-feed-preview-action-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>
+                          <path d="M8 12h.01"/>
+                          <path d="M12 12h.01"/>
+                          <path d="M16 12h.01"/>
+                        </svg>
+                      </span>
+                      <span class="home-feed-preview-action-count">7</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="home-feed-preview-image">
+                  <img src="assets/img/home/home-feed-preview.png" alt="" decoding="async" />
+                </div>
+              </div>
+            </article>
+
+            <article class="home-feed-preview-card home-feed-preview-slide home-feed-preview-slide--ad" aria-label="Рекламное место">
+              <div class="home-feed-ad-bg" aria-hidden="true"></div>
+              <div class="home-feed-ad-scrim" aria-hidden="true"></div>
+              <div class="home-feed-ad-content">
+                <span class="home-feed-ad-badge">Рекламное место</span>
+                <h3 class="home-feed-ad-headline">Ваш магазин увидят<br />рыбаки Беларуси</h3>
+                <p class="home-feed-ad-support">Снасти, пруды, базы отдыха<br />и услуги для рыбалки</p>
+                <p class="home-feed-ad-footer">Здесь может быть ваша реклама</p>
+              </div>
+            </article>
           </div>
-        </article>
+        </div>
       </section>
 
       <div class="forecast-panel weather-cloudy" id="forecastPanel">
@@ -990,6 +1005,7 @@
   <script src="assets/js/feed/feed-main.js?v=20260605-desktop-cleanup-1" defer></script>
 
   <script src="assets/js/app/app-home-screen-owner.js?v=20260608-iphone-pwa-short-1" defer></script>
+  <script src="assets/js/app/app-home-feed-preview-rotator.js?v=20260610-home-feed-ad-rotator-1" defer></script>
   <script src="assets/js/app/app-navigation.js?v=20260607-map-app-screen-1" defer></script>
   <script src="assets/js/app/app-splash.js?v=20260513-app-splash-split-1" defer></script>
   <script src="assets/js/app/app-profile-patches.js?v=20260529-logout-profile-guest-1" defer></script>

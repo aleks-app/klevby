@@ -624,6 +624,148 @@
     object-position: center;
   }
 
+  #homeSection .home-feed-preview-rotator {
+    position: relative;
+    width: 100%;
+  }
+
+  #homeSection .home-feed-preview-rotator-viewport {
+    position: relative;
+    min-height: var(--klevby-home-feed-card-min-h);
+  }
+
+  #homeSection .home-feed-preview-rotator:not(.is-ready) .home-feed-preview-slide--ad {
+    display: none;
+  }
+
+  #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(5px);
+    transition:
+      opacity 0.65s ease,
+      visibility 0.65s ease,
+      transform 0.65s ease;
+  }
+
+  #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide.is-active {
+    position: relative;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    z-index: 2;
+  }
+
+  #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide--ad.is-active {
+    pointer-events: none;
+  }
+
+  #homeSection .home-feed-preview-slide--ad {
+    overflow: hidden;
+    padding: 0;
+    cursor: default;
+    background: #0a0a0a;
+    border-color: rgba(244, 122, 43, 0.22);
+  }
+
+  #homeSection .home-feed-preview-slide--ad:active {
+    transform: none;
+    opacity: 1;
+    border-color: rgba(244, 122, 43, 0.22);
+  }
+
+  #homeSection .home-feed-ad-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      url("../../images/ads/klevgo_ad_slot_bg_fishing_tackle.png") center right / cover no-repeat;
+    z-index: 0;
+  }
+
+  #homeSection .home-feed-ad-scrim {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        90deg,
+        rgba(2, 4, 3, 0.94) 0%,
+        rgba(2, 4, 3, 0.82) 42%,
+        rgba(2, 4, 3, 0.34) 68%,
+        rgba(2, 4, 3, 0.08) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(2, 4, 3, 0.18) 0%,
+        rgba(2, 4, 3, 0.42) 100%
+      );
+    z-index: 1;
+  }
+
+  #homeSection .home-feed-ad-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--klevby-home-feed-card-min-h);
+    padding: 14px 16px 13px;
+    max-width: 72%;
+  }
+
+  #homeSection .home-feed-ad-badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    margin: 0 0 2px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(244, 122, 43, 0.42);
+    background: rgba(244, 122, 43, 0.14);
+    color: #f47a2b;
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  #homeSection .home-feed-ad-headline {
+    margin: 0;
+    color: #fff8ea;
+    font-size: 15px;
+    font-weight: 850;
+    line-height: 1.22;
+    letter-spacing: -0.03em;
+    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  #homeSection .home-feed-ad-support {
+    margin: 0;
+    color: rgba(255, 248, 234, 0.72);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.38;
+    letter-spacing: -0.01em;
+    text-shadow: 0 6px 16px rgba(0, 0, 0, 0.38);
+  }
+
+  #homeSection .home-feed-ad-footer {
+    margin: 4px 0 0;
+    color: rgba(244, 122, 43, 0.88);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
   #homeSection #forecastPanel.forecast-panel {
     display: none !important;
   }
