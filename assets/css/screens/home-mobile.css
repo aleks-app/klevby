@@ -696,7 +696,7 @@
     background-image: url("../../images/ads/klevgo_ad_slot_bg_fishing_tackle.png");
     background-repeat: no-repeat;
     background-size: cover;
-    background-position: center right;
+    background-position: calc(100% + 16px) center;
     z-index: 0;
   }
 
