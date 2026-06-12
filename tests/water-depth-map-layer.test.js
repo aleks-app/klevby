@@ -88,7 +88,21 @@ test("buildDotMarkerSvg recolors the SVG ring and adds a graphite center dot", (
 
   assert.match(svg, /stroke="#F47A2B"/);
   assert.match(svg, /fill="#1e293b"/);
+  assert.match(svg, /fill="#0b1220"/);
   assert.doesNotMatch(svg, /#22d3ee/i);
+});
+
+test("icon size expressions scale dot and radar markers across zoom levels", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const dotSize = api.getDotIconSizeExpression();
+  const radarSize = api.getRadarIconSizeExpression();
+
+  assert.equal(dotSize[dotSize.indexOf(4) + 1], 10 / 24);
+  assert.equal(dotSize[dotSize.indexOf(8) + 1], 16 / 24);
+  assert.equal(dotSize[dotSize.indexOf(10) + 1], 18 / 24);
+  assert.equal(dotSize[dotSize.indexOf(11.49) + 1], 22 / 24);
+  assert.equal(radarSize[radarSize.indexOf(11.5) + 1], 24 / 24);
+  assert.equal(radarSize[radarSize.indexOf(17) + 1], 28 / 24);
 });
 
 test("buildRadarMarkerSvg recolors the radar strokes and adds a graphite base", () => {
