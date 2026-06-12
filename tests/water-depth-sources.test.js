@@ -73,6 +73,25 @@ test("fetchWaterDepthSources filters the query and sorts by quality then name", 
 
   assert.deepEqual(Array.from(result, (row) => row.id), [4, 2, 1, 3]);
   assert.deepEqual(calls[0], ["from", "water_depth_sources"]);
+  const selectedColumns = calls[1][1].split(",");
+  assert.deepEqual(
+    selectedColumns.filter((column) =>
+      [
+        "latitude",
+        "longitude",
+        "location_quality",
+        "location_source",
+        "location_checked_at"
+      ].includes(column)
+    ),
+    [
+      "latitude",
+      "longitude",
+      "location_quality",
+      "location_source",
+      "location_checked_at"
+    ]
+  );
   assert.deepEqual(calls[2], ["eq", "has_depth_map", "найдено"]);
   assert.equal(calls[3][0], "order");
   assert.equal(calls[3][1], "name");

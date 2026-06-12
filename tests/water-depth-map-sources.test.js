@@ -54,6 +54,11 @@ test("normalizeWaterDepthMapSources converts a raw row to the map-ready shape", 
       water_type: " озеро ",
       region: "Минская область",
       district: "Мядельский район",
+      latitude: 54.85,
+      longitude: 26.97,
+      location_quality: " примерно ",
+      location_source: " ручная проверка ",
+      location_checked_at: "2026-06-11",
       source: "Госводкадастр",
       source_url: " https://example.com/naroch ",
       usage_rule: "С указанием источника",
@@ -70,15 +75,61 @@ test("normalizeWaterDepthMapSources converts a raw row to the map-ready shape", 
       waterType: "озеро",
       region: "Минская область",
       district: "Мядельский район",
+      latitude: 54.85,
+      longitude: 26.97,
+      locationQuality: "примерно",
+      locationSource: "ручная проверка",
+      locationCheckedAt: "2026-06-11",
       source: "Госводкадастр",
       sourceUrl: "https://example.com/naroch",
       usageRule: "С указанием источника",
       quality: "точное совпадение",
       comment: "Проверено вручную",
       checkedAt: "2026-06-10",
-      hasCoordinates: false
+      hasCoordinates: true
     }
   ]);
+});
+
+test("normalizeWaterDepthMapSources clears missing or invalid coordinate pairs", () => {
+  const { api } = loadWaterDepthMapSources();
+  const rows = api.normalizeWaterDepthMapSources([
+    {
+      id: 1,
+      name: "Missing longitude",
+      source_url: "https://example.com/one",
+      latitude: 53.9,
+      longitude: null
+    },
+    {
+      id: 2,
+      name: "Invalid latitude",
+      source_url: "https://example.com/two",
+      latitude: "53.9",
+      longitude: 27.56
+    },
+    {
+      id: 3,
+      name: "Infinite longitude",
+      source_url: "https://example.com/three",
+      latitude: 53.9,
+      longitude: Infinity
+    }
+  ]);
+
+  assert.deepEqual(
+    toPlain(rows.map(({ id, latitude, longitude, hasCoordinates }) => ({
+      id,
+      latitude,
+      longitude,
+      hasCoordinates
+    }))),
+    [
+      { id: 1, latitude: null, longitude: null, hasCoordinates: false },
+      { id: 2, latitude: null, longitude: null, hasCoordinates: false },
+      { id: 3, latitude: null, longitude: null, hasCoordinates: false }
+    ]
+  );
 });
 
 test("normalizeWaterDepthMapSources skips broken rows", () => {
@@ -122,6 +173,11 @@ test("getWaterDepthMapSources returns normalized rows from the shared reader", a
       waterType: "водохранилище",
       region: "",
       district: "",
+      latitude: null,
+      longitude: null,
+      locationQuality: "",
+      locationSource: "",
+      locationCheckedAt: "",
       source: "",
       sourceUrl: "https://example.com/vileyka",
       usageRule: "",
@@ -131,6 +187,22 @@ test("getWaterDepthMapSources returns normalized rows from the shared reader", a
       hasCoordinates: false
     }
   ]);
+});
+
+test("getWaterDepthMapSources returns an empty array when the reader is unavailable or fails", async () => {
+  const unavailable = loadWaterDepthMapSources();
+  const failing = loadWaterDepthMapSources({
+    reader: {
+      async fetchWaterDepthSources() {
+        throw new Error("reader failed");
+      }
+    }
+  });
+
+  assert.deepEqual(Array.from(await unavailable.api.getWaterDepthMapSources()), []);
+  assert.deepEqual(Array.from(await failing.api.getWaterDepthMapSources()), []);
+  assert.equal(failing.warnings.length, 1);
+  assert.match(failing.warnings[0][0], /fetch failed/);
 });
 
 test("getWaterDepthMapSources diagnostics are opt-in", async () => {
