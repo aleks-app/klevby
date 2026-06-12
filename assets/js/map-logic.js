@@ -676,7 +676,6 @@
         transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
       }
 
-      .map-action-btn:hover,
       .map-action-btn[aria-expanded="true"],
       .map-action-btn.is-active {
         border-color: rgba(244, 122, 43, 0.78);
@@ -686,6 +685,18 @@
           inset 0 1px 0 rgba(255, 248, 234, 0.06),
           0 5px 18px rgba(0, 0, 0, 0.25),
           0 0 14px rgba(244, 122, 43, 0.12);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .map-action-btn:hover {
+          border-color: rgba(244, 122, 43, 0.78);
+          background:
+            linear-gradient(180deg, rgba(45, 34, 27, 0.98), rgba(25, 22, 20, 0.98));
+          box-shadow:
+            inset 0 1px 0 rgba(255, 248, 234, 0.06),
+            0 5px 18px rgba(0, 0, 0, 0.25),
+            0 0 14px rgba(244, 122, 43, 0.12);
+        }
       }
 
       .map-action-btn.is-unavailable {
@@ -1375,7 +1386,9 @@
         return;
       }
 
-      setWaterDepthLayerEnabled(!waterDepthLayerEnabled);
+      void setWaterDepthLayerEnabled(!waterDepthLayerEnabled).finally(function () {
+        depthsButton.blur();
+      });
     });
 
     controls.querySelector('[data-map-action="location"]')?.addEventListener("click", function () {
