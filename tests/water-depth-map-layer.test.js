@@ -80,6 +80,28 @@ test("toWaterDepthFeatureCollection keeps only map-ready coordinate rows", () =>
   });
 });
 
+test("buildDotMarkerSvg recolors the SVG ring and adds a graphite center dot", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const svg = api.buildDotMarkerSvg(
+    '<svg stroke="currentColor"><circle cx="12" cy="12" r="10"/></svg>'
+  );
+
+  assert.match(svg, /stroke="#F47A2B"/);
+  assert.match(svg, /fill="#1e293b"/);
+  assert.doesNotMatch(svg, /#22d3ee/i);
+});
+
+test("buildRadarMarkerSvg recolors the radar strokes and adds a graphite base", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const svg = api.buildRadarMarkerSvg(
+    '<svg stroke="currentColor"><path d="M2 2"/></svg>'
+  );
+
+  assert.match(svg, /stroke="#F47A2B"/);
+  assert.match(svg, /fill="#1e293b"/);
+  assert.match(svg, /r="11"/);
+});
+
 test("addWaterDepthLayer is disabled by default", async () => {
   let adapterCalls = 0;
   let sourceCalls = 0;
@@ -125,38 +147,39 @@ test("addWaterDepthLayer accepts only the exact localStorage debug value", async
   assert.equal(adapterCalls, 0);
 });
 
-test("getWaterDepthLayerDefinitions uses zoom-based far, near, and hit layers", () => {
+test("getWaterDepthLayerDefinitions uses SVG symbol layers and a hit layer", () => {
   const { api } = loadWaterDepthMapLayer();
-  const layers = api.getWaterDepthLayerDefinitions({ useSymbolNearLayer: true });
+  const layers = api.getWaterDepthLayerDefinitions({ useSymbolLayers: true });
 
-  assert.equal(layers.length, 4);
-  assert.equal(layers[0].id, "klevby-water-depth-points-glow");
-  assert.equal(layers[1].id, "klevby-water-depth-points");
-  assert.equal(layers[2].id, "klevby-water-depth-points-pin");
-  assert.equal(layers[3].id, "klevby-water-depth-points-hit");
+  assert.equal(layers.length, 3);
+  assert.equal(layers[0].id, "klevby-water-depth-points");
+  assert.equal(layers[1].id, "klevby-water-depth-points-pin");
+  assert.equal(layers[2].id, "klevby-water-depth-points-hit");
+
+  assert.equal(layers[0].type, "symbol");
+  assert.equal(layers[0].maxzoom, 11.5);
+  assert.equal(layers[0].layout["icon-image"], "klevby-water-depth-marker-dot");
+  assert.equal(layers[1].type, "symbol");
+  assert.equal(layers[1].minzoom, 11.5);
+  assert.equal(layers[1].layout["icon-image"], "klevby-water-depth-marker-radar");
+  assert.equal(layers[2].paint["circle-opacity"], 0);
+  assert.ok(Array.isArray(layers[2].paint["circle-radius"]));
+});
+
+test("getWaterDepthLayerDefinitions falls back to compact circles without cyan glow", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const layers = api.getWaterDepthLayerDefinitions({ useSymbolLayers: false });
 
   assert.equal(layers[0].type, "circle");
-  assert.equal(layers[0].maxzoom, 11.5);
-  assert.equal(layers[1].paint["circle-color"], "#22d3ee");
+  assert.equal(layers[0].paint["circle-color"], "#1e293b");
+  assert.equal(layers[0].paint["circle-stroke-color"], "#F47A2B");
+  assert.equal(layers[1].type, "circle");
+  assert.equal(layers[1].minzoom, 11.5);
+  assert.equal(layers[1].paint["circle-color"], "#1e293b");
   assert.equal(layers[1].paint["circle-stroke-color"], "#F47A2B");
-  assert.equal(layers[2].type, "symbol");
-  assert.equal(layers[2].minzoom, 11.5);
-  assert.equal(layers[2].layout["icon-image"], "klevby-water-depth-marker");
-  assert.equal(layers[3].paint["circle-opacity"], 0);
-  assert.ok(Array.isArray(layers[3].paint["circle-radius"]));
 });
 
-test("getWaterDepthLayerDefinitions falls back to a near circle when symbol image is unavailable", () => {
-  const { api } = loadWaterDepthMapLayer();
-  const layers = api.getWaterDepthLayerDefinitions({ useSymbolNearLayer: false });
-
-  assert.equal(layers[2].type, "circle");
-  assert.equal(layers[2].minzoom, 11.5);
-  assert.equal(layers[2].paint["circle-color"], "#1e293b");
-  assert.equal(layers[2].paint["circle-stroke-color"], "#F47A2B");
-});
-
-test("addWaterDepthLayer adds one GeoJSON source and zoom-based depth layers when enabled", async () => {
+test("addWaterDepthLayer adds one GeoJSON source and SVG-based depth layers when enabled", async () => {
   const sourceCalls = [];
   const layerCalls = [];
   const { api, info, warnings } = loadWaterDepthMapLayer({
@@ -191,16 +214,16 @@ test("addWaterDepthLayer adds one GeoJSON source and zoom-based depth layers whe
   assert.equal(sourceCalls[0][0], "klevby-water-depth-sources");
   assert.equal(toPlain(sourceCalls[0][1]).type, "geojson");
   assert.deepEqual(toPlain(sourceCalls[0][1].data.features[0].geometry.coordinates), [27.56, 53.9]);
-  assert.equal(layerCalls.length, 4);
+  assert.equal(layerCalls.length, 3);
   assert.deepEqual(
     layerCalls.map((layer) => layer.id),
     [
-      "klevby-water-depth-points-glow",
       "klevby-water-depth-points",
       "klevby-water-depth-points-pin",
       "klevby-water-depth-points-hit"
     ]
   );
+  assert.equal(layerCalls[0].type, "circle");
   assert.equal(layerCalls[1].type, "circle");
   assert.equal(info.length, 1);
   assert.match(info[0][0], /debug render summary/);
@@ -212,12 +235,12 @@ test("addWaterDepthLayer adds one GeoJSON source and zoom-based depth layers whe
     sourceId: "klevby-water-depth-sources",
     layerId: "klevby-water-depth-points",
     layerIds: [
-      "klevby-water-depth-points-glow",
       "klevby-water-depth-points",
       "klevby-water-depth-points-pin",
       "klevby-water-depth-points-hit"
     ],
-    markerImageReady: false
+    markerDotReady: false,
+    markerRadarReady: false
   });
   assert.equal(warnings.length, 0);
 });
@@ -338,14 +361,13 @@ test("setWaterDepthLayerVisible renders without debug and removes on disable", a
 
   await api.setWaterDepthLayerVisible(map, true);
   assert.equal(sourceCalls.length, 1);
-  assert.equal(layerCalls.length, 4);
+  assert.equal(layerCalls.length, 3);
 
   await api.setWaterDepthLayerVisible(map, false);
   assert.deepEqual(removed, [
     ["layer", "klevby-water-depth-points-hit"],
     ["layer", "klevby-water-depth-points-pin"],
     ["layer", "klevby-water-depth-points"],
-    ["layer", "klevby-water-depth-points-glow"],
     ["source", "klevby-water-depth-sources"]
   ]);
 });
