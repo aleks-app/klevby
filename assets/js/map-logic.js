@@ -1558,6 +1558,12 @@
         localizeMapLibreLabels(map);
         mapReady = true;
         map.resize();
+
+        const addWaterDepthLayer = window.KlevbyWaterDepthMapLayer?.addWaterDepthLayer;
+        if (typeof addWaterDepthLayer === "function") {
+          addWaterDepthLayer(map);
+        }
+
         resolve(map);
       });
 
