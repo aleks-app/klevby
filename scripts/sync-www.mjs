@@ -15,6 +15,11 @@ const requiredProjectEntries = [
   'assets',
   'capacitor.config.ts'
 ];
+const maplibreVersion = '5.24.0';
+const requiredVendorOutputs = [
+  `assets/vendor/maplibre-gl/${maplibreVersion}/maplibre-gl.js`,
+  `assets/vendor/maplibre-gl/${maplibreVersion}/maplibre-gl.css`
+];
 
 async function ensureReadable(sourcePath) {
   try {
@@ -60,6 +65,13 @@ async function main() {
 
   for (const entry of requiredOutputs) {
     const targetPath = path.join(webDir, entry);
+    await ensureReadable(targetPath);
+  }
+
+  for (const entry of requiredVendorOutputs) {
+    const sourcePath = path.join(projectRoot, entry);
+    const targetPath = path.join(webDir, entry);
+    await ensureReadable(sourcePath);
     await ensureReadable(targetPath);
   }
 
