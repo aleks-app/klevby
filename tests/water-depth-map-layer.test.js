@@ -257,3 +257,46 @@ test("addWaterDepthLayer warns and does not throw when fetching fails", async ()
   assert.equal(warnings.length, 1);
   assert.match(warnings[0][0], /failed/);
 });
+
+test("setWaterDepthLayerVisible renders without debug and removes on disable", async () => {
+  const sourceCalls = [];
+  const layerCalls = [];
+  const removed = [];
+  const { api } = loadWaterDepthMapLayer({
+    adapter: {
+      async getWaterDepthMapSources() {
+        return [{ id: 3, latitude: 53.9, longitude: 27.56, hasCoordinates: true }];
+      }
+    }
+  });
+  const map = {
+    getSource(id) {
+      return sourceCalls.some((call) => call[0] === id) ? { setData() {} } : null;
+    },
+    addSource(...args) {
+      sourceCalls.push(args);
+    },
+    getLayer(id) {
+      return layerCalls.some((layer) => layer.id === id) ? { id } : null;
+    },
+    addLayer(layer) {
+      layerCalls.push(layer);
+    },
+    removeLayer(id) {
+      removed.push(["layer", id]);
+    },
+    removeSource(id) {
+      removed.push(["source", id]);
+    }
+  };
+
+  await api.setWaterDepthLayerVisible(map, true);
+  assert.equal(sourceCalls.length, 1);
+  assert.equal(layerCalls.length, 1);
+
+  await api.setWaterDepthLayerVisible(map, false);
+  assert.deepEqual(removed, [
+    ["layer", "klevby-water-depth-points"],
+    ["source", "klevby-water-depth-sources"]
+  ]);
+});

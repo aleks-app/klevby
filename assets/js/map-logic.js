@@ -30,6 +30,7 @@
   let pendingSpotCoords = null;
   let cachedFishingSpots = [];
   let activeSpotFilter = "all";
+  let waterDepthLayerEnabled = false;
   let mapInitPromise = null;
   let activeMapProvider = null;
   let maplibreSpotMarkers = [];
@@ -724,7 +725,8 @@
         --map-icon: url("assets/icons/map/location.svg");
       }
 
-      .map-action-icon--layers {
+      .map-action-icon--layers,
+      .map-action-icon--depths {
         --map-icon: url("assets/icons/map/layers.svg");
       }
 
@@ -1264,9 +1266,9 @@
           <span class="map-action-icon map-action-icon--location" aria-hidden="true"></span>
           <span>Моё место</span>
         </button>
-        <button class="map-action-btn is-unavailable" type="button" data-map-action="layers" aria-label="Слои, функция готовится">
-          <span class="map-action-icon map-action-icon--layers" aria-hidden="true"></span>
-          <span>Слои</span>
+        <button class="map-action-btn is-unavailable" type="button" data-map-action="depths" aria-pressed="false" aria-label="Глубины">
+          <span class="map-action-icon map-action-icon--depths" aria-hidden="true"></span>
+          <span>Глубины</span>
         </button>
       </div>
       <section id="mapFilterSheet" class="map-filter-sheet" aria-labelledby="mapFilterSheetTitle" hidden>
@@ -1344,11 +1346,43 @@
       });
     });
 
-    controls.querySelectorAll('[data-map-action="location"], [data-map-action="layers"]').forEach(function (button) {
-      button.addEventListener("click", function () {
-        console.info("Klevby Map: действие «" + button.textContent.trim() + "» подготовлено для будущей реализации.");
-      });
+    const depthsButton = controls.querySelector('[data-map-action="depths"]');
+
+    const syncWaterDepthControl = function () {
+      if (!depthsButton) return;
+
+      const isMapLibreReady = activeMapProvider === "maplibre" && mapReady && Boolean(mapInstance);
+      depthsButton.classList.toggle("is-unavailable", !isMapLibreReady);
+      depthsButton.classList.toggle("is-active", isMapLibreReady && waterDepthLayerEnabled);
+      depthsButton.setAttribute("aria-pressed", String(isMapLibreReady && waterDepthLayerEnabled));
+    };
+
+    const setWaterDepthLayerEnabled = async function (enabled) {
+      waterDepthLayerEnabled = Boolean(enabled);
+
+      if (activeMapProvider === "maplibre" && mapInstance) {
+        const setWaterDepthLayerVisible = window.KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible;
+        if (typeof setWaterDepthLayerVisible === "function") {
+          await setWaterDepthLayerVisible(mapInstance, waterDepthLayerEnabled);
+        }
+      }
+
+      syncWaterDepthControl();
+    };
+
+    depthsButton?.addEventListener("click", function () {
+      if (depthsButton.classList.contains("is-unavailable")) {
+        return;
+      }
+
+      setWaterDepthLayerEnabled(!waterDepthLayerEnabled);
     });
+
+    controls.querySelector('[data-map-action="location"]')?.addEventListener("click", function () {
+      console.info("Klevby Map: действие «Моё место» подготовлено для будущей реализации.");
+    });
+
+    window.__klevbySyncWaterDepthControl = syncWaterDepthControl;
 
     controls.addEventListener("keydown", function (event) {
       if (event.key === "Escape" && !filterSheet.hidden) {
@@ -1358,6 +1392,7 @@
     });
 
     syncActiveFilter();
+    syncWaterDepthControl();
     getMapFiltersHost(mapSection).appendChild(controls);
   }
 
@@ -1815,6 +1850,15 @@
           addWaterDepthLayer(map);
         }
 
+        if (waterDepthLayerEnabled) {
+          const setWaterDepthLayerVisible = window.KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible;
+          if (typeof setWaterDepthLayerVisible === "function") {
+            setWaterDepthLayerVisible(map, true);
+          }
+        }
+
+        window.__klevbySyncWaterDepthControl?.();
+
         resolve(map);
       });
 
@@ -2243,6 +2287,7 @@
     postsCollection = null;
     spotsCollection = null;
     activeMapProvider = null;
+    window.__klevbySyncWaterDepthControl?.();
 
     if (partialMap && (typeof partialMap.remove === "function" || typeof partialMap.destroy === "function")) {
       try {
@@ -2285,6 +2330,7 @@
 
     await loadYandexMapsApi();
     createYandexMap(mapEl);
+    window.__klevbySyncWaterDepthControl?.();
   }
 
   async function initMapLogic() {
