@@ -42,15 +42,33 @@
     };
   }
 
-  async function addWaterDepthLayer(map) {
-    if (!isDebugEnabled() || !map) {
+  function removeWaterDepthLayer(map) {
+    if (!map) {
       return;
+    }
+
+    try {
+      if (typeof map.getLayer === "function" && map.getLayer(LAYER_ID)) {
+        map.removeLayer(LAYER_ID);
+      }
+
+      if (typeof map.getSource === "function" && map.getSource(SOURCE_ID)) {
+        map.removeSource(SOURCE_ID);
+      }
+    } catch (error) {
+      console.warn("Klevby water depth map layer: remove failed.", error);
+    }
+  }
+
+  async function renderWaterDepthLayer(map) {
+    if (!map) {
+      return false;
     }
 
     const getWaterDepthMapSources = global.KlevbyWaterDepthMapSources?.getWaterDepthMapSources;
 
     if (typeof getWaterDepthMapSources !== "function") {
-      return;
+      return false;
     }
 
     try {
@@ -72,7 +90,7 @@
           data
         });
       } else {
-        return;
+        return false;
       }
 
       const existingLayer = typeof map.getLayer === "function" ? map.getLayer(LAYER_ID) : null;
@@ -94,23 +112,52 @@
         layerReady = true;
       }
 
-      console.info("Klevby water depth map layer: debug render summary.", {
-        totalRowsReceived,
-        rowsWithCoordinates,
-        rowsRenderedOnMap: layerReady ? data.features.length : 0,
-        skippedRowsWithoutCoordinates: totalRowsReceived - rowsWithCoordinates,
-        sourceId: SOURCE_ID,
-        layerId: LAYER_ID
-      });
+      if (isDebugEnabled()) {
+        console.info("Klevby water depth map layer: debug render summary.", {
+          totalRowsReceived,
+          rowsWithCoordinates,
+          rowsRenderedOnMap: layerReady ? data.features.length : 0,
+          skippedRowsWithoutCoordinates: totalRowsReceived - rowsWithCoordinates,
+          sourceId: SOURCE_ID,
+          layerId: LAYER_ID
+        });
+      }
+
+      return layerReady;
     } catch (error) {
       console.warn("Klevby water depth map layer: fetch or rendering failed.", error);
+      return false;
     }
+  }
+
+  async function addWaterDepthLayer(map) {
+    if (!isDebugEnabled() || !map) {
+      return;
+    }
+
+    await renderWaterDepthLayer(map);
+  }
+
+  async function setWaterDepthLayerVisible(map, visible) {
+    if (!map) {
+      return;
+    }
+
+    if (!visible) {
+      removeWaterDepthLayer(map);
+      return;
+    }
+
+    await renderWaterDepthLayer(map);
   }
 
   global.KlevbyWaterDepthMapLayer = {
     SOURCE_ID,
     LAYER_ID,
     toWaterDepthFeatureCollection,
-    addWaterDepthLayer
+    removeWaterDepthLayer,
+    renderWaterDepthLayer,
+    addWaterDepthLayer,
+    setWaterDepthLayerVisible
   };
 })(window);
