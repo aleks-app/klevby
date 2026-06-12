@@ -10,8 +10,16 @@
   const DEFAULT_CENTER = [53.9023, 27.5619]; // Минск
   const DEFAULT_ZOOM = 7;
   const MAPLIBRE_VERSION = "5.24.0";
-  const MAPLIBRE_SCRIPT_URL = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
-  const MAPLIBRE_STYLESHEET_URL = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`;
+  const MAPLIBRE_LOCAL_BASE_URL = `assets/vendor/maplibre-gl/${MAPLIBRE_VERSION}`;
+  const MAPLIBRE_REMOTE_BASE_URL = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist`;
+  const MAPLIBRE_SCRIPT_SOURCES = [
+    { source: "local", url: `${MAPLIBRE_LOCAL_BASE_URL}/maplibre-gl.js` },
+    { source: "remote-fallback", url: `${MAPLIBRE_REMOTE_BASE_URL}/maplibre-gl.js` }
+  ];
+  const MAPLIBRE_STYLESHEET_SOURCES = [
+    { source: "local", url: `${MAPLIBRE_LOCAL_BASE_URL}/maplibre-gl.css` },
+    { source: "remote-fallback", url: `${MAPLIBRE_REMOTE_BASE_URL}/maplibre-gl.css` }
+  ];
   const DEFAULT_MAPTILER_STYLE_URL = "https://api.maptiler.com/maps/streets-v2-dark/style.json";
 
   let mapDb = null;
@@ -34,8 +42,8 @@
   const YANDEX_API_LOAD_TIMEOUT_MS = 15000;
   const YANDEX_SCRIPT_SELECTOR = 'script[src*="api-maps.yandex.ru"]';
   const MAPLIBRE_API_LOAD_TIMEOUT_MS = 15000;
-  const MAPLIBRE_SCRIPT_SELECTOR = 'script[data-klevby-maplibre="true"]';
-  const MAPLIBRE_STYLESHEET_SELECTOR = 'link[data-klevby-maplibre="true"]';
+  const MAPLIBRE_SCRIPT_SELECTOR = 'script[data-klevby-maplibre-asset="script"]';
+  const MAPLIBRE_STYLESHEET_SELECTOR = 'link[data-klevby-maplibre-asset="stylesheet"]';
 
   const geocodeCache = {};
 
@@ -144,6 +152,42 @@
     return v;
   }
 
+  function sanitizeRuntimeLocation() {
+    return {
+      origin: window.location.origin || "null",
+      protocol: window.location.protocol,
+      pathname: window.location.pathname
+    };
+  }
+
+  function sanitizeUrl(urlValue) {
+    try {
+      const url = new URL(urlValue, window.location.href);
+      return {
+        origin: url.origin,
+        pathname: url.pathname,
+        hasKeyParameter: url.searchParams.has("key")
+      };
+    } catch (error) {
+      return { origin: "invalid", pathname: "invalid", hasKeyParameter: false };
+    }
+  }
+
+  function getDiagnosticError(error, secrets = []) {
+    let message = String(error?.message || error || "Unknown error")
+      .replace(/([?&]key=)[^&\s"']+/gi, "$1[redacted]");
+
+    secrets.filter(Boolean).forEach(function (secret) {
+      message = message.replaceAll(String(secret), "[redacted]");
+      message = message.replaceAll(encodeURIComponent(String(secret)), "[redacted]");
+    });
+
+    return {
+      name: String(error?.name || "Error"),
+      message
+    };
+  }
+
   function getMapProviderConfig() {
     const config = window.KLEVB_CONFIG || {};
     const requestedProvider = String(window.KLEVB_MAP_PROVIDER || config.MAP_PROVIDER || "yandex").toLowerCase();
@@ -151,27 +195,37 @@
     const maptilerStyleUrl = String(
       window.KLEVB_MAPTILER_STYLE_URL || config.MAPTILER_STYLE_URL || DEFAULT_MAPTILER_STYLE_URL
     ).trim();
+    const provider = requestedProvider === "maplibre" && maptilerKey ? "maplibre" : "yandex";
+    const fallbackReason = requestedProvider === "maplibre" && !maptilerKey ? "maptiler-key-missing" : null;
 
-    if (requestedProvider !== "maplibre") {
-      return { provider: "yandex", requestedProvider, maptilerKey, maptilerStyleUrl };
+    console.info("Klevby Map: provider config resolved", {
+      requestedProvider,
+      provider,
+      maptilerKeyConfigured: Boolean(maptilerKey),
+      style: sanitizeUrl(maptilerStyleUrl)
+    });
+    console.info("Klevby Map: runtime location", sanitizeRuntimeLocation());
+
+    if (requestedProvider === "maplibre" && !maptilerKey) {
+      console.warn("Klevby Map: MapLibre selected without a MapTiler key; Yandex fallback will be used.");
     }
 
-    if (!maptilerKey) {
-      console.warn("Klevby Map: MapLibre выбран, но MAPTILER_API_KEY не задан. Используем Yandex fallback.");
-      return { provider: "yandex", requestedProvider, maptilerKey, maptilerStyleUrl };
-    }
-
-    return { provider: "maplibre", requestedProvider, maptilerKey, maptilerStyleUrl };
+    return { provider, requestedProvider, maptilerKey, maptilerStyleUrl, fallbackReason };
   }
 
   function getMapTilerStyleUrl(styleUrl, apiKey) {
+    let resolvedStyleUrl;
+
     if (styleUrl.includes("{key}")) {
-      return styleUrl.replaceAll("{key}", encodeURIComponent(apiKey));
+      resolvedStyleUrl = styleUrl.replaceAll("{key}", encodeURIComponent(apiKey));
+    } else {
+      const url = new URL(styleUrl, window.location.href);
+      url.searchParams.set("key", apiKey);
+      resolvedStyleUrl = url.toString();
     }
 
-    const url = new URL(styleUrl, window.location.href);
-    url.searchParams.set("key", apiKey);
-    return url.toString();
+    console.info("Klevby Map: MapTiler style URL constructed", sanitizeUrl(resolvedStyleUrl));
+    return resolvedStyleUrl;
   }
 
   function isMapLibreApiUsable() {
@@ -183,63 +237,109 @@
     );
   }
 
-  function loadMapLibreApi() {
-    if (isMapLibreApiUsable()) return Promise.resolve();
+  function loadMapLibreAsset(assetType, candidate) {
+    const isScript = assetType === "script";
+    const selector = isScript ? MAPLIBRE_SCRIPT_SELECTOR : MAPLIBRE_STYLESHEET_SELECTOR;
+    const existingAsset = document.querySelector(`${selector}[data-klevby-maplibre-source="${candidate.source}"]`);
+
+    console.info("Klevby Map: MapLibre asset load start", {
+      assetType,
+      source: candidate.source,
+      version: MAPLIBRE_VERSION,
+      url: sanitizeUrl(candidate.url)
+    });
 
     return new Promise(function (resolve, reject) {
-      let script = document.querySelector(MAPLIBRE_SCRIPT_SELECTOR);
-      let stylesheet = document.querySelector(MAPLIBRE_STYLESHEET_SELECTOR);
+      let asset = existingAsset;
       let settled = false;
 
       const finish = function (error) {
         if (settled) return;
         settled = true;
         clearTimeout(timeoutId);
+        asset.removeEventListener("load", handleLoad);
+        asset.removeEventListener("error", handleError);
 
-        if (script) {
-          script.removeEventListener("load", handleScriptLoad);
-          script.removeEventListener("error", handleScriptError);
+        if (error) {
+          console.warn("Klevby Map: MapLibre asset load failure", {
+            assetType,
+            source: candidate.source,
+            version: MAPLIBRE_VERSION,
+            error: getDiagnosticError(error)
+          });
+          if (asset.isConnected) asset.remove();
+          reject(error);
+          return;
         }
 
-        if (error) reject(error);
-        else resolve();
+        console.info("Klevby Map: MapLibre asset load success", {
+          assetType,
+          source: candidate.source,
+          version: MAPLIBRE_VERSION
+        });
+        resolve();
       };
 
-      const handleScriptLoad = function () {
-        if (isMapLibreApiUsable()) finish();
-        else finish(new Error("MapLibre GL JS loaded, but its API is not usable"));
+      const handleLoad = function () {
+        if (!isScript || isMapLibreApiUsable()) {
+          finish();
+        } else {
+          finish(new Error("MapLibre GL JS loaded, but its API is not usable"));
+        }
       };
 
-      const handleScriptError = function () {
-        finish(new Error("MapLibre GL JS not loaded"));
+      const handleError = function () {
+        finish(new Error(`MapLibre ${assetType} failed to load from ${candidate.source}`));
       };
 
       const timeoutId = setTimeout(function () {
-        finish(new Error("MapLibre GL JS load timed out"));
+        finish(new Error(`MapLibre ${assetType} load timed out from ${candidate.source}`));
       }, MAPLIBRE_API_LOAD_TIMEOUT_MS);
 
-      if (!stylesheet) {
-        stylesheet = document.createElement("link");
-        stylesheet.rel = "stylesheet";
-        stylesheet.href = MAPLIBRE_STYLESHEET_URL;
-        stylesheet.dataset.klevbyMaplibre = "true";
-        document.head.appendChild(stylesheet);
+      if (!asset) {
+        asset = document.createElement(isScript ? "script" : "link");
+        asset.dataset.klevbyMaplibreAsset = assetType;
+        asset.dataset.klevbyMaplibreSource = candidate.source;
+
+        if (isScript) {
+          asset.src = candidate.url;
+          asset.async = true;
+        } else {
+          asset.rel = "stylesheet";
+          asset.href = candidate.url;
+        }
       }
 
-      if (!script) {
-        script = document.createElement("script");
-        script.src = MAPLIBRE_SCRIPT_URL;
-        script.async = true;
-        script.dataset.klevbyMaplibre = "true";
-      }
+      asset.addEventListener("load", handleLoad);
+      asset.addEventListener("error", handleError);
 
-      script.addEventListener("load", handleScriptLoad);
-      script.addEventListener("error", handleScriptError);
-
-      if (!script.isConnected) {
-        document.head.appendChild(script);
-      }
+      if (!asset.isConnected) document.head.appendChild(asset);
     });
+  }
+
+  async function loadMapLibreAssetWithFallback(assetType, candidates) {
+    let lastError = null;
+
+    for (const candidate of candidates) {
+      try {
+        await loadMapLibreAsset(assetType, candidate);
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error(`MapLibre ${assetType} has no configured sources`);
+  }
+
+  async function loadMapLibreApi() {
+    if (isMapLibreApiUsable()) {
+      console.info("Klevby Map: MapLibre engine already available", { version: MAPLIBRE_VERSION });
+      return;
+    }
+
+    await loadMapLibreAssetWithFallback("stylesheet", MAPLIBRE_STYLESHEET_SOURCES);
+    await loadMapLibreAssetWithFallback("script", MAPLIBRE_SCRIPT_SOURCES);
   }
 
   function isYandexMapsApiUsable() {
@@ -1531,6 +1631,10 @@
         settled = true;
         reject(new Error("MapLibre/MapTiler initialization timed out"));
       }, MAPLIBRE_API_LOAD_TIMEOUT_MS);
+      console.info("Klevby Map: map constructor start", {
+        provider: "maplibre",
+        style: sanitizeUrl(styleUrl)
+      });
       const map = new window.maplibregl.Map({
         container: mapEl,
         style: styleUrl,
@@ -1553,6 +1657,7 @@
 
       map.once("load", function () {
         if (settled) return;
+        console.info("Klevby Map: map load success", { provider: "maplibre" });
         settled = true;
         clearTimeout(timeoutId);
         localizeMapLibreLabels(map);
@@ -1571,6 +1676,10 @@
         const error = event?.error || new Error("MapLibre map failed to load");
 
         if (!settled) {
+          console.warn("Klevby Map: map error before load", {
+            provider: "maplibre",
+            error: getDiagnosticError(error, [providerConfig.maptilerKey])
+          });
           settled = true;
           clearTimeout(timeoutId);
           reject(error);
@@ -2002,10 +2111,15 @@
         await createMapLibreMap(mapEl, providerConfig);
         return;
       } catch (error) {
-        console.warn("Klevby Map: MapLibre/MapTiler не запустился, используем Yandex fallback:", error);
+        console.warn("Klevby Map: fallback to Yandex", {
+          reason: "maplibre-initialization-failed",
+          error: getDiagnosticError(error, [providerConfig.maptilerKey])
+        });
         cleanupPartialMapInitialization();
         mapEl.innerHTML = "";
       }
+    } else if (providerConfig.fallbackReason) {
+      console.warn("Klevby Map: fallback to Yandex", { reason: providerConfig.fallbackReason });
     }
 
     await loadYandexMapsApi();
