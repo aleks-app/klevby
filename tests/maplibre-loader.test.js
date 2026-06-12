@@ -6,6 +6,25 @@ const vm = require("node:vm");
 
 const mapLogic = fs.readFileSync(path.join(__dirname, "../assets/js/map-logic.js"), "utf8");
 const vendorScript = fs.readFileSync(path.join(__dirname, "../scripts/vendor-maplibre.mjs"), "utf8");
+const syncScript = fs.readFileSync(path.join(__dirname, "../scripts/sync-www.mjs"), "utf8");
+const MAPLIBRE_VERSION = "5.24.0";
+const MAPLIBRE_VENDOR_DIR = path.join(__dirname, "../assets/vendor/maplibre-gl", MAPLIBRE_VERSION);
+const MAPLIBRE_VENDOR_FILES = [
+  { name: "maplibre-gl.js", minimumBytes: 900_000, signature: "maplibregl" },
+  { name: "maplibre-gl.css", minimumBytes: 60_000, signature: ".maplibregl-" }
+];
+
+function assertVendorFileExists(rootDir, asset) {
+  const filePath = path.join(rootDir, asset.name);
+  assert.ok(fs.existsSync(filePath), `missing vendor file: ${filePath}`);
+
+  const details = fs.statSync(filePath);
+  assert.ok(details.isFile(), `vendor path is not a file: ${filePath}`);
+  assert.ok(details.size >= asset.minimumBytes, `${asset.name} is too small: ${details.size} bytes`);
+
+  const sample = fs.readFileSync(filePath, "utf8").slice(0, 200_000);
+  assert.match(sample, new RegExp(asset.signature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+}
 
 test("MapLibre loader tries pinned local app assets before the remote fallback", () => {
   assert.match(mapLogic, /const MAPLIBRE_VERSION = "5\.24\.0"/);
@@ -15,13 +34,33 @@ test("MapLibre loader tries pinned local app assets before the remote fallback",
   assert.match(mapLogic, /loadMapLibreAssetWithFallback\("stylesheet", MAPLIBRE_STYLESHEET_SOURCES, providerConfig\)/);
 });
 
-test("Android preparation vendors the same pinned MapLibre release", () => {
+test("pinned MapLibre vendor files exist in app assets", () => {
+  for (const asset of MAPLIBRE_VENDOR_FILES) {
+    assertVendorFileExists(MAPLIBRE_VENDOR_DIR, asset);
+  }
+});
+
+test("build:web vendors and syncs the pinned MapLibre release", () => {
   assert.match(vendorScript, /const version = '5\.24\.0'/);
   assert.match(vendorScript, /maplibre-gl\.js/);
   assert.match(vendorScript, /maplibre-gl\.css/);
+  assert.match(syncScript, /assets\/vendor\/maplibre-gl\/\$\{maplibreVersion\}\/maplibre-gl\.js/);
+  assert.match(syncScript, /assets\/vendor\/maplibre-gl\/\$\{maplibreVersion\}\/maplibre-gl\.css/);
 
   const packageJson = require("../package.json");
-  assert.match(packageJson.scripts["prepare:android"], /^npm run vendor:maplibre &&/);
+  assert.equal(packageJson.scripts["build:web"], "npm run vendor:maplibre && npm run sync:www");
+  assert.match(packageJson.scripts["prepare:android"], /^npm run build:web &&/);
+});
+
+test("synced www build contains pinned MapLibre vendor files when present", () => {
+  const wwwVendorDir = path.join(__dirname, "../www/assets/vendor/maplibre-gl", MAPLIBRE_VERSION);
+  if (!fs.existsSync(path.join(__dirname, "../www"))) {
+    return;
+  }
+
+  for (const asset of MAPLIBRE_VENDOR_FILES) {
+    assertVendorFileExists(wwwVendorDir, asset);
+  }
 });
 
 function loadDiagnosticHelpers(logs = []) {

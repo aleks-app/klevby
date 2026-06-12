@@ -10,8 +10,9 @@
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios",
+    "build:web": "npm run vendor:maplibre && npm run sync:www",
     "sync:www": "node scripts/sync-www.mjs",
-    "prepare:android": "npm run vendor:maplibre && npm run sync:www && npx cap sync android",
+    "prepare:android": "npm run build:web && npx cap sync android",
     "prepare:ios": "npm run sync:www && npx cap sync ios",
     "vendor:maplibre": "node scripts/vendor-maplibre.mjs"
   },
