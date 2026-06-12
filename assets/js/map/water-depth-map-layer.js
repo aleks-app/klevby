@@ -12,6 +12,8 @@
 
   const COLOR_ORANGE = "#F47A2B";
   const COLOR_GRAPHITE = "#1e293b";
+  const COLOR_DOT_HALO = "#0b1220";
+  const MARKER_ICON_BASE_PX = 24;
 
   const DEFAULT_DOT_SVG = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"',
@@ -104,9 +106,52 @@
 
   function buildDotMarkerSvg(sourceSvg) {
     const svg = recolorSvgStroke(sourceSvg || DEFAULT_DOT_SVG, COLOR_ORANGE);
+    const halo = [
+      `<circle cx="12" cy="12" r="11.3" fill="${COLOR_DOT_HALO}" fill-opacity="0.78" stroke="none"/>`,
+      `<circle cx="12" cy="12" r="11.6" fill="none" stroke="${COLOR_GRAPHITE}"`,
+      ` stroke-opacity="0.55" stroke-width="0.8"/>`
+    ].join("");
     const innerDot = `<circle cx="12" cy="12" r="3.5" fill="${COLOR_GRAPHITE}" stroke="none"/>`;
 
-    return svg.replace("</svg>", `${innerDot}</svg>`);
+    return svg
+      .replace(/(<svg[^>]*>)/, `$1${halo}`)
+      .replace("</svg>", `${innerDot}</svg>`);
+  }
+
+  function getDotIconSizeExpression() {
+    return [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      4,
+      10 / MARKER_ICON_BASE_PX,
+      6,
+      11 / MARKER_ICON_BASE_PX,
+      8,
+      16 / MARKER_ICON_BASE_PX,
+      10,
+      18 / MARKER_ICON_BASE_PX,
+      11,
+      21 / MARKER_ICON_BASE_PX,
+      11.49,
+      22 / MARKER_ICON_BASE_PX
+    ];
+  }
+
+  function getRadarIconSizeExpression() {
+    return [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      ZOOM_NEAR,
+      24 / MARKER_ICON_BASE_PX,
+      13,
+      26 / MARKER_ICON_BASE_PX,
+      15,
+      27 / MARKER_ICON_BASE_PX,
+      17,
+      28 / MARKER_ICON_BASE_PX
+    ];
   }
 
   function buildRadarMarkerSvg(sourceSvg) {
@@ -199,17 +244,7 @@
       maxzoom: ZOOM_NEAR,
       layout: {
         "icon-image": MARKER_DOT_IMAGE_ID,
-        "icon-size": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          4,
-          0.5,
-          8,
-          0.54,
-          11,
-          0.58
-        ],
+        "icon-size": getDotIconSizeExpression(),
         "icon-anchor": "center",
         "icon-allow-overlap": true,
         "icon-ignore-placement": true
@@ -225,19 +260,7 @@
       minzoom: ZOOM_NEAR,
       layout: {
         "icon-image": MARKER_RADAR_IMAGE_ID,
-        "icon-size": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          ZOOM_NEAR,
-          1.08,
-          13,
-          1.15,
-          15,
-          1.2,
-          17,
-          1.25
-        ],
+        "icon-size": getRadarIconSizeExpression(),
         "icon-anchor": "center",
         "icon-allow-overlap": true,
         "icon-ignore-placement": true
@@ -259,13 +282,25 @@
           4,
           5,
           8,
-          5.5,
+          8,
+          10,
+          9,
           11,
-          6
+          10.5
         ],
         "circle-color": COLOR_GRAPHITE,
         "circle-stroke-color": COLOR_ORANGE,
-        "circle-stroke-width": 2,
+        "circle-stroke-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          2,
+          10,
+          2.5,
+          11,
+          3
+        ],
         "circle-opacity": 0.96
       }
     };
@@ -287,7 +322,7 @@
           13,
           13,
           15,
-          14
+          13.5
         ],
         "circle-color": COLOR_GRAPHITE,
         "circle-stroke-color": COLOR_ORANGE,
@@ -359,7 +394,7 @@
     ]);
 
     const [dotReady, radarReady] = await Promise.all([
-      addMarkerImage(map, MARKER_DOT_IMAGE_ID, buildDotMarkerSvg(dotSource), 32),
+      addMarkerImage(map, MARKER_DOT_IMAGE_ID, buildDotMarkerSvg(dotSource), 48),
       addMarkerImage(map, MARKER_RADAR_IMAGE_ID, buildRadarMarkerSvg(radarSource), 56)
     ]);
 
@@ -534,6 +569,8 @@
     toWaterDepthFeatureCollection,
     buildDotMarkerSvg,
     buildRadarMarkerSvg,
+    getDotIconSizeExpression,
+    getRadarIconSizeExpression,
     getWaterDepthLayerDefinitions,
     removeWaterDepthLayer,
     renderWaterDepthLayer,
