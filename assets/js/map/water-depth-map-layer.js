@@ -55,6 +55,12 @@
 
     try {
       const rows = await getWaterDepthMapSources();
+      const totalRowsReceived = Array.isArray(rows) ? rows.length : 0;
+      const rowsWithCoordinates = Array.isArray(rows)
+        ? rows.filter(function (row) {
+            return row?.hasCoordinates === true;
+          }).length
+        : 0;
       const data = toWaterDepthFeatureCollection(rows);
       const existingSource = typeof map.getSource === "function" ? map.getSource(SOURCE_ID) : null;
 
@@ -70,6 +76,7 @@
       }
 
       const existingLayer = typeof map.getLayer === "function" ? map.getLayer(LAYER_ID) : null;
+      let layerReady = Boolean(existingLayer);
 
       if (!existingLayer && typeof map.addLayer === "function") {
         map.addLayer({
@@ -84,12 +91,16 @@
             "circle-opacity": 0.85
           }
         });
+        layerReady = true;
       }
 
-      console.info("Klevby water depth map layer: debug points loaded.", {
+      console.info("Klevby water depth map layer: debug render summary.", {
+        totalRowsReceived,
+        rowsWithCoordinates,
+        rowsRenderedOnMap: layerReady ? data.features.length : 0,
+        skippedRowsWithoutCoordinates: totalRowsReceived - rowsWithCoordinates,
         sourceId: SOURCE_ID,
-        layerId: LAYER_ID,
-        featureCount: data.features.length
+        layerId: LAYER_ID
       });
     } catch (error) {
       console.warn("Klevby water depth map layer: fetch or rendering failed.", error);

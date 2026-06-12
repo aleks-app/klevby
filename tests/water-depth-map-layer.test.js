@@ -104,6 +104,27 @@ test("addWaterDepthLayer is disabled by default", async () => {
   assert.equal(warnings.length, 0);
 });
 
+test("addWaterDepthLayer accepts only the exact localStorage debug value", async () => {
+  let adapterCalls = 0;
+  const { api } = loadWaterDepthMapLayer({
+    localStorage: {
+      getItem() {
+        return "true";
+      }
+    },
+    adapter: {
+      async getWaterDepthMapSources() {
+        adapterCalls += 1;
+        return [];
+      }
+    }
+  });
+
+  await api.addWaterDepthLayer({});
+
+  assert.equal(adapterCalls, 0);
+});
+
 test("addWaterDepthLayer adds one GeoJSON source and circle layer when enabled", async () => {
   const sourceCalls = [];
   const layerCalls = [];
@@ -111,7 +132,10 @@ test("addWaterDepthLayer adds one GeoJSON source and circle layer when enabled",
     debug: true,
     adapter: {
       async getWaterDepthMapSources() {
-        return [{ id: 1, latitude: 53.9, longitude: 27.56, hasCoordinates: true }];
+        return [
+          { id: 1, latitude: 53.9, longitude: 27.56, hasCoordinates: true },
+          { id: 2, latitude: null, longitude: null, hasCoordinates: false }
+        ];
       }
     }
   });
@@ -140,6 +164,15 @@ test("addWaterDepthLayer adds one GeoJSON source and circle layer when enabled",
   assert.equal(layerCalls[0].id, "klevby-water-depth-points");
   assert.equal(layerCalls[0].type, "circle");
   assert.equal(info.length, 1);
+  assert.match(info[0][0], /debug render summary/);
+  assert.deepEqual(toPlain(info[0][1]), {
+    totalRowsReceived: 2,
+    rowsWithCoordinates: 1,
+    rowsRenderedOnMap: 1,
+    skippedRowsWithoutCoordinates: 1,
+    sourceId: "klevby-water-depth-sources",
+    layerId: "klevby-water-depth-points"
+  });
   assert.equal(warnings.length, 0);
 });
 
@@ -184,6 +217,29 @@ test("addWaterDepthLayer updates an existing source without duplicating the laye
   assert.deepEqual(toPlain(updates[0]), { type: "FeatureCollection", features: [] });
   assert.equal(addSourceCalls, 0);
   assert.equal(addLayerCalls, 0);
+});
+
+test("addWaterDepthLayer contains MapLibre rendering failures", async () => {
+  const { api, warnings } = loadWaterDepthMapLayer({
+    debug: true,
+    adapter: {
+      async getWaterDepthMapSources() {
+        return [{ id: 1, latitude: 53.9, longitude: 27.56, hasCoordinates: true }];
+      }
+    }
+  });
+
+  await assert.doesNotReject(() => api.addWaterDepthLayer({
+    getSource() {
+      return null;
+    },
+    addSource() {
+      throw new Error("MapLibre source failed");
+    }
+  }));
+
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0][0], /fetch or rendering failed/);
 });
 
 test("addWaterDepthLayer warns and does not throw when fetching fails", async () => {
