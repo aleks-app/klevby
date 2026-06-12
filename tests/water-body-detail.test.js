@@ -18,7 +18,9 @@ function createElement() {
       if (name === "href") this.href = "";
     },
     addEventListener() {},
-    focus() {}
+    focus() {
+      this.focused = true;
+    }
   };
 }
 
@@ -35,9 +37,10 @@ function loadDetailScreen() {
     ".water-body-detail-source",
     ".water-body-detail-location-quality",
     ".water-body-detail-location-source",
-    ".water-body-detail-depth-link",
-    ".water-body-detail-back"
+    ".water-body-detail-depth-link"
   ].forEach((selector) => elements.set(selector, createElement()));
+
+  elements.set("#appHeaderBackBtn", createElement());
 
   const section = {
     dataset: {},
@@ -49,12 +52,9 @@ function loadDetailScreen() {
   const document = {
     readyState: "complete",
     getElementById(id) {
-      return id === "waterBodyDetailSection" ? section : null;
-    },
-    querySelector(selector) {
-      return selector.includes("water-body-detail-back")
-        ? elements.get(".water-body-detail-back")
-        : null;
+      if (id === "waterBodyDetailSection") return section;
+      if (id === "appHeaderBackBtn") return elements.get("#appHeaderBackBtn");
+      return null;
     }
   };
   const window = {
@@ -107,6 +107,7 @@ test("detail screen opens with normalized selected point data", () => {
   assert.equal(elements.get(".water-body-detail-location").textContent, "Минская область · Мядельский район");
   assert.equal(elements.get(".water-body-detail-depth-link").hidden, false);
   assert.equal(elements.get(".water-body-detail-depth-link").href, "https://fish.example/depths");
+  assert.equal(elements.get("#appHeaderBackBtn").focused, true);
 });
 
 test("safe depth source URL accepts only absolute credential-free HTTP(S) URLs", () => {
@@ -135,4 +136,18 @@ test("detail close returns to the existing map section", () => {
 
   assert.equal(api.close(), true);
   assert.deepEqual(openedSections, ["map"]);
+});
+
+test("detail markup uses collapsed accordions without a duplicate back control", () => {
+  const markup = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  const detailStart = markup.indexOf('<section id="waterBodyDetailSection"');
+  const detailEnd = markup.indexOf('<section id="authSection"', detailStart);
+  const detailMarkup = markup.slice(detailStart, detailEnd);
+
+  assert.equal(detailMarkup.includes("water-body-detail-back"), false);
+  assert.equal((detailMarkup.match(/<details class="water-body-detail-card water-body-detail-accordion/g) || []).length, 3);
+  assert.equal(detailMarkup.includes("<details class=\"water-body-detail-card water-body-detail-accordion\" open"), false);
+  assert.match(detailMarkup, /<summary>\s*<span>О водоёме<\/span>/);
+  assert.match(detailMarkup, /<summary>\s*<span>Возможности<\/span>/);
+  assert.match(detailMarkup, /<summary>\s*<span>Источник и точность<\/span>/);
 });

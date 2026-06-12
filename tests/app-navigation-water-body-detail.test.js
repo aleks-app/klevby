@@ -46,3 +46,12 @@ test("app navigation registers and detects the water body detail section", () =>
   assert.ok(window.KlevbyAppNavigation.getAppSections().includes("waterBodyDetailSection"));
   assert.equal(window.KlevbyAppNavigation.getVisibleSectionName(), "water-body-detail");
 });
+
+test("showSection gives water body detail dedicated header chrome and map back behavior", () => {
+  const source = fs.readFileSync(path.join(__dirname, "../assets/js/app.js"), "utf8");
+
+  assert.match(source, /data-water-body-detail/);
+  assert.match(source, /safeSection === "water-body-detail" \? "true" : "false"/);
+  assert.match(source, /const returnsToMap = safeSection === "water-body-detail"/);
+  assert.match(source, /showSection\(returnsToMap \? "map" : "home"\)/);
+});

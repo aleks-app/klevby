@@ -463,3 +463,8 @@ header[data-chrome-mode="feed"] .mobile-actions {
     font-size: 18px;
   }
 }
+
+/* Internal water-body detail keeps only the global map back action. */
+header[data-water-body-detail="true"] .mobile-actions {
+  display: none !important;
+}

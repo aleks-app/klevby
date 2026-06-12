@@ -688,6 +688,11 @@ function showSection(section) {
     "inner"
   );
 
+  const appHeader = document.querySelector("header");
+  if (appHeader) {
+    appHeader.setAttribute("data-water-body-detail", safeSection === "water-body-detail" ? "true" : "false");
+  }
+
   if (safeSection === "profile") {
     if (typeof window.openKlevbyProfile === "function") {
       window.openKlevbyProfile();

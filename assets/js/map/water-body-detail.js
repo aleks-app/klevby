@@ -76,7 +76,7 @@
 
     if (typeof global.showSection === "function") {
       global.showSection("water-body-detail");
-      document.querySelector(`#${SECTION_ID} .water-body-detail-back`)?.focus();
+      document.getElementById("appHeaderBackBtn")?.focus();
       return true;
     }
 
@@ -95,7 +95,6 @@
     if (!section || section.dataset.waterBodyDetailBound === "true") return;
 
     section.dataset.waterBodyDetailBound = "true";
-    section.querySelector(".water-body-detail-back")?.addEventListener("click", close);
   }
 
   if (document.readyState === "loading") {
