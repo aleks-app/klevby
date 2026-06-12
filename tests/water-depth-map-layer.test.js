@@ -125,7 +125,38 @@ test("addWaterDepthLayer accepts only the exact localStorage debug value", async
   assert.equal(adapterCalls, 0);
 });
 
-test("addWaterDepthLayer adds one GeoJSON source and circle layer when enabled", async () => {
+test("getWaterDepthLayerDefinitions uses zoom-based far, near, and hit layers", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const layers = api.getWaterDepthLayerDefinitions({ useSymbolNearLayer: true });
+
+  assert.equal(layers.length, 4);
+  assert.equal(layers[0].id, "klevby-water-depth-points-glow");
+  assert.equal(layers[1].id, "klevby-water-depth-points");
+  assert.equal(layers[2].id, "klevby-water-depth-points-pin");
+  assert.equal(layers[3].id, "klevby-water-depth-points-hit");
+
+  assert.equal(layers[0].type, "circle");
+  assert.equal(layers[0].maxzoom, 11.5);
+  assert.equal(layers[1].paint["circle-color"], "#22d3ee");
+  assert.equal(layers[1].paint["circle-stroke-color"], "#F47A2B");
+  assert.equal(layers[2].type, "symbol");
+  assert.equal(layers[2].minzoom, 11.5);
+  assert.equal(layers[2].layout["icon-image"], "klevby-water-depth-marker");
+  assert.equal(layers[3].paint["circle-opacity"], 0);
+  assert.ok(Array.isArray(layers[3].paint["circle-radius"]));
+});
+
+test("getWaterDepthLayerDefinitions falls back to a near circle when symbol image is unavailable", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const layers = api.getWaterDepthLayerDefinitions({ useSymbolNearLayer: false });
+
+  assert.equal(layers[2].type, "circle");
+  assert.equal(layers[2].minzoom, 11.5);
+  assert.equal(layers[2].paint["circle-color"], "#1e293b");
+  assert.equal(layers[2].paint["circle-stroke-color"], "#F47A2B");
+});
+
+test("addWaterDepthLayer adds one GeoJSON source and zoom-based depth layers when enabled", async () => {
   const sourceCalls = [];
   const layerCalls = [];
   const { api, info, warnings } = loadWaterDepthMapLayer({
@@ -160,9 +191,17 @@ test("addWaterDepthLayer adds one GeoJSON source and circle layer when enabled",
   assert.equal(sourceCalls[0][0], "klevby-water-depth-sources");
   assert.equal(toPlain(sourceCalls[0][1]).type, "geojson");
   assert.deepEqual(toPlain(sourceCalls[0][1].data.features[0].geometry.coordinates), [27.56, 53.9]);
-  assert.equal(layerCalls.length, 1);
-  assert.equal(layerCalls[0].id, "klevby-water-depth-points");
-  assert.equal(layerCalls[0].type, "circle");
+  assert.equal(layerCalls.length, 4);
+  assert.deepEqual(
+    layerCalls.map((layer) => layer.id),
+    [
+      "klevby-water-depth-points-glow",
+      "klevby-water-depth-points",
+      "klevby-water-depth-points-pin",
+      "klevby-water-depth-points-hit"
+    ]
+  );
+  assert.equal(layerCalls[1].type, "circle");
   assert.equal(info.length, 1);
   assert.match(info[0][0], /debug render summary/);
   assert.deepEqual(toPlain(info[0][1]), {
@@ -171,7 +210,14 @@ test("addWaterDepthLayer adds one GeoJSON source and circle layer when enabled",
     rowsRenderedOnMap: 1,
     skippedRowsWithoutCoordinates: 1,
     sourceId: "klevby-water-depth-sources",
-    layerId: "klevby-water-depth-points"
+    layerId: "klevby-water-depth-points",
+    layerIds: [
+      "klevby-water-depth-points-glow",
+      "klevby-water-depth-points",
+      "klevby-water-depth-points-pin",
+      "klevby-water-depth-points-hit"
+    ],
+    markerImageReady: false
   });
   assert.equal(warnings.length, 0);
 });
@@ -203,8 +249,8 @@ test("addWaterDepthLayer updates an existing source without duplicating the laye
     addSource() {
       addSourceCalls += 1;
     },
-    getLayer() {
-      return { id: "klevby-water-depth-points" };
+    getLayer(id) {
+      return api.ALL_LAYER_IDS.includes(id) ? { id } : null;
     },
     addLayer() {
       addLayerCalls += 1;
@@ -292,11 +338,14 @@ test("setWaterDepthLayerVisible renders without debug and removes on disable", a
 
   await api.setWaterDepthLayerVisible(map, true);
   assert.equal(sourceCalls.length, 1);
-  assert.equal(layerCalls.length, 1);
+  assert.equal(layerCalls.length, 4);
 
   await api.setWaterDepthLayerVisible(map, false);
   assert.deepEqual(removed, [
+    ["layer", "klevby-water-depth-points-hit"],
+    ["layer", "klevby-water-depth-points-pin"],
     ["layer", "klevby-water-depth-points"],
+    ["layer", "klevby-water-depth-points-glow"],
     ["source", "klevby-water-depth-sources"]
   ]);
 });
