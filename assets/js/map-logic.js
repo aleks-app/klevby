@@ -693,20 +693,6 @@
         color: rgba(244, 241, 238, 0.8);
       }
 
-      .map-action-btn[data-map-action="depths"]:not(.is-active):not(.is-unavailable) {
-        border-color: rgba(255, 248, 234, 0.12);
-        background:
-          linear-gradient(180deg, rgba(30, 30, 30, 0.98), rgba(18, 18, 18, 0.98));
-        color: rgba(244, 241, 238, 0.82);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.03),
-          0 5px 16px rgba(0, 0, 0, 0.2);
-      }
-
-      .map-action-btn[data-map-action="depths"]:not(.is-active):not(.is-unavailable) .map-action-icon {
-        color: rgba(255, 248, 234, 0.56);
-      }
-
       .map-action-btn:focus-visible,
       .map-filter-option:focus-visible,
       .map-filter-sheet-close:focus-visible {
