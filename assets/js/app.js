@@ -510,6 +510,7 @@ function getAppSections() {
     "marketSection",
     "pondsSection",
     "mapSection",
+    "waterBodyDetailSection",
     "authSection",
     "profileSection"
   ];
@@ -606,6 +607,7 @@ function getVisibleSectionName() {
   if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
   if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
   if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
+  if (!document.getElementById("waterBodyDetailSection")?.classList.contains("hidden")) return "water-body-detail";
   if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
   if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
   if (!document.getElementById("authSection")?.classList.contains("hidden")) return "auth";
@@ -701,10 +703,20 @@ function showSection(section) {
     market: "marketSection",
     ponds: "pondsSection",
     map: "mapSection",
+    "water-body-detail": "waterBodyDetailSection",
     auth: "authSection"
   };
 
   const activeId = sectionMap[safeSection] || "homeSection";
+
+  const headerBackButton = document.getElementById("appHeaderBackBtn");
+  if (headerBackButton) {
+    const returnsToMap = safeSection === "water-body-detail";
+    headerBackButton.onclick = function () {
+      showSection(returnsToMap ? "map" : "home");
+    };
+    headerBackButton.setAttribute("aria-label", returnsToMap ? "Вернуться к карте" : "На главную");
+  }
 
   clearProfileChromeIfNeeded(safeSection);
   hideAllAppSectionsExcept(activeId);
@@ -778,6 +790,10 @@ function showSection(section) {
   if (safeSection === "ponds") {
     setMobileTabVisual(null);
     reloadPondsIfReady({ force: true, delay: 250 });
+  }
+
+  if (safeSection === "water-body-detail") {
+    setMobileTabVisual(1);
   }
 
   if (safeSection === "map") {

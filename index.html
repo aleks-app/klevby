@@ -99,7 +99,8 @@
 
   <link rel="stylesheet" href="assets/css/main.css?v=20260610-home-hero-brand-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
-  <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260612-water-depth-preview-1">
+  <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260612-water-body-detail-1">
+  <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260612-water-body-detail-1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -107,7 +108,7 @@
   <link rel="stylesheet" href="assets/css/screens/profile-public.css?v=20260529-public-profile-empty-1">
 
   <script>
-    window.KLEVB_APP_BUILD_VERSION = "20260603-feed-section-split-cache-1";
+    window.KLEVB_APP_BUILD_VERSION = "20260612-water-body-detail-1";
   </script>
   <script src="assets/js/pwa-manifest.js?v=20260503-4"></script>
 </head>
@@ -787,6 +788,64 @@
       </div>
     </section>
 
+
+    <section id="waterBodyDetailSection" class="hidden" aria-labelledby="waterBodyDetailTitle">
+      <article class="water-body-detail-screen">
+        <header class="water-body-detail-header">
+          <button class="water-body-detail-back" type="button" aria-label="Вернуться к карте">
+            <img src="assets/icons/ui/chevron-left.svg" alt="" aria-hidden="true" decoding="async" />
+            <span>К карте</span>
+          </button>
+          <span class="water-body-detail-header-label">Водоём</span>
+        </header>
+
+        <div class="water-body-detail-content">
+          <section class="water-body-detail-hero">
+            <p class="water-body-detail-status"><span aria-hidden="true"></span>Глубины найдены</p>
+            <h1 class="water-body-detail-name" id="waterBodyDetailTitle">Водоём</h1>
+            <p class="water-body-detail-meta">
+              <span class="water-body-detail-type"></span>
+              <span aria-hidden="true">•</span>
+              <span class="water-body-detail-location"></span>
+            </p>
+            <div class="water-body-detail-actions">
+              <a class="water-body-detail-depth-link" target="_blank" rel="noopener noreferrer">Открыть карту глубин</a>
+              <button class="water-body-detail-route" type="button" disabled>Маршрут <span>Скоро</span></button>
+            </div>
+          </section>
+
+          <section class="water-body-detail-card">
+            <h2>О водоёме</h2>
+            <div class="water-body-detail-placeholder-grid">
+              <div><h3>Описание</h3><p>Описание добавим позже</p></div>
+              <div><h3>Фото</h3><p>Фото появятся позже</p></div>
+            </div>
+          </section>
+
+          <section class="water-body-detail-card">
+            <h2>Возможности</h2>
+            <div class="water-body-detail-coming-grid">
+              <div><span>Прогноз клёва</span><strong>Скоро</strong></div>
+              <div><span>Отзывы</span><strong>Скоро</strong></div>
+              <div><span>Комментарии</span><strong>Скоро</strong></div>
+            </div>
+          </section>
+
+          <section class="water-body-detail-card water-body-detail-verification">
+            <div class="water-body-detail-card-heading">
+              <div><p>Проверка данных</p><h2>Источник и точность</h2></div>
+              <span aria-hidden="true">✓</span>
+            </div>
+            <dl>
+              <div><dt>Источник глубин</dt><dd class="water-body-detail-source"></dd></div>
+              <div><dt>Точность точки</dt><dd class="water-body-detail-location-quality"></dd></div>
+              <div><dt>Источник местоположения</dt><dd class="water-body-detail-location-source"></dd></div>
+            </dl>
+          </section>
+        </div>
+      </article>
+    </section>
+
     <section id="authSection" class="hidden">
       <div class="auth-welcome">
         <div class="auth-welcome-bg" aria-hidden="true"></div>
@@ -1026,7 +1085,8 @@
   <script src="assets/js/supabase/water-depth-sources.js?v=20260612-water-depth-sources-1" defer></script>
   <script src="assets/js/map/water-depth-map-sources.js?v=20260612-water-depth-map-sources-1" defer></script>
   <script src="assets/js/map/water-depth-map-layer.js?v=20260612-water-depth-preview-1" defer></script>
-  <script src="assets/js/map/water-depth-preview-sheet.js?v=20260612-water-depth-preview-1" defer></script>
+  <script src="assets/js/map/water-body-detail.js?v=20260612-water-body-detail-1" defer></script>
+  <script src="assets/js/map/water-depth-preview-sheet.js?v=20260612-water-body-detail-1" defer></script>
   <script src="assets/js/app/app-resume-manager.js?v=20260524-feed-observability-pr26-1" defer></script>
   <script src="assets/js/app/app-viewport-debug.js?v=20260530-viewport-debug-1" defer></script>
   <script src="assets/js/app/app-android-diagnostics.js?v=20260608-iphone-pwa-home-diagnostics-1" defer></script>
@@ -1056,7 +1116,7 @@
   <script src="assets/js/call-ui.js?v=20260506-2" defer></script>
   <script src="assets/js/call-realtime.js?v=20260507-1" defer></script>
   <script src="assets/js/call.js?v=20260524-resume-debug-pr7-1" defer></script>
-  <script src="assets/js/map-logic.js?v=20260612-water-depth-preview-1" defer></script>
+  <script src="assets/js/map-logic.js?v=20260612-water-body-detail-1" defer></script>
   <script src="assets/js/market/market-utils.js?v=20260521-1" defer></script>
   <script src="assets/js/market/market-styles.js?v=20260528-owner-actions-scroll-1" defer></script>
   <script src="assets/js/market/market-ui-state.js?v=20260521-1" defer></script>
