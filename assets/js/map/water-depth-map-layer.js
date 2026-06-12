@@ -1,16 +1,42 @@
 (function initKlevbyWaterDepthMapLayer(global) {
   const SOURCE_ID = "klevby-water-depth-sources";
   const LAYER_ID = "klevby-water-depth-points";
-  const LAYER_GLOW_ID = "klevby-water-depth-points-glow";
   const LAYER_HIT_ID = "klevby-water-depth-points-hit";
   const LAYER_NEAR_ID = "klevby-water-depth-points-pin";
-  const MARKER_IMAGE_ID = "klevby-water-depth-marker";
+  const MARKER_DOT_IMAGE_ID = "klevby-water-depth-marker-dot";
+  const MARKER_RADAR_IMAGE_ID = "klevby-water-depth-marker-radar";
+  const MARKER_DOT_SVG_URL = "assets/icons/map-depth/depth-marker-dot.svg";
+  const MARKER_RADAR_SVG_URL = "assets/icons/map-depth/depth-marker-radar.svg";
   const ZOOM_NEAR = 11.5;
-  const ALL_LAYER_IDS = [LAYER_GLOW_ID, LAYER_ID, LAYER_NEAR_ID, LAYER_HIT_ID];
+  const ALL_LAYER_IDS = [LAYER_ID, LAYER_NEAR_ID, LAYER_HIT_ID];
 
-  const COLOR_CYAN = "#22d3ee";
   const COLOR_ORANGE = "#F47A2B";
   const COLOR_GRAPHITE = "#1e293b";
+
+  const DEFAULT_DOT_SVG = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"',
+    ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
+    '<circle cx="12" cy="12" r="10"/>',
+    '<circle cx="12" cy="12" r="1"/>',
+    "</svg>"
+  ].join("");
+
+  const DEFAULT_RADAR_SVG = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"',
+    ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
+    '<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/>',
+    '<path d="M4 6h.01"/>',
+    '<path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/>',
+    '<path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/>',
+    '<path d="M12 18h.01"/>',
+    '<path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/>',
+    '<circle cx="12" cy="12" r="2"/>',
+    '<path d="m13.41 10.59 5.66-5.66"/>',
+    "</svg>"
+  ].join("");
+
+  let cachedDotSvgSource = null;
+  let cachedRadarSvgSource = null;
 
   function isDebugEnabled() {
     if (global.KLEVB_WATER_DEPTH_DEBUG === true) {
@@ -52,101 +78,174 @@
     };
   }
 
-  function createDepthMarkerImageData(size) {
-    const pixelSize = Number.isFinite(size) && size > 0 ? size : 64;
+  function resolveAssetUrl(relativePath) {
+    const normalizedPath = String(relativePath || "").replace(/^\//, "");
 
-    if (typeof document === "undefined" || typeof document.createElement !== "function") {
-      return null;
+    if (!normalizedPath) {
+      return relativePath;
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = pixelSize;
-    canvas.height = pixelSize;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      return null;
+    if (typeof global.location === "object" && typeof global.location.href === "string") {
+      try {
+        return new URL(normalizedPath, global.location.href).toString();
+      } catch (_) {
+        return normalizedPath;
+      }
     }
 
-    const centerX = pixelSize / 2;
-    const pinTipY = pixelSize * 0.9;
-    const pinTopY = pixelSize * 0.1;
-    const pinRadius = pixelSize * 0.28;
-
-    ctx.beginPath();
-    ctx.moveTo(centerX, pinTipY);
-    ctx.quadraticCurveTo(
-      centerX - pinRadius * 1.15,
-      pinTopY + pinRadius * 1.35,
-      centerX - pinRadius * 0.95,
-      pinTopY + pinRadius * 0.55
-    );
-    ctx.arc(centerX, pinTopY + pinRadius * 0.6, pinRadius * 0.95, Math.PI, 0);
-    ctx.quadraticCurveTo(
-      centerX + pinRadius * 1.15,
-      pinTopY + pinRadius * 1.35,
-      centerX,
-      pinTipY
-    );
-    ctx.closePath();
-    ctx.fillStyle = COLOR_GRAPHITE;
-    ctx.fill();
-    ctx.strokeStyle = COLOR_ORANGE;
-    ctx.lineWidth = Math.max(2, pixelSize * 0.06);
-    ctx.stroke();
-
-    ctx.strokeStyle = COLOR_ORANGE;
-    ctx.lineWidth = Math.max(1.5, pixelSize * 0.045);
-    ctx.lineCap = "round";
-    const layerIconTop = pinTopY + pinRadius * 0.2;
-    const layerGap = pixelSize * 0.075;
-
-    for (let index = 0; index < 3; index += 1) {
-      const lineY = layerIconTop + index * layerGap;
-      const lineHalfWidth = pinRadius * (0.95 - index * 0.12);
-      ctx.beginPath();
-      ctx.moveTo(centerX - lineHalfWidth, lineY);
-      ctx.lineTo(centerX + lineHalfWidth, lineY);
-      ctx.stroke();
-    }
-
-    return ctx.getImageData(0, 0, pixelSize, pixelSize);
+    return normalizedPath;
   }
 
-  function getFarGlowLayerSpec() {
+  function recolorSvgStroke(svgText, strokeColor) {
+    return String(svgText || "")
+      .replace(/stroke="currentColor"/g, `stroke="${strokeColor}"`)
+      .replace(/class="[^"]*"/g, "");
+  }
+
+  function buildDotMarkerSvg(sourceSvg) {
+    const svg = recolorSvgStroke(sourceSvg || DEFAULT_DOT_SVG, COLOR_ORANGE);
+    const innerDot = `<circle cx="12" cy="12" r="3.5" fill="${COLOR_GRAPHITE}" stroke="none"/>`;
+
+    return svg.replace("</svg>", `${innerDot}</svg>`);
+  }
+
+  function buildRadarMarkerSvg(sourceSvg) {
+    const svg = recolorSvgStroke(sourceSvg || DEFAULT_RADAR_SVG, COLOR_ORANGE);
+    const background = `<circle cx="12" cy="12" r="11" fill="${COLOR_GRAPHITE}" stroke="none"/>`;
+
+    return svg.replace(/(<svg[^>]*>)/, `$1${background}`);
+  }
+
+  async function loadSvgSource(url, fallbackSvg, cacheKey) {
+    if (cacheKey === "dot" && cachedDotSvgSource) {
+      return cachedDotSvgSource;
+    }
+
+    if (cacheKey === "radar" && cachedRadarSvgSource) {
+      return cachedRadarSvgSource;
+    }
+
+    if (typeof global.fetch !== "function") {
+      return fallbackSvg;
+    }
+
+    try {
+      const response = await global.fetch(resolveAssetUrl(url));
+
+      if (!response.ok) {
+        return fallbackSvg;
+      }
+
+      const svgText = await response.text();
+
+      if (cacheKey === "dot") {
+        cachedDotSvgSource = svgText;
+      } else if (cacheKey === "radar") {
+        cachedRadarSvgSource = svgText;
+      }
+
+      return svgText;
+    } catch (_) {
+      return fallbackSvg;
+    }
+  }
+
+  function rasterizeSvgToImageData(svgMarkup, pixelSize) {
+    const size = Number.isFinite(pixelSize) && pixelSize > 0 ? pixelSize : 48;
+
+    if (typeof document === "undefined" || typeof document.createElement !== "function") {
+      return Promise.resolve(null);
+    }
+
+    return new Promise(function (resolve) {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        resolve(null);
+        return;
+      }
+
+      const image = new Image();
+
+      image.onload = function () {
+        context.clearRect(0, 0, size, size);
+        context.drawImage(image, 0, 0, size, size);
+        URL.revokeObjectURL(image.src);
+        resolve(context.getImageData(0, 0, size, size));
+      };
+
+      image.onerror = function () {
+        URL.revokeObjectURL(image.src);
+        resolve(null);
+      };
+
+      try {
+        const blob = new Blob([svgMarkup], { type: "image/svg+xml" });
+        image.src = URL.createObjectURL(blob);
+      } catch (_) {
+        resolve(null);
+      }
+    });
+  }
+
+  function getFarSymbolLayerSpec() {
     return {
-      id: LAYER_GLOW_ID,
-      type: "circle",
+      id: LAYER_ID,
+      type: "symbol",
       source: SOURCE_ID,
       maxzoom: ZOOM_NEAR,
-      paint: {
-        "circle-radius": [
+      layout: {
+        "icon-image": MARKER_DOT_IMAGE_ID,
+        "icon-size": [
           "interpolate",
           ["linear"],
           ["zoom"],
           4,
-          10,
+          0.5,
           8,
-          13,
+          0.54,
           11,
-          15
+          0.58
         ],
-        "circle-color": COLOR_ORANGE,
-        "circle-opacity": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          4,
-          0.38,
-          11,
-          0.24
-        ],
-        "circle-blur": 0.75
+        "icon-anchor": "center",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true
       }
     };
   }
 
-  function getFarCircleLayerSpec() {
+  function getNearSymbolLayerSpec() {
+    return {
+      id: LAYER_NEAR_ID,
+      type: "symbol",
+      source: SOURCE_ID,
+      minzoom: ZOOM_NEAR,
+      layout: {
+        "icon-image": MARKER_RADAR_IMAGE_ID,
+        "icon-size": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          ZOOM_NEAR,
+          1.08,
+          13,
+          1.15,
+          15,
+          1.2,
+          17,
+          1.25
+        ],
+        "icon-anchor": "center",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true
+      }
+    };
+  }
+
+  function getFarCircleFallbackLayerSpec() {
     return {
       id: LAYER_ID,
       type: "circle",
@@ -158,24 +257,42 @@
           ["linear"],
           ["zoom"],
           4,
-          7,
+          5,
           8,
-          9,
+          5.5,
           11,
-          11
+          6
         ],
-        "circle-color": COLOR_CYAN,
+        "circle-color": COLOR_GRAPHITE,
         "circle-stroke-color": COLOR_ORANGE,
-        "circle-stroke-width": [
+        "circle-stroke-width": 2,
+        "circle-opacity": 0.96
+      }
+    };
+  }
+
+  function getNearCircleFallbackLayerSpec() {
+    return {
+      id: LAYER_NEAR_ID,
+      type: "circle",
+      source: SOURCE_ID,
+      minzoom: ZOOM_NEAR,
+      paint: {
+        "circle-radius": [
           "interpolate",
           ["linear"],
           ["zoom"],
-          4,
-          2,
-          11,
-          2.5
+          ZOOM_NEAR,
+          12,
+          13,
+          13,
+          15,
+          14
         ],
-        "circle-opacity": 0.94
+        "circle-color": COLOR_GRAPHITE,
+        "circle-stroke-color": COLOR_ORANGE,
+        "circle-stroke-width": 2.5,
+        "circle-opacity": 0.96
       }
     };
   }
@@ -205,103 +322,68 @@
     };
   }
 
-  function getNearSymbolLayerSpec() {
-    return {
-      id: LAYER_NEAR_ID,
-      type: "symbol",
-      source: SOURCE_ID,
-      minzoom: ZOOM_NEAR,
-      layout: {
-        "icon-image": MARKER_IMAGE_ID,
-        "icon-size": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          ZOOM_NEAR,
-          0.5,
-          13,
-          0.72,
-          15,
-          0.88,
-          17,
-          1
-        ],
-        "icon-anchor": "bottom",
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true
-      }
-    };
-  }
-
-  function getNearCircleFallbackLayerSpec() {
-    return {
-      id: LAYER_NEAR_ID,
-      type: "circle",
-      source: SOURCE_ID,
-      minzoom: ZOOM_NEAR,
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          ZOOM_NEAR,
-          10,
-          13,
-          12,
-          15,
-          14
-        ],
-        "circle-color": COLOR_GRAPHITE,
-        "circle-stroke-color": COLOR_ORANGE,
-        "circle-stroke-width": 2.5,
-        "circle-opacity": 0.96
-      }
-    };
-  }
-
   function getWaterDepthLayerDefinitions(options) {
-    const useSymbolNearLayer = options?.useSymbolNearLayer !== false;
+    const useSymbolLayers = options?.useSymbolLayers !== false;
 
     return [
-      getFarGlowLayerSpec(),
-      getFarCircleLayerSpec(),
-      useSymbolNearLayer ? getNearSymbolLayerSpec() : getNearCircleFallbackLayerSpec(),
+      useSymbolLayers ? getFarSymbolLayerSpec() : getFarCircleFallbackLayerSpec(),
+      useSymbolLayers ? getNearSymbolLayerSpec() : getNearCircleFallbackLayerSpec(),
       getHitCircleLayerSpec()
     ];
   }
 
-  async function ensureMarkerImage(map) {
-    if (typeof map.hasImage === "function" && map.hasImage(MARKER_IMAGE_ID)) {
+  async function addMarkerImage(map, imageId, svgMarkup, pixelSize) {
+    if (typeof map.hasImage === "function" && map.hasImage(imageId)) {
       return true;
     }
 
-    const imageData = createDepthMarkerImageData();
+    const imageData = await rasterizeSvgToImageData(svgMarkup, pixelSize);
 
     if (!imageData || typeof map.addImage !== "function") {
       return false;
     }
 
     try {
-      map.addImage(MARKER_IMAGE_ID, imageData, { pixelRatio: 2 });
+      map.addImage(imageId, imageData, { pixelRatio: 2 });
       return true;
     } catch (error) {
-      console.warn("Klevby water depth map layer: marker image failed.", error);
+      console.warn("Klevby water depth map layer: marker image failed.", imageId, error);
       return false;
     }
   }
 
-  function removeMarkerImage(map) {
+  async function ensureMarkerImages(map) {
+    const [dotSource, radarSource] = await Promise.all([
+      loadSvgSource(MARKER_DOT_SVG_URL, DEFAULT_DOT_SVG, "dot"),
+      loadSvgSource(MARKER_RADAR_SVG_URL, DEFAULT_RADAR_SVG, "radar")
+    ]);
+
+    const [dotReady, radarReady] = await Promise.all([
+      addMarkerImage(map, MARKER_DOT_IMAGE_ID, buildDotMarkerSvg(dotSource), 32),
+      addMarkerImage(map, MARKER_RADAR_IMAGE_ID, buildRadarMarkerSvg(radarSource), 56)
+    ]);
+
+    return {
+      dotReady,
+      radarReady,
+      symbolLayersReady: dotReady && radarReady
+    };
+  }
+
+  function removeMarkerImages(map) {
     if (typeof map.hasImage !== "function" || typeof map.removeImage !== "function") {
       return;
     }
 
-    try {
-      if (map.hasImage(MARKER_IMAGE_ID)) {
-        map.removeImage(MARKER_IMAGE_ID);
+    [MARKER_DOT_IMAGE_ID, MARKER_RADAR_IMAGE_ID].forEach(function (imageId) {
+      try {
+        if (map.hasImage(imageId)) {
+          map.removeImage(imageId);
+        }
+      } catch (_) {
+        /* ignore */
       }
-    } catch (_) {
-      /* ignore */
-    }
+    });
   }
 
   function areDepthLayersPresent(map) {
@@ -352,7 +434,7 @@
         map.removeSource(SOURCE_ID);
       }
 
-      removeMarkerImage(map);
+      removeMarkerImages(map);
     } catch (error) {
       console.warn("Klevby water depth map layer: remove failed.", error);
     }
@@ -391,9 +473,9 @@
         return false;
       }
 
-      const markerImageReady = await ensureMarkerImage(map);
+      const markerImages = await ensureMarkerImages(map);
       const layerReady = areDepthLayersPresent(map) || addWaterDepthLayers(map, {
-        useSymbolNearLayer: markerImageReady
+        useSymbolLayers: markerImages.symbolLayersReady
       });
 
       if (isDebugEnabled()) {
@@ -405,7 +487,8 @@
           sourceId: SOURCE_ID,
           layerId: LAYER_ID,
           layerIds: ALL_LAYER_IDS,
-          markerImageReady
+          markerDotReady: markerImages.dotReady,
+          markerRadarReady: markerImages.radarReady
         });
       }
 
@@ -440,14 +523,17 @@
   global.KlevbyWaterDepthMapLayer = {
     SOURCE_ID,
     LAYER_ID,
-    LAYER_GLOW_ID,
     LAYER_HIT_ID,
     LAYER_NEAR_ID,
-    MARKER_IMAGE_ID,
+    MARKER_DOT_IMAGE_ID,
+    MARKER_RADAR_IMAGE_ID,
+    MARKER_DOT_SVG_URL,
+    MARKER_RADAR_SVG_URL,
     ZOOM_NEAR,
     ALL_LAYER_IDS,
     toWaterDepthFeatureCollection,
-    createDepthMarkerImageData,
+    buildDotMarkerSvg,
+    buildRadarMarkerSvg,
     getWaterDepthLayerDefinitions,
     removeWaterDepthLayer,
     renderWaterDepthLayer,
