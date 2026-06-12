@@ -46,6 +46,7 @@
   const MAPLIBRE_STYLESHEET_SELECTOR = 'link[data-klevby-maplibre-asset="stylesheet"]';
 
   const geocodeCache = {};
+  const mapDiagnosticContextByError = new WeakMap();
 
   function getMainSupabaseClient() {
     return (
@@ -160,32 +161,169 @@
     };
   }
 
+  function redactDiagnosticText(value, secrets = []) {
+    let text = String(value ?? "")
+      .replace(/([?&](?:key|api_key|apikey|access_token)=)[^&\s"']+/gi, "$1[redacted]");
+
+    secrets.filter(Boolean).forEach(function (secret) {
+      text = text.replaceAll(String(secret), "[redacted]");
+      text = text.replaceAll(encodeURIComponent(String(secret)), "[redacted]");
+    });
+
+    return text.replace(/https?:\/\/[^\s"']+/gi, function (urlText) {
+      const trailingPunctuation = urlText.match(/[),.;:!?]+$/)?.[0] || "";
+      const cleanUrlText = trailingPunctuation ? urlText.slice(0, -trailingPunctuation.length) : urlText;
+      try {
+        const url = new URL(cleanUrlText);
+        const sanitizedUrl = cleanUrlText === url.origin ? url.origin : `${url.origin}${url.pathname}`;
+        return `${sanitizedUrl}${trailingPunctuation}`;
+      } catch (error) {
+        return cleanUrlText.replace(/[?#].*$/, "") + trailingPunctuation;
+      }
+    });
+  }
+
   function sanitizeUrl(urlValue) {
     try {
       const url = new URL(urlValue, window.location.href);
       return {
         origin: url.origin,
         pathname: url.pathname,
-        hasKeyParameter: url.searchParams.has("key")
+        hasKeyParameter: ["key", "api_key", "apikey", "access_token"].some(function (parameter) {
+          return url.searchParams.has(parameter);
+        })
       };
     } catch (error) {
       return { origin: "invalid", pathname: "invalid", hasKeyParameter: false };
     }
   }
 
-  function getDiagnosticError(error, secrets = []) {
-    let message = String(error?.message || error || "Unknown error")
-      .replace(/([?&]key=)[^&\s"']+/gi, "$1[redacted]");
+  function getSanitizedUrlText(urlValue) {
+    if (!urlValue) return "n/a";
+    const sanitizedUrl = sanitizeUrl(urlValue);
+    return sanitizedUrl.origin === "invalid"
+      ? "invalid"
+      : `${sanitizedUrl.origin}${sanitizedUrl.pathname}`;
+  }
 
-    secrets.filter(Boolean).forEach(function (secret) {
-      message = message.replaceAll(String(secret), "[redacted]");
-      message = message.replaceAll(encodeURIComponent(String(secret)), "[redacted]");
+  function getDiagnosticError(error, secrets = []) {
+    return {
+      name: redactDiagnosticText(error?.name || "Error", secrets),
+      message: redactDiagnosticText(error?.message || error || "Unknown error", secrets)
+    };
+  }
+
+  function getSafeDiagnosticProperty(value, propertyName) {
+    try {
+      return value?.[propertyName];
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  function getDiagnosticObjects(eventOrError) {
+    const objects = [];
+    const addObject = function (value) {
+      if (!value || (typeof value !== "object" && typeof value !== "function") || objects.includes(value)) return;
+      objects.push(value);
+    };
+
+    addObject(eventOrError);
+    addObject(getSafeDiagnosticProperty(eventOrError, "error"));
+
+    objects.slice().forEach(function (value) {
+      addObject(getSafeDiagnosticProperty(value, "cause"));
+      addObject(getSafeDiagnosticProperty(value, "response"));
+      addObject(getSafeDiagnosticProperty(value, "resource"));
+      addObject(getSafeDiagnosticProperty(value, "source"));
+      addObject(getSafeDiagnosticProperty(value, "tile"));
+      addObject(getSafeDiagnosticProperty(value, "data"));
     });
 
-    return {
-      name: String(error?.name || "Error"),
-      message
+    return objects;
+  }
+
+  function getDiagnosticField(objects, fieldNames) {
+    for (const object of objects) {
+      for (const fieldName of fieldNames) {
+        try {
+          const value = object?.[fieldName];
+          if (["string", "number", "boolean"].includes(typeof value) && String(value).trim()) {
+            return value;
+          }
+        } catch (error) {
+          // Ignore getters that throw while inspecting third-party error objects.
+        }
+      }
+    }
+    return null;
+  }
+
+  function getNestedDiagnosticField(objects, objectFieldNames, valueFieldNames) {
+    for (const object of objects) {
+      for (const objectFieldName of objectFieldNames) {
+        try {
+          const nestedObject = object?.[objectFieldName];
+          const value = getDiagnosticField([nestedObject], valueFieldNames);
+          if (value !== null) return value;
+        } catch (error) {
+          // Ignore getters that throw while inspecting third-party error objects.
+        }
+      }
+    }
+    return null;
+  }
+
+  function quoteDiagnosticValue(value, secrets = []) {
+    return `"${redactDiagnosticText(value ?? "n/a", secrets)
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', '\\"')
+      .replaceAll("\r", "\\r")
+      .replaceAll("\n", "\\n")}"`;
+  }
+
+  function buildMapDiagnostic(stage, details = {}) {
+    const secrets = details.secrets || [];
+    const runtime = sanitizeRuntimeLocation();
+    const diagnosticObjects = getDiagnosticObjects(details.eventOrError || details.error);
+    const errorValue = details.error || getSafeDiagnosticProperty(details.eventOrError, "error") || details.eventOrError;
+    const diagnosticError = errorValue
+      ? getDiagnosticError(errorValue, secrets)
+      : { name: "n/a", message: details.message || "n/a" };
+    const status = details.status ?? getDiagnosticField(diagnosticObjects, ["status", "statusCode"]);
+    const statusText = details.statusText ?? getDiagnosticField(diagnosticObjects, ["statusText"]);
+    const resourceUrl = details.resourceUrl || getDiagnosticField(diagnosticObjects, ["resourceUrl", "resourceURL", "requestUrl", "requestURL", "url"]);
+    const sourceId = details.sourceId || getNestedDiagnosticField(diagnosticObjects, ["source"], ["id", "sourceId", "sourceID"]) || getDiagnosticField(diagnosticObjects, ["sourceId", "sourceID"]);
+    const tileUrl = details.tileUrl || getNestedDiagnosticField(diagnosticObjects, ["tile"], ["url", "tileUrl", "tileURL"]) || getDiagnosticField(diagnosticObjects, ["tileUrl", "tileURL"]);
+    const glyphUrl = details.glyphUrl || getNestedDiagnosticField(diagnosticObjects, ["glyph"], ["url", "glyphUrl", "glyphURL"]) || getDiagnosticField(diagnosticObjects, ["glyphUrl", "glyphURL", "glyphs"]);
+    const spriteUrl = details.spriteUrl || getNestedDiagnosticField(diagnosticObjects, ["sprite"], ["url", "spriteUrl", "spriteURL"]) || getDiagnosticField(diagnosticObjects, ["spriteUrl", "spriteURL", "sprite"]);
+    const nestedStyleUrl = getDiagnosticField(diagnosticObjects, ["styleUrl", "styleURL", "style"]);
+    const fields = {
+      stage,
+      provider: details.provider || "maplibre",
+      runtimeOrigin: runtime.origin,
+      runtimeProtocol: runtime.protocol,
+      style: getSanitizedUrlText(details.styleUrl || nestedStyleUrl),
+      errorName: diagnosticError.name,
+      errorMessage: diagnosticError.message,
+      httpStatus: status ?? "n/a",
+      httpStatusText: statusText ?? "n/a",
+      resource: getSanitizedUrlText(resourceUrl),
+      sourceId: sourceId ?? "n/a",
+      tile: getSanitizedUrlText(tileUrl),
+      glyph: getSanitizedUrlText(glyphUrl),
+      sprite: getSanitizedUrlText(spriteUrl)
     };
+
+    if (details.assetType) fields.assetType = details.assetType;
+    if (details.assetSource) fields.assetSource = details.assetSource;
+    if (details.reason) fields.reason = details.reason;
+
+    return `Klevby Map diagnostic ${Object.entries(fields)
+      .map(function ([key, value]) {
+        return `${key}=${quoteDiagnosticValue(value, secrets)}`;
+      })
+      .join(" ")}`;
   }
 
   function getMapProviderConfig() {
@@ -224,7 +362,12 @@
       resolvedStyleUrl = url.toString();
     }
 
-    console.info("Klevby Map: MapTiler style URL constructed", sanitizeUrl(resolvedStyleUrl));
+    console.info(buildMapDiagnostic("MapTiler style URL constructed", {
+      provider: "maplibre",
+      styleUrl: resolvedStyleUrl,
+      secrets: [apiKey],
+      message: "MapTiler style URL is ready"
+    }));
     return resolvedStyleUrl;
   }
 
@@ -237,7 +380,7 @@
     );
   }
 
-  function loadMapLibreAsset(assetType, candidate) {
+  function loadMapLibreAsset(assetType, candidate, providerConfig) {
     const isScript = assetType === "script";
     const selector = isScript ? MAPLIBRE_SCRIPT_SELECTOR : MAPLIBRE_STYLESHEET_SELECTOR;
     const existingAsset = document.querySelector(`${selector}[data-klevby-maplibre-source="${candidate.source}"]`);
@@ -261,12 +404,15 @@
         asset.removeEventListener("error", handleError);
 
         if (error) {
-          console.warn("Klevby Map: MapLibre asset load failure", {
+          console.warn(buildMapDiagnostic("MapLibre asset load failure", {
+            provider: "maplibre",
+            styleUrl: providerConfig?.maptilerStyleUrl,
+            error,
+            resourceUrl: candidate.url,
             assetType,
-            source: candidate.source,
-            version: MAPLIBRE_VERSION,
-            error: getDiagnosticError(error)
-          });
+            assetSource: candidate.source,
+            secrets: [providerConfig?.maptilerKey]
+          }));
           if (asset.isConnected) asset.remove();
           reject(error);
           return;
@@ -317,12 +463,12 @@
     });
   }
 
-  async function loadMapLibreAssetWithFallback(assetType, candidates) {
+  async function loadMapLibreAssetWithFallback(assetType, candidates, providerConfig) {
     let lastError = null;
 
     for (const candidate of candidates) {
       try {
-        await loadMapLibreAsset(assetType, candidate);
+        await loadMapLibreAsset(assetType, candidate, providerConfig);
         return;
       } catch (error) {
         lastError = error;
@@ -332,14 +478,14 @@
     throw lastError || new Error(`MapLibre ${assetType} has no configured sources`);
   }
 
-  async function loadMapLibreApi() {
+  async function loadMapLibreApi(providerConfig) {
     if (isMapLibreApiUsable()) {
       console.info("Klevby Map: MapLibre engine already available", { version: MAPLIBRE_VERSION });
       return;
     }
 
-    await loadMapLibreAssetWithFallback("stylesheet", MAPLIBRE_STYLESHEET_SOURCES);
-    await loadMapLibreAssetWithFallback("script", MAPLIBRE_SCRIPT_SOURCES);
+    await loadMapLibreAssetWithFallback("stylesheet", MAPLIBRE_STYLESHEET_SOURCES, providerConfig);
+    await loadMapLibreAssetWithFallback("script", MAPLIBRE_SCRIPT_SOURCES, providerConfig);
   }
 
   function isYandexMapsApiUsable() {
@@ -1676,10 +1822,16 @@
         const error = event?.error || new Error("MapLibre map failed to load");
 
         if (!settled) {
-          console.warn("Klevby Map: map error before load", {
+          console.warn(buildMapDiagnostic("map error before load", {
             provider: "maplibre",
-            error: getDiagnosticError(error, [providerConfig.maptilerKey])
-          });
+            styleUrl,
+            eventOrError: event,
+            error,
+            secrets: [providerConfig.maptilerKey]
+          }));
+          if (error && (typeof error === "object" || typeof error === "function")) {
+            mapDiagnosticContextByError.set(error, event);
+          }
           settled = true;
           clearTimeout(timeoutId);
           reject(error);
@@ -2107,19 +2259,28 @@
 
     if (providerConfig.provider === "maplibre") {
       try {
-        await loadMapLibreApi();
+        await loadMapLibreApi(providerConfig);
         await createMapLibreMap(mapEl, providerConfig);
         return;
       } catch (error) {
-        console.warn("Klevby Map: fallback to Yandex", {
+        console.warn(buildMapDiagnostic("fallback to Yandex", {
+          provider: "maplibre",
+          styleUrl: providerConfig.maptilerStyleUrl,
+          eventOrError: mapDiagnosticContextByError.get(error) || error,
+          error,
           reason: "maplibre-initialization-failed",
-          error: getDiagnosticError(error, [providerConfig.maptilerKey])
-        });
+          secrets: [providerConfig.maptilerKey]
+        }));
         cleanupPartialMapInitialization();
         mapEl.innerHTML = "";
       }
     } else if (providerConfig.fallbackReason) {
-      console.warn("Klevby Map: fallback to Yandex", { reason: providerConfig.fallbackReason });
+      console.warn(buildMapDiagnostic("fallback to Yandex", {
+        provider: "maplibre",
+        styleUrl: providerConfig.maptilerStyleUrl,
+        reason: providerConfig.fallbackReason,
+        message: "MapTiler key is not configured"
+      }));
     }
 
     await loadYandexMapsApi();
