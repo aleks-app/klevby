@@ -3,6 +3,22 @@
     return typeof value === "string" ? value.trim() : "";
   }
 
+  function normalizeCoordinates(latitude, longitude) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return {
+        latitude: null,
+        longitude: null,
+        hasCoordinates: false
+      };
+    }
+
+    return {
+      latitude,
+      longitude,
+      hasCoordinates: true
+    };
+  }
+
   function normalizeWaterDepthMapSources(rows) {
     if (!Array.isArray(rows)) {
       return [];
@@ -20,19 +36,26 @@
         return sources;
       }
 
+      const coordinates = normalizeCoordinates(row.latitude, row.longitude);
+
       sources.push({
         id: row.id ?? null,
         name,
         waterType: normalizeText(row.water_type),
         region: normalizeText(row.region),
         district: normalizeText(row.district),
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        locationQuality: normalizeText(row.location_quality),
+        locationSource: normalizeText(row.location_source),
+        locationCheckedAt: normalizeText(row.location_checked_at),
         source: normalizeText(row.source),
         sourceUrl,
         usageRule: normalizeText(row.usage_rule),
         quality: normalizeText(row.quality),
         comment: normalizeText(row.comment),
         checkedAt: normalizeText(row.checked_at),
-        hasCoordinates: false
+        hasCoordinates: coordinates.hasCoordinates
       });
 
       return sources;
