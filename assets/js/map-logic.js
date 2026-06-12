@@ -1371,6 +1371,10 @@
     const setWaterDepthLayerEnabled = async function (enabled) {
       waterDepthLayerEnabled = Boolean(enabled);
 
+      if (!waterDepthLayerEnabled) {
+        window.KlevbyWaterDepthPreviewSheet?.close();
+      }
+
       if (activeMapProvider === "maplibre" && mapInstance) {
         const setWaterDepthLayerVisible = window.KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible;
         if (typeof setWaterDepthLayerVisible === "function") {
@@ -1844,8 +1848,48 @@
       map.addControl(new window.maplibregl.AttributionControl({ compact: false }), "bottom-right");
       addMapTilerLogo(map);
       localizeMapLibreNavigationControl(mapEl);
+      window.KlevbyWaterDepthPreviewSheet?.ensureCreated(mapEl);
+
+      const getWaterDepthFeatureAtPoint = function (point) {
+        const hitLayerId = window.KlevbyWaterDepthMapLayer?.LAYER_HIT_ID;
+
+        if (!waterDepthLayerEnabled || !hitLayerId || !map.getLayer(hitLayerId)) {
+          return null;
+        }
+
+        try {
+          return map.queryRenderedFeatures(point, { layers: [hitLayerId] })[0] || null;
+        } catch (_) {
+          return null;
+        }
+      };
+
+      const openWaterDepthPreview = function (feature, event) {
+        if (!feature) return false;
+
+        event?.preventDefault?.();
+        window.KlevbyWaterDepthPreviewSheet?.open(feature.properties || {});
+        return true;
+      };
+
+      const waterDepthHitLayerId = window.KlevbyWaterDepthMapLayer?.LAYER_HIT_ID;
+      if (waterDepthHitLayerId) {
+        map.on("click", waterDepthHitLayerId, function (event) {
+          openWaterDepthPreview(event.features?.[0], event);
+        });
+      }
 
       map.on("click", function (event) {
+        if (openWaterDepthPreview(getWaterDepthFeatureAtPoint(event.point), event)) {
+          return;
+        }
+
+        if (window.KlevbyWaterDepthPreviewSheet?.isOpen()) {
+          window.KlevbyWaterDepthPreviewSheet.close();
+          return;
+        }
+
+        if (event.defaultPrevented) return;
         handleMapClick([event.lngLat.lat, event.lngLat.lng]);
       });
 
@@ -2295,6 +2339,7 @@
     const partialMap = mapInstance;
 
     clearMapLibreSpotMarkers();
+    window.KlevbyWaterDepthPreviewSheet?.close();
     mapInstance = null;
     mapReady = false;
     postsCollection = null;
