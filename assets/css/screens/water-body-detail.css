@@ -1,22 +1,35 @@
 #waterBodyDetailSection {
-  margin: 0 calc(50% - 50vw);
+  --klevby-water-body-detail-header-offset: calc(env(safe-area-inset-top, 0px) + 48px);
+  position: relative;
+  z-index: 1;
+  margin: calc(-1 * var(--klevby-water-body-detail-header-offset)) calc(50% - 50vw) 0;
+  padding-top: var(--klevby-water-body-detail-header-offset);
   color: #f8fafc;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(244, 122, 43, 0.16), transparent 30%),
-    linear-gradient(180deg, #171a1e 0%, #090b0d 44%, #060708 100%);
+  background: linear-gradient(180deg, #0d1014 0%, #090b0d 40%, #060708 100%);
+}
+
+body:has(#waterBodyDetailSection:not(.hidden)) {
+  background: #090b0d;
 }
 
 .water-body-detail-screen {
   width: min(100%, 760px);
-  min-height: calc(100dvh - var(--klevby-header-height, 72px));
+  min-height: 100dvh;
   margin: 0 auto;
   padding-bottom: calc(32px + var(--klevby-bottom-chrome-total, 0px));
 }
 
 .water-body-detail-content {
   display: grid;
-  padding: 22px 16px;
+  padding: 8px 16px 22px;
   gap: 14px;
+}
+
+@media (max-width: 900px) {
+  body:has(#waterBodyDetailSection:not(.hidden))::before,
+  body:has(#waterBodyDetailSection:not(.hidden))::after {
+    opacity: 0;
+  }
 }
 
 .water-body-detail-hero,
