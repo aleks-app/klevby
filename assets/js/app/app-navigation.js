@@ -8,6 +8,7 @@
       "marketSection",
       "pondsSection",
       "mapSection",
+      "waterBodyDetailSection",
       "authSection",
       "profileSection"
     ];
@@ -55,6 +56,7 @@
     if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
     if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
     if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
+    if (!document.getElementById("waterBodyDetailSection")?.classList.contains("hidden")) return "water-body-detail";
     if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
     if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
     if (!document.getElementById("authSection")?.classList.contains("hidden")) return "auth";

@@ -52,3 +52,16 @@ test("normalizePoint keeps only display-safe preview values and supplies fallbac
     locationSource: ""
   });
 });
+
+test("bottom sheet uses the internal water body CTA and exposes source as trust text only", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "../assets/js/map/water-depth-preview-sheet.js"),
+    "utf8"
+  );
+
+  assert.match(source, />Открыть водоём<\/button>/);
+  assert.match(source, /`Источник: \$\{point\.source\}`/);
+  assert.doesNotMatch(source, /water-depth-preview-source-link/);
+  assert.doesNotMatch(source, /target="_blank"/);
+  assert.match(source, /KlevbyWaterBodyDetail\.open\(selectedPoint\)/);
+});

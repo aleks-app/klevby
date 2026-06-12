@@ -142,12 +142,6 @@
   line-height: 1.3;
 }
 
-.water-depth-preview-source-link {
-  margin-left: 4px;
-  color: #f47a2b;
-  text-decoration: none;
-}
-
 .water-depth-preview-cta {
   width: 100%;
   min-height: 44px;
@@ -163,7 +157,6 @@
 }
 
 .water-depth-preview-close:focus-visible,
-.water-depth-preview-source-link:focus-visible,
 .water-depth-preview-cta:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;

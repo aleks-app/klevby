@@ -32,17 +32,6 @@
     };
   }
 
-  function getSafeSourceUrl(value) {
-    if (!value) return "";
-
-    try {
-      const url = new URL(value, global.location?.href || "https://klevby.com/");
-      return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
-    } catch (_) {
-      return "";
-    }
-  }
-
   function setText(selector, value) {
     const element = sheet?.querySelector(selector);
     if (element) element.textContent = value;
@@ -82,20 +71,11 @@
     const locationQuality = point.locationSource
       ? `${point.locationQuality} · ${point.locationSource}`
       : point.locationQuality;
-    const sourceLink = sheet.querySelector(".water-depth-preview-source-link");
-    const safeSourceUrl = getSafeSourceUrl(point.sourceUrl);
-
     setText(".water-depth-preview-name", point.name);
     setText(".water-depth-preview-water-type", point.waterType);
     setText(".water-depth-preview-location", location || "Регион не указан");
     setText(".water-depth-preview-location-quality", locationQuality);
-    setText(".water-depth-preview-source-name", point.source);
-
-    if (sourceLink) {
-      sourceLink.hidden = !safeSourceUrl;
-      if (safeSourceUrl) sourceLink.href = safeSourceUrl;
-      else sourceLink.removeAttribute("href");
-    }
+    setText(".water-depth-preview-source-name", `Источник: ${point.source}`);
   }
 
   function open(properties) {
@@ -171,14 +151,11 @@
             <dd class="water-depth-preview-location-quality"></dd>
           </div>
           <div>
-            <dt>Источник</dt>
-            <dd>
-              <span class="water-depth-preview-source-name"></span>
-              <a class="water-depth-preview-source-link" target="_blank" rel="noopener noreferrer" aria-label="Открыть источник">↗</a>
-            </dd>
+            <dt>Данные</dt>
+            <dd class="water-depth-preview-source-name"></dd>
           </div>
         </dl>
-        <button class="water-depth-preview-cta" type="button">Подробнее</button>
+        <button class="water-depth-preview-cta" type="button">Открыть водоём</button>
       </div>
     `;
 
@@ -189,9 +166,11 @@
       close({ restoreFocus: true });
     });
     sheet.querySelector(".water-depth-preview-cta")?.addEventListener("click", function () {
-      console.info("Klevby water depth preview: detail screen coming next.", {
-        id: currentPoint?.id || null
-      });
+      if (!currentPoint || typeof global.KlevbyWaterBodyDetail?.open !== "function") return;
+
+      const selectedPoint = { ...currentPoint };
+      close();
+      global.KlevbyWaterBodyDetail.open(selectedPoint);
     });
 
     const dragZone = sheet.querySelector(".water-depth-preview-drag-zone");
