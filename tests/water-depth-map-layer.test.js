@@ -46,9 +46,14 @@ test("toWaterDepthFeatureCollection keeps only map-ready coordinate rows", () =>
       latitude: 54.85,
       longitude: 26.97,
       hasCoordinates: true,
+      waterType: "озеро",
+      region: "Минская область",
+      district: "Мядельский район",
+      source: "Навигационная карта",
       sourceUrl: "https://example.com/naroch",
       quality: "verified",
-      locationQuality: "approximate"
+      locationQuality: "approximate",
+      locationSource: "ручная проверка"
     },
     {
       id: 8,
@@ -69,14 +74,54 @@ test("toWaterDepthFeatureCollection keeps only map-ready coordinate rows", () =>
           coordinates: [26.97, 54.85]
         },
         properties: {
-          id: 7,
+          id: "7",
           name: "Озеро Нарочь",
+          waterType: "озеро",
+          region: "Минская область",
+          district: "Мядельский район",
+          source: "Навигационная карта",
           sourceUrl: "https://example.com/naroch",
           quality: "verified",
-          locationQuality: "approximate"
+          locationQuality: "approximate",
+          locationSource: "ручная проверка"
         }
       }
     ]
+  });
+});
+
+
+test("toWaterDepthFeatureCollection emits display-safe strings for preview properties", () => {
+  const { api } = loadWaterDepthMapLayer();
+  const data = api.toWaterDepthFeatureCollection([
+    {
+      id: 12,
+      name: 404,
+      waterType: { unsafe: true },
+      region: null,
+      district: "  Браславский район  ",
+      source: "  Карта глубин  ",
+      sourceUrl: "https://example.com/depths",
+      quality: undefined,
+      locationQuality: "точно",
+      locationSource: ["unsafe"],
+      latitude: 55.6,
+      longitude: 27.0,
+      hasCoordinates: true
+    }
+  ]);
+
+  assert.deepEqual(toPlain(data.features[0].properties), {
+    id: "12",
+    name: "404",
+    waterType: "",
+    region: "",
+    district: "Браславский район",
+    source: "Карта глубин",
+    sourceUrl: "https://example.com/depths",
+    quality: "",
+    locationQuality: "точно",
+    locationSource: ""
   });
 });
 

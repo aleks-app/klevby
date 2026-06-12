@@ -52,6 +52,12 @@
     }
   }
 
+  function toDisplayText(value) {
+    return typeof value === "string" || typeof value === "number"
+      ? String(value).trim()
+      : "";
+  }
+
   function toWaterDepthFeatureCollection(rows) {
     const features = Array.isArray(rows)
       ? rows.filter(function (row) {
@@ -64,11 +70,16 @@
               coordinates: [row.longitude, row.latitude]
             },
             properties: {
-              id: row.id ?? null,
-              name: row.name || "",
-              sourceUrl: row.sourceUrl || "",
-              quality: row.quality || "",
-              locationQuality: row.locationQuality || ""
+              id: toDisplayText(row.id),
+              name: toDisplayText(row.name),
+              waterType: toDisplayText(row.waterType),
+              region: toDisplayText(row.region),
+              district: toDisplayText(row.district),
+              source: toDisplayText(row.source),
+              sourceUrl: toDisplayText(row.sourceUrl),
+              quality: toDisplayText(row.quality),
+              locationQuality: toDisplayText(row.locationQuality),
+              locationSource: toDisplayText(row.locationSource)
             }
           };
         })
