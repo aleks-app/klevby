@@ -46,17 +46,54 @@
     if (element) element.textContent = value;
   }
 
+  function getDepthMapStatusForWaterBody(waterBodyId) {
+    const depthEntry = global.KlevbyDepthMapsRegistry?.getByWaterBodyId?.(waterBodyId) || null;
+
+    if (!depthEntry || depthEntry.status === "disabled") {
+      return {
+        available: false,
+        status: "unavailable",
+        label: "Карта глубин пока недоступна"
+      };
+    }
+
+    const statusModel = {
+      available: depthEntry.status === "available",
+      status: depthEntry.status,
+      label: depthEntry.status === "available"
+        ? "Карта глубин доступна"
+        : "Карта глубин готовится",
+      maxDepth: depthEntry.maxDepth || null,
+      depthMapId: depthEntry.id,
+      waterBodyId: depthEntry.waterBodyId || depthEntry.id,
+      format: depthEntry.format || "geojson"
+    };
+
+    return statusModel;
+  }
+
   function render(point) {
     const section = document.getElementById(SECTION_ID);
     if (!section) return false;
 
+    const depthStatus = getDepthMapStatusForWaterBody(point.waterBodyId);
     const location = [point.region, point.district].filter(Boolean).join(" · ");
     setText(section, ".water-body-detail-name", point.name);
     setText(section, ".water-body-detail-type", point.waterType);
     setText(section, ".water-body-detail-location", location || "Регион не указан");
-    setText(section, ".water-body-detail-status-text", "Черновая схема");
-    setText(section, ".water-body-detail-source", "Источник: черновая база KlevGo");
-    setText(section, ".water-body-detail-data-status", "Данные уточняются");
+    setText(section, ".water-body-detail-status-text", depthStatus.label);
+    setText(
+      section,
+      ".water-body-detail-draft-copy",
+      depthStatus.maxDepth ? `До ${depthStatus.maxDepth} м` : depthStatus.label
+    );
+    setText(
+      section,
+      ".water-body-detail-draft-note",
+      depthStatus.depthMapId ? `Формат: ${depthStatus.format}` : "Данные уточняются"
+    );
+    setText(section, ".water-body-detail-source", "Источник не указан");
+    setText(section, ".water-body-detail-data-status", depthStatus.label);
     setText(section, ".water-body-detail-location-quality", point.locationQuality);
     setText(
       section,
@@ -66,8 +103,8 @@
 
     const depthAction = section.querySelector(".water-body-detail-depth-action");
     if (depthAction) {
-      depthAction.disabled = true;
-      depthAction.textContent = "Карты глубин скоро";
+      depthAction.disabled = !depthStatus.available;
+      depthAction.textContent = depthStatus.available ? "Открыть глубины" : "Скоро";
     }
 
     return true;
@@ -94,9 +131,10 @@
   }
 
   async function showDepthContours() {
-    // Reserved for a future proper depth-map experience. Draft contour samples
-    // must not be exposed from the user-facing water body detail screen.
-    return false;
+    const depthStatus = getDepthMapStatusForWaterBody(selectedPoint?.waterBodyId);
+    if (!depthStatus.available || typeof global.klevbyShowWaterDepthContours !== "function") return false;
+
+    return global.klevbyShowWaterDepthContours(depthStatus.waterBodyId);
   }
 
   function bind() {
@@ -120,6 +158,7 @@
   global.KlevbyWaterBodyDetail = {
     SECTION_ID,
     normalizePoint,
+    getDepthMapStatusForWaterBody,
     getSafeSourceUrl,
     render,
     open,

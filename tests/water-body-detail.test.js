@@ -42,6 +42,8 @@ function loadDetailScreen(options = {}) {
     ".water-body-detail-type",
     ".water-body-detail-location",
     ".water-body-detail-status-text",
+    ".water-body-detail-draft-copy",
+    ".water-body-detail-draft-note",
     ".water-body-detail-source",
     ".water-body-detail-data-status",
     ".water-body-detail-location-quality",
@@ -69,6 +71,23 @@ function loadDetailScreen(options = {}) {
   const contourRequests = [];
   const externalOpens = [];
   const window = {
+    KlevbyDepthMapsRegistry: {
+      getByWaterBodyId(id) {
+        if (id === "zvon") {
+          return {
+            id: "zvon",
+            waterBodyId: "zvon",
+            status: "available",
+            format: "geojson",
+            maxDepth: 18
+          };
+        }
+        if (id === "draft-lake") {
+          return { id: "draft-map", waterBodyId: id, status: "draft", format: "geojson" };
+        }
+        return null;
+      }
+    },
     KlevbyWaterDepthContoursLayer: {
       hasDraftContours(id) {
         return id === "zaslavskoe";
@@ -130,13 +149,13 @@ test("detail screen opens with normalized selected point data", () => {
   assert.deepEqual(openedSections, ["water-body-detail"]);
   assert.equal(elements.get(".water-body-detail-name").textContent, "Озеро Нарочь");
   assert.equal(elements.get(".water-body-detail-location").textContent, "Минская область · Мядельский район");
-  assert.equal(elements.get(".water-body-detail-status-text").textContent, "Черновая схема");
-  assert.equal(elements.get(".water-body-detail-source").textContent, "Источник: черновая база KlevGo");
-  assert.equal(elements.get(".water-body-detail-data-status").textContent, "Данные уточняются");
+  assert.equal(elements.get(".water-body-detail-status-text").textContent, "Карта глубин пока недоступна");
+  assert.equal(elements.get(".water-body-detail-source").textContent, "Источник не указан");
+  assert.equal(elements.get(".water-body-detail-data-status").textContent, "Карта глубин пока недоступна");
   assert.equal(elements.get(".water-body-detail-location-source").textContent, "Открытые источники / ручная проверка");
   assert.equal(elements.get(".water-body-detail-depth-action").href, "");
   assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
-  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Карты глубин скоро");
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Скоро");
   assert.equal(elements.get("#appHeaderBackBtn").focused, true);
 });
 
@@ -146,20 +165,34 @@ test("unknown water body shows the disabled coming-soon depth action", () => {
   api.open({ water_body_id: "unknown-lake", name: "Неизвестное озеро" });
 
   assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
-  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Карты глубин скоро");
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Скоро");
 });
 
-test("Zaslavskoe shows the disabled coming-soon depth action", () => {
-  const { api, elements } = loadDetailScreen();
+test("Zvon exposes available registry metadata and enables the depth action", async () => {
+  const { api, elements, contourRequests } = loadDetailScreen();
 
-  api.open({ water_body_id: "zaslavskoe", name: "Заславское водохранилище" });
+  api.open({ water_body_id: "zvon", name: "Звонь" });
 
-  assert.equal(api.getSelectedPoint().waterBodyId, "zaslavskoe");
-  assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
-  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Карты глубин скоро");
+  assert.deepEqual(toPlain(api.getDepthMapStatusForWaterBody("zvon")), {
+    available: true,
+    status: "available",
+    label: "Карта глубин доступна",
+    maxDepth: 18,
+    depthMapId: "zvon",
+    waterBodyId: "zvon",
+    format: "geojson"
+  });
+  assert.equal(elements.get(".water-body-detail-status-text").textContent, "Карта глубин доступна");
+  assert.equal(elements.get(".water-body-detail-draft-copy").textContent, "До 18 м");
+  assert.equal(elements.get(".water-body-detail-depth-action").disabled, false);
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Открыть глубины");
+
+  elements.get(".water-body-detail-depth-action").click();
+  await Promise.resolve();
+  assert.deepEqual(contourRequests, ["zvon"]);
 });
 
-test("depth action does not call the draft contour flow or open an external URL", async () => {
+test("unavailable depth action does not call the contour flow or open an external URL", async () => {
   const { api, elements, contourRequests, externalOpens } = loadDetailScreen();
   api.open({
     id: "supabase-row-31",
@@ -174,6 +207,19 @@ test("depth action does not call the draft contour flow or open an external URL"
   assert.deepEqual(contourRequests, []);
   assert.deepEqual(externalOpens, []);
   assert.equal(await api.showDepthContours(), false);
+});
+
+test("draft registry entries show preparing status without enabling the CTA", () => {
+  const { api, elements } = loadDetailScreen();
+
+  const status = toPlain(api.getDepthMapStatusForWaterBody("draft-lake"));
+  api.open({ water_body_id: "draft-lake", name: "Тестовый водоём" });
+
+  assert.equal(status.available, false);
+  assert.equal(status.status, "draft");
+  assert.equal(status.label, "Карта глубин готовится");
+  assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Скоро");
 });
 
 test("safe depth source URL accepts only absolute credential-free HTTP(S) URLs", () => {
@@ -196,7 +242,7 @@ test("source URL remains internal and is never exposed as the depth action", () 
   });
 
   assert.equal(api.getSelectedPoint().sourceUrl, "https://fishermap.example/depths");
-  assert.equal(elements.get(".water-body-detail-source").textContent, "Источник: черновая база KlevGo");
+  assert.equal(elements.get(".water-body-detail-source").textContent, "Источник не указан");
   assert.equal(elements.get(".water-body-detail-depth-action").href, "");
 });
 

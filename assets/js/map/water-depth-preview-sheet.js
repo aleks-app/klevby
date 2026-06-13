@@ -38,6 +38,27 @@
     if (element) element.textContent = value;
   }
 
+  function getDepthMapStatusForWaterBody(waterBodyId) {
+    if (typeof global.KlevbyWaterBodyDetail?.getDepthMapStatusForWaterBody === "function") {
+      return global.KlevbyWaterBodyDetail.getDepthMapStatusForWaterBody(waterBodyId);
+    }
+
+    const depthEntry = global.KlevbyDepthMapsRegistry?.getByWaterBodyId?.(waterBodyId) || null;
+    if (!depthEntry || depthEntry.status === "disabled") {
+      return { available: false, status: "unavailable", label: "Карта глубин пока недоступна" };
+    }
+
+    return {
+      available: depthEntry.status === "available",
+      status: depthEntry.status,
+      label: depthEntry.status === "available" ? "Карта глубин доступна" : "Карта глубин готовится",
+      maxDepth: depthEntry.maxDepth || null,
+      depthMapId: depthEntry.id,
+      waterBodyId: depthEntry.waterBodyId || depthEntry.id,
+      format: depthEntry.format || "geojson"
+    };
+  }
+
   function resetDrag() {
     dragStartY = null;
     dragOffsetY = 0;
@@ -68,6 +89,7 @@
   function render(point) {
     if (!sheet) return;
 
+    const depthStatus = getDepthMapStatusForWaterBody(point.waterBodyId);
     const location = [point.region, point.district].filter(Boolean).join(" · ");
     const locationQuality = point.locationSource
       ? `${point.locationQuality} · ${point.locationSource}`
@@ -76,7 +98,10 @@
     setText(".water-depth-preview-water-type", point.waterType);
     setText(".water-depth-preview-location", location || "Регион не указан");
     setText(".water-depth-preview-location-quality", locationQuality);
-    setText(".water-depth-preview-source-name", "Черновая база KlevGo · данные уточняются");
+    setText(
+      ".water-depth-preview-source-name",
+      depthStatus.maxDepth ? `${depthStatus.label} · до ${depthStatus.maxDepth} м` : depthStatus.label
+    );
   }
 
   function open(properties) {
@@ -194,6 +219,7 @@
   global.KlevbyWaterDepthPreviewSheet = {
     ensureCreated,
     normalizePoint,
+    getDepthMapStatusForWaterBody,
     open,
     close,
     isOpen,
