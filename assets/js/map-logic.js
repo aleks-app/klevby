@@ -705,6 +705,71 @@
         color: rgba(244, 241, 238, 0.8);
       }
 
+      .map-action-btn.is-loading .map-action-icon {
+        animation: klevby-location-pulse 1s ease-in-out infinite;
+      }
+
+      @keyframes klevby-location-pulse {
+        50% { opacity: 0.38; transform: scale(0.82); }
+      }
+
+      .klevby-user-location-marker {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        pointer-events: none;
+      }
+
+      .klevby-user-location-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 17px;
+        height: 17px;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        background: #1687ff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.42), 0 0 0 2px rgba(22, 135, 255, 0.25);
+        transform: translate(-50%, -50%);
+      }
+
+      .klevby-user-location-heading {
+        position: absolute;
+        top: -7px;
+        left: 50%;
+        display: none;
+        width: 0;
+        height: 0;
+        border-right: 7px solid transparent;
+        border-bottom: 22px solid #1687ff;
+        border-left: 7px solid transparent;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+        transform: translateX(-50%) rotate(var(--klevby-user-heading, 0deg));
+        transform-origin: 50% 27px;
+      }
+
+      .klevby-user-location-marker.has-heading .klevby-user-location-heading {
+        display: block;
+      }
+
+      .klevby-map-location-message {
+        position: absolute;
+        right: 14px;
+        bottom: 90px;
+        left: 14px;
+        z-index: 14;
+        padding: 12px 14px;
+        border: 1px solid rgba(244, 122, 43, 0.55);
+        border-radius: 14px;
+        background: rgba(23, 23, 23, 0.96);
+        color: #fff8ea;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+        text-align: center;
+      }
+
       .map-action-btn:focus-visible,
       .map-filter-option:focus-visible,
       .map-filter-sheet-close:focus-visible {
@@ -1298,7 +1363,7 @@
           <span class="map-action-icon map-action-icon--filter" aria-hidden="true"></span>
           <span>Фильтры</span>
         </button>
-        <button class="map-action-btn is-unavailable" type="button" data-map-action="location" aria-label="Моё место, функция готовится">
+        <button class="map-action-btn is-unavailable" type="button" data-map-action="location" aria-pressed="false" aria-label="Моё место">
           <span class="map-action-icon map-action-icon--location" aria-hidden="true"></span>
           <span>Моё место</span>
         </button>
@@ -1434,10 +1499,6 @@
           depthsButton.blur();
         });
       });
-    });
-
-    controls.querySelector('[data-map-action="location"]')?.addEventListener("click", function () {
-      console.info("Klevby Map: действие «Моё место» подготовлено для будущей реализации.");
     });
 
     window.__klevbySyncWaterDepthControl = syncWaterDepthControl;
@@ -1949,6 +2010,28 @@
         localizeMapLibreLabels(map);
         markMapReady("maplibre", map);
         map.resize();
+
+        const locationButton = document.querySelector('[data-map-action="location"]');
+        if (locationButton && window.KlevbyMapUserLocation?.createController) {
+          window.KlevbyMapUserLocation.createController({
+            map,
+            button: locationButton,
+            notify: function (message) {
+              let notice = mapEl.querySelector(".klevby-map-location-message");
+              if (!notice) {
+                notice = document.createElement("div");
+                notice.className = "klevby-map-location-message";
+                notice.setAttribute("role", "status");
+                mapEl.appendChild(notice);
+              }
+              notice.textContent = message;
+              clearTimeout(notice.hideTimeout);
+              notice.hideTimeout = setTimeout(function () {
+                notice.remove();
+              }, 6000);
+            }
+          });
+        }
 
         const addWaterDepthLayer = window.KlevbyWaterDepthMapLayer?.addWaterDepthLayer;
         if (typeof addWaterDepthLayer === "function") {
