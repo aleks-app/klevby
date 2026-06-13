@@ -407,6 +407,31 @@
     };
   }
 
+  function getDepthMarkerPreviewProperties(properties) {
+    const markerProperties = properties && typeof properties === "object" ? properties : {};
+    const depthMap = getDepthMapConfig(markerProperties.id || markerProperties.depthMapId);
+    const previewProperties = {
+      id: markerProperties.id || depthMap?.id || "",
+      waterBodyId: markerProperties.waterBodyId || depthMap?.waterBodyId || depthMap?.id || "",
+      name: depthMap?.name || markerProperties.name || "",
+      maxDepth: markerProperties.maxDepth ?? depthMap?.maxDepth ?? null,
+      depthStatus: markerProperties.depthStatus || depthMap?.status || "",
+      depthFormat: markerProperties.depthFormat || depthMap?.format || ""
+    };
+
+    [
+      ["waterType", "type"],
+      ["region", "region"],
+      ["district", "district"],
+      ["source", "source"]
+    ].forEach(function ([propertyName, registryPropertyName]) {
+      const value = markerProperties[propertyName] || depthMap?.[registryPropertyName];
+      if (value) previewProperties[propertyName] = value;
+    });
+
+    return previewProperties;
+  }
+
   function getDepthMarkerLayerDefinitions() {
     return [
       {
@@ -587,8 +612,17 @@
       event?.preventDefault?.();
       event?.originalEvent?.preventDefault?.();
       event?.originalEvent?.stopPropagation?.();
-      const mapId = event?.features?.[0]?.properties?.id;
-      if (mapId) void selectDepthMap(map, mapId);
+      const properties = event?.features?.[0]?.properties;
+      const mapId = properties?.id;
+      if (mapId) {
+        void selectDepthMap(map, mapId).then(function (selected) {
+          if (selected) {
+            global.KlevbyWaterDepthPreviewSheet?.open?.(
+              getDepthMarkerPreviewProperties(properties)
+            );
+          }
+        });
+      }
     };
     depthMarkerEnterHandler = function () {
       const canvas = map.getCanvas?.();
