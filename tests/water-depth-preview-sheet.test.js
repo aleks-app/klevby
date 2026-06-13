@@ -4,12 +4,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-function loadPreviewSheet() {
+function loadPreviewSheet(windowOverrides = {}) {
   const source = fs.readFileSync(
     path.join(__dirname, "../assets/js/map/water-depth-preview-sheet.js"),
     "utf8"
   );
-  const window = {};
+  const window = { ...windowOverrides };
   const document = {
     addEventListener() {}
   };
@@ -62,9 +62,29 @@ test("bottom sheet uses the internal water body CTA and exposes source as trust 
   );
 
   assert.match(source, />Открыть водоём<\/button>/);
-  assert.match(source, /Черновая база KlevGo · данные уточняются/);
+  assert.match(source, /depthStatus\.label/);
   assert.doesNotMatch(source, /`Источник: \${point\.source}`/);
   assert.doesNotMatch(source, /water-depth-preview-source-link/);
   assert.doesNotMatch(source, /target="_blank"/);
   assert.match(source, /KlevbyWaterBodyDetail\.open\(selectedPoint\)/);
+});
+
+test("preview status helper reads available depth metadata from the registry", () => {
+  const api = loadPreviewSheet({
+    KlevbyDepthMapsRegistry: {
+      getByWaterBodyId(id) {
+        return id === "zvon"
+          ? { id: "zvon", waterBodyId: "zvon", status: "available", format: "geojson", maxDepth: 18 }
+          : null;
+      }
+    }
+  });
+
+  const status = toPlain(api.getDepthMapStatusForWaterBody("zvon"));
+  assert.equal(status.available, true);
+  assert.equal(status.label, "Карта глубин доступна");
+  assert.equal(status.maxDepth, 18);
+  assert.equal(status.depthMapId, "zvon");
+  assert.equal(status.waterBodyId, "zvon");
+  assert.equal(api.getDepthMapStatusForWaterBody("unknown").status, "unavailable");
 });
