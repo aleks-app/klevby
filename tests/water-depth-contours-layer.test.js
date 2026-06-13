@@ -572,6 +572,10 @@ test("map integration guards unavailable drafts and removes stale contours on de
     mapLogic.includes("KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible"),
     false
   );
+  assert.equal(mapLogic.includes("KlevbyWaterDepthMapLayer?.addWaterDepthLayer"), false);
+  assert.equal(mapLogic.includes("KlevbyWaterDepthMapLayer?.LAYER_HIT_ID"), false);
+  assert.equal(mapLogic.includes("getWaterDepthFeatureAtPoint"), false);
+  assert.equal(mapLogic.includes("openWaterDepthPreview"), false);
   assert.doesNotMatch(mapLogic, /mapDepthSheet|selectedDepthMapId/);
   assert.equal(mapLogic.includes("window.open"), false);
 });
