@@ -10,6 +10,7 @@
   const DEPTH_LABEL_LAYER_ID = "klevby-water-depth-selected-labels";
   const DEPTH_MARKER_SOURCE_ID = "klevby-depth-map-markers";
   const DEPTH_MARKER_LAYER_ID = "klevby-depth-map-markers";
+  const DEPTH_MARKER_HITBOX_LAYER_ID = "klevby-depth-map-marker-hitbox";
   const DEPTH_MARKER_LABEL_LAYER_ID = "klevby-depth-map-marker-labels";
   const DEPTH_LAYER_IDS = [
     DEPTH_OVERVIEW_HALO_LAYER_ID,
@@ -390,10 +391,14 @@
     ];
   }
 
-  function getDepthMarkerFeatureCollection() {
+  function getDepthMarkerFeatureCollection(excludedMapId) {
+    const normalizedExcludedMapId = normalizeWaterBodyId(excludedMapId);
+
     return {
       type: "FeatureCollection",
-      features: DEPTH_MAPS.map(function (depthMap) {
+      features: DEPTH_MAPS.filter(function (depthMap) {
+        return depthMap.id !== normalizedExcludedMapId;
+      }).map(function (depthMap) {
         return {
           type: "Feature",
           properties: {
@@ -412,6 +417,16 @@
 
   function getDepthMarkerLayerDefinitions() {
     return [
+      {
+        id: DEPTH_MARKER_HITBOX_LAYER_ID,
+        type: "circle",
+        source: DEPTH_MARKER_SOURCE_ID,
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 22, 12, 28],
+          "circle-color": "#000000",
+          "circle-opacity": 0
+        }
+      },
       {
         id: DEPTH_MARKER_LAYER_ID,
         type: "circle",
@@ -443,6 +458,26 @@
         }
       }
     ];
+  }
+
+  function syncDepthMarkers(map) {
+    const source = map?.getSource?.(DEPTH_MARKER_SOURCE_ID);
+    if (!source || typeof source.setData !== "function") return false;
+
+    source.setData(getDepthMarkerFeatureCollection(activeDepthMapId));
+    return true;
+  }
+
+  function getDepthMarkerFeatureAtPoint(map, point) {
+    if (!map || !point || !map.getLayer?.(DEPTH_MARKER_HITBOX_LAYER_ID)) return null;
+
+    try {
+      return map.queryRenderedFeatures(point, {
+        layers: [DEPTH_MARKER_HITBOX_LAYER_ID]
+      })[0] || null;
+    } catch (_) {
+      return null;
+    }
   }
 
   function removeDepthMap(map) {
@@ -498,6 +533,7 @@
       });
 
       activeDepthMapId = depthMap.id;
+      syncDepthMarkers(map);
       return true;
     } finally {
       depthMapLoading = false;
@@ -522,12 +558,12 @@
     if (!map) return false;
 
     if (depthModeMap === map && typeof map.off === "function") {
-      if (depthMarkerClickHandler) map.off("click", DEPTH_MARKER_LAYER_ID, depthMarkerClickHandler);
-      if (depthMarkerEnterHandler) map.off("mouseenter", DEPTH_MARKER_LAYER_ID, depthMarkerEnterHandler);
-      if (depthMarkerLeaveHandler) map.off("mouseleave", DEPTH_MARKER_LAYER_ID, depthMarkerLeaveHandler);
+      if (depthMarkerClickHandler) map.off("click", DEPTH_MARKER_HITBOX_LAYER_ID, depthMarkerClickHandler);
+      if (depthMarkerEnterHandler) map.off("mouseenter", DEPTH_MARKER_HITBOX_LAYER_ID, depthMarkerEnterHandler);
+      if (depthMarkerLeaveHandler) map.off("mouseleave", DEPTH_MARKER_HITBOX_LAYER_ID, depthMarkerLeaveHandler);
     }
 
-    [DEPTH_MARKER_LABEL_LAYER_ID, DEPTH_MARKER_LAYER_ID].forEach(function (layerId) {
+    [DEPTH_MARKER_LABEL_LAYER_ID, DEPTH_MARKER_LAYER_ID, DEPTH_MARKER_HITBOX_LAYER_ID].forEach(function (layerId) {
       if (typeof map.getLayer === "function" && map.getLayer(layerId)) map.removeLayer(layerId);
     });
     if (typeof map.getSource === "function" && map.getSource(DEPTH_MARKER_SOURCE_ID)) {
@@ -556,6 +592,9 @@
 
     depthModeMap = map;
     depthMarkerClickHandler = function (event) {
+      event?.preventDefault?.();
+      event?.originalEvent?.preventDefault?.();
+      event?.originalEvent?.stopPropagation?.();
       const mapId = event?.features?.[0]?.properties?.id;
       if (mapId) void selectDepthMap(map, mapId);
     };
@@ -569,9 +608,9 @@
     };
 
     if (typeof map.on === "function") {
-      map.on("click", DEPTH_MARKER_LAYER_ID, depthMarkerClickHandler);
-      map.on("mouseenter", DEPTH_MARKER_LAYER_ID, depthMarkerEnterHandler);
-      map.on("mouseleave", DEPTH_MARKER_LAYER_ID, depthMarkerLeaveHandler);
+      map.on("click", DEPTH_MARKER_HITBOX_LAYER_ID, depthMarkerClickHandler);
+      map.on("mouseenter", DEPTH_MARKER_HITBOX_LAYER_ID, depthMarkerEnterHandler);
+      map.on("mouseleave", DEPTH_MARKER_HITBOX_LAYER_ID, depthMarkerLeaveHandler);
     }
     return true;
   }
@@ -728,6 +767,7 @@
     DEPTH_LABEL_LAYER_ID,
     DEPTH_MARKER_SOURCE_ID,
     DEPTH_MARKER_LAYER_ID,
+    DEPTH_MARKER_HITBOX_LAYER_ID,
     DEPTH_MARKER_LABEL_LAYER_ID,
     DEPTH_MAPS,
     ZVON_SOURCE_ID: DEPTH_SOURCE_ID,
@@ -748,6 +788,7 @@
     getDepthLayerDefinitions,
     getDepthMarkerFeatureCollection,
     getDepthMarkerLayerDefinitions,
+    getDepthMarkerFeatureAtPoint,
     getZvonLayerDefinitions: getDepthLayerDefinitions,
     countGeometryTypes,
     showDepthMap,
