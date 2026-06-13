@@ -43,13 +43,18 @@ function createButton() {
   };
 }
 
-function createMockMap() {
+function createMockMap(options = {}) {
   const sources = new Map();
   const layers = new Set();
+  const flyToCalls = [];
+  const easeToCalls = [];
+  let zoom = options.zoom ?? 12;
 
   return {
     sources,
     layers,
+    flyToCalls,
+    easeToCalls,
     getSource(id) {
       return sources.get(id) || null;
     },
@@ -76,10 +81,17 @@ function createMockMap() {
     moveLayer() {},
     on() {},
     off() {},
-    easeTo() {},
-    flyTo() {},
+    easeTo(options) {
+      easeToCalls.push(options);
+    },
+    flyTo(options) {
+      flyToCalls.push(options);
+    },
     getZoom() {
-      return 12;
+      return zoom;
+    },
+    setZoom(value) {
+      zoom = value;
     }
   };
 }
@@ -109,7 +121,7 @@ function createMockMarkerClass() {
 
 function createWiredController(position, options = {}) {
   const api = loadApi();
-  const map = createMockMap();
+  const map = createMockMap(options);
   const button = createButton();
   const { MockMarker, instances } = createMockMarkerClass();
   const watchId = options.watchId ?? 10;
@@ -120,6 +132,9 @@ function createWiredController(position, options = {}) {
       watchCallback = success;
       if (!options.deferWatchCallback) {
         success(position);
+        if (options.extraWatchUpdates) {
+          success(position);
+        }
       }
       return watchId;
     },
@@ -191,10 +206,54 @@ test("location module is loaded before map logic and leaves depths control intac
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const mapLogic = fs.readFileSync(path.join(__dirname, "../assets/js/map-logic.js"), "utf8");
   assert.ok(html.indexOf("map-user-location.js") < html.indexOf("map-logic.js"));
-  assert.match(html, /map-user-location\.js\?v=20260613-gps-one-tap-toggle-1/);
+  assert.match(html, /map-user-location\.js\?v=20260613-gps-restore-first-fix-zoom-1/);
   assert.match(mapLogic, /data-map-action="location" aria-pressed="false"/);
   assert.match(mapLogic, /data-map-action="depths" aria-pressed="false"/);
   assert.match(mapLogic, /KlevbyMapUserLocation\.createController/);
+});
+
+test("first successful GPS position zooms map to street level", () => {
+  const api = loadApi();
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const { map, click } = createWiredController(position, { zoom: 8 });
+
+  click();
+
+  assert.equal(map.flyToCalls.length, 1);
+  assert.equal(map.flyToCalls[0].center[0], 27.56);
+  assert.equal(map.flyToCalls[0].center[1], 53.9);
+  assert.ok(map.flyToCalls[0].zoom >= api.USER_LOCATION_FOCUS_ZOOM);
+  assert.equal(map.easeToCalls.length, 0);
+});
+
+test("repeated GPS updates do not move the map again", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const { map, click } = createWiredController(position, {
+    extraWatchUpdates: true
+  });
+
+  click();
+
+  assert.equal(map.flyToCalls.length, 1);
+  assert.equal(map.easeToCalls.length, 0);
+});
+
+test("first fix keeps a closer manual zoom instead of zooming out", () => {
+  const api = loadApi();
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: null }
+  };
+  const { map, click } = createWiredController(position, { zoom: 18 });
+
+  click();
+
+  assert.equal(map.flyToCalls.length, 1);
+  assert.equal(map.flyToCalls[0].zoom, 18);
+  assert.ok(api.USER_LOCATION_FOCUS_ZOOM < 18);
 });
 
 test("first click starts watch and activates button immediately", () => {
@@ -308,10 +367,13 @@ test("location can be enabled again after disable", () => {
   click();
   click();
   assert.equal(instances[0].removed, true);
+  assert.equal(map.flyToCalls.length, 1);
 
   click();
   assert.equal(button.classList.contains("is-active"), true);
   assert.equal(instances.length, 2);
   assert.equal(instances[1].removed, false);
   assert.ok(map.getSource(api.SOURCE_ID).data);
+  assert.equal(map.flyToCalls.length, 2);
+  assert.equal(map.easeToCalls.length, 0);
 });
