@@ -165,9 +165,26 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
     Point: 192
   });
   assert.ok(map.getSource(api.ZVON_SOURCE_ID));
+  const overviewHaloLayer = map.getLayer(api.DEPTH_OVERVIEW_HALO_LAYER_ID);
+  const overviewFillLayer = map.getLayer(api.DEPTH_OVERVIEW_FILL_LAYER_ID);
   const fillLayer = map.getLayer(api.ZVON_FILL_LAYER_ID);
   const lineLayer = map.getLayer(api.ZVON_LINE_LAYER_ID);
   const labelLayer = map.getLayer(api.ZVON_POINT_LAYER_ID);
+  assert.equal(overviewHaloLayer.type, "line");
+  assert.equal(overviewHaloLayer.source, api.DEPTH_SOURCE_ID);
+  assert.equal(overviewHaloLayer.maxzoom, 12);
+  assert.deepEqual(JSON.parse(JSON.stringify(overviewHaloLayer.filter)), [
+    "==", ["geometry-type"], "Polygon"
+  ]);
+  assert.equal(overviewHaloLayer.paint["line-color"], "#22d3ee");
+  assert.equal(overviewFillLayer.type, "fill");
+  assert.equal(overviewFillLayer.source, api.DEPTH_SOURCE_ID);
+  assert.equal(overviewFillLayer.maxzoom, 12);
+  assert.deepEqual(JSON.parse(JSON.stringify(overviewFillLayer.filter)), [
+    "==", ["geometry-type"], "Polygon"
+  ]);
+  assert.equal(overviewFillLayer.paint["fill-color"], "#06b6d4");
+  assert.equal(fillLayer.minzoom, 10);
   assert.equal(fillLayer.paint["fill-color"][0], "case");
   assert.equal(fillLayer.paint["fill-color"][2][0], "interpolate");
   assert.equal(fillLayer.paint["fill-opacity"], 0.52);
@@ -188,7 +205,7 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
   assert.equal(labelLayer.paint["text-halo-color"], "#172554");
   assert.equal(map.calls.flyTo.length, 0);
   assert.equal(map.calls.fitBounds, 0);
-  assert.equal(map.calls.addLayer, 3);
+  assert.equal(map.calls.addLayer, 5);
 });
 
 test("depth toggle loads every configured lake without changing the viewport", async () => {
@@ -213,11 +230,11 @@ test("depth toggle loads every configured lake without changing the viewport", a
   assert.equal(map.calls.flyTo.length, 0);
   assert.equal(map.calls.fitBounds, 0);
   assert.equal(api.getActiveDepthMapId(), "all");
-  assert.equal(map.calls.addLayer, 3);
+  assert.equal(map.calls.addLayer, 5);
 
   api.removeDepthMap(map);
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
-  assert.equal(map.calls.removeLayer, 3);
+  assert.equal(map.calls.removeLayer, 5);
 });
 
 test("Zvon diagnostic reports a failed GeoJSON response without adding map objects", async () => {
