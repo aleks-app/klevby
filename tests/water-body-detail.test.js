@@ -5,9 +5,11 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 function createElement() {
+  const listeners = new Map();
   return {
     textContent: "",
     hidden: false,
+    disabled: false,
     href: "",
     attributes: {},
     setAttribute(name, value) {
@@ -17,14 +19,19 @@ function createElement() {
       delete this.attributes[name];
       if (name === "href") this.href = "";
     },
-    addEventListener() {},
+    addEventListener(type, listener) {
+      listeners.set(type, listener);
+    },
+    click() {
+      return listeners.get("click")?.({ preventDefault() {} });
+    },
     focus() {
       this.focused = true;
     }
   };
 }
 
-function loadDetailScreen() {
+function loadDetailScreen(options = {}) {
   const source = fs.readFileSync(
     path.join(__dirname, "../assets/js/map/water-body-detail.js"),
     "utf8"
@@ -59,17 +66,32 @@ function loadDetailScreen() {
       return null;
     }
   };
+  const contourRequests = [];
+  const externalOpens = [];
   const window = {
+    KlevbyWaterDepthContoursLayer: {
+      hasDraftContours(id) {
+        return id === "zaslavskoe";
+      }
+    },
     showSection(sectionName) {
       openedSections.push(sectionName);
-    }
+    },
+    klevbyShowWaterDepthContours(id) {
+      contourRequests.push(id);
+      return Promise.resolve(true);
+    },
+    open(...args) {
+      externalOpens.push(args);
+    },
+    ...options.window
   };
 
   vm.runInContext(source, vm.createContext({ window, document, URL, console }), {
     filename: "water-body-detail.js"
   });
 
-  return { api: window.KlevbyWaterBodyDetail, elements, openedSections };
+  return { api: window.KlevbyWaterBodyDetail, elements, openedSections, contourRequests, externalOpens };
 }
 
 function toPlain(value) {
@@ -112,7 +134,43 @@ test("detail screen opens with normalized selected point data", () => {
   assert.equal(elements.get(".water-body-detail-data-status").textContent, "Данные уточняются");
   assert.equal(elements.get(".water-body-detail-location-source").textContent, "Открытые источники / ручная проверка");
   assert.equal(elements.get(".water-body-detail-depth-action").href, "");
+  assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Схема глубин готовится");
   assert.equal(elements.get("#appHeaderBackBtn").focused, true);
+});
+
+test("Zaslavskoe enables the internal draft depth contour action", () => {
+  const { api, elements } = loadDetailScreen();
+
+  api.open({ id: "zaslavskoe", name: "Заславское водохранилище" });
+
+  const action = elements.get(".water-body-detail-depth-action");
+  assert.equal(action.disabled, false);
+  assert.equal(action.textContent, "Показать схему глубин");
+});
+
+test("water_body_id also enables the local Zaslavskoe contour action", () => {
+  const { api, elements } = loadDetailScreen();
+
+  api.open({ water_body_id: "zaslavskoe", name: "Заславское водохранилище" });
+
+  assert.equal(api.getSelectedPoint().id, "zaslavskoe");
+  assert.equal(elements.get(".water-body-detail-depth-action").disabled, false);
+});
+
+test("depth action calls the internal KlevGo contour flow without opening an external URL", async () => {
+  const { api, elements, contourRequests, externalOpens } = loadDetailScreen();
+  api.open({
+    id: "zaslavskoe",
+    name: "Заславское водохранилище",
+    sourceUrl: "https://external.example/depths"
+  });
+
+  elements.get(".water-body-detail-depth-action").click();
+  await Promise.resolve();
+
+  assert.deepEqual(contourRequests, ["zaslavskoe"]);
+  assert.deepEqual(externalOpens, []);
 });
 
 test("safe depth source URL accepts only absolute credential-free HTTP(S) URLs", () => {
@@ -160,6 +218,7 @@ test("detail markup uses collapsed accordions without a duplicate back control",
   assert.match(detailMarkup, /<summary>\s*<span>Источник и точность<\/span>/);
   assert.match(detailMarkup, /Собираем свою базу глубин KlevGo/);
   assert.match(detailMarkup, /Схема глубин готовится/);
+  assert.match(detailMarkup, /class="water-body-detail-depth-action" type="button" disabled/);
   assert.match(detailMarkup, /Данные уточняются/);
   assert.equal(detailMarkup.includes("Открыть карту глубин"), false);
   assert.equal(detailMarkup.includes('target="_blank"'), false);
