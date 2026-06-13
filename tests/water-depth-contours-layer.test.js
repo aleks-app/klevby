@@ -8,6 +8,10 @@ const layerSource = fs.readFileSync(
   path.join(__dirname, "../assets/js/map/water-depth-contours-layer.js"),
   "utf8"
 );
+const registrySource = fs.readFileSync(
+  path.join(__dirname, "../assets/js/map/depth-maps-registry.js"),
+  "utf8"
+);
 const contourData = JSON.parse(fs.readFileSync(
   path.join(__dirname, "../assets/data/depth-contours/zaslavskoe.draft.geojson"),
   "utf8"
@@ -57,11 +61,19 @@ function loadLayer(fetchImplementation) {
     }))
   };
 
-  vm.runInContext(layerSource, vm.createContext({ window, document, console }), {
+  const context = vm.createContext({ window, document, console });
+  vm.runInContext(registrySource, context, {
+    filename: "depth-maps-registry.js"
+  });
+  vm.runInContext(layerSource, context, {
     filename: "water-depth-contours-layer.js"
   });
 
-  return { api: window.KlevbyWaterDepthContoursLayer, container };
+  return {
+    api: window.KlevbyWaterDepthContoursLayer,
+    registry: window.KlevbyDepthMapsRegistry,
+    container
+  };
 }
 
 function interpolateZoomStops(expression, zoom) {
@@ -275,6 +287,14 @@ test("depth map index is lightweight and contains precomputed marker coordinates
   assert.equal(markers.features.length, 9);
   assert.equal(layerSource.includes("getBounds(data)"), true);
   assert.doesNotMatch(api.getDepthMarkerFeatureCollection.toString(), /fetch|url|GeoJSON/i);
+});
+
+test("depth layer uses the shared registry as its compatibility DEPTH_MAPS alias", () => {
+  const { api, registry } = loadLayer();
+
+  assert.equal(api.DEPTH_MAPS, registry.maps);
+  assert.equal(layerSource.includes("global.KlevbyDepthMapsRegistry?.maps || []"), true);
+  assert.equal(layerSource.includes("Object.freeze(["), false);
 });
 
 test("enabling depth mode adds lightweight markers with a larger invisible hitbox", () => {
