@@ -237,7 +237,11 @@ test("depth toggle loads every configured lake without changing the viewport", a
     assert.equal(map.calls.addLayer, 5);
     assert.deepEqual(JSON.parse(JSON.stringify(infoCalls)), [[
       "Klevby Map: depth maps loaded",
-      { maps: 4, features: zvonData.features.length * 4 }
+      {
+        successfulMaps: 4,
+        failedMaps: 0,
+        totalFeatures: zvonData.features.length * 4
+      }
     ]]);
   } finally {
     console.info = originalInfo;
@@ -246,6 +250,65 @@ test("depth toggle loads every configured lake without changing the viewport", a
   api.removeDepthMap(map);
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
   assert.equal(map.calls.removeLayer, 5);
+});
+
+test("depth toggle keeps successfully loaded lakes when another GeoJSON fails", async () => {
+  const warningCalls = [];
+  const infoCalls = [];
+  const originalWarn = console.warn;
+  const originalInfo = console.info;
+  console.warn = (...args) => warningCalls.push(args);
+  console.info = (...args) => infoCalls.push(args);
+  const failedMap = "necherdo";
+  const { api, container } = loadLayer(async (url) => ({
+    ok: !url.includes(failedMap),
+    status: url.includes(failedMap) ? 404 : 200,
+    url,
+    json: async () => zvonData
+  }));
+  const map = createMap(container);
+
+  try {
+    assert.equal(await api.showAllDepthMaps(map), true);
+    assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * 3);
+    assert.equal(map.calls.addLayer, 5);
+    assert.equal(warningCalls.length, 1);
+    assert.equal(warningCalls[0][1].name, "Нещердо");
+    assert.match(warningCalls[0][1].url, /necherdo/);
+    assert.match(String(warningCalls[0][1].error), /404/);
+    assert.deepEqual(JSON.parse(JSON.stringify(infoCalls[0])), [
+      "Klevby Map: depth maps loaded",
+      {
+        successfulMaps: 3,
+        failedMaps: 1,
+        totalFeatures: zvonData.features.length * 3
+      }
+    ]);
+  } finally {
+    console.warn = originalWarn;
+    console.info = originalInfo;
+  }
+});
+
+test("depth toggle returns false and removes stale overlay when every GeoJSON fails", async () => {
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  const { api, container } = loadLayer(async (url) => ({
+    ok: false,
+    status: 404,
+    url
+  }));
+  const map = createMap(container);
+  map.addSource(api.DEPTH_SOURCE_ID, { type: "geojson", data: zvonData });
+  api.getDepthLayerDefinitions().forEach((layer) => map.addLayer(layer));
+
+  try {
+    assert.equal(await api.showAllDepthMaps(map), false);
+    assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
+    assert.equal(map.calls.removeLayer, 5);
+  } finally {
+    console.warn = originalWarn;
+  }
 });
 
 test("Zvon diagnostic reports a failed GeoJSON response without adding map objects", async () => {
@@ -348,6 +411,8 @@ test("map integration guards unavailable drafts and removes stale contours on de
   assert.ok(disabledBranchIndex > cleanupIndex);
   assert.match(mapLogic, /showAllDepthMaps\(mapInstance\)/);
   assert.match(mapLogic, /failed to load depth maps/);
+  assert.match(mapLogic, /!depthMapsLoaded/);
+  assert.match(mapLogic, /depth maps unavailable; control disabled/);
   assert.match(mapLogic, /getSource\(contoursLayer\.DEPTH_SOURCE_ID\)/);
   assert.equal(
     mapLogic.includes("KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible"),
