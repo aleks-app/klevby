@@ -12,6 +12,10 @@ const contourData = JSON.parse(fs.readFileSync(
   path.join(__dirname, "../assets/data/depth-contours/zaslavskoe.draft.geojson"),
   "utf8"
 ));
+const zvonData = JSON.parse(fs.readFileSync(
+  path.join(__dirname, "../assets/data/depth-contours/zvon.depth.full.geojson"),
+  "utf8"
+));
 
 function createContainer() {
   const children = [];
@@ -27,7 +31,7 @@ function createContainer() {
   };
 }
 
-function loadLayer() {
+function loadLayer(fetchImplementation) {
   const container = createContainer();
   const document = {
     createElement() {
@@ -46,10 +50,11 @@ function loadLayer() {
     }
   };
   const window = {
-    fetch: async () => ({
+    fetch: fetchImplementation || (async () => ({
       ok: true,
+      status: 200,
       json: async () => contourData
-    })
+    }))
   };
 
   vm.runInContext(layerSource, vm.createContext({ window, document, console }), {
@@ -62,7 +67,14 @@ function loadLayer() {
 function createMap(container) {
   const sources = new Map();
   const layers = new Map();
-  const calls = { addSource: 0, addLayer: 0, removeSource: 0, removeLayer: 0, fitBounds: 0 };
+  const calls = {
+    addSource: 0,
+    addLayer: 0,
+    removeSource: 0,
+    removeLayer: 0,
+    fitBounds: 0,
+    flyTo: []
+  };
 
   return {
     calls,
@@ -93,6 +105,9 @@ function createMap(container) {
     },
     fitBounds() {
       calls.fitBounds += 1;
+    },
+    flyTo(options) {
+      calls.flyTo.push(options);
     }
   };
 }
@@ -127,6 +142,50 @@ test("draft zones use unique KlevGo fill/line ids and depth-based styling", () =
     ["linear"],
     ["get", "depth_m"]
   ]);
+});
+
+test("Zvon diagnostic loads the bundled GeoJSON and adds visible layers above the basemap", async () => {
+  const requestedUrls = [];
+  const { api, container } = loadLayer(async (url) => {
+    requestedUrls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      url,
+      json: async () => zvonData
+    };
+  });
+  const map = createMap(container);
+
+  assert.equal(await api.showZvonDepth(map), true);
+  assert.deepEqual(requestedUrls, ["assets/data/depth-contours/zvon.depth.full.geojson"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.countGeometryTypes(zvonData))), {
+    Polygon: 93,
+    LineString: 103,
+    Point: 192
+  });
+  assert.ok(map.getSource(api.ZVON_SOURCE_ID));
+  assert.equal(map.getLayer(api.ZVON_FILL_LAYER_ID).paint["fill-color"], "#ff0000");
+  assert.equal(map.getLayer(api.ZVON_FILL_LAYER_ID).paint["fill-opacity"], 0.65);
+  assert.equal(map.getLayer(api.ZVON_LINE_LAYER_ID).paint["line-color"], "#ffff00");
+  assert.equal(map.getLayer(api.ZVON_LINE_LAYER_ID).paint["line-width"], 3);
+  assert.equal(map.getLayer(api.ZVON_POINT_LAYER_ID).paint["circle-color"], "#ffffff");
+  assert.equal(map.getLayer(api.ZVON_POINT_LAYER_ID).paint["circle-radius"], 4);
+  assert.deepEqual(JSON.parse(JSON.stringify(map.calls.flyTo[0].center)), [28.531068, 55.063978]);
+  assert.equal(map.calls.addLayer, 3);
+});
+
+test("Zvon diagnostic reports a failed GeoJSON response without adding map objects", async () => {
+  const { api, container } = loadLayer(async () => ({
+    ok: false,
+    status: 404,
+    url: "assets/data/depth-contours/zvon.depth.full.geojson"
+  }));
+  const map = createMap(container);
+
+  await assert.rejects(api.showZvonDepth(map), /404/);
+  assert.equal(map.calls.addSource, 0);
+  assert.equal(map.calls.addLayer, 0);
 });
 
 test("draft validation accepts polygon zones and keeps LineString isobath support", () => {

@@ -2,6 +2,13 @@
   const SOURCE_ID = "klevby-water-depth-contours-draft";
   const FILL_LAYER_ID = "klevby-water-depth-contours-draft-fill";
   const LINE_LAYER_ID = "klevby-water-depth-contours-draft-lines";
+  const ZVON_SOURCE_ID = "klevby-water-depth-zvon";
+  const ZVON_FILL_LAYER_ID = "klevby-water-depth-zvon-fill";
+  const ZVON_LINE_LAYER_ID = "klevby-water-depth-zvon-lines";
+  const ZVON_POINT_LAYER_ID = "klevby-water-depth-zvon-points";
+  const ZVON_CONTOUR_URL = "assets/data/depth-contours/zvon.depth.full.geojson";
+  const ZVON_CENTER = [28.531068, 55.063978];
+  const ZVON_LAYER_IDS = [ZVON_FILL_LAYER_ID, ZVON_LINE_LAYER_ID, ZVON_POINT_LAYER_ID];
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
   const DISCLAIMER_TEXT = "Глубины ориентировочные · данные уточняются";
   // Reserved for future proper, licensed, or imported depth-map data.
@@ -183,6 +190,119 @@
     return true;
   }
 
+  function countGeometryTypes(data) {
+    return (data?.features || []).reduce(function (counts, feature) {
+      const geometryType = feature?.geometry?.type;
+      if (geometryType) counts[geometryType] = (counts[geometryType] || 0) + 1;
+      return counts;
+    }, { Polygon: 0, LineString: 0, Point: 0 });
+  }
+
+  function getZvonLayerDefinitions() {
+    return [
+      {
+        id: ZVON_FILL_LAYER_ID,
+        type: "fill",
+        source: ZVON_SOURCE_ID,
+        filter: ["==", ["geometry-type"], "Polygon"],
+        paint: {
+          "fill-color": "#ff0000",
+          "fill-opacity": 0.65
+        }
+      },
+      {
+        id: ZVON_LINE_LAYER_ID,
+        type: "line",
+        source: ZVON_SOURCE_ID,
+        filter: ["==", ["geometry-type"], "LineString"],
+        paint: {
+          "line-color": "#ffff00",
+          "line-width": 3,
+          "line-opacity": 1
+        }
+      },
+      {
+        id: ZVON_POINT_LAYER_ID,
+        type: "circle",
+        source: ZVON_SOURCE_ID,
+        filter: ["==", ["geometry-type"], "Point"],
+        paint: {
+          "circle-color": "#ffffff",
+          "circle-radius": 4,
+          "circle-opacity": 1,
+          "circle-stroke-color": "#000000",
+          "circle-stroke-width": 1
+        }
+      }
+    ];
+  }
+
+  function removeZvonDepth(map) {
+    if (!map) return false;
+
+    ZVON_LAYER_IDS.slice().reverse().forEach(function (layerId) {
+      if (typeof map.getLayer === "function" && map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    });
+
+    if (typeof map.getSource === "function" && map.getSource(ZVON_SOURCE_ID)) {
+      map.removeSource(ZVON_SOURCE_ID);
+    }
+
+    return true;
+  }
+
+  async function showZvonDepth(map) {
+    if (!map || typeof global.fetch !== "function") return false;
+
+    console.info("Klevby depth diagnostic: started loading Zvon depth", ZVON_CONTOUR_URL);
+    const response = await global.fetch(ZVON_CONTOUR_URL);
+    console.info("Klevby depth diagnostic: fetch response", {
+      status: response.status,
+      ok: response.ok,
+      url: response.url || ZVON_CONTOUR_URL
+    });
+
+    if (!response.ok) {
+      throw new Error(`Не удалось загрузить глубины озера Звонь: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const featureCount = Array.isArray(data?.features) ? data.features.length : 0;
+    const geometryCounts = countGeometryTypes(data);
+    console.info("Klevby depth diagnostic: GeoJSON loaded", {
+      featureCount,
+      geometryCounts
+    });
+
+    if (data?.type !== "FeatureCollection" || !featureCount) {
+      throw new Error("Некорректные данные глубин озера Звонь");
+    }
+
+    removeZvonDepth(map);
+    map.addSource(ZVON_SOURCE_ID, { type: "geojson", data });
+
+    // No beforeId is passed: diagnostic layers must stay above the basemap.
+    getZvonLayerDefinitions().forEach(function (layer) {
+      map.addLayer(layer);
+    });
+
+    console.info("Klevby depth diagnostic: rendered map objects", {
+      source: map.getSource(ZVON_SOURCE_ID),
+      layers: ZVON_LAYER_IDS.reduce(function (layers, layerId) {
+        layers[layerId] = map.getLayer(layerId);
+        return layers;
+      }, {})
+    });
+
+    if (typeof map.flyTo === "function") {
+      map.flyTo({ center: ZVON_CENTER, zoom: 13, duration: 500 });
+    }
+
+    return true;
+  }
+
   function getBounds(data) {
     let bounds = null;
 
@@ -249,6 +369,12 @@
     SOURCE_ID,
     FILL_LAYER_ID,
     LINE_LAYER_ID,
+    ZVON_SOURCE_ID,
+    ZVON_FILL_LAYER_ID,
+    ZVON_LINE_LAYER_ID,
+    ZVON_POINT_LAYER_ID,
+    ZVON_CONTOUR_URL,
+    ZVON_CENTER,
     DISCLAIMER_CLASS,
     DISCLAIMER_TEXT,
     DRAFT_CONTOURS,
@@ -258,6 +384,10 @@
     isDraftFeatureCollection,
     getFillLayerDefinition,
     getLineLayerDefinition,
+    getZvonLayerDefinitions,
+    countGeometryTypes,
+    showZvonDepth,
+    removeZvonDepth,
     showDraftContours,
     removeDraftContours,
     setDisclaimerVisible,
