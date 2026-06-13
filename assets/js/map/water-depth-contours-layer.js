@@ -259,8 +259,30 @@
       ],
       "#4338ca"
     ];
+    const closeDepthColor = [
+      "case",
+      ["has", "depth_m"],
+      [
+        "interpolate",
+        ["linear"],
+        depthValue,
+        0, "#7dd3fc",
+        2, "#38bdf8",
+        5, "#2563eb",
+        9, "#3730a3",
+        13, "#25205f",
+        18, "#111c44"
+      ],
+      "#3730a3"
+    ];
     const fillColor = visualPolicy.enhancedDepthStyling
-      ? enhancedDepthColor
+      ? [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12, enhancedDepthColor,
+        15, closeDepthColor
+      ]
       : "#38bdf8";
     const overviewFillOpacity = [
       "interpolate",
@@ -280,7 +302,8 @@
         8, 0.12,
         10, 0.18,
         12, 0.28,
-        15, 0.32
+        13, 0.32,
+        15, 0.38
       ]
       : [
         "interpolate",
@@ -301,7 +324,8 @@
         8, 0.32,
         10, 0.48,
         12, 0.66,
-        15, 0.72
+        13, 0.74,
+        15, 0.82
       ]
       : [
         "interpolate",
@@ -322,7 +346,8 @@
         8, 0.75,
         10, 1,
         12, 1.35,
-        15, 1.5
+        13, 1.5,
+        15, 1.8
       ]
       : [
         "interpolate",
