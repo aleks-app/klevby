@@ -73,7 +73,9 @@ function createMap(container) {
     removeSource: 0,
     removeLayer: 0,
     fitBounds: 0,
-    flyTo: []
+    flyTo: [],
+    on: [],
+    off: []
   };
 
   return {
@@ -108,6 +110,15 @@ function createMap(container) {
     },
     flyTo(options) {
       calls.flyTo.push(options);
+    },
+    on(eventName, layerId, handler) {
+      calls.on.push([eventName, layerId, handler]);
+    },
+    off(eventName, layerId, handler) {
+      calls.off.push([eventName, layerId, handler]);
+    },
+    getCanvas() {
+      return { style: {} };
     }
   };
 }
@@ -206,6 +217,74 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
   assert.equal(map.calls.flyTo.length, 0);
   assert.equal(map.calls.fitBounds, 0);
   assert.equal(map.calls.addLayer, 5);
+});
+
+test("depth map index is lightweight and contains precomputed marker coordinates", () => {
+  const { api } = loadLayer();
+  const index = JSON.parse(JSON.stringify(api.DEPTH_MAPS));
+  const markers = JSON.parse(JSON.stringify(api.getDepthMarkerFeatureCollection()));
+
+  assert.deepEqual(index.map(({ id, name }) => [id, name]), [
+    ["zvon", "Звонь"],
+    ["necherdo", "Нещердо"],
+    ["valkovskoe", "Вальковское"],
+    ["yanovo", "Яново"]
+  ]);
+  index.forEach((depthMap) => {
+    assert.equal(depthMap.center.length, 2);
+    assert.equal(depthMap.bbox.length, 4);
+    assert.ok(depthMap.featureCount > 0);
+  });
+  assert.equal(markers.type, "FeatureCollection");
+  assert.equal(markers.features.length, 4);
+  assert.equal(layerSource.includes("getBounds(data)"), true);
+  assert.doesNotMatch(api.getDepthMarkerFeatureCollection.toString(), /fetch|url|GeoJSON/i);
+});
+
+test("enabling depth mode adds only lightweight cyan markers and disabling removes everything", () => {
+  const requestedUrls = [];
+  const { api, container } = loadLayer(async (url) => {
+    requestedUrls.push(url);
+    return { ok: true, status: 200, json: async () => zvonData };
+  });
+  const map = createMap(container);
+
+  assert.equal(api.enableDepthMode(map), true);
+  assert.deepEqual(requestedUrls, []);
+  assert.ok(map.getSource(api.DEPTH_MARKER_SOURCE_ID));
+  assert.equal(map.getLayer(api.DEPTH_MARKER_LAYER_ID).paint["circle-color"], "#0891b2");
+  assert.ok(map.getLayer(api.DEPTH_MARKER_LABEL_LAYER_ID));
+  assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
+
+  api.disableDepthMode(map);
+  assert.equal(map.getSource(api.DEPTH_MARKER_SOURCE_ID), null);
+  assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
+  assert.equal(map.calls.off.length, 3);
+});
+
+test("marker selection loads one map at a time and reuses the in-memory cache", async () => {
+  const requestedUrls = [];
+  const { api, container } = loadLayer(async (url) => {
+    requestedUrls.push(url);
+    return { ok: true, status: 200, json: async () => zvonData };
+  });
+  const map = createMap(container);
+
+  api.enableDepthMode(map);
+  assert.equal(await api.selectDepthMap(map, "zvon"), true);
+  assert.equal(api.getActiveDepthMapId(), "zvon");
+  assert.equal(await api.selectDepthMap(map, "necherdo"), true);
+  assert.equal(api.getActiveDepthMapId(), "necherdo");
+  assert.equal(await api.selectDepthMap(map, "zvon"), true);
+  assert.equal(api.getActiveDepthMapId(), "zvon");
+  assert.deepEqual(requestedUrls, [
+    "assets/data/depth-contours/zvon.depth.full.geojson",
+    "assets/data/depth-contours/necherdo.depth.full.geojson"
+  ]);
+  assert.equal(map.calls.removeSource, 2);
+  assert.ok(map.getSource(api.DEPTH_SOURCE_ID));
+  assert.equal(map.calls.flyTo.length, 0);
+  assert.equal(map.calls.fitBounds, 0);
 });
 
 test("depth toggle loads every configured lake without changing the viewport", async () => {
@@ -409,11 +488,14 @@ test("map integration guards unavailable drafts and removes stale contours on de
   const disabledBranchIndex = mapLogic.indexOf("if (!waterDepthLayerEnabled)", cleanupIndex);
   assert.ok(cleanupIndex >= 0);
   assert.ok(disabledBranchIndex > cleanupIndex);
-  assert.match(mapLogic, /showAllDepthMaps\(mapInstance\)/);
-  assert.match(mapLogic, /failed to load depth maps/);
-  assert.match(mapLogic, /!depthMapsLoaded/);
-  assert.match(mapLogic, /depth maps unavailable; control disabled/);
-  assert.match(mapLogic, /getSource\(contoursLayer\.DEPTH_SOURCE_ID\)/);
+  assert.match(mapLogic, /enableDepthMode\(mapInstance\)/);
+  assert.match(mapLogic, /disableDepthMode\(mapInstance\)/);
+  assert.doesNotMatch(mapLogic, /showAllDepthMaps\(mapInstance\)/);
+  const toggleFlow = mapLogic.slice(
+    mapLogic.indexOf("const setWaterDepthLayerEnabled"),
+    mapLogic.indexOf("window.__klevbySyncWaterDepthControl")
+  );
+  assert.doesNotMatch(toggleFlow, /flyTo|fitBounds/);
   assert.equal(
     mapLogic.includes("KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible"),
     false

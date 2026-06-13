@@ -1469,37 +1469,22 @@
 
     const setWaterDepthLayerEnabled = async function (enabled) {
       waterDepthLayerEnabled = Boolean(enabled);
+      syncWaterDepthControl();
 
       // Draft contour zones are not part of the current user-facing depth flow.
       // Remove any stale layer left by an older session/build on either toggle state.
       window.KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance);
 
       if (!waterDepthLayerEnabled) {
-        window.KlevbyWaterDepthContoursLayer?.removeDepthMap(mapInstance);
+        window.KlevbyWaterDepthContoursLayer?.disableDepthMode(mapInstance);
         window.KlevbyWaterDepthPreviewSheet?.close();
       }
 
-      if (activeMapProvider === "maplibre" && mapInstance) {
-        if (waterDepthLayerEnabled) {
-          const contoursLayer = window.KlevbyWaterDepthContoursLayer;
-          let depthMapsLoaded = false;
-
-          try {
-            depthMapsLoaded = await contoursLayer?.showAllDepthMaps(mapInstance);
-          } catch (error) {
-            console.warn("Klevby Map: failed to load depth maps", error);
-          }
-
-          if (
-            !depthMapsLoaded ||
-            !contoursLayer?.DEPTH_SOURCE_ID ||
-            !mapInstance.getSource(contoursLayer.DEPTH_SOURCE_ID)
-          ) {
-            waterDepthLayerEnabled = false;
-            contoursLayer?.removeDepthMap(mapInstance);
-            syncWaterDepthControl();
-            console.warn("Klevby Map: depth maps unavailable; control disabled");
-          }
+      if (waterDepthLayerEnabled && activeMapProvider === "maplibre" && mapInstance) {
+        const depthModeEnabled = window.KlevbyWaterDepthContoursLayer?.enableDepthMode(mapInstance);
+        if (!depthModeEnabled) {
+          waterDepthLayerEnabled = false;
+          console.warn("Klevby Map: depth markers unavailable; control disabled");
         }
       }
 
@@ -1508,6 +1493,7 @@
 
     depthsButton?.addEventListener("click", function () {
       handleWaterDepthControlClick(depthsButton, function () {
+        if (window.KlevbyWaterDepthContoursLayer?.isDepthMapLoading()) return;
         void setWaterDepthLayerEnabled(!waterDepthLayerEnabled).finally(function () {
           depthsButton.blur();
         });

@@ -8,6 +8,9 @@
   const DEPTH_FILL_LAYER_ID = "klevby-water-depth-selected-fill";
   const DEPTH_LINE_LAYER_ID = "klevby-water-depth-selected-lines";
   const DEPTH_LABEL_LAYER_ID = "klevby-water-depth-selected-labels";
+  const DEPTH_MARKER_SOURCE_ID = "klevby-depth-map-markers";
+  const DEPTH_MARKER_LAYER_ID = "klevby-depth-map-markers";
+  const DEPTH_MARKER_LABEL_LAYER_ID = "klevby-depth-map-marker-labels";
   const DEPTH_LAYER_IDS = [
     DEPTH_OVERVIEW_HALO_LAYER_ID,
     DEPTH_OVERVIEW_FILL_LAYER_ID,
@@ -17,21 +20,40 @@
   ];
   const ZVON_CONTOUR_URL = "assets/data/depth-contours/zvon.depth.full.geojson";
   const DEPTH_MAPS = Object.freeze([
-    Object.freeze({ id: "zvon", name: "Звонь", url: ZVON_CONTOUR_URL }),
+    Object.freeze({
+      id: "zvon",
+      name: "Звонь",
+      url: ZVON_CONTOUR_URL,
+      center: Object.freeze([28.531199724, 55.064883085]),
+      bbox: Object.freeze([28.516146219, 55.057452077, 28.546253228, 55.072314093]),
+      featureCount: 388,
+      maxDepth: 18
+    }),
     Object.freeze({
       id: "necherdo",
       name: "Нещердо",
-      url: "assets/data/depth-contours/necherdo.depth.full.geojson"
+      url: "assets/data/depth-contours/necherdo.depth.full.geojson",
+      center: Object.freeze([29.080393061, 55.906274371]),
+      bbox: Object.freeze([29.026201511, 55.852096276, 29.134584611, 55.960452465]),
+      featureCount: 1348,
+      maxDepth: 8.5
     }),
     Object.freeze({
       id: "valkovskoe",
       name: "Вальковское",
-      url: "assets/data/depth-contours/valkovskoe.depth.full.geojson"
+      url: "assets/data/depth-contours/valkovskoe.depth.full.geojson",
+      center: Object.freeze([28.719792443, 55.983777037]),
+      bbox: Object.freeze([28.702666184, 55.966973329, 28.736918702, 56.000580745]),
+      featureCount: 1047
     }),
     Object.freeze({
       id: "yanovo",
       name: "Яново",
-      url: "assets/data/depth-contours/yanovo.depth.full.geojson"
+      url: "assets/data/depth-contours/yanovo.depth.full.geojson",
+      center: Object.freeze([28.819236749, 55.277284638]),
+      bbox: Object.freeze([28.771214546, 55.259325991, 28.867258951, 55.295243285]),
+      featureCount: 623,
+      maxDepth: 13
     })
   ]);
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
@@ -42,6 +64,13 @@
 
   let activeWaterBodyId = "";
   let activeDepthMapId = "";
+  let depthMapLoading = false;
+  let depthModeMap = null;
+  let depthMarkerClickHandler = null;
+  let depthMarkerEnterHandler = null;
+  let depthMarkerLeaveHandler = null;
+  let depthModeGeneration = 0;
+  const depthDataCache = new Map();
 
   function normalizeWaterBodyId(value) {
     return typeof value === "string" || typeof value === "number"
@@ -361,6 +390,61 @@
     ];
   }
 
+  function getDepthMarkerFeatureCollection() {
+    return {
+      type: "FeatureCollection",
+      features: DEPTH_MAPS.map(function (depthMap) {
+        return {
+          type: "Feature",
+          properties: {
+            id: depthMap.id,
+            name: depthMap.name,
+            maxDepth: depthMap.maxDepth || null
+          },
+          geometry: {
+            type: "Point",
+            coordinates: depthMap.center.slice()
+          }
+        };
+      })
+    };
+  }
+
+  function getDepthMarkerLayerDefinitions() {
+    return [
+      {
+        id: DEPTH_MARKER_LAYER_ID,
+        type: "circle",
+        source: DEPTH_MARKER_SOURCE_ID,
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 7, 12, 10],
+          "circle-color": "#0891b2",
+          "circle-stroke-color": "#a5f3fc",
+          "circle-stroke-width": 2,
+          "circle-opacity": 0.94
+        }
+      },
+      {
+        id: DEPTH_MARKER_LABEL_LAYER_ID,
+        type: "symbol",
+        source: DEPTH_MARKER_SOURCE_ID,
+        layout: {
+          "text-field": ["get", "name"],
+          "text-size": 12,
+          "text-offset": [0, 1.35],
+          "text-anchor": "top",
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Regular"],
+          "text-allow-overlap": false
+        },
+        paint: {
+          "text-color": "#cffafe",
+          "text-halo-color": "#083344",
+          "text-halo-width": 1.5
+        }
+      }
+    ];
+  }
+
   function removeDepthMap(map) {
     if (!map) return false;
 
@@ -381,30 +465,121 @@
   async function showDepthMap(map, mapId) {
     if (!map || typeof global.fetch !== "function") return false;
     const depthMap = getDepthMapConfig(mapId);
-    if (!depthMap) return false;
+    if (!depthMap || depthMapLoading) return false;
 
-    const response = await global.fetch(depthMap.url);
+    depthMapLoading = true;
+    const requestGeneration = depthModeGeneration;
+    let data = depthDataCache.get(depthMap.id);
 
-    if (!response.ok) {
-      throw new Error(`Не удалось загрузить глубины «${depthMap.name}»: ${response.status}`);
+    try {
+      if (!data) {
+        const response = await global.fetch(depthMap.url);
+
+        if (!response.ok) {
+          throw new Error(`Не удалось загрузить глубины «${depthMap.name}»: ${response.status}`);
+        }
+
+        data = await response.json();
+      }
+      const featureCount = Array.isArray(data?.features) ? data.features.length : 0;
+
+      if (data?.type !== "FeatureCollection" || !featureCount) {
+        throw new Error(`Некорректные данные глубин «${depthMap.name}»`);
+      }
+
+      depthDataCache.set(depthMap.id, data);
+      if (requestGeneration !== depthModeGeneration || (depthModeMap && depthModeMap !== map)) return false;
+      removeDepthMap(map);
+      map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data });
+
+      // No beforeId is passed so the depth overlay stays readable above the basemap.
+      getDepthLayerDefinitions().forEach(function (layer) {
+        map.addLayer(layer);
+      });
+
+      activeDepthMapId = depthMap.id;
+      return true;
+    } finally {
+      depthMapLoading = false;
+    }
+  }
+
+  async function selectDepthMap(map, mapId) {
+    if (depthMapLoading) return false;
+
+    try {
+      return await showDepthMap(map, mapId);
+    } catch (error) {
+      console.warn("Klevby Map: failed to load selected depth map", {
+        id: normalizeWaterBodyId(mapId),
+        error
+      });
+      return false;
+    }
+  }
+
+  function removeDepthMarkers(map) {
+    if (!map) return false;
+
+    if (depthModeMap === map && typeof map.off === "function") {
+      if (depthMarkerClickHandler) map.off("click", DEPTH_MARKER_LAYER_ID, depthMarkerClickHandler);
+      if (depthMarkerEnterHandler) map.off("mouseenter", DEPTH_MARKER_LAYER_ID, depthMarkerEnterHandler);
+      if (depthMarkerLeaveHandler) map.off("mouseleave", DEPTH_MARKER_LAYER_ID, depthMarkerLeaveHandler);
     }
 
-    const data = await response.json();
-    const featureCount = Array.isArray(data?.features) ? data.features.length : 0;
-
-    if (data?.type !== "FeatureCollection" || !featureCount) {
-      throw new Error(`Некорректные данные глубин «${depthMap.name}»`);
+    [DEPTH_MARKER_LABEL_LAYER_ID, DEPTH_MARKER_LAYER_ID].forEach(function (layerId) {
+      if (typeof map.getLayer === "function" && map.getLayer(layerId)) map.removeLayer(layerId);
+    });
+    if (typeof map.getSource === "function" && map.getSource(DEPTH_MARKER_SOURCE_ID)) {
+      map.removeSource(DEPTH_MARKER_SOURCE_ID);
     }
 
-    removeDepthMap(map);
-    map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data });
+    depthModeMap = null;
+    depthMarkerClickHandler = null;
+    depthMarkerEnterHandler = null;
+    depthMarkerLeaveHandler = null;
+    return true;
+  }
 
-    // No beforeId is passed so the depth overlay stays readable above the basemap.
-    getDepthLayerDefinitions().forEach(function (layer) {
+  function enableDepthMode(map) {
+    if (!map) return false;
+
+    removeDepthMarkers(map);
+    depthModeGeneration += 1;
+    map.addSource(DEPTH_MARKER_SOURCE_ID, {
+      type: "geojson",
+      data: getDepthMarkerFeatureCollection()
+    });
+    getDepthMarkerLayerDefinitions().forEach(function (layer) {
       map.addLayer(layer);
     });
 
-    activeDepthMapId = depthMap.id;
+    depthModeMap = map;
+    depthMarkerClickHandler = function (event) {
+      const mapId = event?.features?.[0]?.properties?.id;
+      if (mapId) void selectDepthMap(map, mapId);
+    };
+    depthMarkerEnterHandler = function () {
+      const canvas = map.getCanvas?.();
+      if (canvas) canvas.style.cursor = "pointer";
+    };
+    depthMarkerLeaveHandler = function () {
+      const canvas = map.getCanvas?.();
+      if (canvas) canvas.style.cursor = "";
+    };
+
+    if (typeof map.on === "function") {
+      map.on("click", DEPTH_MARKER_LAYER_ID, depthMarkerClickHandler);
+      map.on("mouseenter", DEPTH_MARKER_LAYER_ID, depthMarkerEnterHandler);
+      map.on("mouseleave", DEPTH_MARKER_LAYER_ID, depthMarkerLeaveHandler);
+    }
+    return true;
+  }
+
+  function disableDepthMode(map) {
+    depthModeGeneration += 1;
+    removeDepthMarkers(map);
+    removeDepthMap(map);
     return true;
   }
 
@@ -551,6 +726,9 @@
     DEPTH_FILL_LAYER_ID,
     DEPTH_LINE_LAYER_ID,
     DEPTH_LABEL_LAYER_ID,
+    DEPTH_MARKER_SOURCE_ID,
+    DEPTH_MARKER_LAYER_ID,
+    DEPTH_MARKER_LABEL_LAYER_ID,
     DEPTH_MAPS,
     ZVON_SOURCE_ID: DEPTH_SOURCE_ID,
     ZVON_FILL_LAYER_ID: DEPTH_FILL_LAYER_ID,
@@ -568,9 +746,15 @@
     getLineLayerDefinition,
     getDepthMapConfig,
     getDepthLayerDefinitions,
+    getDepthMarkerFeatureCollection,
+    getDepthMarkerLayerDefinitions,
     getZvonLayerDefinitions: getDepthLayerDefinitions,
     countGeometryTypes,
     showDepthMap,
+    selectDepthMap,
+    enableDepthMode,
+    disableDepthMode,
+    removeDepthMarkers,
     showAllDepthMaps,
     removeDepthMap,
     showZvonDepth,
@@ -583,6 +767,12 @@
     },
     getActiveDepthMapId: function () {
       return activeDepthMapId;
+    },
+    isDepthMapLoading: function () {
+      return depthMapLoading;
+    },
+    clearDepthDataCache: function () {
+      depthDataCache.clear();
     }
   };
 })(window);
