@@ -35,7 +35,7 @@ function createContainer() {
   };
 }
 
-function loadLayer(fetchImplementation) {
+function loadLayer(fetchImplementation, windowOverrides) {
   const container = createContainer();
   const document = {
     createElement() {
@@ -58,7 +58,8 @@ function loadLayer(fetchImplementation) {
       ok: true,
       status: 200,
       json: async () => contourData
-    }))
+    })),
+    ...windowOverrides
   };
 
   const context = vm.createContext({ window, document, console });
@@ -384,12 +385,19 @@ test("visible marker radius scales down by zoom while hitbox stays finger-friend
   assert.ok(interpolateZoomStops(hitboxRadius, 12) > interpolateZoomStops(markerRadius, 12));
 });
 
-test("depth hitbox click prevents the map click and selects the lake", async () => {
+test("depth hitbox click selects the lake and opens its water body preview", async () => {
+  const previewCalls = [];
   const { api, container } = loadLayer(async () => ({
     ok: true,
     status: 200,
     json: async () => zvonData
-  }));
+  }), {
+    KlevbyWaterDepthPreviewSheet: {
+      open(properties) {
+        previewCalls.push(properties);
+      }
+    }
+  });
   const map = createMap(container);
   api.enableDepthMode(map);
   const clickRegistration = map.calls.on.find(([eventName, layerId]) =>
@@ -397,8 +405,14 @@ test("depth hitbox click prevents the map click and selects the lake", async () 
   );
   const eventCalls = [];
 
+  const zvonProperties = {
+    ...api.getDepthMarkerFeatureCollection().features.find(
+      (feature) => feature.properties.id === "zvon"
+    ).properties,
+    name: "Звонь (кор.)"
+  };
   clickRegistration[2]({
-    features: [{ properties: { id: "zvon" } }],
+    features: [{ properties: zvonProperties }],
     preventDefault() {
       eventCalls.push("preventDefault");
     },
@@ -415,6 +429,34 @@ test("depth hitbox click prevents the map click and selects the lake", async () 
 
   assert.deepEqual(eventCalls, ["preventDefault", "originalPreventDefault", "stopPropagation"]);
   assert.equal(api.getActiveDepthMapId(), "zvon");
+  assert.equal(previewCalls.length, 1);
+  assert.equal(previewCalls[0].id, "zvon");
+  assert.equal(previewCalls[0].waterBodyId, "zvon");
+  assert.equal(previewCalls[0].name, "Звонь");
+  assert.equal(previewCalls[0].maxDepth, 18);
+  assert.equal(previewCalls[0].depthStatus, "available");
+  assert.equal(previewCalls[0].depthFormat, "geojson");
+});
+
+test("depth marker selection still succeeds when the preview sheet is unavailable", async () => {
+  const { api, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => zvonData
+  }));
+  const map = createMap(container);
+  api.enableDepthMode(map);
+  const clickRegistration = map.calls.on.find(([eventName, layerId]) =>
+    eventName === "click" && layerId === api.DEPTH_MARKER_HITBOX_LAYER_ID
+  );
+
+  clickRegistration[2]({
+    features: [{ properties: { id: "zvon" } }]
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(api.getActiveDepthMapId(), "zvon");
+  assert.ok(map.getSource(api.DEPTH_SOURCE_ID));
 });
 
 test("marker selection loads one map at a time and reuses the in-memory cache", async () => {
