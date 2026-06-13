@@ -1373,6 +1373,7 @@
 
       if (!waterDepthLayerEnabled) {
         window.KlevbyWaterDepthPreviewSheet?.close();
+        window.KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance);
       }
 
       if (activeMapProvider === "maplibre" && mapInstance) {
@@ -1400,6 +1401,7 @@
     });
 
     window.__klevbySyncWaterDepthControl = syncWaterDepthControl;
+    window.klevbySetWaterDepthLayerEnabled = setWaterDepthLayerEnabled;
 
     controls.addEventListener("keydown", function (event) {
       if (event.key === "Escape" && !filterSheet.hidden) {
@@ -2458,6 +2460,26 @@
   }
 
   window.klevbyEnsureMapInitialized = ensureMapInitialized;
+
+  window.klevbyShowWaterDepthContours = async function (waterBodyId) {
+    const contoursLayer = window.KlevbyWaterDepthContoursLayer;
+    if (!contoursLayer?.hasDraftContours(waterBodyId)) return false;
+
+    if (typeof window.showSection === "function") {
+      window.showSection("map");
+    }
+
+    const map = await ensureMapInitialized();
+    if (activeMapProvider !== "maplibre" || !map) return false;
+
+    if (typeof window.klevbySetWaterDepthLayerEnabled === "function") {
+      await window.klevbySetWaterDepthLayerEnabled(true);
+    } else {
+      waterDepthLayerEnabled = true;
+    }
+
+    return contoursLayer.showDraftContours(map, waterBodyId);
+  };
 
   window.addEventListener("klevby-auth-changed", function (event) {
     const eventUser = event?.detail?.user || null;

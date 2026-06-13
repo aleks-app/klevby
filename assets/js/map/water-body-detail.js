@@ -14,7 +14,7 @@
     const point = properties && typeof properties === "object" ? properties : {};
 
     return {
-      id: toDisplayText(point.id),
+      id: toDisplayText(point.water_body_id || point.id),
       name: toDisplayText(point.name, "Водоём"),
       waterType: toDisplayText(point.waterType, "Тип водоёма не указан"),
       region: toDisplayText(point.region),
@@ -63,6 +63,15 @@
       point.locationSource ? "Открытые источники / ручная проверка" : "Данные уточняются"
     );
 
+    const depthAction = section.querySelector(".water-body-detail-depth-action");
+    const hasDraftContours = global.KlevbyWaterDepthContoursLayer?.hasDraftContours(point.id) === true;
+    if (depthAction) {
+      depthAction.disabled = !hasDraftContours;
+      depthAction.textContent = hasDraftContours
+        ? "Показать схему глубин"
+        : "Схема глубин готовится";
+    }
+
     return true;
   }
 
@@ -86,11 +95,25 @@
     return true;
   }
 
+  async function showDepthContours() {
+    if (!selectedPoint || !global.KlevbyWaterDepthContoursLayer?.hasDraftContours(selectedPoint.id)) {
+      return false;
+    }
+
+    if (typeof global.klevbyShowWaterDepthContours !== "function") return false;
+    return global.klevbyShowWaterDepthContours(selectedPoint.id);
+  }
+
   function bind() {
     const section = document.getElementById(SECTION_ID);
     if (!section || section.dataset.waterBodyDetailBound === "true") return;
 
     section.dataset.waterBodyDetailBound = "true";
+    section.querySelector(".water-body-detail-depth-action")?.addEventListener("click", function () {
+      void showDepthContours().catch(function (error) {
+        console.warn("KlevGo: не удалось показать черновую схему глубин.", error);
+      });
+    });
   }
 
   if (document.readyState === "loading") {
@@ -106,6 +129,7 @@
     render,
     open,
     close,
+    showDepthContours,
     bind,
     getSelectedPoint: function () {
       return selectedPoint ? { ...selectedPoint } : null;

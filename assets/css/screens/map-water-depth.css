@@ -179,3 +179,38 @@
     transition: none;
   }
 }
+
+.water-depth-contours-draft-note {
+  position: absolute;
+  z-index: 7;
+  bottom: 34px;
+  left: 50%;
+  max-width: calc(100% - 150px);
+  padding: 4px 8px;
+  color: rgba(248, 250, 252, 0.82);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transform: translateX(-50%);
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+}
+
+.water-depth-contours-draft-note[hidden] {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .water-depth-contours-draft-note {
+    bottom: 40px;
+    max-width: calc(100% - 118px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
