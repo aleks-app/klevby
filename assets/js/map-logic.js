@@ -1480,13 +1480,19 @@
       }
 
       if (activeMapProvider === "maplibre" && mapInstance) {
-        const setWaterDepthLayerVisible = window.KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible;
-        if (typeof setWaterDepthLayerVisible === "function") {
-          await setWaterDepthLayerVisible(mapInstance, waterDepthLayerEnabled);
-        }
-
         if (waterDepthLayerEnabled) {
-          await window.KlevbyWaterDepthContoursLayer?.showAllDepthMaps(mapInstance);
+          const contoursLayer = window.KlevbyWaterDepthContoursLayer;
+
+          try {
+            await contoursLayer?.showAllDepthMaps(mapInstance);
+          } catch (error) {
+            console.warn("Klevby Map: failed to load depth maps", error);
+          }
+
+          if (!contoursLayer?.DEPTH_SOURCE_ID || !mapInstance.getSource(contoursLayer.DEPTH_SOURCE_ID)) {
+            waterDepthLayerEnabled = false;
+            contoursLayer?.removeDepthMap(mapInstance);
+          }
         }
       }
 
@@ -2036,13 +2042,6 @@
         const addWaterDepthLayer = window.KlevbyWaterDepthMapLayer?.addWaterDepthLayer;
         if (typeof addWaterDepthLayer === "function") {
           addWaterDepthLayer(map);
-        }
-
-        if (waterDepthLayerEnabled) {
-          const setWaterDepthLayerVisible = window.KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible;
-          if (typeof setWaterDepthLayerVisible === "function") {
-            setWaterDepthLayerVisible(map, true);
-          }
         }
 
         resolve(map);

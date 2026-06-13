@@ -440,6 +440,10 @@
     });
 
     activeDepthMapId = "all";
+    console.info("Klevby Map: depth maps loaded", {
+      maps: collections.length,
+      features: data.features.length
+    });
     return true;
   }
 

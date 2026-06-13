@@ -210,6 +210,9 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
 
 test("depth toggle loads every configured lake without changing the viewport", async () => {
   const requestedUrls = [];
+  const infoCalls = [];
+  const originalInfo = console.info;
+  console.info = (...args) => infoCalls.push(args);
   const { api, container } = loadLayer(async (url) => {
     requestedUrls.push(url);
     return {
@@ -221,16 +224,24 @@ test("depth toggle loads every configured lake without changing the viewport", a
   });
   const map = createMap(container);
 
-  assert.equal(await api.showAllDepthMaps(map), true);
-  assert.deepEqual(
-    requestedUrls,
-    JSON.parse(JSON.stringify(api.DEPTH_MAPS)).map((depthMap) => depthMap.url)
-  );
-  assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * 4);
-  assert.equal(map.calls.flyTo.length, 0);
-  assert.equal(map.calls.fitBounds, 0);
-  assert.equal(api.getActiveDepthMapId(), "all");
-  assert.equal(map.calls.addLayer, 5);
+  try {
+    assert.equal(await api.showAllDepthMaps(map), true);
+    assert.deepEqual(
+      requestedUrls,
+      JSON.parse(JSON.stringify(api.DEPTH_MAPS)).map((depthMap) => depthMap.url)
+    );
+    assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * 4);
+    assert.equal(map.calls.flyTo.length, 0);
+    assert.equal(map.calls.fitBounds, 0);
+    assert.equal(api.getActiveDepthMapId(), "all");
+    assert.equal(map.calls.addLayer, 5);
+    assert.deepEqual(JSON.parse(JSON.stringify(infoCalls)), [[
+      "Klevby Map: depth maps loaded",
+      { maps: 4, features: zvonData.features.length * 4 }
+    ]]);
+  } finally {
+    console.info = originalInfo;
+  }
 
   api.removeDepthMap(map);
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
@@ -336,6 +347,12 @@ test("map integration guards unavailable drafts and removes stale contours on de
   assert.ok(cleanupIndex >= 0);
   assert.ok(disabledBranchIndex > cleanupIndex);
   assert.match(mapLogic, /showAllDepthMaps\(mapInstance\)/);
+  assert.match(mapLogic, /failed to load depth maps/);
+  assert.match(mapLogic, /getSource\(contoursLayer\.DEPTH_SOURCE_ID\)/);
+  assert.equal(
+    mapLogic.includes("KlevbyWaterDepthMapLayer?.setWaterDepthLayerVisible"),
+    false
+  );
   assert.doesNotMatch(mapLogic, /mapDepthSheet|selectedDepthMapId/);
   assert.equal(mapLogic.includes("window.open"), false);
 });
