@@ -7,6 +7,8 @@
   const DEPTH_OVERVIEW_FILL_LAYER_ID = "klevby-water-depth-overview-fill";
   const DEPTH_FILL_LAYER_ID = "klevby-water-depth-selected-fill";
   const DEPTH_LINE_LAYER_ID = "klevby-water-depth-selected-lines";
+  const DEPTH_PIT_CANDIDATE_LAYER_ID = "klevby-water-depth-pit-candidates";
+  const DEPTH_SHOAL_CANDIDATE_LAYER_ID = "klevby-water-depth-shoal-candidates";
   const DEPTH_LABEL_LAYER_ID = "klevby-water-depth-selected-labels";
   const DEPTH_MARKER_SOURCE_ID = "klevby-depth-map-markers";
   const DEPTH_MARKER_LAYER_ID = "klevby-depth-map-markers";
@@ -17,6 +19,8 @@
     DEPTH_OVERVIEW_FILL_LAYER_ID,
     DEPTH_FILL_LAYER_ID,
     DEPTH_LINE_LAYER_ID,
+    DEPTH_PIT_CANDIDATE_LAYER_ID,
+    DEPTH_SHOAL_CANDIDATE_LAYER_ID,
     DEPTH_LABEL_LAYER_ID
   ];
   const DEPTH_MAPS = global.KlevbyDepthMapsRegistry?.maps || [];
@@ -240,6 +244,41 @@
     };
   }
 
+  function shouldShowDepthCandidateOverlay(depthMap) {
+    return depthMap?.validationStatus === "ok" &&
+      typeof global.KlevbyDepthFeatureClassifier?.analyzeDepthFeatureCollection === "function" &&
+      typeof global.KlevbyDepthFeatureClassifier?.classifyDepthFeature === "function";
+  }
+
+  function getClassifiedDepthFeatureCollection(data, depthMap) {
+    if (!shouldShowDepthCandidateOverlay(depthMap)) return data;
+
+    const classifier = global.KlevbyDepthFeatureClassifier;
+    const analysis = classifier.analyzeDepthFeatureCollection(data, depthMap);
+    if (!analysis?.classificationEnabled) return data;
+
+    return {
+      ...data,
+      features: data.features.map(function (feature) {
+        const classification = classifier.classifyDepthFeature(
+          feature,
+          depthMap,
+          analysis.thresholds
+        );
+
+        return {
+          ...feature,
+          properties: {
+            ...(feature?.properties || {}),
+            klevbyDepthBand: classification.band,
+            klevbyPitCandidate: classification.pitCandidate === true,
+            klevbyShoalCandidate: classification.shoalCandidate === true
+          }
+        };
+      })
+    };
+  }
+
   function getDepthLayerDefinitions(depthMap) {
     const visualPolicy = getDepthVisualPolicy(depthMap);
     const depthValue = ["abs", ["to-number", ["get", "depth_m"], 0]];
@@ -360,7 +399,7 @@
         15, 1.2
       ];
 
-    return [
+    const layers = [
       {
         id: DEPTH_OVERVIEW_HALO_LAYER_ID,
         type: "line",
@@ -432,7 +471,47 @@
           "line-width": lineWidth,
           "line-opacity": lineOpacity
         }
-      },
+      }
+    ];
+
+    if (shouldShowDepthCandidateOverlay(depthMap)) {
+      layers.push(
+        {
+          id: DEPTH_PIT_CANDIDATE_LAYER_ID,
+          type: "fill",
+          source: DEPTH_SOURCE_ID,
+          minzoom: 14,
+          filter: [
+            "all",
+            ["==", ["geometry-type"], "Polygon"],
+            ["==", ["get", "klevbyPitCandidate"], true]
+          ],
+          paint: {
+            "fill-color": "#312e81",
+            "fill-opacity": 0.16,
+            "fill-outline-color": "#4338ca"
+          }
+        },
+        {
+          id: DEPTH_SHOAL_CANDIDATE_LAYER_ID,
+          type: "fill",
+          source: DEPTH_SOURCE_ID,
+          minzoom: 14,
+          filter: [
+            "all",
+            ["==", ["geometry-type"], "Polygon"],
+            ["==", ["get", "klevbyShoalCandidate"], true]
+          ],
+          paint: {
+            "fill-color": "#67e8f9",
+            "fill-opacity": 0.12,
+            "fill-outline-color": "#a5f3fc"
+          }
+        }
+      );
+    }
+
+    layers.push(
       {
         id: DEPTH_LABEL_LAYER_ID,
         type: "symbol",
@@ -464,7 +543,9 @@
           "text-halo-blur": 0.5
         }
       }
-    ];
+    );
+
+    return layers;
   }
 
   function getDepthMarkerLabel(depthMap) {
@@ -649,8 +730,9 @@
 
       depthDataCache.set(depthMap.id, data);
       if (requestGeneration !== depthModeGeneration || (depthModeMap && depthModeMap !== map)) return false;
+      const sourceData = getClassifiedDepthFeatureCollection(data, depthMap);
       removeDepthMap(map);
-      map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data });
+      map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data: sourceData });
 
       // No beforeId is passed so the depth overlay stays readable above the basemap.
       getDepthLayerDefinitions(depthMap).forEach(function (layer) {
@@ -951,6 +1033,8 @@
     DEPTH_OVERVIEW_FILL_LAYER_ID,
     DEPTH_FILL_LAYER_ID,
     DEPTH_LINE_LAYER_ID,
+    DEPTH_PIT_CANDIDATE_LAYER_ID,
+    DEPTH_SHOAL_CANDIDATE_LAYER_ID,
     DEPTH_LABEL_LAYER_ID,
     DEPTH_MARKER_SOURCE_ID,
     DEPTH_MARKER_LAYER_ID,
@@ -973,6 +1057,8 @@
     getLineLayerDefinition,
     getDepthMapConfig,
     getDepthVisualPolicy,
+    shouldShowDepthCandidateOverlay,
+    getClassifiedDepthFeatureCollection,
     getDepthLayerDefinitions,
     getDepthMarkerLabel,
     getDepthMarkerFeatureCollection,

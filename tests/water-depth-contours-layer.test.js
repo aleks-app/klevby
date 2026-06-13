@@ -12,6 +12,10 @@ const registrySource = fs.readFileSync(
   path.join(__dirname, "../assets/js/map/depth-maps-registry.js"),
   "utf8"
 );
+const classifierSource = fs.readFileSync(
+  path.join(__dirname, "../assets/js/map/depth-feature-classifier.js"),
+  "utf8"
+);
 const contourData = JSON.parse(fs.readFileSync(
   path.join(__dirname, "../assets/data/depth-contours/zaslavskoe.draft.geojson"),
   "utf8"
@@ -35,7 +39,7 @@ function createContainer() {
   };
 }
 
-function loadLayer(fetchImplementation, windowOverrides) {
+function loadLayer(fetchImplementation, windowOverrides, options = {}) {
   const container = createContainer();
   const document = {
     createElement() {
@@ -66,6 +70,11 @@ function loadLayer(fetchImplementation, windowOverrides) {
   vm.runInContext(registrySource, context, {
     filename: "depth-maps-registry.js"
   });
+  if (options.loadClassifier !== false) {
+    vm.runInContext(classifierSource, context, {
+      filename: "depth-feature-classifier.js"
+    });
+  }
   vm.runInContext(layerSource, context, {
     filename: "water-depth-contours-layer.js"
   });
@@ -73,6 +82,7 @@ function loadLayer(fetchImplementation, windowOverrides) {
   return {
     api: window.KlevbyWaterDepthContoursLayer,
     registry: window.KlevbyDepthMapsRegistry,
+    window,
     container
   };
 }
@@ -289,7 +299,112 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
   assert.equal(labelLayer.paint["text-halo-color"], "#172554");
   assert.equal(map.calls.flyTo.length, 0);
   assert.equal(map.calls.fitBounds, 0);
-  assert.equal(map.calls.addLayer, 5);
+  assert.equal(map.calls.addLayer, 7);
+});
+
+test("selected validated map is enriched without mutating cached GeoJSON", async () => {
+  const { api, window, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => zvonData
+  }));
+  const classifierCalls = [];
+  const classifier = window.KlevbyDepthFeatureClassifier;
+  window.KlevbyDepthFeatureClassifier = {
+    ...classifier,
+    analyzeDepthFeatureCollection(data, depthMap) {
+      classifierCalls.push(depthMap.id);
+      return classifier.analyzeDepthFeatureCollection(data, depthMap);
+    }
+  };
+  const originalFirstProperties = { ...zvonData.features[0].properties };
+  const map = createMap(container);
+
+  assert.equal(await api.selectDepthMap(map, "zvon"), true);
+  const sourceFeatures = map.getSource(api.DEPTH_SOURCE_ID).data.features;
+  assert.equal(sourceFeatures.length, zvonData.features.length);
+  sourceFeatures.forEach((feature) => {
+    assert.ok(Object.hasOwn(feature.properties, "klevbyDepthBand"));
+    assert.equal(typeof feature.properties.klevbyPitCandidate, "boolean");
+    assert.equal(typeof feature.properties.klevbyShoalCandidate, "boolean");
+  });
+  assert.deepEqual(zvonData.features[0].properties, originalFirstProperties);
+  assert.notEqual(sourceFeatures[0], zvonData.features[0]);
+  assert.deepEqual(classifierCalls, ["zvon"]);
+});
+
+test("validated maps add polygon candidate overlays below the unchanged label layer", () => {
+  const { api, registry } = loadLayer();
+  const layers = api.getDepthLayerDefinitions(registry.getById("zvon"));
+  const pitLayer = layers.find((layer) => layer.id === api.DEPTH_PIT_CANDIDATE_LAYER_ID);
+  const shoalLayer = layers.find((layer) => layer.id === api.DEPTH_SHOAL_CANDIDATE_LAYER_ID);
+  const labelIndex = layers.findIndex((layer) => layer.id === api.DEPTH_LABEL_LAYER_ID);
+
+  assert.ok(pitLayer);
+  assert.ok(shoalLayer);
+  assert.ok(pitLayer.minzoom >= 13.5);
+  assert.ok(shoalLayer.minzoom >= 13.5);
+  assert.deepEqual(JSON.parse(JSON.stringify(pitLayer.filter)), [
+    "all",
+    ["==", ["geometry-type"], "Polygon"],
+    ["==", ["get", "klevbyPitCandidate"], true]
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(shoalLayer.filter)), [
+    "all",
+    ["==", ["geometry-type"], "Polygon"],
+    ["==", ["get", "klevbyShoalCandidate"], true]
+  ]);
+  assert.ok(labelIndex > layers.indexOf(pitLayer));
+  assert.ok(labelIndex > layers.indexOf(shoalLayer));
+});
+
+test("Valkovskoe and missing classifier keep the map available without candidate overlays", async () => {
+  const { api, registry, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => zvonData
+  }), {}, { loadClassifier: false });
+  const map = createMap(container);
+
+  assert.equal(api.shouldShowDepthCandidateOverlay(registry.getById("zvon")), false);
+  assert.equal(await api.selectDepthMap(map, "zvon"), true);
+  assert.equal(map.getLayer(api.DEPTH_PIT_CANDIDATE_LAYER_ID), null);
+  assert.equal(map.getLayer(api.DEPTH_SHOAL_CANDIDATE_LAYER_ID), null);
+  assert.equal(
+    Object.hasOwn(map.getSource(api.DEPTH_SOURCE_ID).data.features[0].properties, "klevbyDepthBand"),
+    false
+  );
+
+  const valkovskoeLayers = api.getDepthLayerDefinitions(registry.getById("valkovskoe"));
+  assert.equal(
+    valkovskoeLayers.some((layer) =>
+      layer.id === api.DEPTH_PIT_CANDIDATE_LAYER_ID ||
+      layer.id === api.DEPTH_SHOAL_CANDIDATE_LAYER_ID
+    ),
+    false
+  );
+});
+
+test("enabling depth mode neither fetches GeoJSON nor invokes the classifier", () => {
+  const requestedUrls = [];
+  const { api, window, container } = loadLayer(async (url) => {
+    requestedUrls.push(url);
+    return { ok: true, status: 200, json: async () => zvonData };
+  });
+  let classifierCalls = 0;
+  window.KlevbyDepthFeatureClassifier = {
+    analyzeDepthFeatureCollection() {
+      classifierCalls += 1;
+    },
+    classifyDepthFeature() {
+      classifierCalls += 1;
+    }
+  };
+  const map = createMap(container);
+
+  assert.equal(api.enableDepthMode(map), true);
+  assert.deepEqual(requestedUrls, []);
+  assert.equal(classifierCalls, 0);
 });
 
 test("depth visual policy enhances validated maps and keeps Valkovskoe calm", () => {
