@@ -285,8 +285,19 @@ test("depth map index is lightweight and contains precomputed marker coordinates
   });
   assert.equal(markers.type, "FeatureCollection");
   assert.equal(markers.features.length, 9);
+  markers.features.forEach((feature) => {
+    ["id", "waterBodyId", "depthMapId", "depthStatus", "depthFormat"].forEach((property) => {
+      assert.ok(Object.hasOwn(feature.properties, property), `${feature.properties.id}.${property}`);
+    });
+  });
+  const zvonMarker = markers.features.find((feature) => feature.properties.id === "zvon");
+  assert.equal(zvonMarker.properties.id, "zvon");
+  assert.equal(zvonMarker.properties.waterBodyId, "zvon");
+  assert.equal(zvonMarker.properties.depthMapId, "zvon");
+  assert.equal(zvonMarker.properties.depthStatus, "available");
+  assert.equal(zvonMarker.properties.depthFormat, "geojson");
   assert.equal(layerSource.includes("getBounds(data)"), true);
-  assert.doesNotMatch(api.getDepthMarkerFeatureCollection.toString(), /fetch|url|GeoJSON/i);
+  assert.doesNotMatch(api.getDepthMarkerFeatureCollection.toString(), /fetch|depthMap\.url/i);
 });
 
 test("depth layer uses the shared registry as its compatibility DEPTH_MAPS alias", () => {

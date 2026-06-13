@@ -20,6 +20,9 @@
     DEPTH_LABEL_LAYER_ID
   ];
   const DEPTH_MAPS = global.KlevbyDepthMapsRegistry?.maps || [];
+  const AVAILABLE_DEPTH_MAPS = global.KlevbyDepthMapsRegistry?.getAvailable?.() || DEPTH_MAPS.filter(function (depthMap) {
+    return depthMap.status !== "disabled";
+  });
   const ZVON_CONTOUR_URL = global.KlevbyDepthMapsRegistry?.getById("zvon")?.url
     || "assets/data/depth-contours/zvon.depth.full.geojson";
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
@@ -381,13 +384,17 @@
 
     return {
       type: "FeatureCollection",
-      features: DEPTH_MAPS.filter(function (depthMap) {
+      features: AVAILABLE_DEPTH_MAPS.filter(function (depthMap) {
         return depthMap.id !== normalizedExcludedMapId;
       }).map(function (depthMap) {
         return {
           type: "Feature",
           properties: {
             id: depthMap.id,
+            waterBodyId: depthMap.waterBodyId || depthMap.id,
+            depthMapId: depthMap.id,
+            depthStatus: depthMap.status || "available",
+            depthFormat: depthMap.format || "geojson",
             name: getDepthMarkerLabel(depthMap),
             maxDepth: depthMap.maxDepth || null
           },
