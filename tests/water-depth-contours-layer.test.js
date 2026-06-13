@@ -238,7 +238,12 @@ test("depth map index is lightweight and contains precomputed marker coordinates
     ["zvon", "Звонь"],
     ["necherdo", "Нещердо"],
     ["valkovskoe", "Вальковское"],
-    ["yanovo", "Яново"]
+    ["yanovo", "Яново"],
+    ["leshno", "Лешно"],
+    ["lugovoe", "Луговое"],
+    ["obkomovskoe", "Обкомовское"],
+    ["paulyskoe", "Паульское"],
+    ["stradechskoe", "Страдечское"]
   ]);
   index.forEach((depthMap) => {
     assert.equal(depthMap.center.length, 2);
@@ -246,7 +251,7 @@ test("depth map index is lightweight and contains precomputed marker coordinates
     assert.ok(depthMap.featureCount > 0);
   });
   assert.equal(markers.type, "FeatureCollection");
-  assert.equal(markers.features.length, 4);
+  assert.equal(markers.features.length, 9);
   assert.equal(layerSource.includes("getBounds(data)"), true);
   assert.doesNotMatch(api.getDepthMarkerFeatureCollection.toString(), /fetch|url|GeoJSON/i);
 });
@@ -332,7 +337,7 @@ test("marker selection loads one map at a time and reuses the in-memory cache", 
     JSON.parse(JSON.stringify(
       map.getSource(api.DEPTH_MARKER_SOURCE_ID).data.features.map((feature) => feature.properties.id)
     )),
-    ["necherdo", "valkovskoe", "yanovo"]
+    ["necherdo", "valkovskoe", "yanovo", "leshno", "lugovoe", "obkomovskoe", "paulyskoe", "stradechskoe"]
   );
   assert.equal(await api.selectDepthMap(map, "necherdo"), true);
   assert.equal(api.getActiveDepthMapId(), "necherdo");
@@ -340,7 +345,7 @@ test("marker selection loads one map at a time and reuses the in-memory cache", 
     JSON.parse(JSON.stringify(
       map.getSource(api.DEPTH_MARKER_SOURCE_ID).data.features.map((feature) => feature.properties.id)
     )),
-    ["zvon", "valkovskoe", "yanovo"]
+    ["zvon", "valkovskoe", "yanovo", "leshno", "lugovoe", "obkomovskoe", "paulyskoe", "stradechskoe"]
   );
   assert.equal(await api.selectDepthMap(map, "zvon"), true);
   assert.equal(api.getActiveDepthMapId(), "zvon");
@@ -376,7 +381,7 @@ test("depth toggle loads every configured lake without changing the viewport", a
       requestedUrls,
       JSON.parse(JSON.stringify(api.DEPTH_MAPS)).map((depthMap) => depthMap.url)
     );
-    assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * 4);
+    assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * JSON.parse(JSON.stringify(api.DEPTH_MAPS)).length);
     assert.equal(map.calls.flyTo.length, 0);
     assert.equal(map.calls.fitBounds, 0);
     assert.equal(api.getActiveDepthMapId(), "all");
@@ -384,9 +389,9 @@ test("depth toggle loads every configured lake without changing the viewport", a
     assert.deepEqual(JSON.parse(JSON.stringify(infoCalls)), [[
       "Klevby Map: depth maps loaded",
       {
-        successfulMaps: 4,
+        successfulMaps: JSON.parse(JSON.stringify(api.DEPTH_MAPS)).length,
         failedMaps: 0,
-        totalFeatures: zvonData.features.length * 4
+        totalFeatures: zvonData.features.length * JSON.parse(JSON.stringify(api.DEPTH_MAPS)).length
       }
     ]]);
   } finally {
@@ -416,7 +421,7 @@ test("depth toggle keeps successfully loaded lakes when another GeoJSON fails", 
 
   try {
     assert.equal(await api.showAllDepthMaps(map), true);
-    assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * 3);
+    assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * (JSON.parse(JSON.stringify(api.DEPTH_MAPS)).length - 1));
     assert.equal(map.calls.addLayer, 5);
     assert.equal(warningCalls.length, 1);
     assert.equal(warningCalls[0][1].name, "Нещердо");
@@ -425,9 +430,9 @@ test("depth toggle keeps successfully loaded lakes when another GeoJSON fails", 
     assert.deepEqual(JSON.parse(JSON.stringify(infoCalls[0])), [
       "Klevby Map: depth maps loaded",
       {
-        successfulMaps: 3,
+        successfulMaps: JSON.parse(JSON.stringify(api.DEPTH_MAPS)).length - 1,
         failedMaps: 1,
-        totalFeatures: zvonData.features.length * 3
+        totalFeatures: zvonData.features.length * (JSON.parse(JSON.stringify(api.DEPTH_MAPS)).length - 1)
       }
     ]);
   } finally {

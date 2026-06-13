@@ -19,7 +19,7 @@ test("DEPTH_MAPS points to valid non-empty local FeatureCollections", () => {
   }));
 
   const maps = JSON.parse(JSON.stringify(window.KlevbyWaterDepthContoursLayer.DEPTH_MAPS));
-  assert.equal(maps.length, 4);
+  assert.equal(maps.length, 9);
 
   maps.forEach((depthMap) => {
     assert.equal(depthMap.center.length, 2);

@@ -55,6 +55,46 @@
       bbox: Object.freeze([28.771214546, 55.259325991, 28.867258951, 55.295243285]),
       featureCount: 623,
       maxDepth: 13
+    }),
+    Object.freeze({
+      id: "leshno",
+      name: "Лешно",
+      url: "assets/data/depth-contours/leshno.depth.full.geojson",
+      center: Object.freeze([29.255579680, 55.598471895]),
+      bbox: Object.freeze([29.245291370, 55.593720224, 29.265867991, 55.603223567]),
+      featureCount: 35
+    }),
+    Object.freeze({
+      id: "lugovoe",
+      name: "Луговое",
+      url: "assets/data/depth-contours/lugovoe.depth.full.geojson",
+      center: Object.freeze([29.967080875, 55.453690057]),
+      bbox: Object.freeze([29.959083083, 55.450457991, 29.975078668, 55.456922123]),
+      featureCount: 103
+    }),
+    Object.freeze({
+      id: "obkomovskoe",
+      name: "Обкомовское",
+      url: "assets/data/depth-contours/obkomovskoe.depth.full.geojson",
+      center: Object.freeze([31.037200013, 52.441768444]),
+      bbox: Object.freeze([31.030024146, 52.439642090, 31.044375881, 52.443894799]),
+      featureCount: 678
+    }),
+    Object.freeze({
+      id: "paulyskoe",
+      name: "Паульское",
+      url: "assets/data/depth-contours/paulyskoe.depth.full.geojson",
+      center: Object.freeze([28.915159180, 55.241522503]),
+      bbox: Object.freeze([28.881858884, 55.216754073, 28.948459476, 55.266290934]),
+      featureCount: 334
+    }),
+    Object.freeze({
+      id: "stradechskoe",
+      name: "Страдечское",
+      url: "assets/data/depth-contours/stradechskoe.depth.full.geojson",
+      center: Object.freeze([23.745543765, 51.880476607]),
+      bbox: Object.freeze([23.742830281, 51.877809626, 23.748257249, 51.883143588]),
+      featureCount: 51
     })
   ]);
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
