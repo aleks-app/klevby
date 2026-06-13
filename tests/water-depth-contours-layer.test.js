@@ -144,7 +144,7 @@ test("draft zones use unique KlevGo fill/line ids and depth-based styling", () =
   ]);
 });
 
-test("Zvon diagnostic loads the bundled GeoJSON and adds visible layers above the basemap", async () => {
+test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async () => {
   const requestedUrls = [];
   const { api, container } = loadLayer(async (url) => {
     requestedUrls.push(url);
@@ -165,13 +165,29 @@ test("Zvon diagnostic loads the bundled GeoJSON and adds visible layers above th
     Point: 192
   });
   assert.ok(map.getSource(api.ZVON_SOURCE_ID));
-  assert.equal(map.getLayer(api.ZVON_FILL_LAYER_ID).paint["fill-color"], "#ff0000");
-  assert.equal(map.getLayer(api.ZVON_FILL_LAYER_ID).paint["fill-opacity"], 0.65);
-  assert.equal(map.getLayer(api.ZVON_LINE_LAYER_ID).paint["line-color"], "#ffff00");
-  assert.equal(map.getLayer(api.ZVON_LINE_LAYER_ID).paint["line-width"], 3);
-  assert.equal(map.getLayer(api.ZVON_POINT_LAYER_ID).paint["circle-color"], "#ffffff");
-  assert.equal(map.getLayer(api.ZVON_POINT_LAYER_ID).paint["circle-radius"], 4);
+  const fillLayer = map.getLayer(api.ZVON_FILL_LAYER_ID);
+  const lineLayer = map.getLayer(api.ZVON_LINE_LAYER_ID);
+  const labelLayer = map.getLayer(api.ZVON_POINT_LAYER_ID);
+  assert.equal(fillLayer.paint["fill-color"][0], "case");
+  assert.equal(fillLayer.paint["fill-color"][2][0], "interpolate");
+  assert.equal(fillLayer.paint["fill-opacity"], 0.52);
+  assert.equal(lineLayer.paint["line-color"], "#7dd3fc");
+  assert.deepEqual(JSON.parse(JSON.stringify(lineLayer.paint["line-width"])), [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    10, 1,
+    16, 1.5
+  ]);
+  assert.equal(lineLayer.paint["line-opacity"], 0.82);
+  assert.equal(labelLayer.type, "symbol");
+  assert.equal(labelLayer.minzoom, 13);
+  assert.equal(labelLayer.layout["text-size"][4], 10);
+  assert.equal(labelLayer.layout["text-size"][6], 11);
+  assert.equal(labelLayer.paint["text-color"], "#dbeafe");
+  assert.equal(labelLayer.paint["text-halo-color"], "#172554");
   assert.deepEqual(JSON.parse(JSON.stringify(map.calls.flyTo[0].center)), [28.531068, 55.063978]);
+  assert.equal(map.calls.flyTo[0].zoom, 13);
   assert.equal(map.calls.addLayer, 3);
 });
 
