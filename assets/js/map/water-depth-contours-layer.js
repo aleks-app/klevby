@@ -2,13 +2,30 @@
   const SOURCE_ID = "klevby-water-depth-contours-draft";
   const FILL_LAYER_ID = "klevby-water-depth-contours-draft-fill";
   const LINE_LAYER_ID = "klevby-water-depth-contours-draft-lines";
-  const ZVON_SOURCE_ID = "klevby-water-depth-zvon";
-  const ZVON_FILL_LAYER_ID = "klevby-water-depth-zvon-fill";
-  const ZVON_LINE_LAYER_ID = "klevby-water-depth-zvon-lines";
-  const ZVON_POINT_LAYER_ID = "klevby-water-depth-zvon-points";
+  const DEPTH_SOURCE_ID = "klevby-water-depth-selected";
+  const DEPTH_FILL_LAYER_ID = "klevby-water-depth-selected-fill";
+  const DEPTH_LINE_LAYER_ID = "klevby-water-depth-selected-lines";
+  const DEPTH_LABEL_LAYER_ID = "klevby-water-depth-selected-labels";
+  const DEPTH_LAYER_IDS = [DEPTH_FILL_LAYER_ID, DEPTH_LINE_LAYER_ID, DEPTH_LABEL_LAYER_ID];
   const ZVON_CONTOUR_URL = "assets/data/depth-contours/zvon.depth.full.geojson";
-  const ZVON_CENTER = [28.531068, 55.063978];
-  const ZVON_LAYER_IDS = [ZVON_FILL_LAYER_ID, ZVON_LINE_LAYER_ID, ZVON_POINT_LAYER_ID];
+  const DEPTH_MAPS = Object.freeze([
+    Object.freeze({ id: "zvon", name: "Звонь", url: ZVON_CONTOUR_URL }),
+    Object.freeze({
+      id: "necherdo",
+      name: "Нещердо",
+      url: "assets/data/depth-contours/necherdo.depth.full.geojson"
+    }),
+    Object.freeze({
+      id: "valkovskoe",
+      name: "Вальковское",
+      url: "assets/data/depth-contours/valkovskoe.depth.full.geojson"
+    }),
+    Object.freeze({
+      id: "yanovo",
+      name: "Яново",
+      url: "assets/data/depth-contours/yanovo.depth.full.geojson"
+    })
+  ]);
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
   const DISCLAIMER_TEXT = "Глубины ориентировочные · данные уточняются";
   // Reserved for future proper, licensed, or imported depth-map data.
@@ -16,6 +33,7 @@
   const DRAFT_CONTOURS = Object.freeze({});
 
   let activeWaterBodyId = "";
+  let activeDepthMapId = "";
 
   function normalizeWaterBodyId(value) {
     return typeof value === "string" || typeof value === "number"
@@ -198,7 +216,14 @@
     }, { Polygon: 0, LineString: 0, Point: 0 });
   }
 
-  function getZvonLayerDefinitions() {
+  function getDepthMapConfig(mapId) {
+    const normalizedId = normalizeWaterBodyId(mapId);
+    return DEPTH_MAPS.find(function (depthMap) {
+      return depthMap.id === normalizedId;
+    }) || null;
+  }
+
+  function getDepthLayerDefinitions() {
     const depthValue = ["abs", ["to-number", ["get", "depth_m"], 0]];
     const depthColor = [
       "case",
@@ -219,9 +244,9 @@
 
     return [
       {
-        id: ZVON_FILL_LAYER_ID,
+        id: DEPTH_FILL_LAYER_ID,
         type: "fill",
-        source: ZVON_SOURCE_ID,
+        source: DEPTH_SOURCE_ID,
         filter: ["==", ["geometry-type"], "Polygon"],
         paint: {
           "fill-color": depthColor,
@@ -229,9 +254,10 @@
         }
       },
       {
-        id: ZVON_LINE_LAYER_ID,
+        id: DEPTH_LINE_LAYER_ID,
         type: "line",
-        source: ZVON_SOURCE_ID,
+        source: DEPTH_SOURCE_ID,
+        minzoom: 11,
         filter: ["==", ["geometry-type"], "LineString"],
         layout: {
           "line-cap": "round",
@@ -250,9 +276,9 @@
         }
       },
       {
-        id: ZVON_POINT_LAYER_ID,
+        id: DEPTH_LABEL_LAYER_ID,
         type: "symbol",
-        source: ZVON_SOURCE_ID,
+        source: DEPTH_SOURCE_ID,
         minzoom: 13,
         filter: ["==", ["geometry-type"], "Point"],
         layout: {
@@ -283,70 +309,94 @@
     ];
   }
 
-  function removeZvonDepth(map) {
+  function removeDepthMap(map) {
     if (!map) return false;
 
-    ZVON_LAYER_IDS.slice().reverse().forEach(function (layerId) {
+    DEPTH_LAYER_IDS.slice().reverse().forEach(function (layerId) {
       if (typeof map.getLayer === "function" && map.getLayer(layerId)) {
         map.removeLayer(layerId);
       }
     });
 
-    if (typeof map.getSource === "function" && map.getSource(ZVON_SOURCE_ID)) {
-      map.removeSource(ZVON_SOURCE_ID);
+    if (typeof map.getSource === "function" && map.getSource(DEPTH_SOURCE_ID)) {
+      map.removeSource(DEPTH_SOURCE_ID);
     }
 
+    activeDepthMapId = "";
     return true;
   }
 
-  async function showZvonDepth(map) {
+  async function showDepthMap(map, mapId) {
     if (!map || typeof global.fetch !== "function") return false;
+    const depthMap = getDepthMapConfig(mapId);
+    if (!depthMap) return false;
 
-    console.info("Klevby depth diagnostic: started loading Zvon depth", ZVON_CONTOUR_URL);
-    const response = await global.fetch(ZVON_CONTOUR_URL);
-    console.info("Klevby depth diagnostic: fetch response", {
-      status: response.status,
-      ok: response.ok,
-      url: response.url || ZVON_CONTOUR_URL
-    });
+    const response = await global.fetch(depthMap.url);
 
     if (!response.ok) {
-      throw new Error(`Не удалось загрузить глубины озера Звонь: ${response.status}`);
+      throw new Error(`Не удалось загрузить глубины «${depthMap.name}»: ${response.status}`);
     }
 
     const data = await response.json();
     const featureCount = Array.isArray(data?.features) ? data.features.length : 0;
-    const geometryCounts = countGeometryTypes(data);
-    console.info("Klevby depth diagnostic: GeoJSON loaded", {
-      featureCount,
-      geometryCounts
-    });
 
     if (data?.type !== "FeatureCollection" || !featureCount) {
-      throw new Error("Некорректные данные глубин озера Звонь");
+      throw new Error(`Некорректные данные глубин «${depthMap.name}»`);
     }
 
-    removeZvonDepth(map);
-    map.addSource(ZVON_SOURCE_ID, { type: "geojson", data });
+    removeDepthMap(map);
+    map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data });
 
     // No beforeId is passed so the depth overlay stays readable above the basemap.
-    getZvonLayerDefinitions().forEach(function (layer) {
+    getDepthLayerDefinitions().forEach(function (layer) {
       map.addLayer(layer);
     });
 
-    console.info("Klevby depth diagnostic: rendered map objects", {
-      source: map.getSource(ZVON_SOURCE_ID),
-      layers: ZVON_LAYER_IDS.reduce(function (layers, layerId) {
-        layers[layerId] = map.getLayer(layerId);
-        return layers;
-      }, {})
+    activeDepthMapId = depthMap.id;
+    return true;
+  }
+
+  async function showAllDepthMaps(map) {
+    if (!map || typeof global.fetch !== "function") return false;
+
+    const collections = await Promise.all(DEPTH_MAPS.map(async function (depthMap) {
+      const response = await global.fetch(depthMap.url);
+
+      if (!response.ok) {
+        throw new Error(`Не удалось загрузить глубины «${depthMap.name}»: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data?.type !== "FeatureCollection" || !Array.isArray(data.features) || !data.features.length) {
+        throw new Error(`Некорректные данные глубин «${depthMap.name}»`);
+      }
+
+      return data;
+    }));
+
+    const data = {
+      type: "FeatureCollection",
+      features: collections.flatMap(function (collection) {
+        return collection.features;
+      })
+    };
+
+    removeDepthMap(map);
+    map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data });
+    getDepthLayerDefinitions().forEach(function (layer) {
+      map.addLayer(layer);
     });
 
-    if (typeof map.flyTo === "function") {
-      map.flyTo({ center: ZVON_CENTER, zoom: 13, duration: 500 });
-    }
-
+    activeDepthMapId = "all";
     return true;
+  }
+
+  function showZvonDepth(map) {
+    return showDepthMap(map, "zvon");
+  }
+
+  function removeZvonDepth(map) {
+    return removeDepthMap(map);
   }
 
   function getBounds(data) {
@@ -415,12 +465,16 @@
     SOURCE_ID,
     FILL_LAYER_ID,
     LINE_LAYER_ID,
-    ZVON_SOURCE_ID,
-    ZVON_FILL_LAYER_ID,
-    ZVON_LINE_LAYER_ID,
-    ZVON_POINT_LAYER_ID,
+    DEPTH_SOURCE_ID,
+    DEPTH_FILL_LAYER_ID,
+    DEPTH_LINE_LAYER_ID,
+    DEPTH_LABEL_LAYER_ID,
+    DEPTH_MAPS,
+    ZVON_SOURCE_ID: DEPTH_SOURCE_ID,
+    ZVON_FILL_LAYER_ID: DEPTH_FILL_LAYER_ID,
+    ZVON_LINE_LAYER_ID: DEPTH_LINE_LAYER_ID,
+    ZVON_POINT_LAYER_ID: DEPTH_LABEL_LAYER_ID,
     ZVON_CONTOUR_URL,
-    ZVON_CENTER,
     DISCLAIMER_CLASS,
     DISCLAIMER_TEXT,
     DRAFT_CONTOURS,
@@ -430,8 +484,13 @@
     isDraftFeatureCollection,
     getFillLayerDefinition,
     getLineLayerDefinition,
-    getZvonLayerDefinitions,
+    getDepthMapConfig,
+    getDepthLayerDefinitions,
+    getZvonLayerDefinitions: getDepthLayerDefinitions,
     countGeometryTypes,
+    showDepthMap,
+    showAllDepthMaps,
+    removeDepthMap,
     showZvonDepth,
     removeZvonDepth,
     showDraftContours,
@@ -439,6 +498,9 @@
     setDisclaimerVisible,
     getActiveWaterBodyId: function () {
       return activeWaterBodyId;
+    },
+    getActiveDepthMapId: function () {
+      return activeDepthMapId;
     }
   };
 })(window);

@@ -1475,7 +1475,7 @@
       window.KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance);
 
       if (!waterDepthLayerEnabled) {
-        window.KlevbyWaterDepthContoursLayer?.removeZvonDepth(mapInstance);
+        window.KlevbyWaterDepthContoursLayer?.removeDepthMap(mapInstance);
         window.KlevbyWaterDepthPreviewSheet?.close();
       }
 
@@ -1486,7 +1486,7 @@
         }
 
         if (waterDepthLayerEnabled) {
-          await window.KlevbyWaterDepthContoursLayer?.showZvonDepth(mapInstance);
+          await window.KlevbyWaterDepthContoursLayer?.showAllDepthMaps(mapInstance);
         }
       }
 
