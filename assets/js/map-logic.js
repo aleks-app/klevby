@@ -34,6 +34,7 @@
   let mapInitPromise = null;
   let activeMapProvider = null;
   let maplibreSpotMarkers = [];
+  let lastWaterDepthControlDiagnostic = null;
 
   let currentMapUser = null;
   let userRefreshPromise = null;
@@ -1262,6 +1263,30 @@
     getMapStatusHost(mapSection).appendChild(hint);
   }
 
+  function isWaterDepthControlAvailable(state) {
+    return state.activeMapProvider === "maplibre" && state.mapReady === true && state.hasMapInstance === true;
+  }
+
+  function syncWaterDepthControlElement(button, state) {
+    const isAvailable = isWaterDepthControlAvailable(state);
+    const isEnabled = isAvailable && Boolean(state.waterDepthLayerEnabled);
+
+    button.classList.toggle("is-unavailable", !isAvailable);
+    button.classList.toggle("is-active", isEnabled);
+    button.setAttribute("aria-pressed", String(isEnabled));
+
+    return !isAvailable;
+  }
+
+  function handleWaterDepthControlClick(button, toggle) {
+    if (!button || button.classList.contains("is-unavailable")) {
+      return false;
+    }
+
+    toggle();
+    return true;
+  }
+
   function addMapActions(mapSection) {
     if (mapSection.querySelector("#mapActions")) return;
 
@@ -1362,10 +1387,19 @@
     const syncWaterDepthControl = function () {
       if (!depthsButton) return;
 
-      const isMapLibreReady = activeMapProvider === "maplibre" && mapReady && Boolean(mapInstance);
-      depthsButton.classList.toggle("is-unavailable", !isMapLibreReady);
-      depthsButton.classList.toggle("is-active", isMapLibreReady && waterDepthLayerEnabled);
-      depthsButton.setAttribute("aria-pressed", String(isMapLibreReady && waterDepthLayerEnabled));
+      const state = {
+        activeMapProvider,
+        mapReady,
+        hasMapInstance: Boolean(mapInstance),
+        waterDepthLayerEnabled
+      };
+      const isUnavailable = syncWaterDepthControlElement(depthsButton, state);
+      const diagnostic = JSON.stringify({ ...state, isUnavailable });
+
+      if (diagnostic !== lastWaterDepthControlDiagnostic) {
+        lastWaterDepthControlDiagnostic = diagnostic;
+        console.info("Klevby Map: water depth control sync", { ...state, isUnavailable });
+      }
     };
 
     const setWaterDepthLayerEnabled = async function (enabled) {
@@ -1387,12 +1421,10 @@
     };
 
     depthsButton?.addEventListener("click", function () {
-      if (depthsButton.classList.contains("is-unavailable")) {
-        return;
-      }
-
-      void setWaterDepthLayerEnabled(!waterDepthLayerEnabled).finally(function () {
-        depthsButton.blur();
+      handleWaterDepthControlClick(depthsButton, function () {
+        void setWaterDepthLayerEnabled(!waterDepthLayerEnabled).finally(function () {
+          depthsButton.blur();
+        });
       });
     });
 
@@ -1692,12 +1724,17 @@
     await loadFishingSpots();
   }
 
+  function markMapReady(provider, instance) {
+    mapInstance = instance;
+    activeMapProvider = provider;
+    mapReady = true;
+    window.__klevbySyncWaterDepthControl?.();
+  }
+
   function createYandexMap(mapEl) {
     if (mapInstance) return mapInstance;
 
-    activeMapProvider = "yandex";
-
-    mapInstance = new ymaps.Map(mapEl, {
+    const map = new ymaps.Map(mapEl, {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       controls: ["geolocationControl", "zoomControl", "fullscreenControl"]
@@ -1713,15 +1750,15 @@
       preset: "islands#greenDotIcon"
     });
 
-    mapInstance.geoObjects.add(spotsCollection);
-    mapInstance.geoObjects.add(postsCollection);
+    map.geoObjects.add(spotsCollection);
+    map.geoObjects.add(postsCollection);
 
-    mapInstance.events.add("click", function (event) {
+    map.events.add("click", function (event) {
       const coords = event.get("coords");
       handleMapClick(coords);
     });
 
-    mapReady = true;
+    markMapReady("yandex", map);
 
     setTimeout(function () {
       if (mapInstance && mapInstance.container) {
@@ -1729,7 +1766,7 @@
       }
     }, 500);
 
-    return mapInstance;
+    return map;
   }
 
   function getRussianLabelExpression(value) {
@@ -1825,11 +1862,12 @@
 
     return new Promise(function (resolve, reject) {
       let settled = false;
+      let lastPreloadError = null;
       const styleUrl = getMapTilerStyleUrl(providerConfig.maptilerStyleUrl, providerConfig.maptilerKey);
       const timeoutId = setTimeout(function () {
         if (settled) return;
         settled = true;
-        reject(new Error("MapLibre/MapTiler initialization timed out"));
+        reject(lastPreloadError || new Error("MapLibre/MapTiler initialization timed out"));
       }, MAPLIBRE_API_LOAD_TIMEOUT_MS);
       console.info("Klevby Map: map constructor start", {
         provider: "maplibre",
@@ -1901,7 +1939,7 @@
         settled = true;
         clearTimeout(timeoutId);
         localizeMapLibreLabels(map);
-        mapReady = true;
+        markMapReady("maplibre", map);
         map.resize();
 
         const addWaterDepthLayer = window.KlevbyWaterDepthMapLayer?.addWaterDepthLayer;
@@ -1916,8 +1954,6 @@
           }
         }
 
-        window.__klevbySyncWaterDepthControl?.();
-
         resolve(map);
       });
 
@@ -1930,14 +1966,13 @@
             styleUrl,
             eventOrError: event,
             error,
+            reason: "waiting-for-load-or-timeout",
             secrets: [providerConfig.maptilerKey]
           }));
+          lastPreloadError = error;
           if (error && (typeof error === "object" || typeof error === "function")) {
             mapDiagnosticContextByError.set(error, event);
           }
-          settled = true;
-          clearTimeout(timeoutId);
-          reject(error);
           return;
         }
 
