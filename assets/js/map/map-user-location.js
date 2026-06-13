@@ -4,6 +4,8 @@
   const LINE_LAYER_ID = "klevby-user-location-accuracy-line";
   const GEOLOCATION_DENIED_MESSAGE = "Разрешите доступ к геолокации, чтобы видеть себя на карте";
   const GEOLOCATION_UNAVAILABLE_MESSAGE = "Не удалось определить местоположение. Проверьте настройки геолокации.";
+  const USER_LOCATION_FOCUS_ZOOM = 17;
+  const USER_LOCATION_FOCUS_DURATION_MS = 900;
   const GEOLOCATION_OPTIONS = {
     enableHighAccuracy: true,
     timeout: 15000,
@@ -58,6 +60,7 @@
     let followMode = false;
     let requestPending = false;
     let programmaticMove = false;
+    let hasCenteredOnFirstFix = false;
 
     function syncButton() {
       button.classList.remove("is-unavailable");
@@ -108,7 +111,6 @@
       const latitude = Number(position?.coords?.latitude);
       if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
 
-      const isFirstFix = !marker;
       lastPosition = position;
       ensureAccuracyLayer();
       map.getSource(SOURCE_ID)?.setData(createAccuracyFeature(
@@ -138,16 +140,15 @@
         syncButton();
       }
 
-      if (isFirstFix) {
+      if (!hasCenteredOnFirstFix) {
+        hasCenteredOnFirstFix = true;
         programmaticMove = true;
         map.flyTo({
           center: [longitude, latitude],
-          zoom: Math.max(Number(map.getZoom?.()) || 0, 15),
+          zoom: Math.max(Number(map.getZoom?.()) || 0, USER_LOCATION_FOCUS_ZOOM),
+          duration: USER_LOCATION_FOCUS_DURATION_MS,
           essential: true
         });
-      } else if (followMode) {
-        programmaticMove = true;
-        map.easeTo({ center: [longitude, latitude], duration: 700 });
       }
     }
 
@@ -179,6 +180,7 @@
       followMode = false;
       requestPending = false;
       lastPosition = null;
+      hasCenteredOnFirstFix = false;
       clearLocationVisuals();
       syncButton();
     }
@@ -238,6 +240,7 @@
     FILL_LAYER_ID,
     LINE_LAYER_ID,
     GEOLOCATION_DENIED_MESSAGE,
+    USER_LOCATION_FOCUS_ZOOM,
     createAccuracyFeature,
     createController
   };
