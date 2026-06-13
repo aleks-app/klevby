@@ -105,18 +105,54 @@ test("draft contour availability is local and limited to Zaslavskoe", () => {
   assert.equal(api.hasDraftContours("unknown-water"), false);
 });
 
-test("draft contours use unique KlevGo source/layer ids and depth-based styling", () => {
+test("draft zones use unique KlevGo fill/line ids and depth-based styling", () => {
   const { api } = loadLayer();
-  const layer = api.getLineLayerDefinition();
+  const fillLayer = api.getFillLayerDefinition();
+  const lineLayer = api.getLineLayerDefinition();
 
   assert.equal(api.SOURCE_ID, "klevby-water-depth-contours-draft");
+  assert.equal(api.FILL_LAYER_ID, "klevby-water-depth-contours-draft-fill");
   assert.equal(api.LINE_LAYER_ID, "klevby-water-depth-contours-draft-lines");
-  assert.equal(layer.type, "line");
-  assert.deepEqual(JSON.parse(JSON.stringify(layer.paint["line-color"])).slice(0, 3), [
+  assert.equal(new Set([api.SOURCE_ID, api.FILL_LAYER_ID, api.LINE_LAYER_ID]).size, 3);
+  assert.equal(fillLayer.type, "fill");
+  assert.equal(lineLayer.type, "line");
+  assert.deepEqual(JSON.parse(JSON.stringify(fillLayer.paint["fill-color"])).slice(0, 3), [
     "interpolate",
     ["linear"],
     ["get", "depth_m"]
   ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(lineLayer.paint["line-color"])).slice(0, 3), [
+    "interpolate",
+    ["linear"],
+    ["get", "depth_m"]
+  ]);
+});
+
+test("draft validation accepts polygon zones and keeps LineString isobath support", () => {
+  const { api } = loadLayer();
+  const lineCollection = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: {
+        water_body_id: "zaslavskoe",
+        depth_m: 4,
+        depth_type: "isobath",
+        accuracy: "draft",
+        source_status: "draft",
+        checked_at: null
+      },
+      geometry: {
+        type: "LineString",
+        coordinates: [[27.35, 53.98], [27.39, 53.97]]
+      }
+    }]
+  };
+
+  assert.equal(api.isDraftFeatureCollection(contourData, "zaslavskoe"), true);
+  assert.equal(api.isDraftFeatureCollection(lineCollection, "zaslavskoe"), true);
+  lineCollection.features[0].geometry.type = "Polygon";
+  assert.equal(api.isDraftFeatureCollection(lineCollection, "zaslavskoe"), false);
 });
 
 test("showing contours is repeat-safe and the disclaimer follows contour visibility", async () => {
@@ -125,7 +161,7 @@ test("showing contours is repeat-safe and the disclaimer follows contour visibil
 
   assert.equal(await api.showDraftContours(map, "zaslavskoe"), true);
   assert.equal(map.calls.addSource, 1);
-  assert.equal(map.calls.addLayer, 1);
+  assert.equal(map.calls.addLayer, 2);
   assert.equal(map.calls.fitBounds, 1);
 
   const note = container.querySelector(`.${api.DISCLAIMER_CLASS}`);
@@ -135,13 +171,14 @@ test("showing contours is repeat-safe and the disclaimer follows contour visibil
 
   assert.equal(await api.showDraftContours(map, "zaslavskoe"), true);
   assert.equal(map.calls.addSource, 2);
-  assert.equal(map.calls.addLayer, 2);
-  assert.equal(map.calls.removeLayer, 1);
+  assert.equal(map.calls.addLayer, 4);
+  assert.equal(map.calls.removeLayer, 2);
   assert.equal(map.calls.removeSource, 1);
   assert.equal(container.children.length, 1);
 
   assert.equal(api.removeDraftContours(map), true);
   assert.equal(note.hidden, true);
+  assert.equal(map.getLayer(api.FILL_LAYER_ID), null);
   assert.equal(map.getLayer(api.LINE_LAYER_ID), null);
   assert.equal(map.getSource(api.SOURCE_ID), null);
 });

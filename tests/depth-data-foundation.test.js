@@ -43,15 +43,33 @@ test("Zaslavskoe draft contours are a labeled GeoJSON FeatureCollection", () => 
   assert.ok(Array.isArray(collection.features));
   assert.ok(collection.features.length > 0);
 
+  const geometryTypes = new Set();
+  const depths = [];
+
   for (const feature of collection.features) {
     assert.equal(feature.type, "Feature");
     assert.equal(feature.properties.water_body_id, "zaslavskoe");
-    assert.equal(feature.properties.depth_type, "isobath");
+    assert.ok(["zone", "isobath"].includes(feature.properties.depth_type));
     assert.equal(feature.properties.accuracy, "draft");
     assert.equal(feature.properties.source_status, "draft");
     assert.equal(feature.properties.checked_at, null);
-    assert.equal(typeof feature.properties.comment, "string");
+    assert.equal(feature.properties.comment, "Черновая схема глубин KlevGo. Данные уточняются.");
     assert.equal(typeof feature.properties.depth_m, "number");
+    assert.equal(typeof feature.properties.depth_range, "string");
     assert.ok(feature.geometry);
+
+    geometryTypes.add(feature.geometry.type);
+    depths.push(feature.properties.depth_m);
+
+    if (feature.properties.depth_type === "zone") {
+      assert.ok(["Polygon", "MultiPolygon"].includes(feature.geometry.type));
+    } else {
+      assert.equal(feature.geometry.type, "LineString");
+    }
   }
+
+  assert.ok(geometryTypes.has("Polygon") || geometryTypes.has("MultiPolygon"));
+  assert.ok(depths.some((depth) => depth <= 2));
+  assert.ok(depths.some((depth) => depth >= 5 && depth < 10));
+  assert.ok(depths.some((depth) => depth >= 10));
 });

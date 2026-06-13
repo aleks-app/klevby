@@ -1,5 +1,6 @@
 (function initKlevbyWaterDepthContoursLayer(global) {
   const SOURCE_ID = "klevby-water-depth-contours-draft";
+  const FILL_LAYER_ID = "klevby-water-depth-contours-draft-fill";
   const LINE_LAYER_ID = "klevby-water-depth-contours-draft-lines";
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
   const DISCLAIMER_TEXT = "Глубины ориентировочные · данные уточняются";
@@ -23,6 +24,36 @@
     return Boolean(getDraftContourUrl(waterBodyId));
   }
 
+  function hasValidCoordinates(coordinates, minimumPositions) {
+    const positions = [];
+
+    function collect(value) {
+      if (!Array.isArray(value)) return;
+      if (value.length >= 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) {
+        positions.push(value);
+        return;
+      }
+      value.forEach(collect);
+    }
+
+    collect(coordinates);
+    return positions.length >= minimumPositions;
+  }
+
+  function isSupportedDraftGeometry(feature) {
+    const geometryType = feature?.geometry?.type;
+    const coordinates = feature?.geometry?.coordinates;
+
+    if (feature?.properties?.depth_type === "zone") {
+      return (geometryType === "Polygon" || geometryType === "MultiPolygon") &&
+        hasValidCoordinates(coordinates, 4);
+    }
+
+    return feature?.properties?.depth_type === "isobath" &&
+      geometryType === "LineString" &&
+      hasValidCoordinates(coordinates, 2);
+  }
+
   function isDraftFeatureCollection(data, waterBodyId) {
     const normalizedId = normalizeWaterBodyId(waterBodyId);
 
@@ -32,14 +63,49 @@
       Array.isArray(data.features) &&
       data.features.length > 0 &&
       data.features.every(function (feature) {
+        const properties = feature?.properties;
+        const hasDepth = Number.isFinite(properties?.depth_m) ||
+          (typeof properties?.depth_range === "string" && properties.depth_range.trim());
+
         return feature?.type === "Feature" &&
-          normalizeWaterBodyId(feature.properties?.water_body_id) === normalizedId &&
-          Number.isFinite(feature.properties?.depth_m) &&
-          feature.geometry?.type === "LineString" &&
-          Array.isArray(feature.geometry.coordinates) &&
-          feature.geometry.coordinates.length > 1;
+          normalizeWaterBodyId(properties?.water_body_id) === normalizedId &&
+          hasDepth &&
+          properties?.accuracy === "draft" &&
+          properties?.source_status === "draft" &&
+          properties?.checked_at === null &&
+          isSupportedDraftGeometry(feature);
       })
     );
+  }
+
+  function getFillLayerDefinition() {
+    return {
+      id: FILL_LAYER_ID,
+      type: "fill",
+      source: SOURCE_ID,
+      filter: ["==", ["get", "depth_type"], "zone"],
+      paint: {
+        "fill-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "depth_m"],
+          0, "#bae6fd",
+          2, "#7dd3fc",
+          5, "#38bdf8",
+          8, "#2563eb",
+          12, "#172554"
+        ],
+        "fill-opacity": [
+          "interpolate",
+          ["linear"],
+          ["get", "depth_m"],
+          0, 0.2,
+          5, 0.3,
+          8, 0.36,
+          12, 0.46
+        ]
+      }
+    };
   }
 
   function getLineLayerDefinition() {
@@ -51,15 +117,16 @@
         "line-cap": "round",
         "line-join": "round"
       },
+      filter: ["in", ["get", "depth_type"], ["literal", ["zone", "isobath"]]],
       paint: {
         "line-color": [
           "interpolate",
           ["linear"],
           ["get", "depth_m"],
-          0, "#f59e42",
+          0, "#7dd3fc",
           3, "#38bdf8",
           6, "#2563eb",
-          12, "#1d4ed8"
+          12, "#172554"
         ],
         "line-width": [
           "interpolate",
@@ -69,7 +136,7 @@
           12, 2,
           16, 2.8
         ],
-        "line-opacity": 0.78
+        "line-opacity": 0.7
       }
     };
   }
@@ -103,6 +170,10 @@
       map.removeLayer(LINE_LAYER_ID);
     }
 
+    if (typeof map.getLayer === "function" && map.getLayer(FILL_LAYER_ID)) {
+      map.removeLayer(FILL_LAYER_ID);
+    }
+
     if (typeof map.getSource === "function" && map.getSource(SOURCE_ID)) {
       map.removeSource(SOURCE_ID);
     }
@@ -113,22 +184,27 @@
   }
 
   function getBounds(data) {
-    const coordinates = data.features.flatMap(function (feature) {
-      return feature.geometry.coordinates;
+    let bounds = null;
+
+    function includeCoordinates(coordinates) {
+      if (!Array.isArray(coordinates)) return;
+      if (coordinates.length >= 2 && Number.isFinite(coordinates[0]) && Number.isFinite(coordinates[1])) {
+        const longitude = coordinates[0];
+        const latitude = coordinates[1];
+        if (!bounds) bounds = [[longitude, latitude], [longitude, latitude]];
+        bounds[0][0] = Math.min(bounds[0][0], longitude);
+        bounds[0][1] = Math.min(bounds[0][1], latitude);
+        bounds[1][0] = Math.max(bounds[1][0], longitude);
+        bounds[1][1] = Math.max(bounds[1][1], latitude);
+        return;
+      }
+      coordinates.forEach(includeCoordinates);
+    }
+
+    data.features.forEach(function (feature) {
+      includeCoordinates(feature.geometry.coordinates);
     });
-
-    return coordinates.reduce(function (bounds, coordinate) {
-      const longitude = coordinate?.[0];
-      const latitude = coordinate?.[1];
-      if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return bounds;
-
-      if (!bounds) return [[longitude, latitude], [longitude, latitude]];
-      bounds[0][0] = Math.min(bounds[0][0], longitude);
-      bounds[0][1] = Math.min(bounds[0][1], latitude);
-      bounds[1][0] = Math.max(bounds[1][0], longitude);
-      bounds[1][1] = Math.max(bounds[1][1], latitude);
-      return bounds;
-    }, null);
+    return bounds;
   }
 
   async function showDraftContours(map, waterBodyId) {
@@ -150,6 +226,10 @@
       map.addSource(SOURCE_ID, { type: "geojson", data });
     }
 
+    if (!map.getLayer(FILL_LAYER_ID)) {
+      map.addLayer(getFillLayerDefinition());
+    }
+
     if (!map.getLayer(LINE_LAYER_ID)) {
       map.addLayer(getLineLayerDefinition());
     }
@@ -167,6 +247,7 @@
 
   global.KlevbyWaterDepthContoursLayer = {
     SOURCE_ID,
+    FILL_LAYER_ID,
     LINE_LAYER_ID,
     DISCLAIMER_CLASS,
     DISCLAIMER_TEXT,
@@ -175,6 +256,7 @@
     getDraftContourUrl,
     hasDraftContours,
     isDraftFeatureCollection,
+    getFillLayerDefinition,
     getLineLayerDefinition,
     showDraftContours,
     removeDraftContours,
