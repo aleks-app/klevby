@@ -229,9 +229,21 @@
     }) || null;
   }
 
-  function getDepthLayerDefinitions() {
+  function getDepthVisualPolicy(depthMap) {
+    const validationStatus = depthMap?.validationStatus === "ok"
+      ? "ok"
+      : "needs_review";
+
+    return {
+      validationStatus,
+      enhancedDepthStyling: validationStatus === "ok"
+    };
+  }
+
+  function getDepthLayerDefinitions(depthMap) {
+    const visualPolicy = getDepthVisualPolicy(depthMap);
     const depthValue = ["abs", ["to-number", ["get", "depth_m"], 0]];
-    const depthColor = [
+    const enhancedDepthColor = [
       "case",
       ["has", "depth_m"],
       [
@@ -247,6 +259,81 @@
       ],
       "#4338ca"
     ];
+    const fillColor = visualPolicy.enhancedDepthStyling
+      ? enhancedDepthColor
+      : "#38bdf8";
+    const overviewFillOpacity = [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      5, 0.07,
+      8, 0.11,
+      10, 0.16,
+      12, 0.2
+    ];
+    const fillOpacity = visualPolicy.enhancedDepthStyling
+      ? [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5, 0.07,
+        8, 0.12,
+        10, 0.18,
+        12, 0.28,
+        15, 0.32
+      ]
+      : [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5, 0.06,
+        8, 0.09,
+        10, 0.13,
+        12, 0.18,
+        15, 0.22
+      ];
+    const lineOpacity = visualPolicy.enhancedDepthStyling
+      ? [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5, 0.18,
+        8, 0.32,
+        10, 0.48,
+        12, 0.66,
+        15, 0.72
+      ]
+      : [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5, 0.16,
+        8, 0.25,
+        10, 0.34,
+        12, 0.46,
+        15, 0.52
+      ];
+    const lineWidth = visualPolicy.enhancedDepthStyling
+      ? [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5, 0.5,
+        8, 0.75,
+        10, 1,
+        12, 1.35,
+        15, 1.5
+      ]
+      : [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5, 0.45,
+        8, 0.65,
+        10, 0.85,
+        12, 1.05,
+        15, 1.2
+      ];
 
     return [
       {
@@ -265,12 +352,21 @@
             "interpolate",
             ["linear"],
             ["zoom"],
-            5, 2.5,
-            9, 3.5,
-            12, 2
+            5, 0.5,
+            8, 0.7,
+            10, 0.9,
+            12, 1.1
           ],
-          "line-blur": 1.5,
-          "line-opacity": 0.9
+          "line-blur": 1,
+          "line-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            5, 0.16,
+            8, 0.24,
+            10, 0.32,
+            12, 0.4
+          ]
         }
       },
       {
@@ -281,14 +377,7 @@
         filter: ["==", ["geometry-type"], "Polygon"],
         paint: {
           "fill-color": "#06b6d4",
-          "fill-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            5, 0.72,
-            9, 0.62,
-            12, 0.22
-          ],
+          "fill-opacity": overviewFillOpacity,
           "fill-outline-color": "#67e8f9"
         }
       },
@@ -299,8 +388,8 @@
         minzoom: 10,
         filter: ["==", ["geometry-type"], "Polygon"],
         paint: {
-          "fill-color": depthColor,
-          "fill-opacity": 0.52
+          "fill-color": fillColor,
+          "fill-opacity": fillOpacity
         }
       },
       {
@@ -315,14 +404,8 @@
         },
         paint: {
           "line-color": "#7dd3fc",
-          "line-width": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 1,
-            16, 1.5
-          ],
-          "line-opacity": 0.82
+          "line-width": lineWidth,
+          "line-opacity": lineOpacity
         }
       },
       {
@@ -545,7 +628,7 @@
       map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data });
 
       // No beforeId is passed so the depth overlay stays readable above the basemap.
-      getDepthLayerDefinitions().forEach(function (layer) {
+      getDepthLayerDefinitions(depthMap).forEach(function (layer) {
         map.addLayer(layer);
       });
 
@@ -864,6 +947,7 @@
     getFillLayerDefinition,
     getLineLayerDefinition,
     getDepthMapConfig,
+    getDepthVisualPolicy,
     getDepthLayerDefinitions,
     getDepthMarkerLabel,
     getDepthMarkerFeatureCollection,
