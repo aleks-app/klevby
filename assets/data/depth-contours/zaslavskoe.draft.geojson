@@ -1,47 +1,189 @@
 {
   "type": "FeatureCollection",
-  "name": "zaslavskoe_draft_depth_contours",
+  "name": "zaslavskoe_draft_depth_zones",
   "features": [
     {
       "type": "Feature",
       "properties": {
         "water_body_id": "zaslavskoe",
-        "depth_m": 2,
-        "depth_type": "isobath",
+        "depth_m": 1.5,
+        "depth_range": "0–2 м",
+        "depth_type": "zone",
         "accuracy": "draft",
         "source_status": "draft",
         "checked_at": null,
-        "comment": "Черновой схематичный контур KlevGo. Геометрия и глубина требуют ручной проверки."
+        "comment": "Черновая схема глубин KlevGo. Данные уточняются."
       },
       "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [27.343, 53.981],
-          [27.356, 53.988],
-          [27.374, 53.989],
-          [27.392, 53.982],
-          [27.405, 53.971]
-        ]
+        "type": "Polygon",
+        "coordinates": [[
+          [27.326, 53.974],
+          [27.331, 53.985],
+          [27.341, 53.993],
+          [27.355, 53.998],
+          [27.372, 54.001],
+          [27.389, 53.997],
+          [27.403, 53.991],
+          [27.414, 53.983],
+          [27.420, 53.973],
+          [27.416, 53.963],
+          [27.406, 53.956],
+          [27.391, 53.951],
+          [27.374, 53.952],
+          [27.359, 53.956],
+          [27.346, 53.961],
+          [27.335, 53.967],
+          [27.326, 53.974]
+        ]]
       }
     },
     {
       "type": "Feature",
       "properties": {
         "water_body_id": "zaslavskoe",
-        "depth_m": 4,
-        "depth_type": "isobath",
+        "depth_m": 3.5,
+        "depth_range": "2–5 м",
+        "depth_type": "zone",
         "accuracy": "draft",
         "source_status": "draft",
         "checked_at": null,
-        "comment": "Черновой схематичный контур KlevGo. Не предназначен для навигации."
+        "comment": "Черновая схема глубин KlevGo. Данные уточняются."
       },
       "geometry": {
-        "type": "LineString",
+        "type": "Polygon",
+        "coordinates": [[
+          [27.340, 53.975],
+          [27.346, 53.986],
+          [27.358, 53.993],
+          [27.373, 53.996],
+          [27.389, 53.992],
+          [27.402, 53.985],
+          [27.410, 53.976],
+          [27.407, 53.967],
+          [27.398, 53.961],
+          [27.384, 53.958],
+          [27.369, 53.960],
+          [27.355, 53.965],
+          [27.345, 53.969],
+          [27.340, 53.975]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "water_body_id": "zaslavskoe",
+        "depth_m": 6.5,
+        "depth_range": "5–8 м",
+        "depth_type": "zone",
+        "accuracy": "draft",
+        "source_status": "draft",
+        "checked_at": null,
+        "comment": "Черновая схема глубин KlevGo. Данные уточняются."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [27.350, 53.978],
+          [27.359, 53.987],
+          [27.372, 53.991],
+          [27.385, 53.988],
+          [27.397, 53.981],
+          [27.402, 53.973],
+          [27.397, 53.966],
+          [27.386, 53.964],
+          [27.373, 53.967],
+          [27.363, 53.972],
+          [27.354, 53.974],
+          [27.350, 53.978]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "water_body_id": "zaslavskoe",
+        "depth_m": 9,
+        "depth_range": "8–10 м",
+        "depth_type": "zone",
+        "accuracy": "draft",
+        "source_status": "draft",
+        "checked_at": null,
+        "comment": "Черновая схема глубин KlevGo. Данные уточняются."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [27.358, 53.982],
+          [27.364, 53.987],
+          [27.372, 53.988],
+          [27.378, 53.985],
+          [27.377, 53.980],
+          [27.370, 53.977],
+          [27.362, 53.978],
+          [27.358, 53.982]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "water_body_id": "zaslavskoe",
+        "depth_m": 10.5,
+        "depth_range": "10–12 м",
+        "depth_type": "zone",
+        "accuracy": "draft",
+        "source_status": "draft",
+        "checked_at": null,
+        "comment": "Черновая схема глубин KlevGo. Данные уточняются."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [27.381, 53.976],
+          [27.387, 53.981],
+          [27.394, 53.980],
+          [27.398, 53.975],
+          [27.394, 53.970],
+          [27.387, 53.969],
+          [27.382, 53.972],
+          [27.381, 53.976]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "water_body_id": "zaslavskoe",
+        "depth_m": 12.5,
+        "depth_range": "12 м и глубже",
+        "depth_type": "zone",
+        "accuracy": "draft",
+        "source_status": "draft",
+        "checked_at": null,
+        "comment": "Черновая схема глубин KlevGo. Данные уточняются."
+      },
+      "geometry": {
+        "type": "MultiPolygon",
         "coordinates": [
-          [27.354, 53.978],
-          [27.369, 53.983],
-          [27.385, 53.98],
-          [27.397, 53.972]
+          [[
+            [27.366, 53.983],
+            [27.369, 53.986],
+            [27.373, 53.986],
+            [27.376, 53.983],
+            [27.373, 53.980],
+            [27.369, 53.980],
+            [27.366, 53.983]
+          ]],
+          [[
+            [27.388, 53.975],
+            [27.391, 53.978],
+            [27.395, 53.977],
+            [27.396, 53.974],
+            [27.393, 53.972],
+            [27.389, 53.972],
+            [27.388, 53.975]
+          ]]
         ]
       }
     }
