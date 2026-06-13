@@ -31,6 +31,9 @@
     || "assets/data/depth-contours/zvon.depth.full.geojson";
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
   const DISCLAIMER_TEXT = "Глубины ориентировочные · данные уточняются";
+  const MAX_REASONABLE_DEPTH_LABEL_M = 60;
+  const DEPTH_LABEL_REPAIR_DIVISOR = 1000;
+  const DEPTH_LABEL_REPAIR_MAP_IDS = new Set(["valkovskoe"]);
   // Reserved for future proper, licensed, or imported depth-map data.
   // The local Zaslavskoe draft remains an internal validation sample only.
   const DRAFT_CONTOURS = Object.freeze({});
@@ -274,6 +277,99 @@
             klevbyPitCandidate: classification.pitCandidate === true,
             klevbyShoalCandidate: classification.shoalCandidate === true
           }
+        };
+      })
+    };
+  }
+
+  function shouldRepairDepthLabels(depthMap) {
+    return DEPTH_LABEL_REPAIR_MAP_IDS.has(normalizeWaterBodyId(depthMap?.id));
+  }
+
+  function formatRepairedDepthNumber(value) {
+    if (!Number.isFinite(value)) return String(value);
+
+    return Number((Math.round(value * 100) / 100).toFixed(2)).toString();
+  }
+
+  function repairDepthNumericValue(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return value;
+    if (number > MAX_REASONABLE_DEPTH_LABEL_M) {
+      return number / DEPTH_LABEL_REPAIR_DIVISOR;
+    }
+    return number;
+  }
+
+  function repairDepthLabelString(label) {
+    if (typeof label !== "string" || !label.trim()) return label;
+
+    const numberPattern = /(\d+(?:\.\d+)?)/g;
+    let repaired = false;
+
+    const nextLabel = label.replace(numberPattern, function (match) {
+      const number = Number(match);
+      if (!Number.isFinite(number) || number <= MAX_REASONABLE_DEPTH_LABEL_M) {
+        return match;
+      }
+
+      repaired = true;
+      return formatRepairedDepthNumber(number / DEPTH_LABEL_REPAIR_DIVISOR);
+    });
+
+    if (!repaired) return label;
+
+    return nextLabel
+      .replace(/(\d)\s*[-–—]\s*(\d)/g, "$1–$2")
+      .replace(/m\b/gi, " м");
+  }
+
+  function repairFeatureProperties(properties) {
+    if (!properties || typeof properties !== "object") return properties;
+
+    const next = { ...properties };
+    let changed = false;
+
+    if (typeof next.name === "string") {
+      const repairedName = repairDepthLabelString(next.name);
+      if (repairedName !== next.name) {
+        next.name = repairedName;
+        changed = true;
+      }
+    }
+
+    if (typeof next.depth_range === "string") {
+      const repairedRange = repairDepthLabelString(next.depth_range);
+      if (repairedRange !== next.depth_range) {
+        next.depth_range = repairedRange;
+        changed = true;
+      }
+    }
+
+    if (Number.isFinite(next.depth_m) && next.depth_m > MAX_REASONABLE_DEPTH_LABEL_M) {
+      next.depth_m = repairDepthNumericValue(next.depth_m);
+      changed = true;
+    }
+
+    return changed ? next : properties;
+  }
+
+  function getDisplayRepairedDepthFeatureCollection(data, depthMap) {
+    if (!shouldRepairDepthLabels(depthMap) || data?.type !== "FeatureCollection" || !Array.isArray(data.features)) {
+      return data;
+    }
+
+    return {
+      type: data.type,
+      features: data.features.map(function (feature) {
+        if (!feature) return feature;
+
+        const repairedProperties = repairFeatureProperties(feature.properties);
+        if (repairedProperties === feature.properties) return feature;
+
+        return {
+          ...feature,
+          properties: repairedProperties
         };
       })
     };
@@ -730,7 +826,8 @@
 
       depthDataCache.set(depthMap.id, data);
       if (requestGeneration !== depthModeGeneration || (depthModeMap && depthModeMap !== map)) return false;
-      const sourceData = getClassifiedDepthFeatureCollection(data, depthMap);
+      const classifiedData = getClassifiedDepthFeatureCollection(data, depthMap);
+      const sourceData = getDisplayRepairedDepthFeatureCollection(classifiedData, depthMap);
       removeDepthMap(map);
       map.addSource(DEPTH_SOURCE_ID, { type: "geojson", data: sourceData });
 
@@ -1059,6 +1156,10 @@
     getDepthVisualPolicy,
     shouldShowDepthCandidateOverlay,
     getClassifiedDepthFeatureCollection,
+    shouldRepairDepthLabels,
+    repairDepthLabelString,
+    repairDepthNumericValue,
+    getDisplayRepairedDepthFeatureCollection,
     getDepthLayerDefinitions,
     getDepthMarkerLabel,
     getDepthMarkerFeatureCollection,

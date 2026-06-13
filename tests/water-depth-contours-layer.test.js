@@ -385,6 +385,109 @@ test("Valkovskoe and missing classifier keep the map available without candidate
   );
 });
 
+test("valkovskoe depth label repair divides only impossible values above 60 m", () => {
+  const { api } = loadLayer();
+
+  assert.equal(api.repairDepthLabelString("6196.98-7417.66m"), "6.2–7.42 м");
+  assert.equal(api.repairDepthLabelString("3755.61–4976.29m"), "3.76–4.98 м");
+  assert.equal(api.repairDepthLabelString("2534.93-3755.61m"), "2.53–3.76 м");
+  assert.equal(api.repairDepthLabelString("1314.24-2534.93m"), "1.31–2.53 м");
+  assert.equal(api.repairDepthLabelString("10.88m"), "10.88m");
+  assert.equal(api.repairDepthLabelString("8m"), "8m");
+  assert.equal(api.repairDepthLabelString("8.13m"), "8.13m");
+  assert.equal(api.repairDepthLabelString("10.5m"), "10.5m");
+  assert.equal(api.repairDepthNumericValue(7417.66), 7.41766);
+  assert.equal(api.repairDepthNumericValue(10.5), 10.5);
+  assert.equal(api.shouldRepairDepthLabels({ id: "valkovskoe" }), true);
+  assert.equal(api.shouldRepairDepthLabels({ id: "zvon" }), false);
+});
+
+test("valkovskoe source data is display-repaired without mutating cached GeoJSON", async () => {
+  const originalData = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {
+          name: "6196.98-7417.66m",
+          depth_m: 6196.98
+        },
+        geometry: { type: "Point", coordinates: [28.72, 55.98] }
+      },
+      {
+        type: "Feature",
+        properties: {
+          name: "10.88m",
+          depth_m: 10.88
+        },
+        geometry: { type: "Point", coordinates: [28.73, 55.99] }
+      },
+      {
+        type: "Feature",
+        properties: {
+          name: "8m",
+          depth_m: 8
+        },
+        geometry: { type: "Polygon", coordinates: [[[28.71, 55.97], [28.72, 55.97], [28.72, 55.98], [28.71, 55.97]]] }
+      }
+    ]
+  };
+  const cachedSnapshot = JSON.parse(JSON.stringify(originalData));
+  const { api, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => originalData
+  }));
+  const map = createMap(container);
+
+  api.enableDepthMode(map);
+  assert.equal(await api.selectDepthMap(map, "valkovskoe"), true);
+
+  const sourceData = map.getSource(api.DEPTH_SOURCE_ID).data;
+  const sourceText = JSON.stringify(sourceData);
+
+  assert.equal(sourceText.includes("6196"), false);
+  assert.equal(sourceText.includes("7417"), false);
+  assert.match(sourceText, /6\.2/);
+  assert.match(sourceText, /7\.42/);
+  assert.match(sourceText, /10\.88/);
+  assert.match(sourceText, /"8m"/);
+  assert.equal(sourceData.features[0].properties.name, "6.2–7.42 м");
+  assert.equal(sourceData.features[0].properties.depth_m, 6.19698);
+  assert.equal(sourceData.features[1].properties.name, "10.88m");
+  assert.equal(sourceData.features[1].properties.depth_m, 10.88);
+  assert.deepEqual(originalData, cachedSnapshot);
+  assert.equal(map.getLayer(api.DEPTH_PIT_CANDIDATE_LAYER_ID), null);
+  assert.equal(map.getLayer(api.DEPTH_SHOAL_CANDIDATE_LAYER_ID), null);
+});
+
+test("ok depth maps keep source labels unchanged", async () => {
+  const originalData = {
+    type: "FeatureCollection",
+    features: [{
+      type: "Feature",
+      properties: {
+        name: "6196.98-7417.66m",
+        depth_m: 6196.98
+      },
+      geometry: { type: "Point", coordinates: [28.53, 55.06] }
+    }]
+  };
+  const { api, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => originalData
+  }));
+  const map = createMap(container);
+
+  api.enableDepthMode(map);
+  assert.equal(await api.selectDepthMap(map, "zvon"), true);
+
+  const sourceData = map.getSource(api.DEPTH_SOURCE_ID).data;
+  assert.equal(sourceData.features[0].properties.name, "6196.98-7417.66m");
+  assert.equal(sourceData.features[0].properties.depth_m, 6196.98);
+});
+
 test("enabling depth mode neither fetches GeoJSON nor invokes the classifier", () => {
   const requestedUrls = [];
   const { api, window, container } = loadLayer(async (url) => {

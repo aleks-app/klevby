@@ -198,7 +198,7 @@ test("index loads the classifier between registry and depth layer with isolated 
   const indexSource = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const registryScript = "assets/js/map/depth-maps-registry.js?v=20260613-depth-zoom-style-pr7-1";
   const classifierScript = "assets/js/map/depth-feature-classifier.js?v=20260613-depth-feature-classifier-pr9-1";
-  const layerScript = "assets/js/map/water-depth-contours-layer.js?v=20260613-depth-candidate-overlay-pr10-1";
+  const layerScript = "assets/js/map/water-depth-contours-layer.js?v=20260613-depth-valkovskoe-label-repair-pr11-1";
 
   assert.ok(indexSource.indexOf(registryScript) < indexSource.indexOf(classifierScript));
   assert.ok(indexSource.indexOf(classifierScript) < indexSource.indexOf(layerScript));
