@@ -148,12 +148,26 @@
       syncButton();
     }
 
+    function clearLocationVisuals() {
+      marker?.remove();
+      marker = null;
+      markerElement = null;
+
+      const source = map.getSource?.(SOURCE_ID);
+      if (source && typeof source.setData === "function") {
+        source.setData({ type: "FeatureCollection", features: [] });
+      }
+    }
+
     function stopFollowing() {
       if (watchId !== null && geolocation?.clearWatch) {
         geolocation.clearWatch(watchId);
       }
       watchId = null;
       followMode = false;
+      requestPending = false;
+      lastPosition = null;
+      clearLocationVisuals();
       syncButton();
     }
 
@@ -217,10 +231,9 @@
         stopFollowing();
         button.removeEventListener("click", handleClick);
         map.off?.("movestart", handleMoveStart);
-        marker?.remove();
-        if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID);
-        if (map.getLayer(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID);
-        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+        if (map.getLayer?.(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID);
+        if (map.getLayer?.(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID);
+        if (map.getSource?.(SOURCE_ID)) map.removeSource(SOURCE_ID);
       },
       isFollowing: function () {
         return followMode;
