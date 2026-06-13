@@ -134,7 +134,19 @@
     const depthStatus = getDepthMapStatusForWaterBody(selectedPoint?.waterBodyId);
     if (!depthStatus.available || typeof global.klevbyShowWaterDepthContours !== "function") return false;
 
-    return global.klevbyShowWaterDepthContours(depthStatus.waterBodyId);
+    if (typeof global.showSection === "function") {
+      global.showSection("map");
+    }
+
+    await new Promise(function (resolve) {
+      if (typeof global.requestAnimationFrame === "function") {
+        global.requestAnimationFrame(resolve);
+      } else {
+        resolve();
+      }
+    });
+
+    return global.klevbyShowWaterDepthContours(depthStatus.waterBodyId, { fitBounds: true });
   }
 
   function bind() {

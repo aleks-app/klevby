@@ -2540,9 +2540,10 @@
 
   window.klevbyEnsureMapInitialized = ensureMapInitialized;
 
-  window.klevbyShowWaterDepthContours = async function (waterBodyId) {
+  window.klevbyShowWaterDepthContours = async function (waterBodyId, options = {}) {
     const contoursLayer = window.KlevbyWaterDepthContoursLayer;
-    if (!contoursLayer?.hasDraftContours(waterBodyId)) return false;
+    const depthMap = window.KlevbyDepthMapsRegistry?.getByWaterBodyId?.(waterBodyId);
+    if (!contoursLayer || !depthMap || depthMap.status !== "available") return false;
 
     if (typeof window.showSection === "function") {
       window.showSection("map");
@@ -2557,7 +2558,14 @@
       waterDepthLayerEnabled = true;
     }
 
-    return contoursLayer.showDraftContours(map, waterBodyId);
+    const selected = await contoursLayer.selectDepthMap(map, depthMap.id);
+    if (!selected) return false;
+
+    if (options.fitBounds === true) {
+      contoursLayer.focusDepthMap?.(map, depthMap.id);
+    }
+
+    return true;
   };
 
   window.addEventListener("klevby-auth-changed", function (event) {

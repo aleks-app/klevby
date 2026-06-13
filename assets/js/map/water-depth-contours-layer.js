@@ -571,6 +571,59 @@
     }
   }
 
+  function focusDepthMap(map, mapId) {
+    if (!map) return false;
+    const depthMap = getDepthMapConfig(mapId);
+    if (!depthMap) return false;
+
+    const bbox = depthMap.bbox;
+    if (
+      Array.isArray(bbox) &&
+      bbox.length === 4 &&
+      bbox.every(Number.isFinite) &&
+      typeof map.fitBounds === "function"
+    ) {
+      map.fitBounds(
+        [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
+        {
+          padding: {
+            top: 80,
+            bottom: 180,
+            left: 24,
+            right: 24
+          },
+          duration: 700,
+          maxZoom: 14
+        }
+      );
+      return true;
+    }
+
+    const center = depthMap.center;
+    if (
+      Array.isArray(center) &&
+      center.length >= 2 &&
+      Number.isFinite(center[0]) &&
+      Number.isFinite(center[1])
+    ) {
+      const moveTo = typeof map.easeTo === "function"
+        ? map.easeTo.bind(map)
+        : typeof map.flyTo === "function"
+          ? map.flyTo.bind(map)
+          : null;
+      if (moveTo) {
+        moveTo({
+          center: [center[0], center[1]],
+          zoom: 13,
+          duration: 700
+        });
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   function removeDepthMarkers(map) {
     if (!map) return false;
 
@@ -822,6 +875,7 @@
     countGeometryTypes,
     showDepthMap,
     selectDepthMap,
+    focusDepthMap,
     enableDepthMode,
     disableDepthMode,
     removeDepthMarkers,
