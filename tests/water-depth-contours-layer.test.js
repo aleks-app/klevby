@@ -385,24 +385,34 @@ test("Valkovskoe and missing classifier keep the map available without candidate
   );
 });
 
-test("valkovskoe depth label repair divides only impossible values above 60 m", () => {
+test("suspicious Valkovskoe depth labels are detected and hidden from the label layer", () => {
   const { api } = loadLayer();
 
-  assert.equal(api.repairDepthLabelString("6196.98-7417.66m"), "6.2–7.42 м");
-  assert.equal(api.repairDepthLabelString("3755.61–4976.29m"), "3.76–4.98 м");
-  assert.equal(api.repairDepthLabelString("2534.93-3755.61m"), "2.53–3.76 м");
-  assert.equal(api.repairDepthLabelString("1314.24-2534.93m"), "1.31–2.53 м");
-  assert.equal(api.repairDepthLabelString("10.88m"), "10.88m");
-  assert.equal(api.repairDepthLabelString("8m"), "8m");
-  assert.equal(api.repairDepthLabelString("8.13m"), "8.13m");
-  assert.equal(api.repairDepthLabelString("10.5m"), "10.5m");
-  assert.equal(api.repairDepthNumericValue(7417.66), 7.41766);
-  assert.equal(api.repairDepthNumericValue(10.5), 10.5);
-  assert.equal(api.shouldRepairDepthLabels({ id: "valkovskoe" }), true);
-  assert.equal(api.shouldRepairDepthLabels({ id: "zvon" }), false);
+  assert.equal(api.isSuspiciousDepthLabel("6196.98-7417.66m"), true);
+  assert.equal(api.isSuspiciousDepthLabel("6196.98–7417.66m"), true);
+  assert.equal(api.isSuspiciousDepthLabel("3755.61–4976.29m"), true);
+  assert.equal(api.isSuspiciousDepthLabel("2534.93-3755.61m"), true);
+  assert.equal(api.isSuspiciousDepthLabel("1314.24-2534.93m"), true);
+  assert.equal(api.isSuspiciousDepthLabel(7417.66), true);
+  assert.equal(api.isSuspiciousDepthLabel("8m"), false);
+  assert.equal(api.isSuspiciousDepthLabel("8.13m"), false);
+  assert.equal(api.isSuspiciousDepthLabel("10.5m"), false);
+  assert.equal(api.isSuspiciousDepthLabel("10.88m"), false);
+  assert.equal(api.isSuspiciousDepthLabel("7.5-8m"), false);
+  assert.equal(api.isSuspiciousDepthLabel(10.5), false);
+  assert.equal(api.shouldHideBadDepthLabels({ id: "valkovskoe" }), true);
+  assert.equal(api.shouldHideBadDepthLabels({ id: "zvon" }), false);
+
+  const labelLayer = api.getDepthLayerDefinitions({ validationStatus: "ok" })
+    .find((layer) => layer.id === api.DEPTH_LABEL_LAYER_ID);
+  assert.deepEqual(JSON.parse(JSON.stringify(labelLayer.filter)), [
+    "all",
+    ["==", ["geometry-type"], "Point"],
+    ["!=", ["get", "klevbyHideDepthLabel"], true]
+  ]);
 });
 
-test("valkovskoe source data is display-repaired without mutating cached GeoJSON", async () => {
+test("valkovskoe source data hides suspicious Point labels without mutating cached GeoJSON", async () => {
   const originalData = {
     type: "FeatureCollection",
     features: [
@@ -444,18 +454,14 @@ test("valkovskoe source data is display-repaired without mutating cached GeoJSON
   assert.equal(await api.selectDepthMap(map, "valkovskoe"), true);
 
   const sourceData = map.getSource(api.DEPTH_SOURCE_ID).data;
-  const sourceText = JSON.stringify(sourceData);
 
-  assert.equal(sourceText.includes("6196"), false);
-  assert.equal(sourceText.includes("7417"), false);
-  assert.match(sourceText, /6\.2/);
-  assert.match(sourceText, /7\.42/);
-  assert.match(sourceText, /10\.88/);
-  assert.match(sourceText, /"8m"/);
-  assert.equal(sourceData.features[0].properties.name, "6.2–7.42 м");
-  assert.equal(sourceData.features[0].properties.depth_m, 6.19698);
+  assert.equal(sourceData.features[0].properties.name, "6196.98-7417.66m");
+  assert.equal(sourceData.features[0].properties.depth_m, 6196.98);
+  assert.equal(sourceData.features[0].properties.klevbyHideDepthLabel, true);
+  assert.equal(Object.hasOwn(sourceData.features[1].properties, "klevbyHideDepthLabel"), false);
   assert.equal(sourceData.features[1].properties.name, "10.88m");
   assert.equal(sourceData.features[1].properties.depth_m, 10.88);
+  assert.equal(Object.hasOwn(sourceData.features[2].properties, "klevbyHideDepthLabel"), false);
   assert.deepEqual(originalData, cachedSnapshot);
   assert.equal(map.getLayer(api.DEPTH_PIT_CANDIDATE_LAYER_ID), null);
   assert.equal(map.getLayer(api.DEPTH_SHOAL_CANDIDATE_LAYER_ID), null);
@@ -486,6 +492,7 @@ test("ok depth maps keep source labels unchanged", async () => {
   const sourceData = map.getSource(api.DEPTH_SOURCE_ID).data;
   assert.equal(sourceData.features[0].properties.name, "6196.98-7417.66m");
   assert.equal(sourceData.features[0].properties.depth_m, 6196.98);
+  assert.equal(Object.hasOwn(sourceData.features[0].properties, "klevbyHideDepthLabel"), false);
 });
 
 test("enabling depth mode neither fetches GeoJSON nor invokes the classifier", () => {
