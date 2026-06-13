@@ -1988,6 +1988,11 @@
       }
 
       map.on("click", function (event) {
+        if (window.KlevbyWaterDepthContoursLayer?.getDepthMarkerFeatureAtPoint(map, event.point)) {
+          event?.preventDefault?.();
+          return;
+        }
+
         if (openWaterDepthPreview(getWaterDepthFeatureAtPoint(event.point), event)) {
           return;
         }

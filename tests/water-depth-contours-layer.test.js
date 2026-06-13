@@ -88,7 +88,12 @@ function createMap(container) {
     },
     addSource(id, definition) {
       calls.addSource += 1;
-      sources.set(id, definition);
+      sources.set(id, {
+        ...definition,
+        setData(data) {
+          this.data = data;
+        }
+      });
     },
     removeSource(id) {
       calls.removeSource += 1;
@@ -119,6 +124,11 @@ function createMap(container) {
     },
     getCanvas() {
       return { style: {} };
+    },
+    queryRenderedFeatures(point, options) {
+      return options?.layers?.includes("klevby-depth-map-marker-hitbox")
+        ? [{ properties: { id: "zvon" }, point }]
+        : [];
     }
   };
 }
@@ -241,7 +251,7 @@ test("depth map index is lightweight and contains precomputed marker coordinates
   assert.doesNotMatch(api.getDepthMarkerFeatureCollection.toString(), /fetch|url|GeoJSON/i);
 });
 
-test("enabling depth mode adds only lightweight cyan markers and disabling removes everything", () => {
+test("enabling depth mode adds lightweight markers with a larger invisible hitbox", () => {
   const requestedUrls = [];
   const { api, container } = loadLayer(async (url) => {
     requestedUrls.push(url);
@@ -252,14 +262,59 @@ test("enabling depth mode adds only lightweight cyan markers and disabling remov
   assert.equal(api.enableDepthMode(map), true);
   assert.deepEqual(requestedUrls, []);
   assert.ok(map.getSource(api.DEPTH_MARKER_SOURCE_ID));
-  assert.equal(map.getLayer(api.DEPTH_MARKER_LAYER_ID).paint["circle-color"], "#0891b2");
+  const markerLayer = map.getLayer(api.DEPTH_MARKER_LAYER_ID);
+  const hitboxLayer = map.getLayer(api.DEPTH_MARKER_HITBOX_LAYER_ID);
+  assert.equal(markerLayer.paint["circle-color"], "#0891b2");
+  assert.equal(hitboxLayer.paint["circle-opacity"], 0);
+  assert.ok(hitboxLayer.paint["circle-radius"][4] > markerLayer.paint["circle-radius"][4]);
+  assert.ok(hitboxLayer.paint["circle-radius"][6] > markerLayer.paint["circle-radius"][6]);
   assert.ok(map.getLayer(api.DEPTH_MARKER_LABEL_LAYER_ID));
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
+  assert.equal(
+    map.calls.on.some(([eventName, layerId]) =>
+      eventName === "click" && layerId === api.DEPTH_MARKER_HITBOX_LAYER_ID
+    ),
+    true
+  );
+  assert.equal(api.getDepthMarkerFeatureAtPoint(map, { x: 10, y: 20 }).properties.id, "zvon");
 
   api.disableDepthMode(map);
   assert.equal(map.getSource(api.DEPTH_MARKER_SOURCE_ID), null);
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
   assert.equal(map.calls.off.length, 3);
+});
+
+test("depth hitbox click prevents the map click and selects the lake", async () => {
+  const { api, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => zvonData
+  }));
+  const map = createMap(container);
+  api.enableDepthMode(map);
+  const clickRegistration = map.calls.on.find(([eventName, layerId]) =>
+    eventName === "click" && layerId === api.DEPTH_MARKER_HITBOX_LAYER_ID
+  );
+  const eventCalls = [];
+
+  clickRegistration[2]({
+    features: [{ properties: { id: "zvon" } }],
+    preventDefault() {
+      eventCalls.push("preventDefault");
+    },
+    originalEvent: {
+      preventDefault() {
+        eventCalls.push("originalPreventDefault");
+      },
+      stopPropagation() {
+        eventCalls.push("stopPropagation");
+      }
+    }
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(eventCalls, ["preventDefault", "originalPreventDefault", "stopPropagation"]);
+  assert.equal(api.getActiveDepthMapId(), "zvon");
 });
 
 test("marker selection loads one map at a time and reuses the in-memory cache", async () => {
@@ -273,8 +328,20 @@ test("marker selection loads one map at a time and reuses the in-memory cache", 
   api.enableDepthMode(map);
   assert.equal(await api.selectDepthMap(map, "zvon"), true);
   assert.equal(api.getActiveDepthMapId(), "zvon");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(
+      map.getSource(api.DEPTH_MARKER_SOURCE_ID).data.features.map((feature) => feature.properties.id)
+    )),
+    ["necherdo", "valkovskoe", "yanovo"]
+  );
   assert.equal(await api.selectDepthMap(map, "necherdo"), true);
   assert.equal(api.getActiveDepthMapId(), "necherdo");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(
+      map.getSource(api.DEPTH_MARKER_SOURCE_ID).data.features.map((feature) => feature.properties.id)
+    )),
+    ["zvon", "valkovskoe", "yanovo"]
+  );
   assert.equal(await api.selectDepthMap(map, "zvon"), true);
   assert.equal(api.getActiveDepthMapId(), "zvon");
   assert.deepEqual(requestedUrls, [
@@ -502,4 +569,18 @@ test("map integration guards unavailable drafts and removes stale contours on de
   );
   assert.doesNotMatch(mapLogic, /mapDepthSheet|selectedDepthMapId/);
   assert.equal(mapLogic.includes("window.open"), false);
+});
+
+test("generic MapLibre click flow returns before creating a spot on a depth hitbox", () => {
+  const mapLogic = fs.readFileSync(path.join(__dirname, "../assets/js/map-logic.js"), "utf8");
+  const genericClickFlow = mapLogic.slice(
+    mapLogic.indexOf('map.on("click", function (event)'),
+    mapLogic.indexOf('map.once("load"', mapLogic.indexOf('map.on("click", function (event)'))
+  );
+  const depthGuardIndex = genericClickFlow.indexOf("getDepthMarkerFeatureAtPoint(map, event.point)");
+  const spotClickIndex = genericClickFlow.indexOf("handleMapClick(");
+
+  assert.ok(depthGuardIndex >= 0);
+  assert.ok(spotClickIndex > depthGuardIndex);
+  assert.match(genericClickFlow.slice(depthGuardIndex, spotClickIndex), /return;/);
 });
