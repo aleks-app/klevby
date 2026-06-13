@@ -186,9 +186,38 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
   assert.equal(labelLayer.layout["text-size"][6], 11);
   assert.equal(labelLayer.paint["text-color"], "#dbeafe");
   assert.equal(labelLayer.paint["text-halo-color"], "#172554");
-  assert.deepEqual(JSON.parse(JSON.stringify(map.calls.flyTo[0].center)), [28.531068, 55.063978]);
-  assert.equal(map.calls.flyTo[0].zoom, 13);
+  assert.equal(map.calls.flyTo.length, 0);
+  assert.equal(map.calls.fitBounds, 0);
   assert.equal(map.calls.addLayer, 3);
+});
+
+test("depth toggle loads every configured lake without changing the viewport", async () => {
+  const requestedUrls = [];
+  const { api, container } = loadLayer(async (url) => {
+    requestedUrls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      url,
+      json: async () => zvonData
+    };
+  });
+  const map = createMap(container);
+
+  assert.equal(await api.showAllDepthMaps(map), true);
+  assert.deepEqual(
+    requestedUrls,
+    JSON.parse(JSON.stringify(api.DEPTH_MAPS)).map((depthMap) => depthMap.url)
+  );
+  assert.equal(map.getSource(api.DEPTH_SOURCE_ID).data.features.length, zvonData.features.length * 4);
+  assert.equal(map.calls.flyTo.length, 0);
+  assert.equal(map.calls.fitBounds, 0);
+  assert.equal(api.getActiveDepthMapId(), "all");
+  assert.equal(map.calls.addLayer, 3);
+
+  api.removeDepthMap(map);
+  assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
+  assert.equal(map.calls.removeLayer, 3);
 });
 
 test("Zvon diagnostic reports a failed GeoJSON response without adding map objects", async () => {
@@ -289,5 +318,7 @@ test("map integration guards unavailable drafts and removes stale contours on de
   const disabledBranchIndex = mapLogic.indexOf("if (!waterDepthLayerEnabled)", cleanupIndex);
   assert.ok(cleanupIndex >= 0);
   assert.ok(disabledBranchIndex > cleanupIndex);
+  assert.match(mapLogic, /showAllDepthMaps\(mapInstance\)/);
+  assert.doesNotMatch(mapLogic, /mapDepthSheet|selectedDepthMapId/);
   assert.equal(mapLogic.includes("window.open"), false);
 });
