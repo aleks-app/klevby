@@ -199,6 +199,24 @@
   }
 
   function getZvonLayerDefinitions() {
+    const depthValue = ["abs", ["to-number", ["get", "depth_m"], 0]];
+    const depthColor = [
+      "case",
+      ["has", "depth_m"],
+      [
+        "interpolate",
+        ["linear"],
+        depthValue,
+        0, "#67e8f9",
+        2, "#38bdf8",
+        5, "#3b82f6",
+        9, "#4f46e5",
+        13, "#312e81",
+        18, "#172554"
+      ],
+      "#4338ca"
+    ];
+
     return [
       {
         id: ZVON_FILL_LAYER_ID,
@@ -206,8 +224,8 @@
         source: ZVON_SOURCE_ID,
         filter: ["==", ["geometry-type"], "Polygon"],
         paint: {
-          "fill-color": "#ff0000",
-          "fill-opacity": 0.65
+          "fill-color": depthColor,
+          "fill-opacity": 0.52
         }
       },
       {
@@ -215,23 +233,51 @@
         type: "line",
         source: ZVON_SOURCE_ID,
         filter: ["==", ["geometry-type"], "LineString"],
+        layout: {
+          "line-cap": "round",
+          "line-join": "round"
+        },
         paint: {
-          "line-color": "#ffff00",
-          "line-width": 3,
-          "line-opacity": 1
+          "line-color": "#7dd3fc",
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, 1,
+            16, 1.5
+          ],
+          "line-opacity": 0.82
         }
       },
       {
         id: ZVON_POINT_LAYER_ID,
-        type: "circle",
+        type: "symbol",
         source: ZVON_SOURCE_ID,
+        minzoom: 13,
         filter: ["==", ["geometry-type"], "Point"],
+        layout: {
+          "text-field": [
+            "coalesce",
+            ["get", "name"],
+            ["concat", ["to-string", depthValue], " м"]
+          ],
+          "text-size": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            13, 10,
+            16, 11
+          ],
+          "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+          "text-allow-overlap": false,
+          "text-ignore-placement": false
+        },
         paint: {
-          "circle-color": "#ffffff",
-          "circle-radius": 4,
-          "circle-opacity": 1,
-          "circle-stroke-color": "#000000",
-          "circle-stroke-width": 1
+          "text-color": "#dbeafe",
+          "text-opacity": 0.9,
+          "text-halo-color": "#172554",
+          "text-halo-width": 1.5,
+          "text-halo-blur": 0.5
         }
       }
     ];
@@ -283,7 +329,7 @@
     removeZvonDepth(map);
     map.addSource(ZVON_SOURCE_ID, { type: "geojson", data });
 
-    // No beforeId is passed: diagnostic layers must stay above the basemap.
+    // No beforeId is passed so the depth overlay stays readable above the basemap.
     getZvonLayerDefinitions().forEach(function (layer) {
       map.addLayer(layer);
     });
