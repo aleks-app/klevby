@@ -5,24 +5,44 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
-const source = fs.readFileSync(
-  path.join(root, "assets/js/map/water-depth-contours-layer.js"),
+const registrySource = fs.readFileSync(
+  path.join(root, "assets/js/map/depth-maps-registry.js"),
   "utf8"
 );
 
-test("DEPTH_MAPS points to valid non-empty local FeatureCollections", () => {
+function loadRegistry() {
   const window = { fetch: async () => { throw new Error("index must not fetch"); } };
-  vm.runInContext(source, vm.createContext({
+  vm.runInContext(registrySource, vm.createContext({
     window,
     document: { getElementById() { return null; } },
     console
   }));
+  return window.KlevbyDepthMapsRegistry;
+}
 
-  const maps = JSON.parse(JSON.stringify(window.KlevbyWaterDepthContoursLayer.DEPTH_MAPS));
+test("depth maps registry exposes the current available maps", () => {
+  const registry = loadRegistry();
+  assert.ok(registry);
+  assert.equal(registry.maps.length, 9);
+  assert.equal(registry.getAll(), registry.maps);
+  assert.equal(registry.getAvailable().length, 9);
+  assert.equal(registry.getById("zvon").name, "Звонь");
+  assert.equal(registry.getById("unknown"), null);
+  assert.equal(registry.getByWaterBodyId("zvon").name, "Звонь");
+  assert.equal(registry.hasAvailableDepthMap("zvon"), true);
+  assert.equal(registry.getByWaterBodyId("unknown"), null);
+});
+
+test("registry maps point to valid local FeatureCollections", () => {
+  const maps = JSON.parse(JSON.stringify(loadRegistry().getAvailable()));
   assert.equal(maps.length, 9);
 
   maps.forEach((depthMap) => {
+    ["id", "name", "url", "center", "bbox", "featureCount"].forEach((field) => {
+      assert.notEqual(depthMap[field], undefined, `${depthMap.id}.${field}`);
+    });
     assert.equal(depthMap.center.length, 2);
+    assert.equal(depthMap.bbox.length, 4);
     assert.ok(depthMap.center.every(Number.isFinite));
     const filename = path.join(root, depthMap.url);
     assert.equal(fs.existsSync(filename), true, depthMap.url);
