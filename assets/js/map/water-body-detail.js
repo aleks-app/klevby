@@ -14,7 +14,8 @@
     const point = properties && typeof properties === "object" ? properties : {};
 
     return {
-      id: toDisplayText(point.water_body_id || point.id),
+      id: toDisplayText(point.id),
+      waterBodyId: toDisplayText(point.water_body_id || point.waterBodyId),
       name: toDisplayText(point.name, "Водоём"),
       waterType: toDisplayText(point.waterType, "Тип водоёма не указан"),
       region: toDisplayText(point.region),
@@ -64,7 +65,7 @@
     );
 
     const depthAction = section.querySelector(".water-body-detail-depth-action");
-    const hasDraftContours = global.KlevbyWaterDepthContoursLayer?.hasDraftContours(point.id) === true;
+    const hasDraftContours = global.KlevbyWaterDepthContoursLayer?.hasDraftContours(point.waterBodyId) === true;
     if (depthAction) {
       depthAction.disabled = !hasDraftContours;
       depthAction.textContent = hasDraftContours
@@ -96,12 +97,12 @@
   }
 
   async function showDepthContours() {
-    if (!selectedPoint || !global.KlevbyWaterDepthContoursLayer?.hasDraftContours(selectedPoint.id)) {
+    if (!selectedPoint || !global.KlevbyWaterDepthContoursLayer?.hasDraftContours(selectedPoint.waterBodyId)) {
       return false;
     }
 
     if (typeof global.klevbyShowWaterDepthContours !== "function") return false;
-    return global.klevbyShowWaterDepthContours(selectedPoint.id);
+    return global.klevbyShowWaterDepthContours(selectedPoint.waterBodyId);
   }
 
   function bind() {

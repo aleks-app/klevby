@@ -116,6 +116,7 @@ test("detail screen opens with normalized selected point data", () => {
 
   assert.deepEqual(toPlain(api.getSelectedPoint()), {
     id: "42",
+    waterBodyId: "",
     name: "Озеро Нарочь",
     waterType: "озеро",
     region: "Минская область",
@@ -139,29 +140,30 @@ test("detail screen opens with normalized selected point data", () => {
   assert.equal(elements.get("#appHeaderBackBtn").focused, true);
 });
 
-test("Zaslavskoe enables the internal draft depth contour action", () => {
+test("unknown water body keeps the draft contour action disabled", () => {
   const { api, elements } = loadDetailScreen();
 
-  api.open({ id: "zaslavskoe", name: "Заславское водохранилище" });
+  api.open({ water_body_id: "unknown-lake", name: "Неизвестное озеро" });
 
-  const action = elements.get(".water-body-detail-depth-action");
-  assert.equal(action.disabled, false);
-  assert.equal(action.textContent, "Показать схему глубин");
+  assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Схема глубин готовится");
 });
 
-test("water_body_id also enables the local Zaslavskoe contour action", () => {
+test("water_body_id enables the local Zaslavskoe contour action", () => {
   const { api, elements } = loadDetailScreen();
 
   api.open({ water_body_id: "zaslavskoe", name: "Заславское водохранилище" });
 
-  assert.equal(api.getSelectedPoint().id, "zaslavskoe");
+  assert.equal(api.getSelectedPoint().waterBodyId, "zaslavskoe");
   assert.equal(elements.get(".water-body-detail-depth-action").disabled, false);
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Показать схему глубин");
 });
 
 test("depth action calls the internal KlevGo contour flow without opening an external URL", async () => {
   const { api, elements, contourRequests, externalOpens } = loadDetailScreen();
   api.open({
-    id: "zaslavskoe",
+    id: "supabase-row-31",
+    water_body_id: "zaslavskoe",
     name: "Заславское водохранилище",
     sourceUrl: "https://external.example/depths"
   });

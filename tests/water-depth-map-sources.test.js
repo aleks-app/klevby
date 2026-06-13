@@ -71,6 +71,7 @@ test("normalizeWaterDepthMapSources converts a raw row to the map-ready shape", 
   assert.deepEqual(toPlain(rows), [
     {
       id: 17,
+      waterBodyId: "",
       name: "Озеро Нарочь",
       waterType: "озеро",
       region: "Минская область",
@@ -89,6 +90,35 @@ test("normalizeWaterDepthMapSources converts a raw row to the map-ready shape", 
       hasCoordinates: true
     }
   ]);
+});
+
+test("normalizeWaterDepthMapSources maps only Zaslavskoe aliases to the local contour id", () => {
+  const { api } = loadWaterDepthMapSources();
+  const rows = api.normalizeWaterDepthMapSources([
+    { id: 31, name: "Заславское водохранилище", source_url: "https://example.com/zaslavskoe" },
+    { id: 32, name: " Минское море ", source_url: "https://example.com/minsk-sea" },
+    { id: 33, name: "Вилейское водохранилище", source_url: "https://example.com/vileyka" }
+  ]);
+
+  assert.deepEqual(Array.from(rows, (row) => row.waterBodyId), [
+    "zaslavskoe",
+    "zaslavskoe",
+    ""
+  ]);
+});
+
+test("normalizeWaterDepthMapSources preserves an explicit canonical water body id", () => {
+  const { api } = loadWaterDepthMapSources();
+  const [row] = api.normalizeWaterDepthMapSources([
+    {
+      id: 34,
+      water_body_id: " canonical-id ",
+      name: "Минское море",
+      source_url: "https://example.com/minsk-sea"
+    }
+  ]);
+
+  assert.equal(row.waterBodyId, "canonical-id");
 });
 
 test("normalizeWaterDepthMapSources clears missing or invalid coordinate pairs", () => {
@@ -169,6 +199,7 @@ test("getWaterDepthMapSources returns normalized rows from the shared reader", a
   assert.deepEqual(toPlain(rows), [
     {
       id: "source-1",
+      waterBodyId: "",
       name: "Вилейское водохранилище",
       waterType: "водохранилище",
       region: "",
