@@ -3,10 +3,18 @@
   const FILL_LAYER_ID = "klevby-water-depth-contours-draft-fill";
   const LINE_LAYER_ID = "klevby-water-depth-contours-draft-lines";
   const DEPTH_SOURCE_ID = "klevby-water-depth-selected";
+  const DEPTH_OVERVIEW_HALO_LAYER_ID = "klevby-water-depth-overview-halo";
+  const DEPTH_OVERVIEW_FILL_LAYER_ID = "klevby-water-depth-overview-fill";
   const DEPTH_FILL_LAYER_ID = "klevby-water-depth-selected-fill";
   const DEPTH_LINE_LAYER_ID = "klevby-water-depth-selected-lines";
   const DEPTH_LABEL_LAYER_ID = "klevby-water-depth-selected-labels";
-  const DEPTH_LAYER_IDS = [DEPTH_FILL_LAYER_ID, DEPTH_LINE_LAYER_ID, DEPTH_LABEL_LAYER_ID];
+  const DEPTH_LAYER_IDS = [
+    DEPTH_OVERVIEW_HALO_LAYER_ID,
+    DEPTH_OVERVIEW_FILL_LAYER_ID,
+    DEPTH_FILL_LAYER_ID,
+    DEPTH_LINE_LAYER_ID,
+    DEPTH_LABEL_LAYER_ID
+  ];
   const ZVON_CONTOUR_URL = "assets/data/depth-contours/zvon.depth.full.geojson";
   const DEPTH_MAPS = Object.freeze([
     Object.freeze({ id: "zvon", name: "Звонь", url: ZVON_CONTOUR_URL }),
@@ -244,9 +252,53 @@
 
     return [
       {
+        id: DEPTH_OVERVIEW_HALO_LAYER_ID,
+        type: "line",
+        source: DEPTH_SOURCE_ID,
+        maxzoom: 12,
+        filter: ["==", ["geometry-type"], "Polygon"],
+        layout: {
+          "line-cap": "round",
+          "line-join": "round"
+        },
+        paint: {
+          "line-color": "#22d3ee",
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            5, 2.5,
+            9, 3.5,
+            12, 2
+          ],
+          "line-blur": 1.5,
+          "line-opacity": 0.9
+        }
+      },
+      {
+        id: DEPTH_OVERVIEW_FILL_LAYER_ID,
+        type: "fill",
+        source: DEPTH_SOURCE_ID,
+        maxzoom: 12,
+        filter: ["==", ["geometry-type"], "Polygon"],
+        paint: {
+          "fill-color": "#06b6d4",
+          "fill-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            5, 0.72,
+            9, 0.62,
+            12, 0.22
+          ],
+          "fill-outline-color": "#67e8f9"
+        }
+      },
+      {
         id: DEPTH_FILL_LAYER_ID,
         type: "fill",
         source: DEPTH_SOURCE_ID,
+        minzoom: 10,
         filter: ["==", ["geometry-type"], "Polygon"],
         paint: {
           "fill-color": depthColor,
@@ -466,6 +518,8 @@
     FILL_LAYER_ID,
     LINE_LAYER_ID,
     DEPTH_SOURCE_ID,
+    DEPTH_OVERVIEW_HALO_LAYER_ID,
+    DEPTH_OVERVIEW_FILL_LAYER_ID,
     DEPTH_FILL_LAYER_ID,
     DEPTH_LINE_LAYER_ID,
     DEPTH_LABEL_LAYER_ID,
