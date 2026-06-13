@@ -35,10 +35,18 @@ test("depth maps registry exposes the current available maps", () => {
     assert.equal(typeof depthMap.waterBodyId, "string", `${depthMap.id}.waterBodyId`);
     assert.ok(depthMap.waterBodyId.trim(), `${depthMap.id}.waterBodyId`);
     assert.equal(depthMap.status, "available", `${depthMap.id}.status`);
+    assert.ok(["ok", "needs_review"].includes(depthMap.validationStatus), `${depthMap.id}.validationStatus`);
     assert.equal(depthMap.format, "geojson", `${depthMap.id}.format`);
     assert.equal(depthMap.depthProperty, "depth_m", `${depthMap.id}.depthProperty`);
     assert.equal(depthMap.version, 1, `${depthMap.id}.version`);
   });
+
+  assert.equal(registry.getById("valkovskoe").validationStatus, "needs_review");
+  registry.getAvailable()
+    .filter((depthMap) => depthMap.id !== "valkovskoe")
+    .forEach((depthMap) => {
+      assert.equal(depthMap.validationStatus, "ok", `${depthMap.id}.validationStatus`);
+    });
 });
 
 test("registry maps point to valid local FeatureCollections", () => {

@@ -243,16 +243,37 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
   assert.equal(fillLayer.minzoom, 10);
   assert.equal(fillLayer.paint["fill-color"][0], "case");
   assert.equal(fillLayer.paint["fill-color"][2][0], "interpolate");
-  assert.equal(fillLayer.paint["fill-opacity"], 0.52);
+  assert.deepEqual(JSON.parse(JSON.stringify(fillLayer.paint["fill-opacity"])), [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    5, 0.07,
+    8, 0.12,
+    10, 0.18,
+    12, 0.28,
+    15, 0.32
+  ]);
   assert.equal(lineLayer.paint["line-color"], "#7dd3fc");
   assert.deepEqual(JSON.parse(JSON.stringify(lineLayer.paint["line-width"])), [
     "interpolate",
     ["linear"],
     ["zoom"],
+    5, 0.5,
+    8, 0.75,
     10, 1,
-    16, 1.5
+    12, 1.35,
+    15, 1.5
   ]);
-  assert.equal(lineLayer.paint["line-opacity"], 0.82);
+  assert.deepEqual(JSON.parse(JSON.stringify(lineLayer.paint["line-opacity"])), [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    5, 0.18,
+    8, 0.32,
+    10, 0.48,
+    12, 0.66,
+    15, 0.72
+  ]);
   assert.equal(labelLayer.type, "symbol");
   assert.equal(labelLayer.minzoom, 13);
   assert.equal(labelLayer.layout["text-size"][4], 10);
@@ -262,6 +283,65 @@ test("Zvon depth map loads the bundled GeoJSON with calm depth styling", async (
   assert.equal(map.calls.flyTo.length, 0);
   assert.equal(map.calls.fitBounds, 0);
   assert.equal(map.calls.addLayer, 5);
+});
+
+test("depth visual policy enhances validated maps and keeps Valkovskoe calm", () => {
+  const { api, registry } = loadLayer();
+  const okMap = registry.getById("zvon");
+  const needsReviewMap = registry.getById("valkovskoe");
+
+  assert.deepEqual(JSON.parse(JSON.stringify(api.getDepthVisualPolicy(okMap))), {
+    validationStatus: "ok",
+    enhancedDepthStyling: true
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(api.getDepthVisualPolicy(needsReviewMap))), {
+    validationStatus: "needs_review",
+    enhancedDepthStyling: false
+  });
+
+  const enhancedLayers = api.getDepthLayerDefinitions(okMap);
+  const calmLayers = api.getDepthLayerDefinitions(needsReviewMap);
+  const enhancedFill = enhancedLayers.find((layer) => layer.id === api.DEPTH_FILL_LAYER_ID);
+  const calmFill = calmLayers.find((layer) => layer.id === api.DEPTH_FILL_LAYER_ID);
+  const enhancedLine = enhancedLayers.find((layer) => layer.id === api.DEPTH_LINE_LAYER_ID);
+  const calmLine = calmLayers.find((layer) => layer.id === api.DEPTH_LINE_LAYER_ID);
+  const enhancedLabel = enhancedLayers.find((layer) => layer.id === api.DEPTH_LABEL_LAYER_ID);
+  const calmLabel = calmLayers.find((layer) => layer.id === api.DEPTH_LABEL_LAYER_ID);
+
+  assert.equal(enhancedFill.paint["fill-color"][0], "case");
+  assert.equal(calmFill.paint["fill-color"], "#38bdf8");
+  assert.ok(
+    interpolateZoomStops(calmFill.paint["fill-opacity"], 12) <
+      interpolateZoomStops(enhancedFill.paint["fill-opacity"], 12)
+  );
+  assert.ok(
+    interpolateZoomStops(calmLine.paint["line-opacity"], 12) <
+      interpolateZoomStops(enhancedLine.paint["line-opacity"], 12)
+  );
+  assert.ok(
+    interpolateZoomStops(calmLine.paint["line-width"], 12) <
+      interpolateZoomStops(enhancedLine.paint["line-width"], 12)
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(calmLabel)),
+    JSON.parse(JSON.stringify(enhancedLabel))
+  );
+});
+
+test("selected depth paint grows gently from far to close zoom", () => {
+  const { api, registry } = loadLayer();
+  const layers = api.getDepthLayerDefinitions(registry.getById("zvon"));
+  const overviewFill = layers.find((layer) => layer.id === api.DEPTH_OVERVIEW_FILL_LAYER_ID);
+  const fill = layers.find((layer) => layer.id === api.DEPTH_FILL_LAYER_ID);
+  const line = layers.find((layer) => layer.id === api.DEPTH_LINE_LAYER_ID);
+
+  assert.ok(interpolateZoomStops(overviewFill.paint["fill-opacity"], 5) <= 0.1);
+  assert.ok(interpolateZoomStops(fill.paint["fill-opacity"], 5) < interpolateZoomStops(fill.paint["fill-opacity"], 8));
+  assert.ok(interpolateZoomStops(fill.paint["fill-opacity"], 8) < interpolateZoomStops(fill.paint["fill-opacity"], 12));
+  assert.ok(interpolateZoomStops(line.paint["line-opacity"], 5) < interpolateZoomStops(line.paint["line-opacity"], 8));
+  assert.ok(interpolateZoomStops(line.paint["line-opacity"], 8) < interpolateZoomStops(line.paint["line-opacity"], 12));
+  assert.ok(interpolateZoomStops(line.paint["line-width"], 5) < interpolateZoomStops(line.paint["line-width"], 8));
+  assert.ok(interpolateZoomStops(line.paint["line-width"], 8) < interpolateZoomStops(line.paint["line-width"], 12));
 });
 
 test("depth map index is lightweight and contains precomputed marker coordinates", () => {
@@ -327,6 +407,12 @@ test("enabling depth mode adds lightweight markers with a larger invisible hitbo
   const markerRadius = markerLayer.paint["circle-radius"];
   const hitboxRadius = hitboxLayer.paint["circle-radius"];
 
+  assert.deepEqual(JSON.parse(JSON.stringify(markerRadius)), [
+    "interpolate", ["linear"], ["zoom"], 5, 4, 8.5, 6, 12, 10
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(hitboxRadius)), [
+    "interpolate", ["linear"], ["zoom"], 5, 22, 12, 28
+  ]);
   assert.equal(markerLayer.paint["circle-color"], "#0c4a6e");
   assert.equal(markerLayer.paint["circle-stroke-color"], "#bae6fd");
   assert.equal(hitboxLayer.paint["circle-opacity"], 0);
