@@ -96,8 +96,11 @@ function loadDetailScreen(options = {}) {
     showSection(sectionName) {
       openedSections.push(sectionName);
     },
-    klevbyShowWaterDepthContours(id) {
-      contourRequests.push(id);
+    requestAnimationFrame(callback) {
+      callback();
+    },
+    klevbyShowWaterDepthContours(id, flowOptions) {
+      contourRequests.push({ id, options: flowOptions });
       return Promise.resolve(true);
     },
     open(...args) {
@@ -168,8 +171,8 @@ test("unknown water body shows the disabled coming-soon depth action", () => {
   assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Скоро");
 });
 
-test("Zvon exposes available registry metadata and enables the depth action", async () => {
-  const { api, elements, contourRequests } = loadDetailScreen();
+test("Zvon depth action returns to the map and opens the selected depths with fitting", async () => {
+  const { api, elements, contourRequests, openedSections } = loadDetailScreen();
 
   api.open({ water_body_id: "zvon", name: "Звонь" });
 
@@ -189,7 +192,12 @@ test("Zvon exposes available registry metadata and enables the depth action", as
 
   elements.get(".water-body-detail-depth-action").click();
   await Promise.resolve();
-  assert.deepEqual(contourRequests, ["zvon"]);
+  await Promise.resolve();
+  assert.deepEqual(openedSections, ["water-body-detail", "map"]);
+  assert.deepEqual(toPlain(contourRequests), [{
+    id: "zvon",
+    options: { fitBounds: true }
+  }]);
 });
 
 test("unavailable depth action does not call the contour flow or open an external URL", async () => {
@@ -220,6 +228,16 @@ test("draft registry entries show preparing status without enabling the CTA", ()
   assert.equal(status.label, "Карта глубин готовится");
   assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
   assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Скоро");
+});
+
+test("missing public depth flow fails safely without navigating away", async () => {
+  const { api, openedSections } = loadDetailScreen({
+    window: { klevbyShowWaterDepthContours: undefined }
+  });
+  api.open({ water_body_id: "zvon", name: "Звонь" });
+
+  assert.equal(await api.showDepthContours(), false);
+  assert.deepEqual(openedSections, ["water-body-detail"]);
 });
 
 test("safe depth source URL accepts only absolute credential-free HTTP(S) URLs", () => {

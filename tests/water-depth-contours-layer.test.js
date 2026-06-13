@@ -144,8 +144,9 @@ function createMap(container) {
       calls.removeLayer += 1;
       layers.delete(id);
     },
-    fitBounds() {
+    fitBounds(bounds, options) {
       calls.fitBounds += 1;
+      calls.lastFitBounds = [bounds, options];
     },
     flyTo(options) {
       calls.flyTo.push(options);
@@ -496,6 +497,49 @@ test("marker selection loads one map at a time and reuses the in-memory cache", 
   assert.equal(map.calls.fitBounds, 0);
 });
 
+test("selected depth map can fit its registry bbox with mobile-safe padding", () => {
+  const { api, container } = loadLayer();
+  const map = createMap(container);
+
+  assert.equal(api.focusDepthMap(map, "zvon"), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(map.calls.lastFitBounds)), [
+    [[28.516146219, 55.057452077], [28.546253228, 55.072314093]],
+    {
+      padding: { top: 80, bottom: 180, left: 24, right: 24 },
+      duration: 700,
+      maxZoom: 14
+    }
+  ]);
+});
+
+test("depth map focus falls back to registry center when fitBounds is unavailable", () => {
+  const { api, container } = loadLayer();
+  const map = createMap(container);
+  map.fitBounds = undefined;
+
+  assert.equal(api.focusDepthMap(map, "zvon"), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(map.calls.flyTo)), [{
+    center: [28.531199724, 55.064883085],
+    zoom: 13,
+    duration: 700
+  }]);
+});
+
+test("missing viewport methods do not break selected depth map loading", async () => {
+  const { api, container } = loadLayer(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => zvonData
+  }));
+  const map = createMap(container);
+  map.fitBounds = undefined;
+  map.flyTo = undefined;
+
+  assert.equal(await api.selectDepthMap(map, "zvon"), true);
+  assert.equal(api.focusDepthMap(map, "zvon"), false);
+  assert.equal(api.getActiveDepthMapId(), "zvon");
+});
+
 test("depth toggle loads every configured lake without changing the viewport", async () => {
   const requestedUrls = [];
   const infoCalls = [];
@@ -692,7 +736,9 @@ test("map integration guards unavailable drafts and removes stale contours on de
   assert.match(mapLogic, /window\.klevbyShowWaterDepthContours = async function/);
   assert.match(mapLogic, /window\.showSection\("map"\)/);
   assert.match(mapLogic, /klevbySetWaterDepthLayerEnabled\(true\)/);
-  assert.match(mapLogic, /contoursLayer\.showDraftContours\(map, waterBodyId\)/);
+  assert.match(mapLogic, /getByWaterBodyId\?\.\(waterBodyId\)/);
+  assert.match(mapLogic, /contoursLayer\.selectDepthMap\(map, depthMap\.id\)/);
+  assert.match(mapLogic, /contoursLayer\.focusDepthMap\?\.\(map, depthMap\.id\)/);
   const cleanupIndex = mapLogic.indexOf("KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance)");
   const disabledBranchIndex = mapLogic.indexOf("if (!waterDepthLayerEnabled)", cleanupIndex);
   assert.ok(cleanupIndex >= 0);
