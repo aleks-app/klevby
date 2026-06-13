@@ -59,7 +59,6 @@
     let watchId = null;
     let followMode = false;
     let requestPending = false;
-    let programmaticMove = false;
     let hasCenteredOnFirstFix = false;
 
     function syncButton() {
@@ -142,7 +141,6 @@
 
       if (!hasCenteredOnFirstFix) {
         hasCenteredOnFirstFix = true;
-        programmaticMove = true;
         map.flyTo({
           center: [longitude, latitude],
           zoom: Math.max(Number(map.getZoom?.()) || 0, USER_LOCATION_FOCUS_ZOOM),
@@ -155,10 +153,10 @@
     function handleError(error) {
       if (error?.code === 1) {
         notify(GEOLOCATION_DENIED_MESSAGE);
+        stopFollowing();
       } else {
         notify(GEOLOCATION_UNAVAILABLE_MESSAGE);
       }
-      stopFollowing();
     }
 
     function clearLocationVisuals() {
@@ -204,17 +202,7 @@
       }
     }
 
-    function handleMoveStart(event) {
-      if (!followMode) return;
-      if (programmaticMove || !event?.originalEvent) {
-        programmaticMove = false;
-        return;
-      }
-      stopFollowing();
-    }
-
     button.addEventListener("click", handleClick);
-    map.on("movestart", handleMoveStart);
     map.on("styledata", function () {
       if (lastPosition) renderPosition(lastPosition);
     });
@@ -224,7 +212,6 @@
       destroy: function () {
         stopFollowing();
         button.removeEventListener("click", handleClick);
-        map.off?.("movestart", handleMoveStart);
         if (map.getLayer?.(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID);
         if (map.getLayer?.(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID);
         if (map.getSource?.(SOURCE_ID)) map.removeSource(SOURCE_ID);

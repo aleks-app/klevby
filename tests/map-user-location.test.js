@@ -46,6 +46,7 @@ function createButton() {
 function createMockMap(options = {}) {
   const sources = new Map();
   const layers = new Set();
+  const listeners = new Map();
   const flyToCalls = [];
   const easeToCalls = [];
   let zoom = options.zoom ?? 12;
@@ -79,8 +80,16 @@ function createMockMap(options = {}) {
       layers.delete(id);
     },
     moveLayer() {},
-    on() {},
-    off() {},
+    on(event, handler) {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event).add(handler);
+    },
+    off(event, handler) {
+      listeners.get(event)?.delete(handler);
+    },
+    emit(event, data) {
+      for (const handler of listeners.get(event) || []) handler(data);
+    },
     easeTo(options) {
       easeToCalls.push(options);
     },
@@ -126,10 +135,12 @@ function createWiredController(position, options = {}) {
   const { MockMarker, instances } = createMockMarkerClass();
   const watchId = options.watchId ?? 10;
   let watchCallback;
+  let watchErrorCallback;
   const geolocation = {
-    watchPosition(success) {
+    watchPosition(success, error) {
       geolocation.watchStarted = true;
       watchCallback = success;
+      watchErrorCallback = error;
       if (!options.deferWatchCallback) {
         success(position);
         if (options.extraWatchUpdates) {
@@ -180,6 +191,9 @@ function createWiredController(position, options = {}) {
     },
     deliverPosition() {
       watchCallback?.(position);
+    },
+    deliverError(error) {
+      watchErrorCallback?.(error);
     }
   };
 }
@@ -206,7 +220,7 @@ test("location module is loaded before map logic and leaves depths control intac
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const mapLogic = fs.readFileSync(path.join(__dirname, "../assets/js/map-logic.js"), "utf8");
   assert.ok(html.indexOf("map-user-location.js") < html.indexOf("map-logic.js"));
-  assert.match(html, /map-user-location\.js\?v=20260613-gps-restore-first-fix-zoom-1/);
+  assert.match(html, /map-user-location\.js\?v=20260613-gps-stability-fix-1/);
   assert.match(mapLogic, /data-map-action="location" aria-pressed="false"/);
   assert.match(mapLogic, /data-map-action="depths" aria-pressed="false"/);
   assert.match(mapLogic, /KlevbyMapUserLocation\.createController/);
@@ -240,6 +254,40 @@ test("repeated GPS updates do not move the map again", () => {
 
   assert.equal(map.flyToCalls.length, 1);
   assert.equal(map.easeToCalls.length, 0);
+});
+
+test("manual map movement does not disable active GPS or remove its marker", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const { map, button, geolocation, instances, click } = createWiredController(position);
+
+  click();
+  for (const event of ["dragstart", "movestart", "zoomstart", "moveend", "zoomend"]) {
+    map.emit(event, { originalEvent: {} });
+  }
+
+  assert.equal(geolocation.clearedWatchId, undefined);
+  assert.equal(instances[0].removed, false);
+  assert.equal(button.classList.contains("is-active"), true);
+  assert.equal(button.getAttribute("aria-pressed"), "true");
+});
+
+test("temporary watch errors after a successful fix keep GPS and visuals active", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const wired = createWiredController(position);
+
+  wired.click();
+  wired.deliverError({ code: 3 });
+  wired.deliverError({ code: 2 });
+
+  assert.equal(wired.geolocation.clearedWatchId, undefined);
+  assert.equal(wired.instances[0].removed, false);
+  assert.equal(wired.button.classList.contains("is-active"), true);
+  assert.equal(wired.button.getAttribute("aria-pressed"), "true");
+  assert.ok(wired.map.getSource(wired.api.SOURCE_ID).data);
 });
 
 test("first fix keeps a closer manual zoom instead of zooming out", () => {
@@ -303,6 +351,39 @@ test("second click disables GPS and clears location visuals", () => {
   const clearedData = map.getSource(api.SOURCE_ID).data;
   assert.equal(clearedData.type, "FeatureCollection");
   assert.equal(clearedData.features.length, 0);
+});
+
+test("permission denied before first success safely disables GPS", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const wired = createWiredController(position, { deferWatchCallback: true });
+
+  wired.click();
+  wired.deliverError({ code: 1 });
+
+  assert.equal(wired.geolocation.clearedWatchId, 10);
+  assert.equal(wired.button.classList.contains("is-active"), false);
+  assert.equal(wired.button.getAttribute("aria-pressed"), "false");
+  assert.equal(wired.instances.length, 0);
+});
+
+test("disable and enable again zooms once on the next first fix", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const wired = createWiredController(position, { deferWatchCallback: true });
+
+  wired.click();
+  wired.deliverPosition();
+  assert.equal(wired.map.flyToCalls.length, 1);
+
+  wired.click();
+  wired.click();
+  wired.deliverPosition();
+  wired.deliverPosition();
+
+  assert.equal(wired.map.flyToCalls.length, 2);
 });
 
 test("marker is never visible while button is inactive", () => {
