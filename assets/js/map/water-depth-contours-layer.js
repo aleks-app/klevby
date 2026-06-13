@@ -431,6 +431,26 @@
     ];
   }
 
+  function getDepthMarkerLabel(depthMap) {
+    const shortName = depthMap?.shortName;
+    if (typeof shortName === "string" && shortName.trim()) {
+      return shortName.trim();
+    }
+
+    const name = typeof depthMap?.name === "string" ? depthMap.name.trim() : "";
+    if (!name) return "";
+
+    return name.replace(/\s+водохранилище$/iu, " вод.").trim();
+  }
+
+  function getDepthMarkerHitboxRadiusExpression() {
+    return ["interpolate", ["linear"], ["zoom"], 5, 22, 12, 28];
+  }
+
+  function getDepthMarkerVisibleRadiusExpression() {
+    return ["interpolate", ["linear"], ["zoom"], 5, 4, 8.5, 6, 12, 10];
+  }
+
   function getDepthMarkerFeatureCollection(excludedMapId) {
     const normalizedExcludedMapId = normalizeWaterBodyId(excludedMapId);
 
@@ -443,7 +463,7 @@
           type: "Feature",
           properties: {
             id: depthMap.id,
-            name: depthMap.name,
+            name: getDepthMarkerLabel(depthMap),
             maxDepth: depthMap.maxDepth || null
           },
           geometry: {
@@ -462,7 +482,7 @@
         type: "circle",
         source: DEPTH_MARKER_SOURCE_ID,
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 22, 12, 28],
+          "circle-radius": getDepthMarkerHitboxRadiusExpression(),
           "circle-color": "#000000",
           "circle-opacity": 0
         }
@@ -472,11 +492,11 @@
         type: "circle",
         source: DEPTH_MARKER_SOURCE_ID,
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 7, 12, 10],
-          "circle-color": "#0891b2",
-          "circle-stroke-color": "#a5f3fc",
+          "circle-radius": getDepthMarkerVisibleRadiusExpression(),
+          "circle-color": "#0c4a6e",
+          "circle-stroke-color": "#bae6fd",
           "circle-stroke-width": 2,
-          "circle-opacity": 0.94
+          "circle-opacity": 0.93
         }
       },
       {
@@ -826,8 +846,11 @@
     getLineLayerDefinition,
     getDepthMapConfig,
     getDepthLayerDefinitions,
+    getDepthMarkerLabel,
     getDepthMarkerFeatureCollection,
     getDepthMarkerLayerDefinitions,
+    getDepthMarkerHitboxRadiusExpression,
+    getDepthMarkerVisibleRadiusExpression,
     getDepthMarkerFeatureAtPoint,
     getZvonLayerDefinitions: getDepthLayerDefinitions,
     countGeometryTypes,

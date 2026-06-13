@@ -64,6 +64,27 @@ function loadLayer(fetchImplementation) {
   return { api: window.KlevbyWaterDepthContoursLayer, container };
 }
 
+function interpolateZoomStops(expression, zoom) {
+  const stops = [];
+  for (let index = 3; index < expression.length; index += 2) {
+    stops.push([expression[index], expression[index + 1]]);
+  }
+
+  if (zoom <= stops[0][0]) return stops[0][1];
+  if (zoom >= stops[stops.length - 1][0]) return stops[stops.length - 1][1];
+
+  for (let index = 0; index < stops.length - 1; index += 1) {
+    const [startZoom, startValue] = stops[index];
+    const [endZoom, endValue] = stops[index + 1];
+    if (zoom >= startZoom && zoom <= endZoom) {
+      const ratio = (zoom - startZoom) / (endZoom - startZoom);
+      return startValue + (endValue - startValue) * ratio;
+    }
+  }
+
+  return stops[stops.length - 1][1];
+}
+
 function createMap(container) {
   const sources = new Map();
   const layers = new Map();
@@ -269,10 +290,23 @@ test("enabling depth mode adds lightweight markers with a larger invisible hitbo
   assert.ok(map.getSource(api.DEPTH_MARKER_SOURCE_ID));
   const markerLayer = map.getLayer(api.DEPTH_MARKER_LAYER_ID);
   const hitboxLayer = map.getLayer(api.DEPTH_MARKER_HITBOX_LAYER_ID);
-  assert.equal(markerLayer.paint["circle-color"], "#0891b2");
+  const labelLayer = map.getLayer(api.DEPTH_MARKER_LABEL_LAYER_ID);
+  const markerRadius = markerLayer.paint["circle-radius"];
+  const hitboxRadius = hitboxLayer.paint["circle-radius"];
+
+  assert.equal(markerLayer.paint["circle-color"], "#0c4a6e");
+  assert.equal(markerLayer.paint["circle-stroke-color"], "#bae6fd");
   assert.equal(hitboxLayer.paint["circle-opacity"], 0);
-  assert.ok(hitboxLayer.paint["circle-radius"][4] > markerLayer.paint["circle-radius"][4]);
-  assert.ok(hitboxLayer.paint["circle-radius"][6] > markerLayer.paint["circle-radius"][6]);
+  assert.equal(interpolateZoomStops(markerRadius, 5), 4);
+  assert.equal(interpolateZoomStops(markerRadius, 8.5), 6);
+  assert.equal(interpolateZoomStops(markerRadius, 12), 10);
+  assert.equal(interpolateZoomStops(hitboxRadius, 5), 22);
+  assert.equal(interpolateZoomStops(hitboxRadius, 12), 28);
+  assert.ok(interpolateZoomStops(hitboxRadius, 5) > interpolateZoomStops(markerRadius, 5));
+  assert.ok(interpolateZoomStops(hitboxRadius, 8.5) > interpolateZoomStops(markerRadius, 8.5));
+  assert.ok(interpolateZoomStops(hitboxRadius, 12) > interpolateZoomStops(markerRadius, 12));
+  assert.ok(labelLayer);
+  assert.equal(labelLayer.layout["text-field"][1], "name");
   assert.ok(map.getLayer(api.DEPTH_MARKER_LABEL_LAYER_ID));
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
   assert.equal(
@@ -287,6 +321,36 @@ test("enabling depth mode adds lightweight markers with a larger invisible hitbo
   assert.equal(map.getSource(api.DEPTH_MARKER_SOURCE_ID), null);
   assert.equal(map.getSource(api.DEPTH_SOURCE_ID), null);
   assert.equal(map.calls.off.length, 3);
+});
+
+test("depth marker labels stay visible and long reservoir names can shorten", () => {
+  const { api } = loadLayer();
+
+  assert.equal(api.getDepthMarkerLabel({ name: "Звонь" }), "Звонь");
+  assert.equal(api.getDepthMarkerLabel({ name: "Вилейское водохранилище" }), "Вилейское вод.");
+  assert.equal(api.getDepthMarkerLabel({ name: "Дубровское водохранилище", shortName: "Дубровское" }), "Дубровское");
+
+  const markers = api.getDepthMarkerFeatureCollection();
+  assert.equal(markers.features.find((feature) => feature.properties.id === "zvon").properties.name, "Звонь");
+  assert.equal(markers.features.find((feature) => feature.properties.id === "leshno").properties.name, "Лешно");
+  assert.equal(markers.features.find((feature) => feature.properties.id === "lugovoe").properties.name, "Луговое");
+});
+
+test("visible marker radius scales down by zoom while hitbox stays finger-friendly", () => {
+  const { api } = loadLayer();
+  const markerRadius = api.getDepthMarkerVisibleRadiusExpression();
+  const hitboxRadius = api.getDepthMarkerHitboxRadiusExpression();
+  const previousFarRadius = 7;
+  const previousCloseRadius = 10;
+
+  assert.ok(interpolateZoomStops(markerRadius, 5) < previousFarRadius * 0.6);
+  assert.ok(interpolateZoomStops(markerRadius, 8.5) < previousCloseRadius * 0.85);
+  assert.ok(interpolateZoomStops(markerRadius, 8.5) > interpolateZoomStops(markerRadius, 5));
+  assert.equal(interpolateZoomStops(markerRadius, 12), previousCloseRadius);
+  assert.ok(interpolateZoomStops(hitboxRadius, 5) >= 22);
+  assert.ok(interpolateZoomStops(hitboxRadius, 12) >= 28);
+  assert.ok(interpolateZoomStops(hitboxRadius, 5) > interpolateZoomStops(markerRadius, 5));
+  assert.ok(interpolateZoomStops(hitboxRadius, 12) > interpolateZoomStops(markerRadius, 12));
 });
 
 test("depth hitbox click prevents the map click and selects the lake", async () => {
