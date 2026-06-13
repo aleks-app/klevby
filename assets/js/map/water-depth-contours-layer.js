@@ -411,7 +411,7 @@
   async function showAllDepthMaps(map) {
     if (!map || typeof global.fetch !== "function") return false;
 
-    const collections = await Promise.all(DEPTH_MAPS.map(async function (depthMap) {
+    const results = await Promise.allSettled(DEPTH_MAPS.map(async function (depthMap) {
       const response = await global.fetch(depthMap.url);
 
       if (!response.ok) {
@@ -425,6 +425,29 @@
 
       return data;
     }));
+    const collections = [];
+    let failedMaps = 0;
+
+    results.forEach(function (result, index) {
+      const depthMap = DEPTH_MAPS[index];
+
+      if (result.status === "fulfilled") {
+        collections.push(result.value);
+        return;
+      }
+
+      failedMaps += 1;
+      console.warn("Klevby Map: failed to load depth map", {
+        name: depthMap.name,
+        url: depthMap.url,
+        error: result.reason
+      });
+    });
+
+    if (!collections.length) {
+      removeDepthMap(map);
+      return false;
+    }
 
     const data = {
       type: "FeatureCollection",
@@ -441,8 +464,9 @@
 
     activeDepthMapId = "all";
     console.info("Klevby Map: depth maps loaded", {
-      maps: collections.length,
-      features: data.features.length
+      successfulMaps: collections.length,
+      failedMaps,
+      totalFeatures: data.features.length
     });
     return true;
   }

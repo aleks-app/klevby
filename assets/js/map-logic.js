@@ -1482,16 +1482,23 @@
       if (activeMapProvider === "maplibre" && mapInstance) {
         if (waterDepthLayerEnabled) {
           const contoursLayer = window.KlevbyWaterDepthContoursLayer;
+          let depthMapsLoaded = false;
 
           try {
-            await contoursLayer?.showAllDepthMaps(mapInstance);
+            depthMapsLoaded = await contoursLayer?.showAllDepthMaps(mapInstance);
           } catch (error) {
             console.warn("Klevby Map: failed to load depth maps", error);
           }
 
-          if (!contoursLayer?.DEPTH_SOURCE_ID || !mapInstance.getSource(contoursLayer.DEPTH_SOURCE_ID)) {
+          if (
+            !depthMapsLoaded ||
+            !contoursLayer?.DEPTH_SOURCE_ID ||
+            !mapInstance.getSource(contoursLayer.DEPTH_SOURCE_ID)
+          ) {
             waterDepthLayerEnabled = false;
             contoursLayer?.removeDepthMap(mapInstance);
+            syncWaterDepthControl();
+            console.warn("Klevby Map: depth maps unavailable; control disabled");
           }
         }
       }
