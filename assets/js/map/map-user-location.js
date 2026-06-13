@@ -108,6 +108,7 @@
       const latitude = Number(position?.coords?.latitude);
       if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
 
+      const isFirstFix = !marker;
       lastPosition = position;
       ensureAccuracyLayer();
       map.getSource(SOURCE_ID)?.setData(createAccuracyFeature(
@@ -132,20 +133,31 @@
         markerElement?.style.setProperty("--klevby-user-heading", `${heading}deg`);
       }
 
-      if (followMode) {
+      if (requestPending) {
+        requestPending = false;
+        syncButton();
+      }
+
+      if (isFirstFix) {
+        programmaticMove = true;
+        map.flyTo({
+          center: [longitude, latitude],
+          zoom: Math.max(Number(map.getZoom?.()) || 0, 15),
+          essential: true
+        });
+      } else if (followMode) {
         programmaticMove = true;
         map.easeTo({ center: [longitude, latitude], duration: 700 });
       }
     }
 
     function handleError(error) {
-      requestPending = false;
       if (error?.code === 1) {
         notify(GEOLOCATION_DENIED_MESSAGE);
       } else {
         notify(GEOLOCATION_UNAVAILABLE_MESSAGE);
       }
-      syncButton();
+      stopFollowing();
     }
 
     function clearLocationVisuals() {
@@ -172,38 +184,18 @@
     }
 
     function startFollowing() {
-      if (!geolocation?.watchPosition) return;
-      followMode = true;
-      syncButton();
-      watchId = geolocation.watchPosition(renderPosition, handleError, GEOLOCATION_OPTIONS);
-      if (lastPosition) renderPosition(lastPosition);
-    }
-
-    function locateOnce() {
-      if (!geolocation?.getCurrentPosition) {
+      if (!geolocation?.watchPosition) {
         notify(GEOLOCATION_UNAVAILABLE_MESSAGE);
         return;
       }
+      followMode = true;
       requestPending = true;
       syncButton();
-      geolocation.getCurrentPosition(function (position) {
-        requestPending = false;
-        renderPosition(position);
-        programmaticMove = true;
-        map.flyTo({
-          center: [position.coords.longitude, position.coords.latitude],
-          zoom: Math.max(Number(map.getZoom?.()) || 0, 15),
-          essential: true
-        });
-        syncButton();
-      }, handleError, GEOLOCATION_OPTIONS);
+      watchId = geolocation.watchPosition(renderPosition, handleError, GEOLOCATION_OPTIONS);
     }
 
     function handleClick() {
-      if (requestPending) return;
-      if (!lastPosition) {
-        locateOnce();
-      } else if (followMode) {
+      if (followMode || requestPending) {
         stopFollowing();
       } else {
         startFollowing();

@@ -113,17 +113,20 @@ function createWiredController(position, options = {}) {
   const button = createButton();
   const { MockMarker, instances } = createMockMarkerClass();
   const watchId = options.watchId ?? 10;
+  let watchCallback;
   const geolocation = {
     watchPosition(success) {
-      success(position);
+      geolocation.watchStarted = true;
+      watchCallback = success;
+      if (!options.deferWatchCallback) {
+        success(position);
+      }
       return watchId;
     },
     clearWatch(id) {
       geolocation.clearedWatchId = id;
     },
-    getCurrentPosition(success) {
-      success(position);
-    }
+    getCurrentPosition() {}
   };
   let clickHandler;
 
@@ -159,6 +162,9 @@ function createWiredController(position, options = {}) {
     instances,
     click() {
       clickHandler();
+    },
+    deliverPosition() {
+      watchCallback?.(position);
     }
   };
 }
@@ -185,31 +191,50 @@ test("location module is loaded before map logic and leaves depths control intac
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const mapLogic = fs.readFileSync(path.join(__dirname, "../assets/js/map-logic.js"), "utf8");
   assert.ok(html.indexOf("map-user-location.js") < html.indexOf("map-logic.js"));
-  assert.match(html, /map-user-location\.js\?v=20260613-gps-off-cleanup-1/);
+  assert.match(html, /map-user-location\.js\?v=20260613-gps-one-tap-toggle-1/);
   assert.match(mapLogic, /data-map-action="location" aria-pressed="false"/);
   assert.match(mapLogic, /data-map-action="depths" aria-pressed="false"/);
   assert.match(mapLogic, /KlevbyMapUserLocation\.createController/);
 });
 
-test("disabling follow mode clears watch, location visuals, and button state", () => {
+test("first click starts watch and activates button immediately", () => {
   const position = {
-    coords: {
-      longitude: 27.56,
-      latitude: 53.9,
-      accuracy: 25,
-      heading: 90
-    }
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const { geolocation, button, click } = createWiredController(position, {
+    deferWatchCallback: true
+  });
+
+  click();
+
+  assert.equal(geolocation.watchStarted, true);
+  assert.equal(button.classList.contains("is-active"), true);
+  assert.equal(button.getAttribute("aria-pressed"), "true");
+});
+
+test("position success shows marker while button stays active", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
+  };
+  const { api, map, button, instances, click } = createWiredController(position);
+
+  click();
+
+  assert.equal(button.classList.contains("is-active"), true);
+  assert.equal(button.getAttribute("aria-pressed"), "true");
+  assert.equal(instances.length, 1);
+  assert.equal(instances[0].removed, false);
+  assert.ok(map.getSource(api.SOURCE_ID).data);
+});
+
+test("second click disables GPS and clears location visuals", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: 90 }
   };
   const { api, map, button, geolocation, instances, click } = createWiredController(position);
 
   click();
-  assert.equal(button.classList.contains("is-active"), false);
-  assert.equal(instances.length, 1);
-
-  click();
   assert.equal(button.classList.contains("is-active"), true);
-  assert.ok(map.getSource(api.SOURCE_ID).data);
-  assert.equal(instances[0].removed, false);
 
   click();
   assert.equal(geolocation.clearedWatchId, 10);
@@ -219,6 +244,28 @@ test("disabling follow mode clears watch, location visuals, and button state", (
   const clearedData = map.getSource(api.SOURCE_ID).data;
   assert.equal(clearedData.type, "FeatureCollection");
   assert.equal(clearedData.features.length, 0);
+});
+
+test("marker is never visible while button is inactive", () => {
+  const position = {
+    coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: null }
+  };
+  const { button, instances, click, deliverPosition } = createWiredController(position, {
+    deferWatchCallback: true
+  });
+
+  click();
+  assert.equal(button.classList.contains("is-active"), true);
+  assert.equal(instances.length, 0);
+
+  deliverPosition();
+  assert.equal(button.classList.contains("is-active"), true);
+  assert.equal(instances.length, 1);
+  assert.equal(instances[0].removed, false);
+
+  click();
+  assert.equal(button.classList.contains("is-active"), false);
+  assert.equal(instances[0].removed, true);
 });
 
 test("disable is safe when follow mode was never enabled", () => {
@@ -252,7 +299,7 @@ test("disable is safe when follow mode was never enabled", () => {
   assert.equal(map.sources.size, 0);
 });
 
-test("follow mode can be enabled again after disable", () => {
+test("location can be enabled again after disable", () => {
   const position = {
     coords: { longitude: 27.56, latitude: 53.9, accuracy: 25, heading: null }
   };
@@ -260,10 +307,8 @@ test("follow mode can be enabled again after disable", () => {
 
   click();
   click();
-  click();
   assert.equal(instances[0].removed, true);
 
-  click();
   click();
   assert.equal(button.classList.contains("is-active"), true);
   assert.equal(instances.length, 2);
