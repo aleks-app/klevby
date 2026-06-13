@@ -1405,9 +1405,12 @@
     const setWaterDepthLayerEnabled = async function (enabled) {
       waterDepthLayerEnabled = Boolean(enabled);
 
+      // Draft contour zones are not part of the current user-facing depth flow.
+      // Remove any stale layer left by an older session/build on either toggle state.
+      window.KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance);
+
       if (!waterDepthLayerEnabled) {
         window.KlevbyWaterDepthPreviewSheet?.close();
-        window.KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance);
       }
 
       if (activeMapProvider === "maplibre" && mapInstance) {

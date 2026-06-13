@@ -4,9 +4,9 @@
   const LINE_LAYER_ID = "klevby-water-depth-contours-draft-lines";
   const DISCLAIMER_CLASS = "water-depth-contours-draft-note";
   const DISCLAIMER_TEXT = "Глубины ориентировочные · данные уточняются";
-  const DRAFT_CONTOURS = Object.freeze({
-    zaslavskoe: "assets/data/depth-contours/zaslavskoe.draft.geojson"
-  });
+  // Reserved for future proper, licensed, or imported depth-map data.
+  // The local Zaslavskoe draft remains an internal validation sample only.
+  const DRAFT_CONTOURS = Object.freeze({});
 
   let activeWaterBodyId = "";
 

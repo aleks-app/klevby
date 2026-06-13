@@ -97,11 +97,12 @@ function createMap(container) {
   };
 }
 
-test("draft contour availability is local and limited to Zaslavskoe", () => {
+test("the local Zaslavskoe draft sample is not available to the user flow", () => {
   const { api } = loadLayer();
 
-  assert.equal(api.hasDraftContours("zaslavskoe"), true);
-  assert.equal(api.getDraftContourUrl("zaslavskoe"), "assets/data/depth-contours/zaslavskoe.draft.geojson");
+  assert.deepEqual(JSON.parse(JSON.stringify(api.DRAFT_CONTOURS)), {});
+  assert.equal(api.hasDraftContours("zaslavskoe"), false);
+  assert.equal(api.getDraftContourUrl("zaslavskoe"), "");
   assert.equal(api.hasDraftContours("unknown-water"), false);
 });
 
@@ -155,27 +156,31 @@ test("draft validation accepts polygon zones and keeps LineString isobath suppor
   assert.equal(api.isDraftFeatureCollection(lineCollection, "zaslavskoe"), false);
 });
 
-test("showing contours is repeat-safe and the disclaimer follows contour visibility", async () => {
+test("unavailable draft contours do not fetch or render fill and line layers", async () => {
   const { api, container } = loadLayer();
   const map = createMap(container);
 
-  assert.equal(await api.showDraftContours(map, "zaslavskoe"), true);
-  assert.equal(map.calls.addSource, 1);
-  assert.equal(map.calls.addLayer, 2);
-  assert.equal(map.calls.fitBounds, 1);
+  assert.equal(await api.showDraftContours(map, "zaslavskoe"), false);
+  assert.equal(map.calls.addSource, 0);
+  assert.equal(map.calls.addLayer, 0);
+  assert.equal(map.calls.fitBounds, 0);
+  assert.equal(map.getLayer(api.FILL_LAYER_ID), null);
+  assert.equal(map.getLayer(api.LINE_LAYER_ID), null);
+  assert.equal(container.children.length, 0);
+});
+
+test("stale draft contour layers and their disclaimer are removed safely", () => {
+  const { api, container } = loadLayer();
+  const map = createMap(container);
+
+  map.addSource(api.SOURCE_ID, { type: "geojson", data: contourData });
+  map.addLayer(api.getFillLayerDefinition());
+  map.addLayer(api.getLineLayerDefinition());
+  api.setDisclaimerVisible(map, true);
 
   const note = container.querySelector(`.${api.DISCLAIMER_CLASS}`);
   assert.ok(note);
-  assert.equal(note.textContent, "Глубины ориентировочные · данные уточняются");
   assert.equal(note.hidden, false);
-
-  assert.equal(await api.showDraftContours(map, "zaslavskoe"), true);
-  assert.equal(map.calls.addSource, 2);
-  assert.equal(map.calls.addLayer, 4);
-  assert.equal(map.calls.removeLayer, 2);
-  assert.equal(map.calls.removeSource, 1);
-  assert.equal(container.children.length, 1);
-
   assert.equal(api.removeDraftContours(map), true);
   assert.equal(note.hidden, true);
   assert.equal(map.getLayer(api.FILL_LAYER_ID), null);
@@ -198,13 +203,16 @@ test("draft disclaimer is declared only by the contour layer visibility module",
   assert.match(layerSource, /setDisclaimerVisible\(map, false\)/);
 });
 
-test("map integration returns internally, enables depths, and removes contours with the depths toggle", () => {
+test("map integration guards unavailable drafts and removes stale contours on depth toggles", () => {
   const mapLogic = fs.readFileSync(path.join(__dirname, "../assets/js/map-logic.js"), "utf8");
 
   assert.match(mapLogic, /window\.klevbyShowWaterDepthContours = async function/);
   assert.match(mapLogic, /window\.showSection\("map"\)/);
   assert.match(mapLogic, /klevbySetWaterDepthLayerEnabled\(true\)/);
   assert.match(mapLogic, /contoursLayer\.showDraftContours\(map, waterBodyId\)/);
-  assert.match(mapLogic, /KlevbyWaterDepthContoursLayer\?\.removeDraftContours\(mapInstance\)/);
+  const cleanupIndex = mapLogic.indexOf("KlevbyWaterDepthContoursLayer?.removeDraftContours(mapInstance)");
+  const disabledBranchIndex = mapLogic.indexOf("if (!waterDepthLayerEnabled)", cleanupIndex);
+  assert.ok(cleanupIndex >= 0);
+  assert.ok(disabledBranchIndex > cleanupIndex);
   assert.equal(mapLogic.includes("window.open"), false);
 });

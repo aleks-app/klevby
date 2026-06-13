@@ -136,30 +136,30 @@ test("detail screen opens with normalized selected point data", () => {
   assert.equal(elements.get(".water-body-detail-location-source").textContent, "Открытые источники / ручная проверка");
   assert.equal(elements.get(".water-body-detail-depth-action").href, "");
   assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
-  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Схема глубин готовится");
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Карты глубин скоро");
   assert.equal(elements.get("#appHeaderBackBtn").focused, true);
 });
 
-test("unknown water body keeps the draft contour action disabled", () => {
+test("unknown water body shows the disabled coming-soon depth action", () => {
   const { api, elements } = loadDetailScreen();
 
   api.open({ water_body_id: "unknown-lake", name: "Неизвестное озеро" });
 
   assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
-  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Схема глубин готовится");
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Карты глубин скоро");
 });
 
-test("water_body_id enables the local Zaslavskoe contour action", () => {
+test("Zaslavskoe shows the disabled coming-soon depth action", () => {
   const { api, elements } = loadDetailScreen();
 
   api.open({ water_body_id: "zaslavskoe", name: "Заславское водохранилище" });
 
   assert.equal(api.getSelectedPoint().waterBodyId, "zaslavskoe");
-  assert.equal(elements.get(".water-body-detail-depth-action").disabled, false);
-  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Показать схему глубин");
+  assert.equal(elements.get(".water-body-detail-depth-action").disabled, true);
+  assert.equal(elements.get(".water-body-detail-depth-action").textContent, "Карты глубин скоро");
 });
 
-test("depth action calls the internal KlevGo contour flow without opening an external URL", async () => {
+test("depth action does not call the draft contour flow or open an external URL", async () => {
   const { api, elements, contourRequests, externalOpens } = loadDetailScreen();
   api.open({
     id: "supabase-row-31",
@@ -171,8 +171,9 @@ test("depth action calls the internal KlevGo contour flow without opening an ext
   elements.get(".water-body-detail-depth-action").click();
   await Promise.resolve();
 
-  assert.deepEqual(contourRequests, ["zaslavskoe"]);
+  assert.deepEqual(contourRequests, []);
   assert.deepEqual(externalOpens, []);
+  assert.equal(await api.showDepthContours(), false);
 });
 
 test("safe depth source URL accepts only absolute credential-free HTTP(S) URLs", () => {
@@ -218,10 +219,11 @@ test("detail markup uses collapsed accordions without a duplicate back control",
   assert.match(detailMarkup, /<summary>\s*<span>О водоёме<\/span>/);
   assert.match(detailMarkup, /<summary>\s*<span>Возможности<\/span>/);
   assert.match(detailMarkup, /<summary>\s*<span>Источник и точность<\/span>/);
-  assert.match(detailMarkup, /Собираем свою базу глубин KlevGo/);
-  assert.match(detailMarkup, /Схема глубин готовится/);
+  assert.match(detailMarkup, /Готовим карту глубин KlevGo/);
+  assert.match(detailMarkup, /Карты глубин скоро/);
   assert.match(detailMarkup, /class="water-body-detail-depth-action" type="button" disabled/);
   assert.match(detailMarkup, /Данные уточняются/);
+  assert.equal(detailMarkup.includes("Показать схему глубин"), false);
   assert.equal(detailMarkup.includes("Открыть карту глубин"), false);
   assert.equal(detailMarkup.includes('target="_blank"'), false);
   assert.equal(detailMarkup.includes("water-body-detail-depth-link"), false);
