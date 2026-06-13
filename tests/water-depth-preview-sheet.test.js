@@ -60,7 +60,8 @@ test("bottom sheet uses the internal water body CTA and exposes source as trust 
   );
 
   assert.match(source, />Открыть водоём<\/button>/);
-  assert.match(source, /`Источник: \$\{point\.source\}`/);
+  assert.match(source, /Черновая база KlevGo · данные уточняются/);
+  assert.doesNotMatch(source, /`Источник: \${point\.source}`/);
   assert.doesNotMatch(source, /water-depth-preview-source-link/);
   assert.doesNotMatch(source, /target="_blank"/);
   assert.match(source, /KlevbyWaterBodyDetail\.open\(selectedPoint\)/);

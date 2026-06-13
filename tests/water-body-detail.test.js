@@ -34,10 +34,12 @@ function loadDetailScreen() {
     ".water-body-detail-name",
     ".water-body-detail-type",
     ".water-body-detail-location",
+    ".water-body-detail-status-text",
     ".water-body-detail-source",
+    ".water-body-detail-data-status",
     ".water-body-detail-location-quality",
     ".water-body-detail-location-source",
-    ".water-body-detail-depth-link"
+    ".water-body-detail-depth-action"
   ].forEach((selector) => elements.set(selector, createElement()));
 
   elements.set("#appHeaderBackBtn", createElement());
@@ -105,8 +107,11 @@ test("detail screen opens with normalized selected point data", () => {
   assert.deepEqual(openedSections, ["water-body-detail"]);
   assert.equal(elements.get(".water-body-detail-name").textContent, "Озеро Нарочь");
   assert.equal(elements.get(".water-body-detail-location").textContent, "Минская область · Мядельский район");
-  assert.equal(elements.get(".water-body-detail-depth-link").hidden, false);
-  assert.equal(elements.get(".water-body-detail-depth-link").href, "https://fish.example/depths");
+  assert.equal(elements.get(".water-body-detail-status-text").textContent, "Черновая схема");
+  assert.equal(elements.get(".water-body-detail-source").textContent, "Источник: черновая база KlevGo");
+  assert.equal(elements.get(".water-body-detail-data-status").textContent, "Данные уточняются");
+  assert.equal(elements.get(".water-body-detail-location-source").textContent, "Открытые источники / ручная проверка");
+  assert.equal(elements.get(".water-body-detail-depth-action").href, "");
   assert.equal(elements.get("#appHeaderBackBtn").focused, true);
 });
 
@@ -120,15 +125,18 @@ test("safe depth source URL accepts only absolute credential-free HTTP(S) URLs",
   assert.equal(api.getSafeSourceUrl("https://user:secret@example.com/depths"), "");
 });
 
-test("invalid source URL hides the external depth-map action", () => {
+test("source URL remains internal and is never exposed as the depth action", () => {
   const { api, elements } = loadDetailScreen();
 
-  api.open({ name: "Тестовый водоём", sourceUrl: "javascript:alert(1)" });
+  api.open({
+    name: "Тестовый водоём",
+    source: "fishermap_depth_map_v1",
+    sourceUrl: "https://fishermap.example/depths"
+  });
 
-  const action = elements.get(".water-body-detail-depth-link");
-  assert.equal(action.hidden, true);
-  assert.equal(action.attributes["aria-disabled"], "true");
-  assert.equal(action.href, "");
+  assert.equal(api.getSelectedPoint().sourceUrl, "https://fishermap.example/depths");
+  assert.equal(elements.get(".water-body-detail-source").textContent, "Источник: черновая база KlevGo");
+  assert.equal(elements.get(".water-body-detail-depth-action").href, "");
 });
 
 test("detail close returns to the existing map section", () => {
@@ -150,4 +158,10 @@ test("detail markup uses collapsed accordions without a duplicate back control",
   assert.match(detailMarkup, /<summary>\s*<span>О водоёме<\/span>/);
   assert.match(detailMarkup, /<summary>\s*<span>Возможности<\/span>/);
   assert.match(detailMarkup, /<summary>\s*<span>Источник и точность<\/span>/);
+  assert.match(detailMarkup, /Собираем свою базу глубин KlevGo/);
+  assert.match(detailMarkup, /Схема глубин готовится/);
+  assert.match(detailMarkup, /Данные уточняются/);
+  assert.equal(detailMarkup.includes("Открыть карту глубин"), false);
+  assert.equal(detailMarkup.includes('target="_blank"'), false);
+  assert.equal(detailMarkup.includes("water-body-detail-depth-link"), false);
 });

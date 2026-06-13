@@ -100,7 +100,7 @@
   <link rel="stylesheet" href="assets/css/main.css?v=20260610-home-hero-brand-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260612-water-body-detail-1">
-  <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260612-water-body-detail-polish-1">
+  <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-klevgo-depth-draft-1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -108,7 +108,7 @@
   <link rel="stylesheet" href="assets/css/screens/profile-public.css?v=20260529-public-profile-empty-1">
 
   <script>
-    window.KLEVB_APP_BUILD_VERSION = "20260612-water-body-detail-polish-1";
+    window.KLEVB_APP_BUILD_VERSION = "20260613-klevgo-depth-draft-1";
   </script>
   <script src="assets/js/pwa-manifest.js?v=20260503-4"></script>
 </head>
@@ -793,15 +793,17 @@
       <article class="water-body-detail-screen">
         <div class="water-body-detail-content">
           <section class="water-body-detail-hero">
-            <p class="water-body-detail-status"><span aria-hidden="true"></span>Глубины найдены</p>
+            <p class="water-body-detail-status"><span aria-hidden="true"></span><span class="water-body-detail-status-text">Черновая схема</span></p>
             <h1 class="water-body-detail-name" id="waterBodyDetailTitle">Водоём</h1>
             <p class="water-body-detail-meta">
               <span class="water-body-detail-type"></span>
               <span aria-hidden="true">•</span>
               <span class="water-body-detail-location"></span>
             </p>
+            <p class="water-body-detail-draft-copy">Собираем свою базу глубин KlevGo</p>
+            <p class="water-body-detail-draft-note">Данные уточняются</p>
             <div class="water-body-detail-actions">
-              <a class="water-body-detail-depth-link" target="_blank" rel="noopener noreferrer">Открыть карту глубин</a>
+              <button class="water-body-detail-depth-action" type="button" disabled>Схема глубин готовится</button>
               <button class="water-body-detail-route" type="button" disabled>Маршрут <span>Скоро</span></button>
             </div>
           </section>
@@ -840,9 +842,10 @@
             </summary>
             <div class="water-body-detail-accordion-panel">
               <dl>
-                <div><dt>Источник глубин</dt><dd class="water-body-detail-source"></dd></div>
+                <div><dt>Данные глубин</dt><dd class="water-body-detail-source">Источник: черновая база KlevGo</dd></div>
+                <div><dt>Статус</dt><dd class="water-body-detail-data-status">Данные уточняются</dd></div>
                 <div><dt>Точность точки</dt><dd class="water-body-detail-location-quality"></dd></div>
-                <div><dt>Источник местоположения</dt><dd class="water-body-detail-location-source"></dd></div>
+                <div><dt>Основа местоположения</dt><dd class="water-body-detail-location-source"></dd></div>
               </dl>
             </div>
           </details>
@@ -1089,8 +1092,8 @@
   <script src="assets/js/supabase/water-depth-sources.js?v=20260612-water-depth-sources-1" defer></script>
   <script src="assets/js/map/water-depth-map-sources.js?v=20260612-water-depth-map-sources-1" defer></script>
   <script src="assets/js/map/water-depth-map-layer.js?v=20260612-water-depth-preview-1" defer></script>
-  <script src="assets/js/map/water-body-detail.js?v=20260612-water-body-detail-polish-1" defer></script>
-  <script src="assets/js/map/water-depth-preview-sheet.js?v=20260612-water-body-detail-1" defer></script>
+  <script src="assets/js/map/water-body-detail.js?v=20260613-klevgo-depth-draft-1" defer></script>
+  <script src="assets/js/map/water-depth-preview-sheet.js?v=20260613-klevgo-depth-draft-1" defer></script>
   <script src="assets/js/app/app-resume-manager.js?v=20260524-feed-observability-pr26-1" defer></script>
   <script src="assets/js/app/app-viewport-debug.js?v=20260530-viewport-debug-1" defer></script>
   <script src="assets/js/app/app-android-diagnostics.js?v=20260608-iphone-pwa-home-diagnostics-1" defer></script>
