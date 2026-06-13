@@ -71,6 +71,7 @@
             },
             properties: {
               id: toDisplayText(row.id),
+              water_body_id: toDisplayText(row.waterBodyId),
               name: toDisplayText(row.name),
               waterType: toDisplayText(row.waterType),
               region: toDisplayText(row.region),

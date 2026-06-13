@@ -30,6 +30,7 @@ test("normalizePoint keeps only display-safe preview values and supplies fallbac
 
   assert.deepEqual(toPlain(api.normalizePoint({
     id: 21,
+    water_body_id: " zaslavskoe ",
     name: "  Озеро Нарочь  ",
     waterType: "озеро",
     region: { unsafe: true },
@@ -41,6 +42,7 @@ test("normalizePoint keeps only display-safe preview values and supplies fallbac
     locationSource: ["unsafe"]
   })), {
     id: "21",
+    waterBodyId: "zaslavskoe",
     name: "Озеро Нарочь",
     waterType: "озеро",
     region: "",

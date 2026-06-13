@@ -3,6 +3,18 @@
     return typeof value === "string" ? value.trim() : "";
   }
 
+  const WATER_BODY_IDS_BY_NAME = new Map([
+    ["заславское водохранилище", "zaslavskoe"],
+    ["минское море", "zaslavskoe"]
+  ]);
+
+  function normalizeWaterBodyId(row, name) {
+    const explicitId = normalizeText(row?.water_body_id || row?.waterBodyId);
+    if (explicitId) return explicitId;
+
+    return WATER_BODY_IDS_BY_NAME.get(name.toLocaleLowerCase("ru")) || "";
+  }
+
   function normalizeCoordinates(latitude, longitude) {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       return {
@@ -40,6 +52,7 @@
 
       sources.push({
         id: row.id ?? null,
+        waterBodyId: normalizeWaterBodyId(row, name),
         name,
         waterType: normalizeText(row.water_type),
         region: normalizeText(row.region),

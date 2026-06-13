@@ -20,6 +20,7 @@
 
     return {
       id: toDisplayText(point.id),
+      waterBodyId: toDisplayText(point.water_body_id || point.waterBodyId),
       name: toDisplayText(point.name, "Водоём"),
       waterType: toDisplayText(point.waterType, "Тип водоёма не указан"),
       region: toDisplayText(point.region),

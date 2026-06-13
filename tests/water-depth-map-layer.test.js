@@ -42,6 +42,7 @@ test("toWaterDepthFeatureCollection keeps only map-ready coordinate rows", () =>
   const data = api.toWaterDepthFeatureCollection([
     {
       id: 7,
+      waterBodyId: "zaslavskoe",
       name: "Озеро Нарочь",
       latitude: 54.85,
       longitude: 26.97,
@@ -75,6 +76,7 @@ test("toWaterDepthFeatureCollection keeps only map-ready coordinate rows", () =>
         },
         properties: {
           id: "7",
+          water_body_id: "zaslavskoe",
           name: "Озеро Нарочь",
           waterType: "озеро",
           region: "Минская область",
@@ -113,6 +115,7 @@ test("toWaterDepthFeatureCollection emits display-safe strings for preview prope
 
   assert.deepEqual(toPlain(data.features[0].properties), {
     id: "12",
+    water_body_id: "",
     name: "404",
     waterType: "",
     region: "",
