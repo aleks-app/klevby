@@ -50,22 +50,18 @@
     if (!section) return false;
 
     const location = [point.region, point.district].filter(Boolean).join(" · ");
-    const safeSourceUrl = getSafeSourceUrl(point.sourceUrl);
-    const sourceAction = section.querySelector(".water-body-detail-depth-link");
-
     setText(section, ".water-body-detail-name", point.name);
     setText(section, ".water-body-detail-type", point.waterType);
     setText(section, ".water-body-detail-location", location || "Регион не указан");
-    setText(section, ".water-body-detail-source", point.source);
+    setText(section, ".water-body-detail-status-text", "Черновая схема");
+    setText(section, ".water-body-detail-source", "Источник: черновая база KlevGo");
+    setText(section, ".water-body-detail-data-status", "Данные уточняются");
     setText(section, ".water-body-detail-location-quality", point.locationQuality);
-    setText(section, ".water-body-detail-location-source", point.locationSource);
-
-    if (sourceAction) {
-      sourceAction.hidden = !safeSourceUrl;
-      sourceAction.setAttribute("aria-disabled", safeSourceUrl ? "false" : "true");
-      if (safeSourceUrl) sourceAction.href = safeSourceUrl;
-      else sourceAction.removeAttribute("href");
-    }
+    setText(
+      section,
+      ".water-body-detail-location-source",
+      point.locationSource ? "Открытые источники / ручная проверка" : "Данные уточняются"
+    );
 
     return true;
   }

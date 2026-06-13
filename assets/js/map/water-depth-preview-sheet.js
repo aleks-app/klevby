@@ -75,7 +75,7 @@
     setText(".water-depth-preview-water-type", point.waterType);
     setText(".water-depth-preview-location", location || "Регион не указан");
     setText(".water-depth-preview-location-quality", locationQuality);
-    setText(".water-depth-preview-source-name", `Источник: ${point.source}`);
+    setText(".water-depth-preview-source-name", "Черновая база KlevGo · данные уточняются");
   }
 
   function open(properties) {
@@ -138,7 +138,7 @@
       </div>
       <button class="water-depth-preview-close" type="button" aria-label="Закрыть">×</button>
       <div class="water-depth-preview-content">
-        <p class="water-depth-preview-eyebrow">Глубины найдены</p>
+        <p class="water-depth-preview-eyebrow">Черновая схема</p>
         <h2 class="water-depth-preview-name" id="${SHEET_ID}Title"></h2>
         <p class="water-depth-preview-meta">
           <span class="water-depth-preview-water-type"></span>

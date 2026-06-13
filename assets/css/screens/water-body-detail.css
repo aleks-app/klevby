@@ -60,7 +60,7 @@ body:has(#waterBodyDetailSection:not(.hidden)) {
   text-transform: uppercase;
 }
 
-.water-body-detail-status span {
+.water-body-detail-status > span[aria-hidden="true"] {
   width: 8px;
   height: 8px;
   background: #f47a2b;
@@ -86,13 +86,28 @@ body:has(#waterBodyDetailSection:not(.hidden)) {
   line-height: 1.45;
 }
 
+.water-body-detail-draft-copy {
+  margin: 16px 0 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.water-body-detail-draft-note {
+  margin: 3px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .water-body-detail-actions {
   display: grid;
   margin-top: 20px;
   gap: 10px;
 }
 
-.water-body-detail-depth-link,
+.water-body-detail-depth-action,
 .water-body-detail-route {
   display: flex;
   min-height: 48px;
@@ -109,8 +124,11 @@ body:has(#waterBodyDetailSection:not(.hidden)) {
   border-radius: 14px;
 }
 
-.water-body-detail-depth-link[hidden] {
-  display: none;
+.water-body-detail-depth-action:disabled {
+  color: #fed7aa;
+  background: rgba(244, 122, 43, 0.16);
+  border: 1px solid rgba(244, 122, 43, 0.35);
+  cursor: default;
 }
 
 .water-body-detail-route {
@@ -258,7 +276,7 @@ body:has(#waterBodyDetailSection:not(.hidden)) {
 }
 
 .water-body-detail-accordion summary:focus-visible,
-.water-body-detail-depth-link:focus-visible {
+.water-body-detail-depth-action:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
 }

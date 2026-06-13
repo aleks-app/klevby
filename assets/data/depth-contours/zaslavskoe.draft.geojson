@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "name": "zaslavskoe_draft_depth_contours",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "water_body_id": "zaslavskoe",
+        "depth_m": 2,
+        "depth_type": "isobath",
+        "accuracy": "draft",
+        "source_status": "draft",
+        "checked_at": null,
+        "comment": "Черновой схематичный контур KlevGo. Геометрия и глубина требуют ручной проверки."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [27.343, 53.981],
+          [27.356, 53.988],
+          [27.374, 53.989],
+          [27.392, 53.982],
+          [27.405, 53.971]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "water_body_id": "zaslavskoe",
+        "depth_m": 4,
+        "depth_type": "isobath",
+        "accuracy": "draft",
+        "source_status": "draft",
+        "checked_at": null,
+        "comment": "Черновой схематичный контур KlevGo. Не предназначен для навигации."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [27.354, 53.978],
+          [27.369, 53.983],
+          [27.385, 53.98],
+          [27.397, 53.972]
+        ]
+      }
+    }
+  ]
+}

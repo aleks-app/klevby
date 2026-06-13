@@ -1,0 +1,17 @@
+[
+  {
+    "id": "zaslavskoe",
+    "name": "Заславское водохранилище",
+    "type": "водохранилище",
+    "region": "Минская область",
+    "district": "Минский район",
+    "area_sq_km": null,
+    "max_depth_m": null,
+    "avg_depth_m": null,
+    "latitude": 53.973,
+    "longitude": 27.381,
+    "status": "draft",
+    "source_status": "draft",
+    "updated_at": "2026-06-13"
+  }
+]
