@@ -65,12 +65,9 @@
     );
 
     const depthAction = section.querySelector(".water-body-detail-depth-action");
-    const hasDraftContours = global.KlevbyWaterDepthContoursLayer?.hasDraftContours(point.waterBodyId) === true;
     if (depthAction) {
-      depthAction.disabled = !hasDraftContours;
-      depthAction.textContent = hasDraftContours
-        ? "Показать схему глубин"
-        : "Схема глубин готовится";
+      depthAction.disabled = true;
+      depthAction.textContent = "Карты глубин скоро";
     }
 
     return true;
@@ -97,12 +94,9 @@
   }
 
   async function showDepthContours() {
-    if (!selectedPoint || !global.KlevbyWaterDepthContoursLayer?.hasDraftContours(selectedPoint.waterBodyId)) {
-      return false;
-    }
-
-    if (typeof global.klevbyShowWaterDepthContours !== "function") return false;
-    return global.klevbyShowWaterDepthContours(selectedPoint.waterBodyId);
+    // Reserved for a future proper depth-map experience. Draft contour samples
+    // must not be exposed from the user-facing water body detail screen.
+    return false;
   }
 
   function bind() {
