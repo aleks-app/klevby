@@ -1632,7 +1632,7 @@
     --klevby-home-feed-card-min-h: 132px;
     --klevby-home-feed-image-min-h: 112px;
     --klevby-home-weather-strip-min-h: 48px;
-    --klevby-home-bottom-reserve: var(--klevby-bottom-chrome-total);
+    --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 2px;
     --klevby-home-weather-nudge-y: 0px;
   }
@@ -1756,7 +1756,7 @@
     --klevby-home-feed-card-min-h: 128px;
     --klevby-home-feed-image-min-h: 108px;
     --klevby-home-weather-strip-min-h: 48px;
-    --klevby-home-bottom-reserve: var(--klevby-bottom-chrome-total);
+    --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 2px;
     --klevby-home-weather-nudge-y: 0px;
   }
