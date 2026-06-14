@@ -4,6 +4,7 @@
   const HOME_SECTION_ID = "homeSection";
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
+  const HOME_CLEARANCE_PX = 8;
   const HOME_COMPACT_HEIGHT_MAX = 820;
   const IPHONE_PWA_SHORT_HEIGHT_ENTER = 920;
   const IPHONE_PWA_SHORT_HEIGHT_EXIT = 930;
@@ -28,6 +29,7 @@
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
   let isIphonePwaShort = false;
+  let lastHomeFitContract = null;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -106,6 +108,41 @@
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
     root.setAttribute(HOME_DENSITY_ATTRIBUTE, resolveHomeDensity(height));
     return roundedHeight;
+  }
+
+  function updateHomeFitContract() {
+    const root = document.documentElement;
+    const header = document.querySelector("body > header");
+    const touchBar = document.querySelector(".mobile-tabbar");
+    if (!root || !header || !touchBar) return null;
+
+    const headerRect = header.getBoundingClientRect();
+    const mobileTabbarRect = touchBar.getBoundingClientRect();
+    const availableTop = headerRect.bottom;
+    const availableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
+    const availableHeight = Math.max(0, availableBottom - availableTop);
+    const appHeight = resolveAppHeight(root);
+
+    root.style.setProperty("--klevby-home-available-top", `${availableTop}px`);
+    root.style.setProperty("--klevby-home-available-bottom", `${availableBottom}px`);
+    root.style.setProperty("--klevby-home-available-height", `${availableHeight}px`);
+
+    lastHomeFitContract = {
+      headerBottom: headerRect.bottom,
+      touchBarTop: mobileTabbarRect.top,
+      availableTop,
+      availableBottom,
+      availableHeight,
+      appHeight,
+      currentDensity: root.getAttribute(HOME_DENSITY_ATTRIBUTE),
+      timestamp: new Date().toISOString()
+    };
+
+    return { ...lastHomeFitContract };
+  }
+
+  function getHomeFitContract() {
+    return lastHomeFitContract ? { ...lastHomeFitContract } : null;
   }
 
   function isAppSurfaceAllowed() {
@@ -245,6 +282,7 @@
 
   function syncHomeScreenState() {
     setLockState(isHomeScreenActive());
+    updateHomeFitContract();
 
     if (!hasCapturedFirstSync) {
       hasCapturedFirstSync = true;
@@ -297,6 +335,7 @@
     window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
     updateAppHeight();
+    updateHomeFitContract();
     observeStateOwners();
 
     window.addEventListener("resize", handleViewportChange, { passive: true });
@@ -319,6 +358,8 @@
     init,
     syncHomeScreenState,
     updateAppHeight,
+    updateHomeFitContract,
+    getHomeFitContract,
     isHomeScreenActive
   });
 

@@ -197,19 +197,28 @@
 
     diag.collect = function () {
       const home = document.querySelector("#homeSection");
+      const header = document.querySelector("body > header");
       const touchBar = document.querySelector(".mobile-tabbar");
       const body = document.body;
       const html = document.documentElement;
       const bodyStyles = body ? getComputedStyle(body) : null;
       const htmlStyles = getComputedStyle(html);
       const touchBarStyles = touchBar ? getComputedStyle(touchBar) : null;
+      const activeFeedCard =
+        document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
+        document.querySelector(
+          "#homeSection .home-feed-preview-slide, #homeSection .home-feed-preview-card"
+        );
       const homeElements = {
+        header,
+        headerInner: header?.querySelector(".header-inner"),
         homeSection: home,
         hero: document.querySelector("#homeSection .hero"),
         heroCopy: document.querySelector("#homeSection .hero-copy"),
         quickActions: document.querySelector("#homeSection .home-quick-actions"),
         quickActionsGrid: document.querySelector("#homeSection .home-quick-actions-grid"),
         feedPreview: document.querySelector("#homeSection .home-feed-preview"),
+        activeFeedCard,
         feedHeader: document.querySelector("#homeSection .home-feed-preview-head"),
         feedCard: document.querySelector("#homeSection .home-feed-preview-card"),
         feedContent: document.querySelector("#homeSection .home-feed-preview-content"),
@@ -223,6 +232,56 @@
       );
       homeRects.mobileTabbar = homeRects.touchBar;
       const safeArea = getSafeAreaDiagnostics(htmlStyles);
+      const availableTop = homeRects.header?.bottom ?? null;
+      const availableBottom =
+        homeRects.touchBar?.top != null ? homeRects.touchBar.top - 8 : null;
+      const availableHeight =
+        availableTop != null && availableBottom != null
+          ? Math.max(0, availableBottom - availableTop)
+          : 0;
+      const contentBottoms = [
+        homeRects.hero,
+        homeRects.quickActions,
+        homeRects.feedPreview,
+        homeRects.activeFeedCard,
+        homeRects.weatherCard
+      ]
+        .map((rect) => rect?.bottom)
+        .filter(Number.isFinite);
+      const homeContentBottom = contentBottoms.length ? Math.max(...contentBottoms) : null;
+      const weatherBottom = homeRects.weatherCard?.bottom ?? null;
+      const overflowPx =
+        homeContentBottom != null && availableBottom != null
+          ? Math.max(0, homeContentBottom - availableBottom)
+          : null;
+      const weatherOverflowPx =
+        weatherBottom != null && availableBottom != null
+          ? Math.max(0, weatherBottom - availableBottom)
+          : null;
+      const gapWeatherToTouchBar =
+        weatherBottom != null && homeRects.touchBar?.top != null
+          ? homeRects.touchBar.top - weatherBottom
+          : null;
+      const homeFitContract = {
+        clearancePx: 8,
+        headerBottom: homeRects.header?.bottom ?? null,
+        touchBarTop: homeRects.touchBar?.top ?? null,
+        availableTop,
+        availableBottom,
+        availableHeight,
+        homeContentBottom,
+        weatherBottom,
+        overflowPx,
+        weatherOverflowPx,
+        gapWeatherToTouchBar,
+        fitPass: overflowPx != null && overflowPx <= 1 && availableHeight > 0,
+        weatherFitPass:
+          weatherOverflowPx != null &&
+          gapWeatherToTouchBar != null &&
+          weatherOverflowPx <= 1 &&
+          gapWeatherToTouchBar >= 7 &&
+          availableHeight > 0
+      };
 
       return {
         timestamp: new Date().toISOString(),
@@ -263,6 +322,7 @@
               scale: window.visualViewport.scale
             }
           : null,
+        homeFitContract,
         homeSection: homeRects.homeSection,
         touchBar: homeRects.touchBar,
         homeLayout: {
@@ -278,6 +338,15 @@
           safeArea,
           variables: {
             "--klevby-app-height": htmlStyles.getPropertyValue("--klevby-app-height").trim(),
+            "--klevby-home-available-top": htmlStyles
+              .getPropertyValue("--klevby-home-available-top")
+              .trim(),
+            "--klevby-home-available-bottom": htmlStyles
+              .getPropertyValue("--klevby-home-available-bottom")
+              .trim(),
+            "--klevby-home-available-height": htmlStyles
+              .getPropertyValue("--klevby-home-available-height")
+              .trim(),
             "--klevby-home-bottom-reserve": htmlStyles
               .getPropertyValue("--klevby-home-bottom-reserve")
               .trim(),
