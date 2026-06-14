@@ -51,6 +51,29 @@
 
 @media (max-width: 900px) {
   /*
+   * Home full-viewport background — fixed layer from screen top behind header.
+   * Header, #homeSection, and .mobile-tabbar stay above this layer.
+   */
+  body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden))::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 1;
+    pointer-events: none;
+    transform: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(2, 4, 3, 0.08) 0%,
+        rgba(2, 4, 3, 0.16) 30%,
+        rgba(2, 4, 3, 0.72) 58%,
+        rgba(2, 4, 3, 0.96) 100%
+      ),
+      url("../../img/klevgo-home-hero-bg.png") center top / cover no-repeat;
+  }
+
+  /*
    * Home bottom readability scrim — visual only, behind TouchBar.
    * Header, #homeSection, and .mobile-tabbar stay above this layer.
    */
@@ -161,8 +184,7 @@
     margin-top: 0 !important;
     padding-left: calc(50vw - 50%) !important;
     padding-right: calc(50vw - 50%) !important;
-    background:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.98) 0%, rgba(2, 4, 3, 1) 100%) !important;
+    background: transparent !important;
   }
 
   #homeSection::before {
@@ -187,9 +209,7 @@
       var(--klevby-home-hero-pad-bottom) !important;
     border-radius: 0 !important;
     overflow: visible !important;
-    background:
-      linear-gradient(180deg, rgba(2, 4, 3, 0.08) 0%, rgba(2, 4, 3, 0.18) 34%, rgba(2, 4, 3, 0.64) 66%, rgba(2, 4, 3, 0.92) 100%),
-      url("../../img/klevgo-home-hero-bg.png") center -95px / 100% auto no-repeat !important;
+    background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
