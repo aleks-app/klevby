@@ -99,6 +99,10 @@
 }
 
 @media (max-width: 767px) {
+  body:has(#homeSection:not(.hidden)) > main.wrap {
+    width: 100%;
+  }
+
   /*
    * HOME FIXED-FIT TOKENS — standard measured-available-height tier.
    * Spacing remains bounded on tall screens; density overrides are universal.
@@ -349,11 +353,16 @@
     opacity: 0.82 !important;
   }
 
+  #homeSection .home-quick-actions,
+  #homeSection .home-feed-preview,
+  #homeSection .home-weather-card {
+    width: calc(100% - (2 * var(--klevby-app-inline-inset)));
+  }
+
   #homeSection .home-quick-actions {
     display: block;
     position: relative;
     z-index: 2;
-    width: calc(100% - 16px);
     margin: var(--klevby-home-quick-overlap) auto var(--klevby-home-section-gap);
     padding: 0;
   }
@@ -451,7 +460,6 @@
     display: block;
     position: relative;
     z-index: 2;
-    width: calc(100% - 16px);
     margin: 0 auto var(--klevby-home-section-gap);
     padding: 0;
   }
@@ -868,7 +876,6 @@
     display: block;
     position: relative;
     z-index: 2;
-    width: calc(100% - 16px);
     margin: 0 auto var(--klevby-home-section-gap);
     padding: 10px 14px;
     border: 1px solid rgba(244, 178, 74, 0.14);
@@ -1479,7 +1486,6 @@
   }
 
   #homeSection .home-weather-card {
-    width: calc(100% - 16px);
     padding: 8px 12px;
   }
 

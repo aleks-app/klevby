@@ -10,8 +10,8 @@
 
   .mobile-tabbar {
     position: fixed;
-    left: 16px;
-    right: 16px;
+    left: var(--klevby-app-inline-inset);
+    right: var(--klevby-app-inline-inset);
     bottom: var(--klevby-touchbar-bottom-offset);
     z-index: 1100;
 
@@ -304,8 +304,6 @@
 
 @media (max-width: 380px) {
   .mobile-tabbar {
-    left: 12px;
-    right: 12px;
     padding: 6px 8px;
     border-radius: 26px;
   }
