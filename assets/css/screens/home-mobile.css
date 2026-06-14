@@ -1748,13 +1748,18 @@
    * Reductions are distributed across large blocks while preserving tap targets.
    */
   :root[data-home-density="tight"] {
+    --klevby-home-tight-lower-fill-y: clamp(
+      0px,
+      calc(var(--klevby-home-available-height, 655px) - 633px),
+      22px
+    );
     --klevby-home-hero-min-h: 286px;
     --klevby-home-hero-pad-top: 108px;
     --klevby-home-hero-copy-min-h: 190px;
     --klevby-home-quick-min-h: 92px;
     --klevby-home-section-gap: 12px;
-    --klevby-home-feed-card-min-h: 128px;
-    --klevby-home-feed-image-min-h: 108px;
+    --klevby-home-feed-card-min-h: calc(128px + var(--klevby-home-tight-lower-fill-y));
+    --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-tight-lower-fill-y));
     --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 2px;
