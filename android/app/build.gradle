@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+def validateCapacitorAssets = tasks.register('validateCapacitorAssets', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine 'node', 'scripts/validate-capacitor-assets.mjs'
+}
+
+tasks.named('preBuild').configure {
+    dependsOn validateCapacitorAssets
+}
+
 def keystorePropertiesFile = rootProject.file('keystore.properties')
 def keystoreProperties = new Properties()
 
