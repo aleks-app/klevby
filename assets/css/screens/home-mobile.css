@@ -114,7 +114,13 @@
     --klevby-home-hero-copy-min-h: 228px;
     --klevby-home-hero-copy-shift-x: -10px;
     --klevby-home-hero-copy-shift-y: -152px;
-    --klevby-home-quick-overlap: -14px;
+    --klevby-home-actions-gap-after-hero: 15px;
+    --klevby-home-quick-overlap: calc(
+      var(--klevby-home-actions-gap-after-hero)
+      + var(--klevby-home-hero-copy-shift-y)
+      - var(--klevby-home-hero-pad-bottom)
+      - var(--klevby-home-hero-margin-bottom)
+    );
     --klevby-home-quick-min-h: 104px;
     --klevby-home-section-gap: 14px;
     --klevby-home-feed-card-min-h: calc(148px + var(--klevby-home-lower-fill-y));
