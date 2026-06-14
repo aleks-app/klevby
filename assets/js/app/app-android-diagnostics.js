@@ -285,6 +285,10 @@
         gapActiveFeedCardToWeather != null && gapWeatherToTouchBar != null
           ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
           : null;
+      const ownerFitContract = window.KlevbyHomeScreenOwner?.getHomeFitContract?.() || null;
+      const lowerFillY = Number.parseFloat(
+        htmlStyles.getPropertyValue("--klevby-home-lower-fill-y")
+      ) || 0;
       const homeFitContract = {
         clearancePx: 8,
         headerBottom: homeRects.header?.bottom ?? null,
@@ -299,10 +303,18 @@
         weatherBottom,
         overflowPx,
         weatherOverflowPx,
+        activeFeedCardMeasured: homeRects.activeFeedCard != null,
         gapActiveFeedCardToWeather,
         gapWeatherToTouchBar,
         bottomRhythmDelta,
         bottomRhythmPass: bottomRhythmDelta != null && bottomRhythmDelta <= 6,
+        lowerFillY,
+        lowerFillCap: ownerFitContract?.lowerFillCap ?? null,
+        lowerFillReason: ownerFitContract?.lowerFillReason ?? "owner-unavailable",
+        rhythmBefore: ownerFitContract?.rhythmBefore ?? null,
+        rhythmAfter: ownerFitContract?.rhythmAfter ?? bottomRhythmDelta,
+        solverApplied: ownerFitContract?.solverApplied === true,
+        solverCapped: ownerFitContract?.solverCapped === true,
         fitPass: overflowPx != null && overflowPx <= 1 && availableHeight > 0,
         weatherFitPass:
           weatherOverflowPx != null &&

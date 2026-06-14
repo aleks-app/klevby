@@ -7,6 +7,13 @@
   const HOME_CLEARANCE_PX = 8;
   const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
   const HOME_COMPACT_AVAILABLE_HEIGHT_MIN = 670;
+  const HOME_MIN_LOWER_GAP_PX = 10;
+  const HOME_RHYTHM_TARGET_DELTA_PX = 2;
+  const HOME_LOWER_FILL_CAPS = Object.freeze({
+    standard: 12,
+    compact: 20,
+    tight: 28
+  });
   const MOBILE_QUERY = "(max-width: 900px)";
   const FALLBACK_APP_SECTION_IDS = [
     "homeSection",
@@ -23,6 +30,8 @@
   let initialized = false;
   let homeScreenLocked = false;
   let syncFrame = 0;
+  let solverFrame = 0;
+  let solverMeasureFrame = 0;
   let observer = null;
   let hasCapturedFirstSync = false;
   let standaloneViewportReady = false;
@@ -60,6 +69,58 @@
     if (measuredHeight >= HOME_STANDARD_AVAILABLE_HEIGHT_MIN) return "standard";
     if (measuredHeight >= HOME_COMPACT_AVAILABLE_HEIGHT_MIN) return "compact";
     return "tight";
+  }
+
+  function resolveHomeLowerFill({
+    upperGap,
+    lowerGap,
+    maxFill,
+    minLowerGap = HOME_MIN_LOWER_GAP_PX
+  } = {}) {
+    const measuredUpperGap = Number(upperGap);
+    const measuredLowerGap = Number(lowerGap);
+    const fillCap = Math.max(0, Number(maxFill) || 0);
+    const minimumLowerGap = Math.max(0, Number(minLowerGap) || 0);
+
+    if (!Number.isFinite(measuredUpperGap) || !Number.isFinite(measuredLowerGap)) {
+      return {
+        lowerFillY: 0,
+        lowerFillCap: fillCap,
+        lowerFillReason: "measurement-unavailable",
+        solverApplied: false,
+        solverCapped: false
+      };
+    }
+
+    const imbalance = measuredLowerGap - measuredUpperGap;
+    if (imbalance <= HOME_RHYTHM_TARGET_DELTA_PX) {
+      return {
+        lowerFillY: 0,
+        lowerFillCap: fillCap,
+        lowerFillReason: imbalance < 0 ? "lower-gap-already-smaller" : "already-balanced",
+        solverApplied: false,
+        solverCapped: false
+      };
+    }
+
+    const safeFill = Math.max(0, measuredLowerGap - minimumLowerGap);
+    const lowerFillY = Math.min(imbalance, fillCap, safeFill);
+    const solverCapped = lowerFillY < imbalance;
+    let lowerFillReason = "rhythm-balanced";
+
+    if (solverCapped) {
+      lowerFillReason = safeFill < Math.min(imbalance, fillCap)
+        ? "minimum-lower-gap-cap"
+        : "density-cap";
+    }
+
+    return {
+      lowerFillY,
+      lowerFillCap: fillCap,
+      lowerFillReason,
+      solverApplied: lowerFillY > 0,
+      solverCapped
+    };
   }
 
   function resolveAppHeight(root) {
@@ -101,6 +162,101 @@
     );
   }
 
+  function findActiveHomeFeedCard() {
+    return (
+      document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
+      document.querySelector(
+        "#homeSection .home-feed-preview-slide, #homeSection .home-feed-preview-card"
+      )
+    );
+  }
+
+  function measureHomeBottomRhythm(touchBar) {
+    const activeFeedCard = findActiveHomeFeedCard();
+    const weatherCard = document.querySelector("#homeSection .home-weather-card");
+    if (!activeFeedCard || !weatherCard || !touchBar) {
+      return {
+        activeFeedCardMeasured: false,
+        upperGap: null,
+        lowerGap: null,
+        bottomRhythmDelta: null,
+        weatherOverflowPx: null
+      };
+    }
+
+    const activeFeedCardRect = activeFeedCard.getBoundingClientRect();
+    const weatherCardRect = weatherCard.getBoundingClientRect();
+    const touchBarRect = touchBar.getBoundingClientRect();
+    const upperGap = weatherCardRect.top - activeFeedCardRect.bottom;
+    const lowerGap = touchBarRect.top - weatherCardRect.bottom;
+
+    return {
+      activeFeedCardMeasured: true,
+      upperGap,
+      lowerGap,
+      bottomRhythmDelta: Math.abs(upperGap - lowerGap),
+      weatherOverflowPx: Math.max(0, weatherCardRect.bottom - (touchBarRect.top - HOME_CLEARANCE_PX))
+    };
+  }
+
+  function publishHomeLowerFill(root, fill) {
+    root.style.setProperty("--klevby-home-lower-fill-y", `${fill}px`);
+  }
+
+  function scheduleHomeBottomRhythmSolver(density, touchBar) {
+    const root = document.documentElement;
+    if (!root || !touchBar) return;
+
+    if (solverFrame) window.cancelAnimationFrame(solverFrame);
+    if (solverMeasureFrame) window.cancelAnimationFrame(solverMeasureFrame);
+    publishHomeLowerFill(root, 0);
+
+    solverFrame = window.requestAnimationFrame(() => {
+      solverFrame = 0;
+      const rhythmBefore = measureHomeBottomRhythm(touchBar);
+      const lowerFillCap = HOME_LOWER_FILL_CAPS[density] ?? HOME_LOWER_FILL_CAPS.tight;
+      const result = resolveHomeLowerFill({
+        upperGap: rhythmBefore.upperGap,
+        lowerGap: rhythmBefore.lowerGap,
+        maxFill: lowerFillCap,
+        minLowerGap: HOME_MIN_LOWER_GAP_PX
+      });
+
+      publishHomeLowerFill(root, result.lowerFillY);
+      lastHomeFitContract = {
+        ...lastHomeFitContract,
+        activeFeedCardMeasured: rhythmBefore.activeFeedCardMeasured,
+        gapActiveFeedCardToWeather: rhythmBefore.upperGap,
+        gapWeatherToTouchBar: rhythmBefore.lowerGap,
+        bottomRhythmDelta: rhythmBefore.bottomRhythmDelta,
+        rhythmBefore: rhythmBefore.bottomRhythmDelta,
+        rhythmAfter: null,
+        weatherOverflowPx: rhythmBefore.weatherOverflowPx,
+        lowerFillY: result.lowerFillY,
+        lowerFillCap: result.lowerFillCap,
+        lowerFillReason: result.lowerFillReason,
+        solverApplied: result.solverApplied,
+        solverCapped: result.solverCapped
+      };
+
+      solverMeasureFrame = window.requestAnimationFrame(() => {
+        solverMeasureFrame = 0;
+        const rhythmAfter = measureHomeBottomRhythm(touchBar);
+        lastHomeFitContract = {
+          ...lastHomeFitContract,
+          activeFeedCardMeasured: rhythmAfter.activeFeedCardMeasured,
+          gapActiveFeedCardToWeather: rhythmAfter.upperGap,
+          gapWeatherToTouchBar: rhythmAfter.lowerGap,
+          bottomRhythmDelta: rhythmAfter.bottomRhythmDelta,
+          bottomRhythmPass:
+            rhythmAfter.bottomRhythmDelta != null && rhythmAfter.bottomRhythmDelta <= 6,
+          rhythmAfter: rhythmAfter.bottomRhythmDelta,
+          weatherOverflowPx: rhythmAfter.weatherOverflowPx
+        };
+      });
+    });
+  }
+
   function updateHomeFitContract() {
     const root = document.documentElement;
     const homeSection = document.getElementById(HOME_SECTION_ID);
@@ -136,9 +292,20 @@
       fallbackTopUsed,
       appHeight,
       currentDensity: density,
+      activeFeedCardMeasured: false,
+      gapActiveFeedCardToWeather: null,
+      gapWeatherToTouchBar: null,
+      bottomRhythmDelta: null,
+      bottomRhythmPass: false,
+      lowerFillY: 0,
+      lowerFillCap: HOME_LOWER_FILL_CAPS[density],
+      lowerFillReason: "baseline-pending",
+      solverApplied: false,
+      solverCapped: false,
       timestamp: new Date().toISOString()
     };
 
+    scheduleHomeBottomRhythmSolver(density, touchBar);
     return { ...lastHomeFitContract };
   }
 
@@ -355,15 +522,23 @@
     syncHomeScreenState();
   }
 
-  window.KlevbyHomeScreenOwner = Object.freeze({
+  const homeScreenOwner = Object.freeze({
     init,
     syncHomeScreenState,
     updateAppHeight,
     updateHomeFitContract,
     resolveMeasuredHomeDensity,
+    resolveHomeLowerFill,
     getHomeFitContract,
     isHomeScreenActive
   });
 
-  init();
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { resolveHomeLowerFill };
+  }
+
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    window.KlevbyHomeScreenOwner = homeScreenOwner;
+    init();
+  }
 })();
