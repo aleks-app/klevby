@@ -5,6 +5,13 @@
 }
 
 :root {
+  --klevby-app-viewport-width: 100vw;
+  --klevby-app-viewport-height: 100dvh;
+  --klevby-app-available-top: 0px;
+  --klevby-app-available-bottom: 100dvh;
+  --klevby-app-available-height: 100dvh;
+  --klevby-app-available-bottom-offset: 0px;
+
   --bg: #040807;
   --bg-soft: #0b1210;
   --panel: rgba(17, 24, 21, 0.80);
@@ -36,6 +43,26 @@
   --klevby-bottom-safe-area: env(safe-area-inset-bottom, 0px);
   --klevby-touchbar-bottom-offset: max(var(--klevby-touchbar-bottom-gap), var(--klevby-bottom-safe-area));
   --klevby-bottom-chrome-total: calc(var(--klevby-touchbar-bottom-offset) + var(--klevby-touchbar-height));
+}
+
+.app-screen-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--klevby-app-available-top);
+  bottom: var(--klevby-app-available-bottom-offset);
+  height: var(--klevby-app-available-height);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.app-screen-container.app-screen-scroll,
+.app-screen-container[data-scroll="y"] {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 380px) {

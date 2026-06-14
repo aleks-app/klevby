@@ -215,6 +215,8 @@
       const bodyStyles = body ? getComputedStyle(body) : null;
       const htmlStyles = getComputedStyle(html);
       const touchBarStyles = touchBar ? getComputedStyle(touchBar) : null;
+      const appShellViewport =
+        window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
       const activeFeedCard =
         document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
         document.querySelector(
@@ -363,6 +365,15 @@
               scale: window.visualViewport.scale
             }
           : null,
+        appShellViewportWidth: appShellViewport?.viewportWidth ?? null,
+        appShellViewportHeight: appShellViewport?.viewportHeight ?? null,
+        appShellAvailableTop: appShellViewport?.availableTop ?? null,
+        appShellAvailableBottom: appShellViewport?.availableBottom ?? null,
+        appShellAvailableHeight: appShellViewport?.availableHeight ?? null,
+        appShellAvailableBottomOffset: appShellViewport?.availableBottomOffset ?? null,
+        appShellChromeMode: appShellViewport?.chromeMode ?? null,
+        appShellHeaderVisible: appShellViewport?.headerVisible ?? null,
+        appShellTabbarVisible: appShellViewport?.tabbarVisible ?? null,
         homeFitContract,
         homeSection: homeRects.homeSection,
         touchBar: homeRects.touchBar,
