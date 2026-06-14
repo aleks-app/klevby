@@ -644,22 +644,19 @@
     width: 100%;
     transition:
       opacity 0.65s ease,
-      visibility 0.65s ease,
-      transform 0.65s ease;
+      visibility 0.65s ease;
   }
 
   #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide--feed:not(.is-active) {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translateY(5px);
   }
 
   #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide--feed.is-active {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: translateY(0);
   }
 
   #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide--ad {
@@ -671,11 +668,9 @@
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translateY(5px);
     transition:
       opacity 0.65s ease,
-      visibility 0.65s ease,
-      transform 0.65s ease;
+      visibility 0.65s ease;
     z-index: 2;
   }
 
@@ -683,7 +678,6 @@
     opacity: 1;
     visibility: visible;
     pointer-events: none;
-    transform: translateY(0);
   }
 
   #homeSection .home-feed-preview-slide--ad {
