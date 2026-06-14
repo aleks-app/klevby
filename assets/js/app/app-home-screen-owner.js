@@ -5,9 +5,8 @@
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
   const HOME_CLEARANCE_PX = 8;
-  const HOME_COMPACT_HEIGHT_MAX = 820;
-  const IPHONE_PWA_SHORT_HEIGHT_ENTER = 920;
-  const IPHONE_PWA_SHORT_HEIGHT_EXIT = 930;
+  const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
+  const HOME_COMPACT_AVAILABLE_HEIGHT_MIN = 670;
   const MOBILE_QUERY = "(max-width: 900px)";
   const FALLBACK_APP_SECTION_IDS = [
     "homeSection",
@@ -28,7 +27,6 @@
   let hasCapturedFirstSync = false;
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
-  let isIphonePwaShort = false;
   let lastHomeFitContract = null;
 
   function getPositiveHeight(value) {
@@ -57,26 +55,11 @@
     return navigator.standalone === true;
   }
 
-  function isStandaloneIphonePwa() {
-    if (!isStandalonePwa()) return false;
-
-    return /iPhone/i.test(navigator.userAgent || "");
-  }
-
-  function resolveHomeDensity(height) {
-    if (isStandaloneIphonePwa()) {
-      if (height < IPHONE_PWA_SHORT_HEIGHT_ENTER) {
-        isIphonePwaShort = true;
-      } else if (height >= IPHONE_PWA_SHORT_HEIGHT_EXIT) {
-        isIphonePwaShort = false;
-      }
-
-      if (isIphonePwaShort) return "pwa-short";
-    } else {
-      isIphonePwaShort = false;
-    }
-
-    return height <= HOME_COMPACT_HEIGHT_MAX ? "compact" : "standard";
+  function resolveMeasuredHomeDensity(availableHeight) {
+    const measuredHeight = getPositiveHeight(availableHeight);
+    if (measuredHeight >= HOME_STANDARD_AVAILABLE_HEIGHT_MIN) return "standard";
+    if (measuredHeight >= HOME_COMPACT_AVAILABLE_HEIGHT_MIN) return "compact";
+    return "tight";
   }
 
   function resolveAppHeight(root) {
@@ -106,7 +89,6 @@
 
     const roundedHeight = Math.round(height);
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
-    root.setAttribute(HOME_DENSITY_ATTRIBUTE, resolveHomeDensity(height));
     return roundedHeight;
   }
 
@@ -136,10 +118,12 @@
     const availableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
     const availableHeight = Math.max(0, availableBottom - availableTop);
     const appHeight = resolveAppHeight(root);
+    const density = resolveMeasuredHomeDensity(availableHeight);
 
     root.style.setProperty("--klevby-home-available-top", `${availableTop}px`);
     root.style.setProperty("--klevby-home-available-bottom", `${availableBottom}px`);
     root.style.setProperty("--klevby-home-available-height", `${availableHeight}px`);
+    root.setAttribute(HOME_DENSITY_ATTRIBUTE, density);
 
     lastHomeFitContract = {
       headerBottom: headerRect?.bottom ?? null,
@@ -151,7 +135,7 @@
       touchBarMeasured,
       fallbackTopUsed,
       appHeight,
-      currentDensity: root.getAttribute(HOME_DENSITY_ATTRIBUTE),
+      currentDensity: density,
       timestamp: new Date().toISOString()
     };
 
@@ -376,6 +360,7 @@
     syncHomeScreenState,
     updateAppHeight,
     updateHomeFitContract,
+    resolveMeasuredHomeDensity,
     getHomeFitContract,
     isHomeScreenActive
   });
