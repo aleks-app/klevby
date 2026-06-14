@@ -329,7 +329,9 @@
       timestamp: new Date().toISOString()
     };
 
-    scheduleHomeBottomRhythmSolver(density, touchBar);
+    // The App Shell-aware CSS grid owns all four Home zones. Keep the legacy
+    // solver diagnostics available, but never grow a zone after grid sizing.
+    publishHomeLowerFill(root, 0);
     return { ...lastHomeFitContract };
   }
 
