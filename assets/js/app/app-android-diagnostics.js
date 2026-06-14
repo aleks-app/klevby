@@ -277,6 +277,14 @@
         weatherBottom != null && homeRects.touchBar?.top != null
           ? homeRects.touchBar.top - weatherBottom
           : null;
+      const gapActiveFeedCardToWeather = getVerticalGap(
+        homeRects.activeFeedCard,
+        homeRects.weatherCard
+      );
+      const bottomRhythmDelta =
+        gapActiveFeedCardToWeather != null && gapWeatherToTouchBar != null
+          ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
+          : null;
       const homeFitContract = {
         clearancePx: 8,
         headerBottom: homeRects.header?.bottom ?? null,
@@ -291,7 +299,10 @@
         weatherBottom,
         overflowPx,
         weatherOverflowPx,
+        gapActiveFeedCardToWeather,
         gapWeatherToTouchBar,
+        bottomRhythmDelta,
+        bottomRhythmPass: bottomRhythmDelta != null && bottomRhythmDelta <= 6,
         fitPass: overflowPx != null && overflowPx <= 1 && availableHeight > 0,
         weatherFitPass:
           weatherOverflowPx != null &&
