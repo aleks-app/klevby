@@ -115,7 +115,7 @@
     --klevby-home-hero-pad-inline: 26px;
     --klevby-home-hero-pad-bottom: 24px;
     --klevby-home-hero-margin-bottom: 8px;
-    --klevby-home-hero-copy-min-h: 196px;
+    --klevby-home-hero-copy-min-h: 168px;
     --klevby-home-hero-copy-shift-x: -10px;
     --klevby-home-hero-copy-shift-y: -152px;
     --klevby-home-actions-gap-after-hero: 15px;
@@ -236,7 +236,7 @@
 
   #homeSection .hero-copy {
     min-height: var(--klevby-home-hero-copy-min-h) !important;
-    padding: 0 0 10px !important;
+    padding: 0 0 20px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-end !important;
@@ -247,14 +247,14 @@
   }
 
   #homeSection .hero-slogan {
-    margin: 0 0 10px !important;
-    color: #fff8ea !important;
-    font-size: 31px !important;
-    line-height: 1.08 !important;
-    font-weight: 800 !important;
-    letter-spacing: -0.04em !important;
+    margin: 0 0 9px !important;
+    color: rgba(255, 248, 234, 0.94) !important;
+    font-size: 29px !important;
+    line-height: 1.12 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
     white-space: normal !important;
-    text-shadow: 0 8px 22px rgba(0, 0, 0, 0.38) !important;
+    text-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
   }
 
   #homeSection .hero-description {
@@ -1436,7 +1436,7 @@
     --klevby-home-hero-pad-top: 120px;
     --klevby-home-hero-pad-inline: 22px;
     --klevby-home-hero-pad-bottom: 23px;
-    --klevby-home-hero-copy-min-h: 188px;
+    --klevby-home-hero-copy-min-h: 162px;
     --klevby-home-hero-copy-shift-y: -142px;
     --klevby-home-weather-strip-min-h: 48px;
   }
@@ -1450,7 +1450,8 @@
 
   #homeSection .hero-slogan {
     font-size: 29px !important;
-    line-height: 1.08 !important;
+    line-height: 1.12 !important;
+    font-weight: 700 !important;
   }
 
   #homeSection .hero-feature-chips {
@@ -1667,7 +1668,7 @@
   :root[data-home-density="compact"] {
     --klevby-home-hero-min-h: 294px;
     --klevby-home-hero-pad-top: 112px;
-    --klevby-home-hero-copy-min-h: 168px;
+    --klevby-home-hero-copy-min-h: 144px;
     --klevby-home-hero-copy-shift-y: -130px;
     --klevby-home-quick-min-h: 96px;
     --klevby-home-section-gap: 12px;
@@ -1702,8 +1703,10 @@
 
   :root[data-home-density="compact"] #homeSection .hero-slogan {
     max-width: 100% !important;
-    font-size: 28px !important;
-    line-height: 1.08 !important;
+    font-size: 27px !important;
+    line-height: 1.11 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
     white-space: normal !important;
   }
 
@@ -1788,7 +1791,7 @@
   :root[data-home-density="tight"] {
     --klevby-home-hero-min-h: 286px;
     --klevby-home-hero-pad-top: 108px;
-    --klevby-home-hero-copy-min-h: 160px;
+    --klevby-home-hero-copy-min-h: 136px;
     --klevby-home-hero-copy-shift-y: -118px;
     --klevby-home-quick-min-h: 92px;
     --klevby-home-section-gap: 12px;
@@ -1802,9 +1805,10 @@
 
   :root[data-home-density="tight"] #homeSection .hero-slogan {
     max-width: 100% !important;
-    font-size: 27px !important;
-    line-height: 1.08 !important;
-    letter-spacing: -0.035em !important;
+    font-size: 26px !important;
+    line-height: 1.11 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
     white-space: normal !important;
   }
 
