@@ -99,7 +99,7 @@
 }
 
 @media (max-width: 767px) {
-  body:has(#homeSection:not(.hidden)) > main.wrap {
+  body:has(#homeSection:not(.hidden)) #klevbyAppRoot > main.wrap {
     width: 100%;
   }
 
