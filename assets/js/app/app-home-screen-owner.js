@@ -11,7 +11,7 @@
   const HOME_RHYTHM_TARGET_DELTA_PX = 2;
   const HOME_LOWER_FILL_CAPS = Object.freeze({
     standard: 12,
-    compact: 20,
+    compact: 40,
     tight: 28
   });
   const MOBILE_QUERY = "(max-width: 900px)";
@@ -69,6 +69,10 @@
     if (measuredHeight >= HOME_STANDARD_AVAILABLE_HEIGHT_MIN) return "standard";
     if (measuredHeight >= HOME_COMPACT_AVAILABLE_HEIGHT_MIN) return "compact";
     return "tight";
+  }
+
+  function resolveHomeLowerFillCap(density) {
+    return HOME_LOWER_FILL_CAPS[density] ?? HOME_LOWER_FILL_CAPS.tight;
   }
 
   function resolveHomeLowerFill({
@@ -214,7 +218,7 @@
     solverFrame = window.requestAnimationFrame(() => {
       solverFrame = 0;
       const rhythmBefore = measureHomeBottomRhythm(touchBar);
-      const lowerFillCap = HOME_LOWER_FILL_CAPS[density] ?? HOME_LOWER_FILL_CAPS.tight;
+      const lowerFillCap = resolveHomeLowerFillCap(density);
       const result = resolveHomeLowerFill({
         upperGap: rhythmBefore.upperGap,
         lowerGap: rhythmBefore.lowerGap,
@@ -322,7 +326,7 @@
       bottomRhythmDelta: null,
       bottomRhythmPass: false,
       lowerFillY: 0,
-      lowerFillCap: HOME_LOWER_FILL_CAPS[density],
+      lowerFillCap: resolveHomeLowerFillCap(density),
       lowerFillReason: "baseline-pending",
       solverApplied: false,
       solverCapped: false,
@@ -559,7 +563,11 @@
   });
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { resolveHomeLowerFill };
+    module.exports = {
+      resolveMeasuredHomeDensity,
+      resolveHomeLowerFillCap,
+      resolveHomeLowerFill
+    };
   }
 
   if (typeof window !== "undefined" && typeof document !== "undefined") {

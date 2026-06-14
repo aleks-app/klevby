@@ -2,8 +2,33 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  resolveMeasuredHomeDensity,
+  resolveHomeLowerFillCap,
   resolveHomeLowerFill
 } = require("../assets/js/app/app-home-screen-owner.js");
+
+test("allows compact height near 699px to fully balance the measured lower rhythm", () => {
+  const density = resolveMeasuredHomeDensity(699);
+  const result = resolveHomeLowerFill({
+    upperGap: 12,
+    lowerGap: 51,
+    maxFill: resolveHomeLowerFillCap(density)
+  });
+
+  assert.equal(density, "compact");
+  assert.equal(result.lowerFillCap, 40);
+  assert.equal(result.lowerFillY, 39);
+  assert.equal(Math.abs(12 - (51 - result.lowerFillY)), 0);
+  assert.equal(result.lowerFillReason, "rhythm-balanced");
+  assert.equal(result.solverCapped, false);
+});
+
+test("preserves the standard-density lower-fill cap", () => {
+  const density = resolveMeasuredHomeDensity(759);
+
+  assert.equal(density, "standard");
+  assert.equal(resolveHomeLowerFillCap(density), 12);
+});
 
 test("fills a large lower gap to match the upper rhythm", () => {
   const result = resolveHomeLowerFill({ upperGap: 12, lowerGap: 34, maxFill: 28 });
