@@ -109,6 +109,15 @@
     };
   }
 
+  function findAppHeader() {
+    return (
+      document.querySelector("header[data-chrome-mode]") ||
+      document.querySelector("body header") ||
+      document.querySelector("header") ||
+      document.querySelector(".app-header")
+    );
+  }
+
   function getVerticalGap(upperRect, lowerRect) {
     if (!upperRect || !lowerRect) return null;
     return lowerRect.top - upperRect.bottom;
@@ -197,7 +206,9 @@
 
     diag.collect = function () {
       const home = document.querySelector("#homeSection");
-      const header = document.querySelector("body > header");
+      const header = findAppHeader();
+      const headerInner =
+        header?.querySelector(".header-inner") || document.querySelector(".header-inner");
       const touchBar = document.querySelector(".mobile-tabbar");
       const body = document.body;
       const html = document.documentElement;
@@ -211,7 +222,7 @@
         );
       const homeElements = {
         header,
-        headerInner: header?.querySelector(".header-inner"),
+        headerInner,
         homeSection: home,
         hero: document.querySelector("#homeSection .hero"),
         heroCopy: document.querySelector("#homeSection .hero-copy"),
@@ -232,7 +243,11 @@
       );
       homeRects.mobileTabbar = homeRects.touchBar;
       const safeArea = getSafeAreaDiagnostics(htmlStyles);
-      const availableTop = homeRects.header?.bottom ?? null;
+      const headerMeasured = homeRects.header != null;
+      const touchBarMeasured = homeRects.touchBar != null;
+      const fallbackTopUsed = !headerMeasured && homeRects.homeSection != null;
+      const availableTop =
+        homeRects.header?.bottom ?? homeRects.homeSection?.top ?? null;
       const availableBottom =
         homeRects.touchBar?.top != null ? homeRects.touchBar.top - 8 : null;
       const availableHeight =
@@ -269,6 +284,9 @@
         availableTop,
         availableBottom,
         availableHeight,
+        headerMeasured,
+        touchBarMeasured,
+        fallbackTopUsed,
         homeContentBottom,
         weatherBottom,
         overflowPx,
