@@ -110,15 +110,29 @@
     return roundedHeight;
   }
 
+  function findAppHeader() {
+    return (
+      document.querySelector("header[data-chrome-mode]") ||
+      document.querySelector("body header") ||
+      document.querySelector("header") ||
+      document.querySelector(".app-header")
+    );
+  }
+
   function updateHomeFitContract() {
     const root = document.documentElement;
-    const header = document.querySelector("body > header");
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    const header = findAppHeader();
     const touchBar = document.querySelector(".mobile-tabbar");
-    if (!root || !header || !touchBar) return null;
+    if (!root || !homeSection || !touchBar) return null;
 
-    const headerRect = header.getBoundingClientRect();
+    const headerRect = header?.getBoundingClientRect() || null;
+    const homeSectionRect = homeSection.getBoundingClientRect();
     const mobileTabbarRect = touchBar.getBoundingClientRect();
-    const availableTop = headerRect.bottom;
+    const headerMeasured = headerRect != null;
+    const touchBarMeasured = true;
+    const fallbackTopUsed = !headerMeasured;
+    const availableTop = headerRect?.bottom ?? homeSectionRect.top;
     const availableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
     const availableHeight = Math.max(0, availableBottom - availableTop);
     const appHeight = resolveAppHeight(root);
@@ -128,11 +142,14 @@
     root.style.setProperty("--klevby-home-available-height", `${availableHeight}px`);
 
     lastHomeFitContract = {
-      headerBottom: headerRect.bottom,
+      headerBottom: headerRect?.bottom ?? null,
       touchBarTop: mobileTabbarRect.top,
       availableTop,
       availableBottom,
       availableHeight,
+      headerMeasured,
+      touchBarMeasured,
+      fallbackTopUsed,
       appHeight,
       currentDensity: root.getAttribute(HOME_DENSITY_ATTRIBUTE),
       timestamp: new Date().toISOString()
