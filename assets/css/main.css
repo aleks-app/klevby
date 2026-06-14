@@ -8,7 +8,7 @@
 @import url("./components/feed-cards.css");
 @import url("./components/modals-install.css");
 
-@import url("./screens/home.css");
+@import url("./screens/home.css?v=20260614-klevgo-home-hero-bg-1");
 @import url("./screens/secondary.css?v=20260607-maplibre-polish-1");
 @import url("./screens/profile.css");
 @import url("./screens/auth-welcome.css");
