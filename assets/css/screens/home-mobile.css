@@ -233,6 +233,8 @@
   #homeSection .hero-copy {
     min-height: var(--klevby-home-hero-copy-min-h) !important;
     padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
     justify-content: flex-end !important;
     transform: translate(
       var(--klevby-home-hero-copy-shift-x),
@@ -240,12 +242,17 @@
     ) !important;
   }
 
-  #homeSection .hero h1.hero-title {
+  #homeSection .hero-brand-block {
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 8px !important;
-    margin: 0 0 11px !important;
+    gap: 3px !important;
+    margin: 0 0 13px !important;
+  }
+
+  #homeSection .hero h1.hero-title {
+    display: block !important;
+    margin: 0 !important;
     max-width: none !important;
     font-size: inherit !important;
     line-height: 1 !important;
@@ -257,30 +264,40 @@
   #homeSection .hero-title-brand {
     display: block !important;
     color: #fff !important;
-    font-size: 37px !important;
-    line-height: 1.04 !important;
+    font-size: 23px !important;
+    line-height: 1 !important;
     font-weight: 800 !important;
-    letter-spacing: 0.3px !important;
-    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.38) !important;
+    letter-spacing: 0.2px !important;
+    text-shadow: 0 6px 16px rgba(0, 0, 0, 0.32) !important;
   }
 
-  #homeSection .hero-title-line {
-    display: block !important;
-    color: #f0d7ad !important;
-    font-size: 34px !important;
+  #homeSection .hero-kicker {
+    margin: 0 !important;
+    color: rgba(255, 244, 220, 0.82) !important;
+    font-size: 13.5px !important;
+    line-height: 1.15 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em !important;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  #homeSection .hero-slogan {
+    margin: 0 0 9px !important;
+    color: #fff8ea !important;
+    font-size: 31px !important;
     line-height: 1.02 !important;
     font-weight: 800 !important;
-    letter-spacing: -0.02em !important;
-    text-shadow: 0 8px 22px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(72, 44, 10, 0.2) !important;
+    letter-spacing: -0.04em !important;
+    text-shadow: 0 8px 22px rgba(0, 0, 0, 0.38) !important;
   }
 
-  #homeSection .hero p {
+  #homeSection .hero-description {
+    margin: 0 0 8px !important;
     color: rgba(255, 244, 220, 0.66) !important;
-    font-size: 15px !important;
-    line-height: 1.45 !important;
+    font-size: 14px !important;
+    line-height: 1.38 !important;
     font-weight: 500 !important;
     max-width: 19.5em !important;
-    margin: 0 0 8px !important;
     text-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
   }
 
@@ -1463,11 +1480,11 @@
   }
 
   #homeSection .hero-title-brand {
-    font-size: 34px !important;
+    font-size: 22px !important;
   }
 
-  #homeSection .hero-title-line {
-    font-size: 31px !important;
+  #homeSection .hero-slogan {
+    font-size: 29px !important;
   }
 
   #homeSection .hero-feature-chips {
@@ -1719,17 +1736,17 @@
   }
 
   :root[data-home-density="compact"] #homeSection .hero-title-brand {
-    font-size: 32px !important;
+    font-size: 21px !important;
   }
 
-  :root[data-home-density="compact"] #homeSection .hero-title-line {
+  :root[data-home-density="compact"] #homeSection .hero-slogan {
     max-width: 100% !important;
-    font-size: 30px !important;
+    font-size: 28px !important;
     line-height: 1.04 !important;
     white-space: nowrap !important;
   }
 
-  :root[data-home-density="compact"] #homeSection .hero p {
+  :root[data-home-density="compact"] #homeSection .hero-description {
     font-size: 14px !important;
     margin-bottom: 6px !important;
   }
@@ -1823,18 +1840,18 @@
   }
 
   :root[data-home-density="tight"] #homeSection .hero-title-brand {
-    font-size: 31px !important;
+    font-size: 20px !important;
   }
 
-  :root[data-home-density="tight"] #homeSection .hero-title-line {
+  :root[data-home-density="tight"] #homeSection .hero-slogan {
     max-width: 100% !important;
-    font-size: 29px !important;
+    font-size: 27px !important;
     line-height: 1.04 !important;
     letter-spacing: -0.035em !important;
     white-space: nowrap !important;
   }
 
-  :root[data-home-density="tight"] #homeSection .hero p {
+  :root[data-home-density="tight"] #homeSection .hero-description {
     font-size: 14px !important;
     margin-bottom: 6px !important;
   }
@@ -1916,12 +1933,8 @@
   }
 }
 
-/* Force Home hero subtitle to pure white after mobile overrides */
-#homeSection .hero-title .hero-title-line {
-  color: #ffffff !important;
-}
-
-/* Soften Home hero subtitle weight */
-#homeSection .hero-title .hero-title-line {
-  font-weight: 700 !important;
+/* Keep Home hero kicker soft and readable after mobile overrides */
+#homeSection .hero-kicker {
+  color: rgba(255, 244, 220, 0.82) !important;
+  font-weight: 600 !important;
 }
