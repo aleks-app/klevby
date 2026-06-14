@@ -112,7 +112,7 @@
     --klevby-home-hero-pad-bottom: 24px;
     --klevby-home-hero-margin-bottom: 8px;
     --klevby-home-hero-copy-min-h: 228px;
-    --klevby-home-hero-copy-shift-y: -32px;
+    --klevby-home-hero-copy-shift-y: -96px;
     --klevby-home-quick-overlap: -14px;
     --klevby-home-quick-min-h: 104px;
     --klevby-home-section-gap: 14px;
@@ -1441,7 +1441,7 @@
     --klevby-home-hero-pad-inline: 22px;
     --klevby-home-hero-pad-bottom: 23px;
     --klevby-home-hero-copy-min-h: 219px;
-    --klevby-home-hero-copy-shift-y: -30px;
+    --klevby-home-hero-copy-shift-y: -88px;
     --klevby-home-weather-strip-min-h: 48px;
   }
 
@@ -1676,7 +1676,7 @@
     --klevby-home-hero-min-h: 294px;
     --klevby-home-hero-pad-top: 112px;
     --klevby-home-hero-copy-min-h: 198px;
-    --klevby-home-hero-copy-shift-y: -28px;
+    --klevby-home-hero-copy-shift-y: -78px;
     --klevby-home-quick-min-h: 96px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(132px + var(--klevby-home-lower-fill-y));
@@ -1801,7 +1801,7 @@
     --klevby-home-hero-min-h: 286px;
     --klevby-home-hero-pad-top: 108px;
     --klevby-home-hero-copy-min-h: 190px;
-    --klevby-home-hero-copy-shift-y: -24px;
+    --klevby-home-hero-copy-shift-y: -68px;
     --klevby-home-quick-min-h: 92px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(128px + var(--klevby-home-lower-fill-y));
