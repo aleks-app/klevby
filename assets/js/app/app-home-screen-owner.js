@@ -269,10 +269,24 @@
     const mobileTabbarRect = touchBar.getBoundingClientRect();
     const headerMeasured = headerRect != null;
     const touchBarMeasured = true;
-    const fallbackTopUsed = !headerMeasured;
-    const availableTop = headerRect?.bottom ?? homeSectionRect.top;
-    const availableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
-    const availableHeight = Math.max(0, availableBottom - availableTop);
+    const appShell = window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
+    const homeUsesAppShellContract =
+      appShell?.chromeMode === "home" &&
+      Number.isFinite(appShell.availableTop) &&
+      Number.isFinite(appShell.availableBottom) &&
+      Number.isFinite(appShell.availableHeight);
+    const fallbackTopUsed = !homeUsesAppShellContract && !headerMeasured;
+    const fallbackAvailableTop = headerRect?.bottom ?? homeSectionRect.top;
+    const fallbackAvailableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
+    const availableTop = homeUsesAppShellContract
+      ? appShell.availableTop
+      : fallbackAvailableTop;
+    const availableBottom = homeUsesAppShellContract
+      ? appShell.availableBottom
+      : fallbackAvailableBottom;
+    const availableHeight = homeUsesAppShellContract
+      ? appShell.availableHeight
+      : Math.max(0, availableBottom - availableTop);
     const appHeight = resolveAppHeight(root);
     const density = resolveMeasuredHomeDensity(availableHeight);
 
@@ -290,6 +304,16 @@
       headerMeasured,
       touchBarMeasured,
       fallbackTopUsed,
+      homeUsesAppShellContract,
+      appShellAvailableTop: appShell?.availableTop ?? null,
+      appShellAvailableBottom: appShell?.availableBottom ?? null,
+      appShellAvailableHeight: appShell?.availableHeight ?? null,
+      homeAppShellDeltaTop: homeUsesAppShellContract
+        ? availableTop - appShell.availableTop
+        : null,
+      homeAppShellDeltaBottom: homeUsesAppShellContract
+        ? availableBottom - appShell.availableBottom
+        : null,
       appHeight,
       currentDensity: density,
       activeFeedCardMeasured: false,
@@ -510,6 +534,7 @@
     window.addEventListener("orientationchange", handleViewportChange, { passive: true });
     window.addEventListener("load", handleViewportChange, { passive: true });
     window.addEventListener("pageshow", handleViewportChange, { passive: true });
+    window.addEventListener("klevby-app-shell-updated", scheduleSync, { passive: true });
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) handleViewportChange();
     });

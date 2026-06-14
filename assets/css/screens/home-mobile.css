@@ -28,8 +28,8 @@
   }
 
   body:has(#homeSection:not(.hidden)) #homeSection {
-    min-height: 100dvh;
-    max-height: 100dvh;
+    min-height: var(--klevby-app-available-height);
+    max-height: var(--klevby-app-available-height);
     overflow: hidden;
   }
 }
@@ -43,8 +43,8 @@
   }
 
   body.pwa-installed:has(#homeSection:not(.hidden)) #homeSection {
-    min-height: 100dvh;
-    max-height: 100dvh;
+    min-height: var(--klevby-app-available-height);
+    max-height: var(--klevby-app-available-height);
     overflow: hidden;
   }
 }
@@ -123,11 +123,16 @@
   }
 
   #homeSection {
-    position: relative !important;
+    position: absolute !important;
     z-index: 1 !important;
+    top: var(--klevby-app-available-top) !important;
+    bottom: var(--klevby-app-available-bottom-offset) !important;
+    height: var(--klevby-app-available-height) !important;
+    min-height: var(--klevby-app-available-height) !important;
+    max-height: var(--klevby-app-available-height) !important;
     margin-left: calc(50% - 50vw) !important;
     margin-right: calc(50% - 50vw) !important;
-    margin-top: calc(-1 * (env(safe-area-inset-top) + var(--klevby-home-header-pull))) !important;
+    margin-top: 0 !important;
     padding-left: calc(50vw - 50%) !important;
     padding-right: calc(50vw - 50%) !important;
     background:
@@ -1644,8 +1649,8 @@
   }
 
   :root:is([data-home-density="compact"], [data-home-density="tight"]) body:has(#homeSection:not(.hidden)) #homeSection {
-    min-height: 100dvh;
-    max-height: 100dvh;
+    min-height: var(--klevby-app-available-height);
+    max-height: var(--klevby-app-available-height);
     overflow: hidden;
   }
 
@@ -1841,9 +1846,11 @@
   }
 
   body[data-home-screen-lock="true"] #homeSection:not(.hidden) {
-    height: var(--klevby-app-height, 100dvh) !important;
-    min-height: var(--klevby-app-height, 100dvh) !important;
-    max-height: var(--klevby-app-height, 100dvh) !important;
+    top: var(--klevby-app-available-top) !important;
+    bottom: var(--klevby-app-available-bottom-offset) !important;
+    height: var(--klevby-app-available-height) !important;
+    min-height: var(--klevby-app-available-height) !important;
+    max-height: var(--klevby-app-available-height) !important;
     overflow: hidden !important;
   }
 }

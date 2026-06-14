@@ -288,6 +288,18 @@
           ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
           : null;
       const ownerFitContract = window.KlevbyHomeScreenOwner?.getHomeFitContract?.() || null;
+      const homeAvailableTop = ownerFitContract?.availableTop ?? null;
+      const homeAvailableBottom = ownerFitContract?.availableBottom ?? null;
+      const homeAvailableHeight = ownerFitContract?.availableHeight ?? null;
+      const homeUsesAppShellContract = ownerFitContract?.homeUsesAppShellContract === true;
+      const homeAppShellDeltaTop =
+        homeAvailableTop != null && appShellViewport?.availableTop != null
+          ? homeAvailableTop - appShellViewport.availableTop
+          : null;
+      const homeAppShellDeltaBottom =
+        homeAvailableBottom != null && appShellViewport?.availableBottom != null
+          ? homeAvailableBottom - appShellViewport.availableBottom
+          : null;
       const lowerFillY = Number.parseFloat(
         htmlStyles.getPropertyValue("--klevby-home-lower-fill-y")
       ) || 0;
@@ -374,6 +386,14 @@
         appShellChromeMode: appShellViewport?.chromeMode ?? null,
         appShellHeaderVisible: appShellViewport?.headerVisible ?? null,
         appShellTabbarVisible: appShellViewport?.tabbarVisible ?? null,
+        homeAvailableTop,
+        homeAvailableBottom,
+        homeAvailableHeight,
+        homeUsesAppShellContract,
+        homeAppShellDeltaTop,
+        homeAppShellDeltaBottom,
+        homeSectionTopNegative:
+          homeRects.homeSection?.top != null ? homeRects.homeSection.top < -1 : null,
         homeFitContract,
         homeSection: homeRects.homeSection,
         touchBar: homeRects.touchBar,
