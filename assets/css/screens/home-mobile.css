@@ -105,23 +105,19 @@
    */
   :root {
     --klevby-home-lower-fill-y: 0px;
-    --klevby-home-grid-gap: 14px;
-    --klevby-home-hero-zone-h: minmax(0, 1fr);
-    --klevby-home-actions-zone-h: 96px;
-    --klevby-home-feed-zone-h: 190px;
-    --klevby-home-weather-zone-h: 72px;
-    --klevby-home-hero-min-h: 0px;
-    --klevby-home-hero-pad-top: 18px;
+    --klevby-home-header-pull: 86px;
+    --klevby-home-hero-min-h: 318px;
+    --klevby-home-hero-pad-top: 124px;
     --klevby-home-hero-pad-inline: 26px;
-    --klevby-home-hero-pad-bottom: 8px;
-    --klevby-home-hero-margin-bottom: 0px;
-    --klevby-home-hero-copy-min-h: 0px;
-    --klevby-home-quick-overlap: 0px;
-    --klevby-home-quick-min-h: 0px;
-    --klevby-home-section-gap: var(--klevby-home-grid-gap);
-    --klevby-home-feed-card-min-h: 0px;
-    --klevby-home-feed-image-min-h: 0px;
-    --klevby-home-weather-strip-min-h: 0px;
+    --klevby-home-hero-pad-bottom: 24px;
+    --klevby-home-hero-margin-bottom: 8px;
+    --klevby-home-hero-copy-min-h: 228px;
+    --klevby-home-quick-overlap: -14px;
+    --klevby-home-quick-min-h: 104px;
+    --klevby-home-section-gap: 14px;
+    --klevby-home-feed-card-min-h: calc(148px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
+    --klevby-home-weather-strip-min-h: 52px;
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 0px;
     --klevby-home-weather-nudge-y: 0px;
@@ -188,17 +184,7 @@
     margin-top: 0 !important;
     padding-left: calc(50vw - 50%) !important;
     padding-right: calc(50vw - 50%) !important;
-    display: grid !important;
-    grid-template-rows:
-      var(--klevby-home-hero-zone-h)
-      var(--klevby-home-actions-zone-h)
-      var(--klevby-home-feed-zone-h)
-      var(--klevby-home-weather-zone-h) !important;
-    gap: var(--klevby-home-grid-gap) !important;
-    align-content: start !important;
-    box-sizing: border-box !important;
     background: transparent !important;
-    overflow: hidden !important;
   }
 
   #homeSection::before {
@@ -214,17 +200,15 @@
     margin-left: 50% !important;
     margin-right: 0 !important;
     margin-top: 0 !important;
-    height: 100% !important;
-    margin-bottom: 0 !important;
+    margin-bottom: var(--klevby-home-hero-margin-bottom) !important;
     transform: translateX(-50%) !important;
     min-height: var(--klevby-home-hero-min-h) !important;
     padding:
-      var(--klevby-home-hero-pad-top)
+      calc(env(safe-area-inset-top) + var(--klevby-home-hero-pad-top))
       var(--klevby-home-hero-pad-inline)
       var(--klevby-home-hero-pad-bottom) !important;
     border-radius: 0 !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
@@ -239,7 +223,6 @@
   }
 
   #homeSection .hero-copy {
-    height: 100% !important;
     min-height: var(--klevby-home-hero-copy-min-h) !important;
     padding: 0 !important;
     justify-content: flex-end !important;
@@ -359,9 +342,7 @@
     position: relative;
     z-index: 2;
     width: calc(100% - 16px);
-    height: 100%;
-    min-height: 0;
-    margin: 0 auto;
+    margin: var(--klevby-home-quick-overlap) auto var(--klevby-home-section-gap);
     padding: 0;
   }
 
@@ -369,7 +350,6 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    height: 100%;
   }
 
   #homeSection .home-quick-action-card {
@@ -380,8 +360,7 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
-    min-height: 0;
-    height: 100%;
+    min-height: var(--klevby-home-quick-min-h);
     margin: 0;
     padding: 12px 6px 12px;
     border: 1px solid rgba(244, 178, 74, 0.16);
@@ -391,7 +370,7 @@
       linear-gradient(180deg, rgba(22, 20, 18, 0.94) 0%, rgba(10, 10, 10, 0.98) 100%);
     color: #fff8ea;
     box-shadow:
-      0 6px 16px rgba(0, 0, 0, 0.28),
+      0 12px 28px rgba(0, 0, 0, 0.30),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -457,15 +436,11 @@
   }
 
   #homeSection .home-feed-preview {
+    display: block;
     position: relative;
     z-index: 2;
     width: calc(100% - 16px);
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 6px;
-    height: 100%;
-    min-height: 0;
-    margin: 0 auto;
+    margin: 0 auto var(--klevby-home-section-gap);
     padding: 0;
   }
 
@@ -474,7 +449,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: 0 2px;
+    margin: 0 2px 8px;
   }
 
   #homeSection .home-feed-preview-title {
@@ -517,16 +492,13 @@
     margin: 0;
     padding: 14px;
     min-height: var(--klevby-home-feed-card-min-h);
-    height: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
     border: 1px solid rgba(244, 178, 74, 0.14);
     border-radius: 18px;
     background:
       radial-gradient(circle at 0% 0%, rgba(244, 122, 43, 0.10), transparent 42%),
       linear-gradient(180deg, rgba(22, 20, 18, 0.94) 0%, rgba(10, 10, 10, 0.98) 100%);
     box-shadow:
-      0 6px 16px rgba(0, 0, 0, 0.28),
+      0 12px 28px rgba(0, 0, 0, 0.30),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -568,8 +540,6 @@
     gap: 10px;
     align-items: stretch;
     min-width: 0;
-    min-height: 0;
-    flex: 1 1 auto;
   }
 
   #homeSection .home-feed-preview-body {
@@ -693,7 +663,6 @@
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     min-height: var(--klevby-home-feed-image-min-h);
-    height: 100%;
     align-self: stretch;
     background: rgba(0, 0, 0, 0.24);
   }
@@ -710,15 +679,12 @@
   #homeSection .home-feed-preview-rotator {
     position: relative;
     width: 100%;
-    height: 100%;
-    min-height: 0;
   }
 
   #homeSection .home-feed-preview-rotator-viewport {
     position: relative;
     width: 100%;
     min-height: var(--klevby-home-feed-card-min-h);
-    height: 100%;
   }
 
   #homeSection .home-feed-preview-rotator:not(.is-ready) .home-feed-preview-slide--ad {
@@ -891,11 +857,8 @@
     position: relative;
     z-index: 2;
     width: calc(100% - 16px);
-    height: 100%;
-    min-height: 0;
-    margin: 0 auto;
-    padding: 6px 14px;
-    box-sizing: border-box;
+    margin: 0 auto var(--klevby-home-section-gap);
+    padding: 10px 14px;
     border: 1px solid rgba(244, 178, 74, 0.14);
     border-radius: 16px;
     background:
@@ -916,7 +879,6 @@
     align-items: center;
     gap: 10px;
     min-height: var(--klevby-home-weather-strip-min-h);
-    height: 100%;
   }
 
   #homeSection .home-weather-main {
@@ -1471,7 +1433,13 @@
    * HOME FIXED-FIT TOKENS — narrow-width tier (current @max-width:390 tune).
    */
   :root {
+    --klevby-home-header-pull: 84px;
+    --klevby-home-hero-min-h: 334px;
+    --klevby-home-hero-pad-top: 120px;
     --klevby-home-hero-pad-inline: 22px;
+    --klevby-home-hero-pad-bottom: 23px;
+    --klevby-home-hero-copy-min-h: 219px;
+    --klevby-home-weather-strip-min-h: 48px;
   }
 
   #homeSection .hero {
@@ -1702,11 +1670,14 @@
    * HOME FIXED-FIT TOKENS — compact density (670px–719.99px available).
    */
   :root[data-home-density="compact"] {
-    --klevby-home-grid-gap: 12px;
-    --klevby-home-actions-zone-h: 90px;
-    --klevby-home-feed-zone-h: 174px;
-    --klevby-home-weather-zone-h: 68px;
-    --klevby-home-hero-pad-top: 14px;
+    --klevby-home-hero-min-h: 294px;
+    --klevby-home-hero-pad-top: 112px;
+    --klevby-home-hero-copy-min-h: 198px;
+    --klevby-home-quick-min-h: 96px;
+    --klevby-home-section-gap: 12px;
+    --klevby-home-feed-card-min-h: calc(132px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-image-min-h: calc(112px + var(--klevby-home-lower-fill-y));
+    --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 2px;
     --klevby-home-weather-nudge-y: 0px;
@@ -1823,11 +1794,14 @@
    * Reductions are distributed across large blocks while preserving tap targets.
    */
   :root[data-home-density="tight"] {
-    --klevby-home-grid-gap: 10px;
-    --klevby-home-actions-zone-h: 84px;
-    --klevby-home-feed-zone-h: 150px;
-    --klevby-home-weather-zone-h: 60px;
-    --klevby-home-hero-pad-top: 10px;
+    --klevby-home-hero-min-h: 286px;
+    --klevby-home-hero-pad-top: 108px;
+    --klevby-home-hero-copy-min-h: 190px;
+    --klevby-home-quick-min-h: 92px;
+    --klevby-home-section-gap: 12px;
+    --klevby-home-feed-card-min-h: calc(128px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-lower-fill-y));
+    --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 2px;
     --klevby-home-weather-nudge-y: 0px;
