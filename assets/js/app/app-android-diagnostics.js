@@ -102,7 +102,9 @@
     const rect = element.getBoundingClientRect();
     return {
       top: rect.top,
+      right: rect.right,
       bottom: rect.bottom,
+      left: rect.left,
       height: rect.height,
       y: rect.y,
       width: rect.width
@@ -121,6 +123,96 @@
   function getVerticalGap(upperRect, lowerRect) {
     if (!upperRect || !lowerRect) return null;
     return lowerRect.top - upperRect.bottom;
+  }
+
+  function collectHomeInternalGeometry() {
+    const html = document.documentElement;
+    const body = document.body;
+    const htmlStyles = getComputedStyle(html);
+    const headerRect = getLayoutRect(findAppHeader());
+    const touchBarRect = getLayoutRect(document.querySelector(".mobile-tabbar"));
+    const heroCopyRect = getLayoutRect(document.querySelector("#homeSection .hero-copy"));
+    const quickActionsWrapperRect = getLayoutRect(
+      document.querySelector("#homeSection .home-quick-actions")
+    );
+    const quickActionsRailRect = getLayoutRect(
+      document.querySelector("#homeSection .home-quick-actions-grid")
+    );
+    const feedTitleRowRect = getLayoutRect(
+      document.querySelector("#homeSection .home-feed-preview-head")
+    );
+    const feedAdCardRect = getLayoutRect(
+      document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
+        document.querySelector(
+          "#homeSection .home-feed-preview-slide, #homeSection .home-feed-preview-card"
+        )
+    );
+    const weatherCardRect = getLayoutRect(
+      document.querySelector("#homeSection .home-weather-card")
+    );
+    const cssTokenNames = [
+      "--klevby-app-available-top",
+      "--klevby-app-available-bottom",
+      "--klevby-app-available-height",
+      "--klevby-app-available-bottom-offset",
+      "--klevby-home-lower-fill-y"
+    ];
+
+    return {
+      viewportAppShell: {
+        window: {
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight
+        },
+        visualViewport: window.visualViewport
+          ? {
+              width: window.visualViewport.width,
+              height: window.visualViewport.height
+            }
+          : null,
+        headerBottom: headerRect?.bottom ?? null,
+        touchBarTop: touchBarRect?.top ?? null,
+        availableHeight:
+          headerRect && touchBarRect ? touchBarRect.top - headerRect.bottom : null,
+        homeDensity: {
+          html: html.getAttribute("data-home-density"),
+          body: body?.getAttribute("data-home-density") ?? null
+        },
+        cssTokens: Object.fromEntries(
+          cssTokenNames.map((name) => [name, htmlStyles.getPropertyValue(name).trim()])
+        )
+      },
+      rects: {
+        homeSection: getLayoutRect(document.querySelector("#homeSection")),
+        heroCopy: heroCopyRect,
+        quickActionsWrapper: quickActionsWrapperRect,
+        quickActionsRail: quickActionsRailRect,
+        quickActionCards: Array.from(
+          document.querySelectorAll("#homeSection .home-quick-action-card"),
+          getLayoutRect
+        ),
+        feedTitleRow: feedTitleRowRect,
+        feedAdCard: feedAdCardRect,
+        weatherCard: weatherCardRect,
+        touchBar: touchBarRect
+      },
+      verticalGaps: {
+        heroCopyToQuickActions: getVerticalGap(heroCopyRect, quickActionsWrapperRect),
+        quickActionsToFeedTitle: getVerticalGap(
+          quickActionsWrapperRect,
+          feedTitleRowRect
+        ),
+        feedTitleToFeedAdCard: getVerticalGap(feedTitleRowRect, feedAdCardRect),
+        feedAdCardToWeather: getVerticalGap(feedAdCardRect, weatherCardRect),
+        weatherToTouchBar: getVerticalGap(weatherCardRect, touchBarRect)
+      },
+      horizontalRails: {
+        touchBar: touchBarRect,
+        quickActionsRail: quickActionsRailRect,
+        feedAdCard: feedAdCardRect,
+        weatherCard: weatherCardRect
+      }
+    };
   }
 
   function getElementAttributes(element) {
@@ -203,6 +295,8 @@
     }
 
     const diag = window.klevbyAndroidDiagnostics;
+
+    diag.collectHomeInternalGeometry = collectHomeInternalGeometry;
 
     diag.collect = function () {
       const home = document.querySelector("#homeSection");
@@ -340,6 +434,7 @@
 
       return {
         timestamp: new Date().toISOString(),
+        homeInternalGeometry: collectHomeInternalGeometry(),
         locationHref: window.location.href,
         documentReadyState: document.readyState,
         documentVisibilityState: document.visibilityState,
