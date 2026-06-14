@@ -49,6 +49,32 @@
   }
 }
 
+@media (max-width: 900px) {
+  /*
+   * Home bottom readability scrim — visual only, behind TouchBar.
+   * Header, #homeSection, and .mobile-tabbar stay above this layer.
+   */
+  body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden))::after {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    height: calc(var(--klevby-bottom-chrome-total) + 34px);
+    z-index: 0;
+    opacity: 1;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg,
+        rgba(12, 13, 16, 0) 0%,
+        rgba(12, 13, 16, 0.72) 36%,
+        rgba(12, 13, 16, 0.96) 100%
+      );
+  }
+}
+
 @media (max-width: 767px) {
   /*
    * HOME FIXED-FIT TOKENS — standard measured-available-height tier.
