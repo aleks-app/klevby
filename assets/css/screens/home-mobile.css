@@ -249,10 +249,11 @@
   #homeSection .hero-slogan {
     margin: 0 0 12px !important;
     color: rgba(255, 248, 234, 0.94) !important;
-    font-size: 29px !important;
-    line-height: 1.17 !important;
-    font-weight: 650 !important;
-    letter-spacing: -0.015em !important;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-size: 31px !important;
+    line-height: 1.15 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.012em !important;
     white-space: normal !important;
     text-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
   }
@@ -1449,10 +1450,10 @@
   }
 
   #homeSection .hero-slogan {
-    font-size: 29px !important;
-    line-height: 1.17 !important;
-    font-weight: 650 !important;
-    letter-spacing: -0.015em !important;
+    font-size: 31px !important;
+    line-height: 1.15 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.012em !important;
   }
 
   #homeSection .hero-feature-chips {
@@ -1704,10 +1705,10 @@
 
   :root[data-home-density="compact"] #homeSection .hero-slogan {
     max-width: 100% !important;
-    font-size: 27px !important;
-    line-height: 1.16 !important;
-    font-weight: 650 !important;
-    letter-spacing: -0.015em !important;
+    font-size: 29px !important;
+    line-height: 1.15 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.012em !important;
     white-space: normal !important;
   }
 
@@ -1806,10 +1807,10 @@
 
   :root[data-home-density="tight"] #homeSection .hero-slogan {
     max-width: 100% !important;
-    font-size: 26px !important;
-    line-height: 1.16 !important;
-    font-weight: 650 !important;
-    letter-spacing: -0.015em !important;
+    font-size: 28px !important;
+    line-height: 1.15 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.012em !important;
     white-space: normal !important;
   }
 
