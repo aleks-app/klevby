@@ -5,6 +5,9 @@
   const HOME_SECTION_ID = "homeSection";
   const SLIDE_MS = 4500;
   const POLL_MS = 1000;
+  const DISSOLVE_MS = 860;
+  const MOSAIC_COLUMNS = 12;
+  const MOSAIC_ROWS = 11;
 
   function initHomeFeedPreviewRotator() {
     try {
@@ -14,17 +17,15 @@
       const slides = rotator.querySelectorAll(".home-feed-preview-slide");
       if (slides.length < 2) return;
 
-      if (
+      const prefersReducedMotion =
         typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ) {
-        return;
-      }
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       const viewport = rotator.querySelector(".home-feed-preview-rotator-viewport");
       const feedSlide = rotator.querySelector(".home-feed-preview-slide--feed");
       let activeIndex = 0;
       let timerId = 0;
+      let isTransitioning = false;
 
       function syncViewportHeight() {
         if (!viewport || !feedSlide) return;
@@ -47,8 +48,84 @@
       function setActiveSlide(index) {
         slides.forEach((slide, slideIndex) => {
           slide.classList.toggle("is-active", slideIndex === index);
+          slide.setAttribute("aria-hidden", slideIndex === index ? "false" : "true");
         });
         activeIndex = index;
+      }
+
+      function removeDuplicateIds(element) {
+        if (element.id) element.removeAttribute("id");
+        element.querySelectorAll("[id]").forEach((child) => child.removeAttribute("id"));
+      }
+
+      function createMosaic(currentSlide) {
+        const bounds = viewport.getBoundingClientRect();
+        const mosaic = document.createElement("div");
+        mosaic.className = "home-feed-preview-mosaic";
+        mosaic.setAttribute("aria-hidden", "true");
+
+        for (let row = 0; row < MOSAIC_ROWS; row += 1) {
+          for (let column = 0; column < MOSAIC_COLUMNS; column += 1) {
+            const cell = document.createElement("div");
+            const fragment = currentSlide.cloneNode(true);
+            const seed = (row * 47 + column * 73 + row * column * 17) % 101;
+            const wave = Math.sin(column * 0.82 + row * 0.43) * 68;
+            const delay = Math.max(0, Math.round(35 + seed * 3.1 + wave));
+
+            cell.className = "home-feed-preview-mosaic-cell";
+            cell.style.left = `${(column / MOSAIC_COLUMNS) * 100}%`;
+            cell.style.top = `${(row / MOSAIC_ROWS) * 100}%`;
+            cell.style.width = `${100 / MOSAIC_COLUMNS + 0.08}%`;
+            cell.style.height = `${100 / MOSAIC_ROWS + 0.08}%`;
+            cell.style.setProperty("--mosaic-delay", `${delay}ms`);
+
+            removeDuplicateIds(fragment);
+            fragment.classList.remove("is-active");
+            fragment.removeAttribute("onclick");
+            fragment.removeAttribute("role");
+            fragment.removeAttribute("tabindex");
+            fragment.style.width = `${bounds.width}px`;
+            fragment.style.height = `${bounds.height}px`;
+            fragment.style.transform = `translate(${-column * bounds.width / MOSAIC_COLUMNS}px, ${-row * bounds.height / MOSAIC_ROWS}px)`;
+
+            cell.appendChild(fragment);
+            mosaic.appendChild(cell);
+          }
+        }
+
+        return mosaic;
+      }
+
+      function transitionToSlide(index) {
+        if (isTransitioning || index === activeIndex) return;
+
+        if (prefersReducedMotion) {
+          setActiveSlide(index);
+          return;
+        }
+
+        isTransitioning = true;
+        const currentSlide = slides[activeIndex];
+        const nextSlide = slides[index];
+        const mosaic = createMosaic(currentSlide);
+
+        nextSlide.classList.add("is-active");
+        nextSlide.setAttribute("aria-hidden", "false");
+        currentSlide.classList.add("is-dissolving");
+        viewport.appendChild(mosaic);
+
+        window.requestAnimationFrame(() => {
+          mosaic.classList.add("is-dissolving");
+          currentSlide.classList.remove("is-active");
+          currentSlide.setAttribute("aria-hidden", "true");
+        });
+
+        window.setTimeout(() => {
+          mosaic.remove();
+          currentSlide.classList.remove("is-dissolving");
+          activeIndex = index;
+          isTransitioning = false;
+        }, DISSOLVE_MS);
       }
 
       function scheduleNextRotation() {
@@ -60,7 +137,7 @@
         }
 
         timerId = window.setTimeout(() => {
-          setActiveSlide(activeIndex === 0 ? 1 : 0);
+          transitionToSlide(activeIndex === 0 ? 1 : 0);
           scheduleNextRotation();
         }, SLIDE_MS);
       }
