@@ -297,7 +297,7 @@
           weatherOverflowPx != null &&
           gapWeatherToTouchBar != null &&
           weatherOverflowPx <= 1 &&
-          gapWeatherToTouchBar >= 7 &&
+          gapWeatherToTouchBar >= 10 &&
           availableHeight > 0
       };
 
