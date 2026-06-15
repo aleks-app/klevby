@@ -184,6 +184,15 @@
     transform: translateY(21px);
   }
 
+  /*
+   * HOME TOUCHBAR RAIL — align to Home content inset (PR2).
+   * Horizontal only; visual style unchanged.
+   */
+  body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) .mobile-tabbar {
+    left: var(--klevby-home-content-inset);
+    right: var(--klevby-home-content-inset);
+  }
+
   #homeSection {
     position: absolute !important;
     z-index: 1 !important;
