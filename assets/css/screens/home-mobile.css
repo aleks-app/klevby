@@ -185,12 +185,12 @@
   }
 
   /*
-   * HOME TOUCHBAR RAIL — align to Home content inset (PR2).
-   * Horizontal only; visual style unchanged.
+   * HOME TOUCHBAR — align to Home content rail and card radius.
    */
   body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) .mobile-tabbar {
     left: var(--klevby-home-content-inset);
     right: var(--klevby-home-content-inset);
+    border-radius: 18px;
   }
 
   #homeSection {
