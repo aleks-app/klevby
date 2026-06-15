@@ -855,9 +855,8 @@
   }
 
   /*
-   * HOME FEED/AD PREVIEW — empty placeholder slot (content hidden, shell retained).
+   * HOME FEED/AD PREVIEW — empty placeholder slot (card content hidden, shell retained).
    */
-  #homeSection .home-feed-preview-head,
   #homeSection .home-feed-preview-card > * {
     display: none !important;
   }
