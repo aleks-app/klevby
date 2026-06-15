@@ -580,6 +580,11 @@
     border-color: rgba(244, 178, 74, 0.26);
   }
 
+  #homeSection .home-feed-preview-slide--feed:active {
+    transform: none;
+    opacity: 1;
+  }
+
   #homeSection .home-feed-preview-top {
     display: flex;
     align-items: flex-start;
@@ -773,7 +778,8 @@
   #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide--feed.is-active {
     opacity: 1;
     visibility: visible;
-    pointer-events: auto;
+    pointer-events: none;
+    cursor: default;
   }
 
   #homeSection .home-feed-preview-rotator.is-ready .home-feed-preview-slide--ad {
@@ -915,10 +921,35 @@
   }
 
   /*
-   * HOME FEED/AD PREVIEW — empty placeholder slot (card content hidden, shell retained).
+   * HOME FEED/AD PREVIEW — placeholder shell; legacy ad copy hidden, partner banner shown.
    */
   #homeSection .home-feed-preview-card > * {
     display: none !important;
+  }
+
+  #homeSection .home-feed-preview-slide--feed > .home-feed-ad-banner,
+  #homeSection .home-feed-preview-slide--ad > .home-feed-ad-banner {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    border-radius: inherit;
+    pointer-events: none;
+    cursor: default;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  #homeSection .home-feed-preview-slide--feed {
+    position: relative;
+    overflow: hidden;
+  }
+
+  #homeSection .home-feed-preview-slide--feed > .home-feed-ad-banner {
+    z-index: 0;
   }
 
   #homeSection .home-feed-preview-slide--ad {
