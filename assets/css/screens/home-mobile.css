@@ -369,7 +369,7 @@
     display: block;
     position: relative;
     z-index: 2;
-    margin: var(--klevby-home-quick-overlap) auto var(--klevby-home-section-gap);
+    margin: var(--klevby-home-quick-overlap) auto calc(var(--klevby-home-section-gap) + var(--klevby-home-feed-group-offset-y));
     padding: 0;
   }
 
@@ -469,7 +469,7 @@
     display: block;
     position: relative;
     z-index: 2;
-    margin: var(--klevby-home-feed-group-offset-y) auto var(--klevby-home-section-gap);
+    margin: 0 auto var(--klevby-home-section-gap);
     padding: 0;
   }
 
