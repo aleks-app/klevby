@@ -500,6 +500,7 @@
     justify-content: space-between;
     gap: 12px;
     margin: 0 2px 8px;
+    transform: translateY(-5px);
   }
 
   #homeSection .home-feed-preview-head .home-feed-preview-title {
