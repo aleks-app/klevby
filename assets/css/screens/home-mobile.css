@@ -127,7 +127,7 @@
     );
     --klevby-home-quick-min-h: 104px;
     --klevby-home-section-gap: 14px;
-    --klevby-home-feed-card-min-h: calc(148px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-card-min-h: calc(163px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 52px;
     --klevby-home-bottom-reserve: 0px;
@@ -852,6 +852,21 @@
     line-height: 1.36;
     letter-spacing: 0.01em;
     text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  /*
+   * HOME FEED/AD PREVIEW — empty placeholder slot (content hidden, shell retained).
+   */
+  #homeSection .home-feed-preview-head,
+  #homeSection .home-feed-preview-card > * {
+    display: none !important;
+  }
+
+  #homeSection .home-feed-preview-slide--ad {
+    background:
+      radial-gradient(circle at 0% 0%, rgba(244, 122, 43, 0.10), transparent 42%),
+      linear-gradient(180deg, rgba(22, 20, 18, 0.94) 0%, rgba(10, 10, 10, 0.98) 100%) !important;
+    border-color: rgba(244, 178, 74, 0.14) !important;
   }
 
   #homeSection #forecastPanel.forecast-panel {
@@ -1680,7 +1695,7 @@
     --klevby-home-hero-copy-shift-y: -130px;
     --klevby-home-quick-min-h: 96px;
     --klevby-home-section-gap: 12px;
-    --klevby-home-feed-card-min-h: calc(132px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-card-min-h: calc(147px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(112px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
@@ -1803,7 +1818,7 @@
     --klevby-home-hero-copy-shift-y: -118px;
     --klevby-home-quick-min-h: 92px;
     --klevby-home-section-gap: 12px;
-    --klevby-home-feed-card-min-h: calc(128px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-card-min-h: calc(143px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
