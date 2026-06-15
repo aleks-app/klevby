@@ -426,6 +426,7 @@
     border-radius: 0;
     background: transparent;
     box-shadow: none;
+    transform: translateY(-5px);
   }
 
   #homeSection .home-quick-action-icon img {
