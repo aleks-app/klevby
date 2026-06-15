@@ -268,7 +268,7 @@
     margin: 0 0 8px !important;
     color: rgba(255, 244, 220, 0.60) !important;
     font-size: 13.5px !important;
-    line-height: 1.54 !important;
+    line-height: 1.70 !important;
     font-weight: 400 !important;
     max-width: 20em !important;
     text-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
@@ -1756,7 +1756,7 @@
 
   :root[data-home-density="compact"] #homeSection .hero-description {
     font-size: 13.5px !important;
-    line-height: 1.54 !important;
+    line-height: 1.70 !important;
     margin-bottom: 6px !important;
   }
 
@@ -1870,7 +1870,7 @@
 
   :root[data-home-density="tight"] #homeSection .hero-description {
     font-size: 13.5px !important;
-    line-height: 1.54 !important;
+    line-height: 1.70 !important;
     margin-bottom: 6px !important;
   }
 
