@@ -125,7 +125,7 @@
       - var(--klevby-home-hero-pad-bottom)
       - var(--klevby-home-hero-margin-bottom)
     );
-    --klevby-home-quick-min-h: 104px;
+    --klevby-home-quick-min-h: 124px;
     --klevby-home-section-gap: 14px;
     --klevby-home-feed-card-min-h: calc(218px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
@@ -397,8 +397,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -406,8 +406,8 @@
   }
 
   #homeSection .home-quick-action-icon img {
-    width: 22px;
-    height: 22px;
+    width: 27px;
+    height: 27px;
     display: block;
     filter: invert(52%) sepia(72%) saturate(2200%) hue-rotate(353deg) brightness(104%) contrast(98%);
   }
@@ -416,7 +416,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 5px;
     max-width: 100%;
     min-width: 0;
   }
@@ -426,7 +426,7 @@
     color: rgba(255, 248, 234, 0.94);
     font-size: 10.5px;
     line-height: 1.22;
-    font-weight: 750;
+    font-weight: 600;
     letter-spacing: -0.02em;
     text-align: center;
     text-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
@@ -1709,7 +1709,7 @@
     --klevby-home-hero-pad-top: 112px;
     --klevby-home-hero-copy-min-h: 144px;
     --klevby-home-hero-copy-shift-y: -130px;
-    --klevby-home-quick-min-h: 96px;
+    --klevby-home-quick-min-h: 112px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(202px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(112px + var(--klevby-home-lower-fill-y));
@@ -1767,8 +1767,8 @@
   }
 
   :root[data-home-density="compact"] #homeSection .home-quick-action-icon {
-    width: 34px;
-    height: 34px;
+    width: 39px;
+    height: 39px;
   }
 
   :root[data-home-density="compact"] #homeSection .home-feed-preview-card {
@@ -1839,7 +1839,7 @@
     --klevby-home-hero-pad-top: 108px;
     --klevby-home-hero-copy-min-h: 136px;
     --klevby-home-hero-copy-shift-y: -118px;
-    --klevby-home-quick-min-h: 92px;
+    --klevby-home-quick-min-h: 106px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(198px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-lower-fill-y));
@@ -1885,8 +1885,8 @@
   }
 
   :root[data-home-density="tight"] #homeSection .home-quick-action-icon {
-    width: 34px;
-    height: 34px;
+    width: 39px;
+    height: 39px;
   }
 
   :root[data-home-density="tight"] #homeSection .home-feed-preview-card {
