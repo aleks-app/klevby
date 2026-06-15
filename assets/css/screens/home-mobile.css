@@ -268,11 +268,14 @@
     margin: 0 0 8px !important;
     color: rgba(255, 244, 220, 0.60) !important;
     font-size: 13.5px !important;
-    line-height: 1.44 !important;
+    line-height: 1.54 !important;
     font-weight: 400 !important;
-    letter-spacing: -0.01em !important;
     max-width: 20em !important;
     text-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  #homeSection .hero-description-line--second {
+    letter-spacing: -0.005em;
   }
 
   #homeSection #forecastPanel .forecast-head h2,
@@ -1753,7 +1756,7 @@
 
   :root[data-home-density="compact"] #homeSection .hero-description {
     font-size: 13.5px !important;
-    line-height: 1.44 !important;
+    line-height: 1.54 !important;
     margin-bottom: 6px !important;
   }
 
@@ -1867,7 +1870,7 @@
 
   :root[data-home-density="tight"] #homeSection .hero-description {
     font-size: 13.5px !important;
-    line-height: 1.44 !important;
+    line-height: 1.54 !important;
     margin-bottom: 6px !important;
   }
 
