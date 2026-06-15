@@ -125,7 +125,7 @@
       - var(--klevby-home-hero-pad-bottom)
       - var(--klevby-home-hero-margin-bottom)
     );
-    --klevby-home-quick-min-h: 104px;
+    --klevby-home-quick-min-h: 90px;
     --klevby-home-section-gap: 14px;
     --klevby-home-feed-card-min-h: calc(148px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
@@ -366,10 +366,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 7px;
+    gap: 6px;
     min-height: var(--klevby-home-quick-min-h);
     margin: 0;
-    padding: 12px 6px 12px;
+    padding: 10px 6px;
     border: 1px solid rgba(244, 178, 74, 0.16);
     border-radius: 18px;
     background:
@@ -397,8 +397,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 14px;
     background: rgba(244, 122, 43, 0.12);
     border: 1px solid rgba(244, 122, 43, 0.24);
@@ -1678,7 +1678,7 @@
     --klevby-home-hero-pad-top: 112px;
     --klevby-home-hero-copy-min-h: 144px;
     --klevby-home-hero-copy-shift-y: -130px;
-    --klevby-home-quick-min-h: 96px;
+    --klevby-home-quick-min-h: 84px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(132px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(112px + var(--klevby-home-lower-fill-y));
@@ -1724,13 +1724,13 @@
   }
 
   :root[data-home-density="compact"] #homeSection .home-quick-action-card {
-    padding: 10px 6px;
+    padding: 8px 6px;
     gap: 6px;
   }
 
   :root[data-home-density="compact"] #homeSection .home-quick-action-icon {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
   }
 
   :root[data-home-density="compact"] #homeSection .home-feed-preview-card {
@@ -1801,7 +1801,7 @@
     --klevby-home-hero-pad-top: 108px;
     --klevby-home-hero-copy-min-h: 136px;
     --klevby-home-hero-copy-shift-y: -118px;
-    --klevby-home-quick-min-h: 92px;
+    --klevby-home-quick-min-h: 80px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(128px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-lower-fill-y));
@@ -1836,12 +1836,12 @@
 
   :root[data-home-density="tight"] #homeSection .home-quick-action-card {
     gap: 6px;
-    padding: 9px 6px;
+    padding: 8px 6px;
   }
 
   :root[data-home-density="tight"] #homeSection .home-quick-action-icon {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
   }
 
   :root[data-home-density="tight"] #homeSection .home-feed-preview-card {
