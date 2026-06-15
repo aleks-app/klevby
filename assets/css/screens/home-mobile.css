@@ -458,15 +458,13 @@
     margin: 0 2px 8px;
   }
 
-  #homeSection .home-feed-preview-title {
+  #homeSection .home-feed-preview-head .home-feed-preview-title {
     margin: 0;
-    color: #ffffff;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: -0.012em;
-    line-height: 1.12;
-    text-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    color: #ffffff !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.01em !important;
   }
 
   #homeSection .home-feed-preview-link {
@@ -1756,6 +1754,13 @@
     margin-bottom: 6px !important;
   }
 
+  :root[data-home-density="compact"] #homeSection .home-feed-preview-head .home-feed-preview-title {
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.01em !important;
+  }
+
   :root[data-home-density="compact"] #homeSection .home-quick-action-card {
     padding: 10px 6px;
     gap: 6px;
@@ -1856,6 +1861,13 @@
   :root[data-home-density="tight"] #homeSection .hero-description {
     font-size: 14px !important;
     margin-bottom: 6px !important;
+  }
+
+  :root[data-home-density="tight"] #homeSection .home-feed-preview-head .home-feed-preview-title {
+    font-size: 17px !important;
+    font-weight: 400 !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.01em !important;
   }
 
   :root[data-home-density="tight"] #homeSection .home-feed-preview-text {
