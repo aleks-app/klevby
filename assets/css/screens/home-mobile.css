@@ -125,7 +125,7 @@
       - var(--klevby-home-hero-pad-bottom)
       - var(--klevby-home-hero-margin-bottom)
     );
-    --klevby-home-quick-min-h: 124px;
+    --klevby-home-quick-min-h: 114px;
     --klevby-home-section-gap: 14px;
     --klevby-home-feed-card-min-h: calc(218px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
@@ -349,6 +349,7 @@
     display: block;
     position: relative;
     z-index: 2;
+    width: calc(100% - (2 * var(--klevby-app-inline-inset)) - 20px);
     margin: var(--klevby-home-quick-overlap) auto var(--klevby-home-section-gap);
     padding: 0;
   }
@@ -356,7 +357,7 @@
   #homeSection .home-quick-actions-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 14px;
   }
 
   #homeSection .home-quick-action-card {
@@ -1709,7 +1710,7 @@
     --klevby-home-hero-pad-top: 112px;
     --klevby-home-hero-copy-min-h: 144px;
     --klevby-home-hero-copy-shift-y: -130px;
-    --klevby-home-quick-min-h: 112px;
+    --klevby-home-quick-min-h: 104px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(202px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(112px + var(--klevby-home-lower-fill-y));
@@ -1759,6 +1760,10 @@
     font-weight: 475 !important;
     line-height: 1.15 !important;
     letter-spacing: -0.01em !important;
+  }
+
+  :root[data-home-density="compact"] #homeSection .home-quick-actions-grid {
+    gap: 12px;
   }
 
   :root[data-home-density="compact"] #homeSection .home-quick-action-card {
@@ -1839,7 +1844,7 @@
     --klevby-home-hero-pad-top: 108px;
     --klevby-home-hero-copy-min-h: 136px;
     --klevby-home-hero-copy-shift-y: -118px;
-    --klevby-home-quick-min-h: 106px;
+    --klevby-home-quick-min-h: 100px;
     --klevby-home-section-gap: 12px;
     --klevby-home-feed-card-min-h: calc(198px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-lower-fill-y));
@@ -1877,6 +1882,10 @@
 
   :root[data-home-density="tight"] #homeSection .home-feed-preview-text-extra {
     display: none;
+  }
+
+  :root[data-home-density="tight"] #homeSection .home-quick-actions-grid {
+    gap: 12px;
   }
 
   :root[data-home-density="tight"] #homeSection .home-quick-action-card {
