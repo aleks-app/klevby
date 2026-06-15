@@ -108,6 +108,7 @@
    * Spacing remains bounded on tall screens; density overrides are universal.
    */
   :root {
+    --klevby-home-content-inset: 22px;
     --klevby-home-lower-fill-y: 0px;
     --klevby-home-header-pull: 86px;
     --klevby-home-hero-min-h: 318px;
@@ -236,12 +237,15 @@
 
   #homeSection .hero-copy {
     min-height: var(--klevby-home-hero-copy-min-h) !important;
+    width: calc(100vw - (2 * var(--klevby-home-content-inset))) !important;
+    margin-left: calc(var(--klevby-home-content-inset) - var(--klevby-home-hero-pad-inline)) !important;
+    margin-right: auto !important;
     padding: 0 0 20px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-end !important;
     transform: translate(
-      var(--klevby-home-hero-copy-shift-x),
+      0,
       calc(var(--klevby-home-hero-copy-shift-y) + 23px)
     ) !important;
   }
@@ -346,24 +350,24 @@
   #homeSection .home-quick-actions,
   #homeSection .home-feed-preview,
   #homeSection .home-weather-card {
-    width: calc(100% - (2 * var(--klevby-app-inline-inset)));
+    width: calc(100% - (2 * var(--klevby-home-content-inset)));
+    margin-left: auto;
+    margin-right: auto;
   }
 
   #homeSection .home-quick-actions {
     display: block;
     position: relative;
     z-index: 2;
-    width: calc(100% - (2 * var(--klevby-app-inline-inset)));
     margin: var(--klevby-home-quick-overlap) auto var(--klevby-home-section-gap);
     padding: 0;
   }
 
   #homeSection .home-quick-actions-grid {
     display: grid;
-    grid-template-columns: repeat(3, 126.67px);
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
-    width: 408px;
-    max-width: 100%;
   }
 
   #homeSection .home-quick-action-card {
@@ -374,10 +378,7 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    width: 126.67px;
-    max-width: 126.67px;
-    height: 126.67px;
-    min-height: 126.67px;
+    width: 100%;
     aspect-ratio: 1 / 1;
     gap: 7px;
     margin: 0;
@@ -1776,15 +1777,9 @@
 
   :root[data-home-density="compact"] #homeSection .home-quick-actions-grid {
     gap: 12px;
-    grid-template-columns: repeat(3, 128px);
-    width: 408px;
   }
 
   :root[data-home-density="compact"] #homeSection .home-quick-action-card {
-    width: 128px;
-    max-width: 128px;
-    height: 128px;
-    min-height: 128px;
     padding: 10px 6px;
     gap: 6px;
   }
@@ -1905,15 +1900,9 @@
 
   :root[data-home-density="tight"] #homeSection .home-quick-actions-grid {
     gap: 12px;
-    grid-template-columns: repeat(3, 128px);
-    width: 408px;
   }
 
   :root[data-home-density="tight"] #homeSection .home-quick-action-card {
-    width: 128px;
-    max-width: 128px;
-    height: 128px;
-    min-height: 128px;
     gap: 6px;
     padding: 9px 6px;
   }
