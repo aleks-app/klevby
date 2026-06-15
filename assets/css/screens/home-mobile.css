@@ -127,7 +127,7 @@
     );
     --klevby-home-quick-min-h: 104px;
     --klevby-home-section-gap: 14px;
-    --klevby-home-feed-card-min-h: calc(193px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-card-min-h: calc(218px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 52px;
     --klevby-home-bottom-reserve: 0px;
@@ -1695,7 +1695,7 @@
     --klevby-home-hero-copy-shift-y: -130px;
     --klevby-home-quick-min-h: 96px;
     --klevby-home-section-gap: 12px;
-    --klevby-home-feed-card-min-h: calc(177px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-card-min-h: calc(202px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(112px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
@@ -1818,7 +1818,7 @@
     --klevby-home-hero-copy-shift-y: -118px;
     --klevby-home-quick-min-h: 92px;
     --klevby-home-section-gap: 12px;
-    --klevby-home-feed-card-min-h: calc(173px + var(--klevby-home-lower-fill-y));
+    --klevby-home-feed-card-min-h: calc(198px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(108px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 48px;
     --klevby-home-bottom-reserve: 0px;
