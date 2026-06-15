@@ -266,11 +266,11 @@
 
   #homeSection .hero-description {
     margin: 0 0 8px !important;
-    color: rgba(255, 244, 220, 0.66) !important;
-    font-size: 14px !important;
-    line-height: 1.38 !important;
-    font-weight: 500 !important;
-    max-width: 19.5em !important;
+    color: rgba(255, 244, 220, 0.60) !important;
+    font-size: 13.5px !important;
+    line-height: 1.30 !important;
+    font-weight: 400 !important;
+    max-width: 20em !important;
     text-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
   }
 
@@ -1751,7 +1751,7 @@
   }
 
   :root[data-home-density="compact"] #homeSection .hero-description {
-    font-size: 14px !important;
+    font-size: 13.5px !important;
     margin-bottom: 6px !important;
   }
 
@@ -1864,7 +1864,7 @@
   }
 
   :root[data-home-density="tight"] #homeSection .hero-description {
-    font-size: 14px !important;
+    font-size: 13.5px !important;
     margin-bottom: 6px !important;
   }
 
