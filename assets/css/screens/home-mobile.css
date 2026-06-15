@@ -180,7 +180,7 @@
 
   body[data-app-chrome-mode="home"] header .app-header-leading,
   body[data-app-chrome-mode="home"] header .mobile-actions {
-    transform: translateY(9px);
+    transform: translateY(21px);
   }
 
   #homeSection {
