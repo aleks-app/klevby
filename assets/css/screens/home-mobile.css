@@ -247,7 +247,7 @@
   }
 
   #homeSection .hero-slogan {
-    margin: 0 0 8px !important;
+    margin: 0 0 5px !important;
     color: rgba(255, 255, 255, 0.96) !important;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
     font-size: 32px !important;
@@ -260,7 +260,7 @@
 
   #homeSection .hero-slogan br {
     display: block;
-    margin-top: 5px;
+    margin-top: 2px;
     content: "";
   }
 
