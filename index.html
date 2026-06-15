@@ -255,7 +255,12 @@
       <section class="home-feed-preview" aria-label="Превью ленты">
         <div class="home-feed-preview-head">
           <h2 class="home-feed-preview-title">Лента</h2>
-          <button type="button" class="home-feed-preview-link" onclick="goMobileFeed()">Смотреть всё &gt;</button>
+          <button type="button" class="home-feed-preview-link" onclick="goMobileFeed()">
+            <span class="home-feed-preview-link-label">Смотреть всё</span>
+            <span class="home-feed-preview-link-chevron" aria-hidden="true">
+              <img src="assets/icons/ui/chevron-left.svg" alt="" decoding="async" />
+            </span>
+          </button>
         </div>
 
         <div class="home-feed-preview-rotator" id="homeFeedPreviewRotator">
