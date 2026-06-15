@@ -921,7 +921,7 @@
   }
 
   /*
-   * HOME FEED/AD PREVIEW — placeholder shell; legacy ad copy hidden, partner banner shown.
+   * HOME FEED/AD PREVIEW — banner rotator slides; legacy copy hidden, PNG banners shown.
    */
   #homeSection .home-feed-preview-card > * {
     display: none !important;
