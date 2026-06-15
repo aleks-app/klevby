@@ -461,8 +461,8 @@
   #homeSection .home-feed-preview-head .home-feed-preview-title {
     margin: 0;
     color: #ffffff !important;
-    font-size: 18px !important;
-    font-weight: 450 !important;
+    font-size: 19px !important;
+    font-weight: 475 !important;
     line-height: 1.15 !important;
     letter-spacing: -0.01em !important;
   }
@@ -1755,8 +1755,8 @@
   }
 
   :root[data-home-density="compact"] #homeSection .home-feed-preview-head .home-feed-preview-title {
-    font-size: 18px !important;
-    font-weight: 450 !important;
+    font-size: 18.5px !important;
+    font-weight: 475 !important;
     line-height: 1.15 !important;
     letter-spacing: -0.01em !important;
   }
@@ -1864,8 +1864,8 @@
   }
 
   :root[data-home-density="tight"] #homeSection .home-feed-preview-head .home-feed-preview-title {
-    font-size: 17px !important;
-    font-weight: 450 !important;
+    font-size: 18px !important;
+    font-weight: 475 !important;
     line-height: 1.15 !important;
     letter-spacing: -0.01em !important;
   }
