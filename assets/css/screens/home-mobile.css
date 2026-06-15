@@ -128,7 +128,7 @@
     );
     --klevby-home-quick-min-h: 121px;
     --klevby-home-section-gap: 14px;
-    --klevby-home-feed-group-offset-y: 21px;
+    --klevby-home-feed-group-offset-y: 18px;
     --klevby-home-feed-card-min-h: calc(218px + var(--klevby-home-lower-fill-y));
     --klevby-home-feed-image-min-h: calc(130px + var(--klevby-home-lower-fill-y));
     --klevby-home-weather-strip-min-h: 52px;
