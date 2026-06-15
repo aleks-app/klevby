@@ -268,7 +268,7 @@
     margin: 0 0 8px !important;
     color: rgba(255, 244, 220, 0.60) !important;
     font-size: 13.5px !important;
-    line-height: 1.36 !important;
+    line-height: 1.44 !important;
     font-weight: 400 !important;
     letter-spacing: -0.01em !important;
     max-width: 20em !important;
@@ -1753,6 +1753,7 @@
 
   :root[data-home-density="compact"] #homeSection .hero-description {
     font-size: 13.5px !important;
+    line-height: 1.44 !important;
     margin-bottom: 6px !important;
   }
 
@@ -1866,6 +1867,7 @@
 
   :root[data-home-density="tight"] #homeSection .hero-description {
     font-size: 13.5px !important;
+    line-height: 1.44 !important;
     margin-bottom: 6px !important;
   }
 
