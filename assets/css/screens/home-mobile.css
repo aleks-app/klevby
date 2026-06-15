@@ -462,7 +462,7 @@
     gap: 8px;
     max-width: 100%;
     min-width: 0;
-    transform: translateY(-8px);
+    transform: translateY(-16px);
   }
 
   #homeSection .home-quick-action-label {
