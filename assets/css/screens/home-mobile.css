@@ -258,6 +258,12 @@
     text-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
   }
 
+  #homeSection .hero-slogan br {
+    display: block;
+    margin-top: 3px;
+    content: "";
+  }
+
   #homeSection .hero-description {
     margin: 0 0 8px !important;
     color: rgba(255, 244, 220, 0.66) !important;
