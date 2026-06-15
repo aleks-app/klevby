@@ -242,7 +242,7 @@
     justify-content: flex-end !important;
     transform: translate(
       var(--klevby-home-hero-copy-shift-x),
-      var(--klevby-home-hero-copy-shift-y)
+      calc(var(--klevby-home-hero-copy-shift-y) + 15px)
     ) !important;
   }
 
