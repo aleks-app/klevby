@@ -162,10 +162,10 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 #tripsSection .trips-fullscreen-type-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%;
-  min-height: 56px;
+  width: calc(100% - 18px);
+  min-height: 52px;
   margin-top: 18px;
-  padding: 5px;
+  padding: 4px;
   border: 1px solid rgba(88, 108, 124, 0.24);
   border-radius: 10px;
   background: #111821;
@@ -183,7 +183,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
+  min-height: 42px;
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 8px;
