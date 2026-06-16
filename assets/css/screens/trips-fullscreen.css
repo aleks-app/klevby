@@ -180,7 +180,7 @@ header[data-chrome-mode="trips"] .app-header-back-btn {
   height: 34px;
   min-width: 34px;
   min-height: 34px;
-  border-radius: 13px;
+  border-radius: 11px;
 }
 
 header[data-chrome-mode="trips"] .app-header-back-icon img {
