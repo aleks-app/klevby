@@ -134,8 +134,8 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 172px;
-  min-height: 52px;
+  width: 188px;
+  min-height: 42px;
   margin-top: 8px;
   padding: 0 18px;
   border: 1px solid rgba(244, 122, 43, 0.28);
