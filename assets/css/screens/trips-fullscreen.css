@@ -112,8 +112,8 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 
 #tripsSection .trips-fullscreen-hero-title {
   margin: 0;
-  font-size: 30px;
-  line-height: 1.08;
+  font-size: 26px;
+  line-height: 1.12;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #f5f8fc;
