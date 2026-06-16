@@ -727,10 +727,13 @@
           border-radius: 24px !important;
           overflow: hidden !important;
           background:
-            radial-gradient(circle at 18% 0%, rgba(255, 175, 45, 0.12), transparent 34%),
-            rgba(9, 22, 17, 0.78) !important;
-          border: 1px solid rgba(255, 182, 63, 0.22) !important;
-          box-shadow: 0 16px 40px rgba(0,0,0,0.22) !important;
+            radial-gradient(circle at 50% 0%, rgba(32, 58, 78, 0.12), transparent 48%),
+            linear-gradient(180deg, rgba(8, 16, 23, 0.86) 0%, rgba(6, 12, 18, 0.92) 100%) !important;
+          border: 1px solid rgba(88, 108, 124, 0.24) !important;
+          box-shadow:
+            0 10px 24px rgba(0, 8, 16, 0.32),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
+            inset 0 0 0 1px rgba(244, 140, 60, 0.10) !important;
         }
 
         #tripsSection .filter-card.klevby-mobile-filter-card .filter-title {
@@ -784,11 +787,11 @@
           height: 20px;
           min-width: 20px;
           border-radius: 999px;
-          background: #ffaf2d;
-          color: #120b02;
+          background: rgba(244, 122, 43, 0.88);
+          color: #081018;
           font-size: 11px;
           font-weight: 950;
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.16);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.10);
         }
 
         #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-badge.hidden {
@@ -805,13 +808,13 @@
           min-height: 42px;
           padding: 0 14px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 182, 63, 0.30);
-          background: rgba(255, 175, 45, 0.16);
-          color: #ffd890;
+          border: 1px solid rgba(244, 122, 43, 0.22);
+          background: rgba(8, 16, 23, 0.72);
+          color: rgba(244, 140, 60, 0.92);
           font-size: 13px;
           font-weight: 950;
           cursor: pointer;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         #tripsSection .filter-card.klevby-mobile-filter-card .klevby-mobile-filter-toggle::after {
