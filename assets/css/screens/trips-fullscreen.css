@@ -97,7 +97,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   display: flex;
   flex-direction: column;
   padding:
-    calc(env(safe-area-inset-top, 0px) + 90px)
+    calc(env(safe-area-inset-top, 0px) + 80px)
     var(--klevby-app-inline-inset, 16px)
     24px;
 }
@@ -174,7 +174,7 @@ header[data-chrome-mode="trips"] .mobile-actions {
 header[data-chrome-mode="trips"] .app-header-back-btn {
   display: inline-flex;
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  top: calc(env(safe-area-inset-top, 0px) + 2px);
   left: var(--klevby-app-inline-inset, 16px);
   z-index: 1201;
   pointer-events: auto;
