@@ -97,7 +97,7 @@
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260614-trips-fullscreen-layout-1">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260614-trips-fullscreen-hero-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -468,7 +468,13 @@
       <div class="trips-fullscreen-shell">
         <div class="trips-fullscreen-bg" aria-hidden="true"></div>
         <div class="trips-fullscreen-overlay" aria-hidden="true"></div>
-        <div class="trips-fullscreen-content"></div>
+        <div class="trips-fullscreen-content">
+          <div class="trips-fullscreen-hero">
+            <h2 class="trips-fullscreen-hero-title">Выезды<br>на рыбалку</h2>
+            <p class="trips-fullscreen-hero-description">Найдите компанию или предложите<br>свободное место в машине или лодке.</p>
+            <button class="trips-fullscreen-hero-cta" type="button" onclick="showCreatePostScreen()">Создать выезд</button>
+          </div>
+        </div>
       </div>
 
       <div class="trips-legacy-ui">
