@@ -97,7 +97,7 @@
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260614-trips-graphite-foundation-1">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260614-trips-fullscreen-layout-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -465,6 +465,13 @@
     </section>
 
     <section id="tripsSection" class="hidden">
+      <div class="trips-fullscreen-shell">
+        <div class="trips-fullscreen-bg" aria-hidden="true"></div>
+        <div class="trips-fullscreen-overlay" aria-hidden="true"></div>
+        <div class="trips-fullscreen-content"></div>
+      </div>
+
+      <div class="trips-legacy-ui">
       <div class="trips-hero">
         <div>
           <div class="section-kicker">Напарники</div>
@@ -527,6 +534,7 @@
 
       <div id="postsSection" class="grid">
         <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
       </div>
     </section>
 

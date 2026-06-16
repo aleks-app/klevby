@@ -439,13 +439,15 @@ header[data-chrome-mode="home"] .app-header-back-btn {
 
 header[data-chrome-mode="feed"] .logo.app-header-logo,
 header[data-chrome-mode="inner"] .logo.app-header-logo,
-header[data-chrome-mode="map"] .logo.app-header-logo {
+header[data-chrome-mode="map"] .logo.app-header-logo,
+header[data-chrome-mode="trips"] .logo.app-header-logo {
   display: none !important;
 }
 
 header[data-chrome-mode="feed"] .app-header-back-btn,
 header[data-chrome-mode="inner"] .app-header-back-btn,
-header[data-chrome-mode="map"] .app-header-back-btn {
+header[data-chrome-mode="map"] .app-header-back-btn,
+header[data-chrome-mode="trips"] .app-header-back-btn {
   display: inline-flex;
 }
 
