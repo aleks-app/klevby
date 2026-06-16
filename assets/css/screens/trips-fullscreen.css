@@ -84,9 +84,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(8, 16, 22, 0.28), transparent 42%),
-    linear-gradient(180deg, rgba(4, 10, 16, 0.18) 0%, rgba(4, 10, 16, 0.32) 55%, rgba(4, 10, 16, 0.56) 100%);
+  background: transparent;
 }
 
 #tripsSection .trips-fullscreen-content {
