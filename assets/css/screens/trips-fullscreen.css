@@ -162,7 +162,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 #tripsSection .trips-fullscreen-type-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 400px;
+  width: 382px;
   min-height: 47px;
   margin-top: 18px;
   padding: 4px;
