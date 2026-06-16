@@ -112,19 +112,19 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 
 #tripsSection .trips-fullscreen-hero-title {
   margin: 0;
-  font-size: 26px;
+  font-size: 25px;
   line-height: 1.12;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: #f5f8fc;
 }
 
 #tripsSection .trips-fullscreen-hero-description {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.42;
-  max-width: 292px;
-  color: rgba(236, 244, 252, 0.72);
+  font-size: 13px;
+  line-height: 1.38;
+  max-width: 286px;
+  color: rgba(236, 244, 252, 0.68);
 }
 
 #tripsSection .trips-fullscreen-hero-cta {
@@ -177,14 +177,14 @@ header[data-chrome-mode="trips"] .app-header-back-btn {
   left: var(--klevby-app-inline-inset, 16px);
   z-index: 1201;
   pointer-events: auto;
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  min-height: 40px;
-  border-radius: 15px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 13px;
 }
 
 header[data-chrome-mode="trips"] .app-header-back-icon img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
