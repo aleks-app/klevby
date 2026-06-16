@@ -112,6 +112,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 
 #tripsSection .trips-fullscreen-hero-title {
   margin: 0;
+  font-family: var(--klevgo-font-display) !important;
   font-size: 25px;
   line-height: 1.12;
   font-weight: 500;
