@@ -1,0 +1,126 @@
+/*
+ * Trips screen — fullscreen canvas shell (PR-1).
+ * Scope: #tripsSection + body[data-app-chrome-mode="trips"] only.
+ * Partner list cards, filters UI, TouchBar global styles, Home untouched.
+ */
+
+body[data-app-chrome-mode="trips"] #klevbyAppRoot > header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+
+body[data-app-chrome-mode="trips"] #klevbyAppRoot > header .header-inner {
+  min-height: 0;
+  height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+body[data-app-chrome-mode="trips"] #klevbyAppRoot > header .app-header-leading {
+  position: static;
+  width: 0;
+  height: 0;
+  overflow: visible;
+}
+
+body[data-app-chrome-mode="trips"] #klevbyAppRoot > main.wrap {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#tripsSection .trips-fullscreen-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+#tripsSection .trips-fullscreen-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% -8%, rgba(32, 58, 78, 0.12), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgba(18, 42, 58, 0.08), transparent 28%),
+    linear-gradient(180deg, #061016 0%, #08131a 46%, #061016 100%);
+}
+
+#tripsSection .trips-fullscreen-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(8, 16, 22, 0.22), transparent 42%),
+    linear-gradient(180deg, rgba(4, 10, 16, 0.48) 0%, rgba(4, 10, 16, 0.62) 55%, rgba(4, 10, 16, 0.74) 100%);
+}
+
+#tripsSection .trips-fullscreen-content {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#tripsSection .trips-legacy-ui {
+  display: none !important;
+}
+
+header[data-chrome-mode="trips"] .logo.app-header-logo,
+header[data-chrome-mode="trips"] .mobile-menu-wrap,
+header[data-chrome-mode="trips"] .mobile-profile-btn,
+header[data-chrome-mode="trips"] .mobile-actions {
+  display: none !important;
+}
+
+header[data-chrome-mode="trips"] .app-header-back-btn {
+  display: inline-flex;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: var(--klevby-app-inline-inset, 16px);
+  z-index: 1201;
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 15px;
+}
+
+header[data-chrome-mode="trips"] .app-header-back-icon img {
+  width: 18px;
+  height: 18px;
+}

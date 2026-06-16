@@ -40,7 +40,9 @@
   }
 
   html[data-app-chrome-mode="map"],
-  body[data-app-chrome-mode="map"] {
+  body[data-app-chrome-mode="map"],
+  html[data-app-chrome-mode="trips"],
+  body[data-app-chrome-mode="trips"] {
     width: 100%;
     height: var(--klevby-app-height, 100dvh);
     min-height: var(--klevby-app-height, 100dvh);
@@ -53,12 +55,20 @@
     background: #060706;
   }
 
+  body[data-app-chrome-mode="trips"] {
+    padding-bottom: 0;
+    background: #061016;
+  }
+
   body[data-app-chrome-mode="map"]::before,
-  body[data-app-chrome-mode="map"]::after {
+  body[data-app-chrome-mode="map"]::after,
+  body[data-app-chrome-mode="trips"]::before,
+  body[data-app-chrome-mode="trips"]::after {
     opacity: 0;
   }
 
-  body[data-app-chrome-mode="map"] #klevbyAppRoot {
+  body[data-app-chrome-mode="map"] #klevbyAppRoot,
+  body[data-app-chrome-mode="trips"] #klevbyAppRoot {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -71,7 +81,8 @@
     flex: 0 0 auto;
   }
 
-  body[data-app-chrome-mode="map"] #klevbyAppRoot > main.wrap {
+  body[data-app-chrome-mode="map"] #klevbyAppRoot > main.wrap,
+  body[data-app-chrome-mode="trips"] #klevbyAppRoot > main.wrap {
     flex: 1 1 auto;
     width: 100%;
     min-height: 0;

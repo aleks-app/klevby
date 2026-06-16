@@ -92,6 +92,7 @@
     const cleanMode =
       mode === "feed" ? "feed" :
       mode === "map" ? "map" :
+      mode === "trips" ? "trips" :
       mode === "inner" ? "inner" :
       "home";
     const header = document.querySelector("header");

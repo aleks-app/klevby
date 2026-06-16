@@ -4,7 +4,8 @@
 */
 
 @media (max-width: 900px) {
-  body[data-app-chrome-mode="map"] .mobile-tabbar {
+  body[data-app-chrome-mode="map"] .mobile-tabbar,
+  body[data-app-chrome-mode="trips"] .mobile-tabbar {
     display: none;
   }
 

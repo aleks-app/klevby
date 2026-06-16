@@ -193,7 +193,7 @@ function updateHomeFloatButton() {
     return;
   }
 
-  if (["inner", "map"].includes(document.body.getAttribute("data-app-chrome-mode"))) {
+  if (["inner", "map", "trips"].includes(document.body.getAttribute("data-app-chrome-mode"))) {
     setHomeFloatButtonMode(btn, "");
     btn.classList.remove("show");
     return;

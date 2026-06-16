@@ -13,9 +13,9 @@
 @import url("./screens/profile.css");
 @import url("./screens/auth-welcome.css");
 
-@import url("./responsive/mobile.css?v=20260607-map-app-screen-1");
-@import url("./mobile/mobile-tabbar.css?v=20260607-map-app-screen-1");
-@import url("./mobile/mobile-float-button.css?v=20260607-map-app-screen-1");
+@import url("./responsive/mobile.css?v=20260614-trips-fullscreen-layout-1");
+@import url("./mobile/mobile-tabbar.css?v=20260614-trips-fullscreen-canvas-1");
+@import url("./mobile/mobile-float-button.css?v=20260614-trips-fullscreen-canvas-1");
 @import url("./mobile/mobile-posts.css");
 @import url("./mobile/mobile-modals.css");
 @import url("./mobile/mobile-install-banner.css");
@@ -23,4 +23,4 @@
 @import url("./mobile/mobile-market.css");
 @import url("./mobile/mobile-create.css");
 @import url("./screens/home-mobile.css?v=20260614-home-quick-actions-copy-lift2-1");
-@import url("./screens/trips-graphite.css?v=20260614-trips-graphite-foundation-1");
+@import url("./screens/trips-fullscreen.css?v=20260614-trips-fullscreen-layout-1");

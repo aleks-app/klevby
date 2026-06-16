@@ -568,6 +568,7 @@ function setAppChromeMode(mode) {
   const cleanMode =
     mode === "feed" ? "feed" :
     mode === "map" ? "map" :
+    mode === "trips" ? "trips" :
     mode === "inner" ? "inner" :
     "home";
   const header = document.querySelector("header");
@@ -685,6 +686,7 @@ function showSection(section) {
     safeSection === "home" ? "home" :
     safeSection === "feed" ? "feed" :
     safeSection === "map" ? "map" :
+    safeSection === "trips" ? "trips" :
     "inner"
   );
 
