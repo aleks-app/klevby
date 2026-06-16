@@ -139,7 +139,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   margin-top: 8px;
   padding: 0 18px;
   border: 1px solid rgba(244, 122, 43, 0.28);
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #f47a2b 0%, #c85a18 100%);
   color: #fff8f0;
   font: inherit;
