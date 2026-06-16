@@ -141,7 +141,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   background: linear-gradient(135deg, #f47a2b 0%, #c85a18 100%);
   color: #fff8f0;
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
   cursor: pointer;
