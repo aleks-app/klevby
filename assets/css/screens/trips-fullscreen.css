@@ -164,7 +164,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   width: 100%;
   min-height: 62px;
-  margin-top: 34px;
+  margin-top: 26px;
   padding: 5px;
   border: 1px solid rgba(88, 108, 124, 0.24);
   border-radius: 10px;
