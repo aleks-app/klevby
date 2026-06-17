@@ -301,11 +301,20 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 #tripsSection .trips-fullscreen-list-title {
   margin: 0;
   font-family: var(--klevgo-font-display) !important;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.15;
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
   letter-spacing: -0.01em;
   color: rgba(245, 248, 252, 0.96);
+}
+
+#tripsSection .trips-fullscreen-list-title span {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: inherit;
+  color: inherit;
 }
 
 #tripsSection .trips-fullscreen-list-count {
