@@ -288,6 +288,75 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   color: #f47a2b;
 }
 
+#tripsSection .trips-fullscreen-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 408px;
+  max-width: 100%;
+  margin-top: 18px;
+  margin-bottom: 13px;
+}
+
+#tripsSection .trips-fullscreen-list-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#tripsSection .trips-fullscreen-list-title {
+  margin: 0;
+  font-family: var(--klevgo-font-display) !important;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: rgba(245, 248, 252, 0.96);
+}
+
+#tripsSection .trips-fullscreen-list-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: rgba(245, 248, 252, 0.08);
+  color: rgba(245, 248, 252, 0.62);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+#tripsSection .trips-fullscreen-list-sort {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: default;
+}
+
+#tripsSection .trips-fullscreen-list-sort-label {
+  color: rgba(236, 244, 252, 0.62);
+}
+
+#tripsSection .trips-fullscreen-list-sort-value {
+  color: #f47a2b;
+}
+
 
 #tripsSection .trips-legacy-ui {
   display: none !important;
