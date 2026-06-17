@@ -276,14 +276,6 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   pointer-events: none;
 }
 
-#tripsSection .trips-fullscreen-filter-icon {
-  display: inline-flex;
-  width: 13px;
-  height: 13px;
-  min-width: 13px;
-  opacity: 1;
-}
-
 #tripsSection .trips-fullscreen-filter-item-accent {
   color: #f47a2b;
 }
