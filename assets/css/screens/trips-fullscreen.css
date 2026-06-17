@@ -293,8 +293,8 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 
 #tripsSection .trips-fullscreen-list-heading {
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -309,18 +309,11 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 }
 
 #tripsSection .trips-fullscreen-list-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 22px;
-  height: 22px;
-  padding: 0 7px;
-  border-radius: 7px;
-  background: rgba(245, 248, 252, 0.08);
-  color: rgba(245, 248, 252, 0.62);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
+  font-family: var(--klevgo-font-display) !important;
+  font-size: 18px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: rgba(245, 248, 252, 0.58);
 }
 
 #tripsSection .trips-fullscreen-list-sort {
