@@ -13,45 +13,77 @@ const homeCss = fs.readFileSync(
 );
 
 function functionBody(name) {
-  const start = ownerSource.indexOf(`function ${name}`);
+  const start = ownerSource.indexOf(`function ${name}(`);
   assert.notEqual(start, -1, `${name} should exist`);
   const nextFunction = ownerSource.indexOf("\n\n  function ", start + 1);
   assert.notEqual(nextFunction, -1, `${name} should be followed by another function`);
   return ownerSource.slice(start, nextFunction);
 }
 
-test("home JS keeps viewport measurement and read-only rhythm diagnostics", () => {
-  const body = functionBody("measureHomeFitContract");
+test("home JS measures AppShell/fallback geometry and publishes viewport tokens", () => {
+  const measureBody = functionBody("measureHomeFitContract");
+  const applyBody = functionBody("applyMeasuredHomeLayoutTokens");
 
-  assert.match(body, /KlevbyAppShellViewportOwner\?\.getLastMeasurement/);
-  assert.match(body, /homeUsesAppShellContract/);
-  assert.match(body, /const header = homeUsesAppShellContract \? null : findAppHeader\(\)/);
-  assert.match(body, /headerBottom/);
-  assert.match(body, /touchBarTop/);
-  assert.match(body, /gapActiveFeedCardToWeather/);
-  assert.match(body, /gapWeatherToTouchBar/);
-  assert.match(body, /layoutFinalAuthority:\s*"css"/);
+  assert.match(measureBody, /KlevbyAppShellViewportOwner\?\.getLastMeasurement/);
+  assert.match(measureBody, /homeUsesAppShellContract/);
+  assert.match(measureBody, /const header = homeUsesAppShellContract \? null : findAppHeader\(\)/);
+  assert.match(measureBody, /availableHeight/);
+  assert.match(measureBody, /currentDensity: density/);
+  assert.match(applyBody, /--klevby-home-available-top/);
+  assert.match(applyBody, /--klevby-home-available-bottom/);
+  assert.match(applyBody, /--klevby-home-available-height/);
+  assert.match(applyBody, /setAttribute\(HOME_DENSITY_ATTRIBUTE, measurement\.density\)/);
 });
 
-test("home JS has no lower-fill solver or layout commit pass", () => {
-  assert.doesNotMatch(ownerSource, /resolveHomeLowerFill/);
-  assert.doesNotMatch(ownerSource, /applyHomeBottomRhythmSolver/);
-  assert.doesNotMatch(ownerSource, /FINAL_LAYOUT_COMMIT/);
-  assert.doesNotMatch(ownerSource, /--klevby-home-lower-fill-y/);
-  assert.doesNotMatch(ownerSource, /lowerFillY|lowerFillCap|solverApplied|solverCapped/);
-  assert.doesNotMatch(ownerSource, /finalLayoutCommit|homeCommitExecuted|finalLayoutCorrection/);
+test("home JS keeps Rhythm Solver as the only lower-fill writer", () => {
+  const solverBody = functionBody("resolveHomeLowerFill");
+  const applySolverBody = functionBody("applyHomeBottomRhythmSolver");
+
+  assert.match(ownerSource, /HOME_LOWER_FILL_CAPS/);
+  assert.match(ownerSource, /standard[\s\S]*compact[\s\S]*tight/);
+  assert.match(solverBody, /lowerGap - upperGap/);
+  assert.match(solverBody, /HOME_CLEARANCE_PX/);
+  assert.match(applySolverBody, /--klevby-home-lower-fill-y/);
+  assert.match(applySolverBody, /lowerFillWriter: "home-layout-engine"/);
+  assert.match(applySolverBody, /solverApplied/);
+  assert.equal(
+    (ownerSource.match(/setProperty\("--klevby-home-lower-fill-y"/g) || []).length,
+    2,
+    "Home layout engine may reset and then publish lower-fill in one solver pass"
+  );
 });
 
-test("home feed and weather gaps share the same CSS token source", () => {
-  const sectionGapDefinitions = homeCss.match(/--klevby-home-section-gap:\s*var\(--kr-2\);/g) || [];
-  assert.equal(sectionGapDefinitions.length, 3);
+test("home layout pipeline has a final commit diagnostics pass", () => {
+  const pipelineBody = functionBody("HOME_LAYOUT_PIPELINE_FRAME");
+
+  assert.match(pipelineBody, /applyMeasuredHomeLayoutTokens\(measurement\)/);
+  assert.match(pipelineBody, /applyHomeBottomRhythmSolver\(measurement\)/);
+  assert.match(pipelineBody, /requestAnimationFrame\(\(\) =>/);
+  assert.match(pipelineBody, /homeCommitExecuted: true/);
+  assert.match(pipelineBody, /finalLayoutCommitExecuted: true/);
+  assert.match(pipelineBody, /weatherOverflowPx/);
+  assert.match(pipelineBody, /weatherTouchBarVisualPass/);
+});
+
+test("home CSS distributes lower-fill through feed card and media tokens", () => {
+  assert.match(homeCss, /--klevby-home-lower-fill-y:\s*0px/);
+  assert.match(homeCss, /--klevby-home-feed-card-fill-share:\s*calc\(var\(--klevby-home-lower-fill-y\) \* 0\.62\)/);
+  assert.match(homeCss, /--klevby-home-feed-image-fill-share:\s*calc\(var\(--klevby-home-lower-fill-y\) \* 0\.38\)/);
   assert.match(
     homeCss,
-    /#homeSection \.home-feed-preview \{[\s\S]*?margin:\s*0 auto var\(--klevby-home-section-gap\);/
+    /#homeSection \.home-feed-preview-card \{[\s\S]*?min-height:\s*calc\(var\(--klevby-home-feed-card-min-h\) \+ var\(--klevby-home-feed-card-fill-share\)\)/
   );
   assert.match(
     homeCss,
-    /#homeSection \.home-weather-card \{[\s\S]*?margin:\s*0 auto var\(--klevby-home-section-gap\);/
+    /#homeSection \.home-feed-preview-image \{[\s\S]*?min-height:\s*calc\(var\(--klevby-home-feed-image-min-h\) \+ var\(--klevby-home-feed-image-fill-share\)\)/
   );
-  assert.doesNotMatch(homeCss, /--klevby-home-lower-fill-y|lower-fill|header-nudge/);
+});
+
+test("home layout contract stays universal", () => {
+  const combined = `${ownerSource}\n${homeCss}`;
+
+  assert.doesNotMatch(combined, /iPhone|Pixel|Galaxy|Samsung|Android\s+\d/i);
+  assert.doesNotMatch(combined, /pwa-short/);
+  assert.doesNotMatch(combined, /height\s*-\s*633px|633px\s*-\s*height/);
+  assert.doesNotMatch(combined, /data-home-density="(?!standard|compact|tight)/);
 });
