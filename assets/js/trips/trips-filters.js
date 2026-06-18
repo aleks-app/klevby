@@ -2,7 +2,7 @@
   "use strict";
 
   const TYPE_BY_INDEX = ["all", "looking", "offering"];
-  const FILTER_KEYS = ["selectedRegion", "selectedDateMode", "selectedFishingType", "selectedConditions"];
+  let activeFilterIndex = null;
 
   function updateTabs(state) {
     document.querySelectorAll("#tripsSection .trips-fullscreen-type-tab").forEach((button, index) => {
@@ -19,19 +19,42 @@
     });
   }
 
+  function syncFilterState(stateApi, nextIndex) {
+    if (typeof stateApi.setSelectedRegion !== "function") return;
+
+    stateApi.setSelectedRegion("all");
+    stateApi.setSelectedDateMode("any");
+    stateApi.setSelectedFishingType("any");
+    stateApi.setSelectedConditions("any");
+
+    if (nextIndex === 0) stateApi.setSelectedRegion("touched");
+    if (nextIndex === 1) stateApi.setSelectedDateMode("touched");
+    if (nextIndex === 2) stateApi.setSelectedFishingType("touched");
+    if (nextIndex === 3) stateApi.setSelectedConditions("touched");
+  }
+
   function bindFilterRow(stateApi) {
-    document.querySelectorAll("#tripsSection .trips-fullscreen-filter-item").forEach((button, index) => {
+    const buttons = document.querySelectorAll("#tripsSection .trips-fullscreen-filter-item");
+
+    buttons.forEach((button, index) => {
       button.addEventListener("click", () => {
-        const key = FILTER_KEYS[index];
-        button.classList.toggle("is-active");
-        button.setAttribute("aria-pressed", button.classList.contains("is-active") ? "true" : "false");
-        if (key && typeof stateApi.setSelectedRegion === "function") {
-          const value = button.classList.contains("is-active") ? "touched" : "any";
-          if (key === "selectedRegion") stateApi.setSelectedRegion(value === "any" ? "all" : value);
-          if (key === "selectedDateMode") stateApi.setSelectedDateMode(value);
-          if (key === "selectedFishingType") stateApi.setSelectedFishingType(value);
-          if (key === "selectedConditions") stateApi.setSelectedConditions(value);
+        const wasActive = activeFilterIndex === index;
+
+        buttons.forEach((item) => {
+          item.classList.remove("is-active");
+          item.setAttribute("aria-pressed", "false");
+        });
+
+        if (wasActive) {
+          activeFilterIndex = null;
+          syncFilterState(stateApi, null);
+          return;
         }
+
+        button.classList.add("is-active");
+        button.setAttribute("aria-pressed", "true");
+        activeFilterIndex = index;
+        syncFilterState(stateApi, index);
       });
     });
   }
