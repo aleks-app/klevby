@@ -4,8 +4,7 @@
       "homeSection",
       "feedSection",
       "tripsSection",
-      "createSection",
-      "marketSection",
+        "marketSection",
       "pondsSection",
       "mapSection",
       "waterBodyDetailSection",
@@ -54,7 +53,6 @@
     if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
     if (!document.getElementById("feedSection")?.classList.contains("hidden")) return "feed";
     if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
-    if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
     if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
     if (!document.getElementById("waterBodyDetailSection")?.classList.contains("hidden")) return "water-body-detail";
     if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
@@ -92,6 +90,7 @@
     const cleanMode =
       mode === "feed" ? "feed" :
       mode === "map" ? "map" :
+      mode === "trips" ? "trips" :
       mode === "inner" ? "inner" :
       "home";
     const header = document.querySelector("header");

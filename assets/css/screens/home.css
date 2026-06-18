@@ -491,8 +491,6 @@
 }
 
 .home-feed-head,
-.trips-hero,
-.create-screen-head,
 .home-trip-link-card {
   margin: 16px 0;
   padding: 20px;
@@ -506,18 +504,14 @@
   -webkit-backdrop-filter: blur(18px);
 }
 
-.home-feed-head,
-.trips-hero,
-.create-screen-head {
+.home-feed-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
 
-.home-feed-head h2,
-.trips-hero h2,
-.create-screen-head h2 {
+.home-feed-head h2 {
   margin: 0;
   color: #fff8ea;
   font-size: 34px;
@@ -526,9 +520,7 @@
   letter-spacing: -0.9px;
 }
 
-.home-feed-head p,
-.trips-hero p,
-.create-screen-head p {
+.home-feed-head p {
   max-width: 720px;
   margin: 8px 0 0;
   color: rgba(255,248,234,0.68);
@@ -569,7 +561,6 @@
   font-weight: 600;
 }
 
-#createSection,
 #tripsSection {
   animation: sectionFadeIn 0.22s ease both;
 }

@@ -493,7 +493,6 @@ function openKlevbyProfile() {
   const sectionIds = [
     "homeSection",
     "tripsSection",
-    "createSection",
     "marketSection",
     "pondsSection",
     "mapSection",
@@ -1253,7 +1252,7 @@ function openProfileTripsView() {
     setProfileTabActive(1);
     updateProfileHomeFloatButton();
 
-    const posts = document.getElementById("postsSection");
+    const posts = document.getElementById("tripsSection");
     if (posts) {
       posts.scrollIntoView({
         behavior: "smooth",
@@ -1269,37 +1268,8 @@ function openProfileCreateView() {
     return;
   }
 
-  setProfileReturnMode(true);
-  setProfileScreenChrome(true);
-  applyProfileTabbar();
-  setProfileTabActive(2);
-
-  hideProfileSectionOnly();
-
-  try {
-    if (typeof showSection === "function") {
-      window.__klevbyProfileInternalNavigation = true;
-      showSection("create");
-      window.__klevbyProfileInternalNavigation = false;
-    }
-  } catch (error) {
-    window.__klevbyProfileInternalNavigation = false;
-  }
-
-  setTimeout(() => {
-    setProfileScreenChrome(true);
-    applyProfileTabbar();
-    setProfileTabActive(2);
-    updateProfileHomeFloatButton();
-
-    const panel = document.getElementById("createPanel");
-    if (panel) {
-      panel.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-    }
-  }, 100);
+  console.info("[Trips] create trip flow is not implemented yet");
+  return false;
 }
 
 window.addEventListener("klevby-auth-changed", () => {

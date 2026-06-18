@@ -22,15 +22,13 @@
   body.klevby-chat-lock #installBanner,
   body.klevby-chat-lock #iosInstallModal,
   body.klevby-chat-lock #resetModal,
-  body.klevby-chat-lock #postModal,
   body.klevby-chat-mobile-lock header,
   body.klevby-chat-mobile-lock main,
   body.klevby-chat-mobile-lock .mobile-tabbar,
   body.klevby-chat-mobile-lock #homeFloatBtn,
   body.klevby-chat-mobile-lock #installBanner,
   body.klevby-chat-mobile-lock #iosInstallModal,
-  body.klevby-chat-mobile-lock #resetModal,
-  body.klevby-chat-mobile-lock #postModal {
+  body.klevby-chat-mobile-lock #resetModal {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;

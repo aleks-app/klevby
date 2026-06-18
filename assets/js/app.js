@@ -21,7 +21,6 @@ let authReady = false;
 let posts = [];
 let editingId = null;
 let activeModalPost = null;
-let postModalCloseTimer = null;
 
 let authRestoreTimer = null;
 let authRestoreInProgress = false;
@@ -462,12 +461,9 @@ function showStatus(message, isError = false) {
     return;
   }
 
-  const status = document.getElementById("statusLine");
-  if (!status) return;
-
-  status.textContent = message;
-  status.classList.toggle("error-line", isError);
+  console[isError ? "warn" : "info"]("[Trips] status", message);
 }
+
 
 function showFormMessage(message, isError = false) {
   const helpers = getAppUiHelpers();
@@ -506,7 +502,6 @@ function getAppSections() {
     "homeSection",
     "feedSection",
     "tripsSection",
-    "createSection",
     "marketSection",
     "pondsSection",
     "mapSection",
@@ -568,6 +563,7 @@ function setAppChromeMode(mode) {
   const cleanMode =
     mode === "feed" ? "feed" :
     mode === "map" ? "map" :
+    mode === "trips" ? "trips" :
     mode === "inner" ? "inner" :
     "home";
   const header = document.querySelector("header");
@@ -605,7 +601,6 @@ function getVisibleSectionName() {
 
   if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
   if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
-  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
   if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
   if (!document.getElementById("waterBodyDetailSection")?.classList.contains("hidden")) return "water-body-detail";
   if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
@@ -685,6 +680,7 @@ function showSection(section) {
     safeSection === "home" ? "home" :
     safeSection === "feed" ? "feed" :
     safeSection === "map" ? "map" :
+    safeSection === "trips" ? "trips" :
     "inner"
   );
 
@@ -704,7 +700,6 @@ function showSection(section) {
     home: "homeSection",
     feed: "feedSection",
     trips: "tripsSection",
-    create: "createSection",
     market: "marketSection",
     ponds: "pondsSection",
     map: "mapSection",
@@ -743,31 +738,9 @@ function showSection(section) {
   if (safeSection === "trips") {
     setMobileTabVisual(0);
 
-    if (typeof window.loadPosts === "function") {
-      window.loadPosts({ force: true }).catch((error) => {
-        console.warn("Klevby trips: не удалось загрузить объявления при открытии раздела:", error);
-      });
-    } else if (typeof window.renderPosts === "function") {
-      window.renderPosts();
+    if (typeof window.KlevbyTripsScreenOwner?.open === "function") {
+      window.KlevbyTripsScreenOwner.open();
     }
-  }
-
-  if (safeSection === "create") {
-    setMobileTabVisual(2);
-
-    if (typeof window.fillAuthorLocal === "function") {
-      window.fillAuthorLocal();
-    }
-
-    setTimeout(() => {
-      const panel = document.getElementById("createPanel");
-      if (panel) {
-        panel.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
-      }
-    }, 80);
   }
 
   if (safeSection === "auth") {
@@ -910,30 +883,8 @@ function setMineTripsMode(mode) {
 }
 
 function showCreatePostScreen(options = {}) {
-  closeMobileMenuFromAppNavigation();
-
-  const actions = getAppTripActions();
-
-  if (typeof actions.showCreatePostScreen === "function") {
-    return actions.showCreatePostScreen(options, {
-      setProfileReturnMode,
-      enterCreateMode: window.KlevbyPostsForm?.enterCreateMode,
-      showSection
-    });
-  }
-
-  const fromProfile = Boolean(options.fromProfile);
-
-  if (fromProfile) {
-    setProfileReturnMode(true);
-  }
-
-  if (typeof window.KlevbyPostsForm?.enterCreateMode === "function") {
-    window.KlevbyPostsForm.enterCreateMode();
-  }
-
-  showSection("create");
-  return true;
+  console.info("[Trips] create trip flow is not implemented yet", options);
+  return false;
 }
 
 function showTripsBoard(mode = "all") {
@@ -995,7 +946,8 @@ function goMobileCreate() {
     return;
   }
 
-  showCreatePostScreen();
+  console.info("[Trips] create trip flow is not implemented yet");
+  return false;
 }
 
 function goMobileWeather() {
@@ -1096,10 +1048,7 @@ function patchProfileOpenForExtraSections() {
       : undefined;
 
     const tripsSection = document.getElementById("tripsSection");
-    const createSection = document.getElementById("createSection");
-
     if (tripsSection) tripsSection.classList.add("hidden");
-    if (createSection) createSection.classList.add("hidden");
 
     setMobileTabVisual(null);
 

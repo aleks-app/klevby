@@ -50,6 +50,54 @@ header {
   object-position: center;
 }
 
+.app-header-brand-copy {
+  display: none;
+}
+
+header[data-chrome-mode="home"] .logo.app-header-logo {
+  width: auto;
+  min-width: 0;
+  gap: 11px;
+}
+
+header[data-chrome-mode="home"] .app-header-brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  font-family: inherit;
+  line-height: 1;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+header[data-chrome-mode="home"] .app-header-brand-name {
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+}
+
+header[data-chrome-mode="home"] .app-header-brand-main {
+  color: #ffffff;
+}
+
+header[data-chrome-mode="home"] .app-header-brand-accent {
+  color: #f47a2b;
+}
+
+header[data-chrome-mode="home"] .app-header-brand-tagline {
+  color: rgba(255, 244, 220, 0.72);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
 .burger-btn,
 .mobile-menu-item,
 .mobile-profile-btn,
@@ -351,18 +399,14 @@ header {
   min-width: 48px;
   min-height: 48px;
   padding: 0;
-  border: 1px solid rgba(244, 178, 74, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 17px;
-  background:
-    radial-gradient(circle at 30% 0%, rgba(244, 178, 74, 0.22), transparent 44%),
-    rgba(8, 14, 12, 0.88);
+  background: rgba(8, 14, 18, 0.72);
   color: #ffe2a5;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -391,13 +435,15 @@ header[data-chrome-mode="home"] .app-header-back-btn {
 
 header[data-chrome-mode="feed"] .logo.app-header-logo,
 header[data-chrome-mode="inner"] .logo.app-header-logo,
-header[data-chrome-mode="map"] .logo.app-header-logo {
+header[data-chrome-mode="map"] .logo.app-header-logo,
+header[data-chrome-mode="trips"] .logo.app-header-logo {
   display: none !important;
 }
 
 header[data-chrome-mode="feed"] .app-header-back-btn,
 header[data-chrome-mode="inner"] .app-header-back-btn,
-header[data-chrome-mode="map"] .app-header-back-btn {
+header[data-chrome-mode="map"] .app-header-back-btn,
+header[data-chrome-mode="trips"] .app-header-back-btn {
   display: inline-flex;
 }
 
@@ -447,6 +493,14 @@ header[data-chrome-mode="feed"] .mobile-actions {
 @media (max-width: 380px) {
   .mobile-header-actions {
     gap: 7px;
+  }
+
+  header[data-chrome-mode="home"] .app-header-brand-name {
+    font-size: 18px;
+  }
+
+  header[data-chrome-mode="home"] .app-header-brand-tagline {
+    font-size: 11.5px;
   }
 
   .mobile-profile-btn,

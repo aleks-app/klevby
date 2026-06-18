@@ -1,6 +1,7 @@
 @import url("./base/global.css?v=20260607-bottom-chrome-contract-1");
+@import url("./base/klevgo-design-tokens.css?v=20260618-design-system-v1-foundation-1");
 
-@import url("./layout/header.css?v=20260607-map-app-screen-1");
+@import url("./layout/header.css?v=20260614-home-header-brand-copy-1");
 @import url("./layout/bottom-nav.css");
 
 @import url("./components/app-surface-gate.css");
@@ -8,18 +9,17 @@
 @import url("./components/feed-cards.css");
 @import url("./components/modals-install.css");
 
-@import url("./screens/home.css?v=20260614-klevgo-home-hero-bg-1");
+@import url("./screens/home.css?v=20260618-trips-create-hard-disable-1");
 @import url("./screens/secondary.css?v=20260607-maplibre-polish-1");
 @import url("./screens/profile.css");
 @import url("./screens/auth-welcome.css");
 
-@import url("./responsive/mobile.css?v=20260607-map-app-screen-1");
-@import url("./mobile/mobile-tabbar.css?v=20260607-map-app-screen-1");
-@import url("./mobile/mobile-float-button.css?v=20260607-map-app-screen-1");
-@import url("./mobile/mobile-posts.css");
+@import url("./responsive/mobile.css?v=20260618-trips-create-hard-disable-1");
+@import url("./mobile/mobile-tabbar.css?v=20260614-trips-fullscreen-canvas-1");
+@import url("./mobile/mobile-float-button.css?v=20260614-trips-fullscreen-canvas-1");
 @import url("./mobile/mobile-modals.css");
 @import url("./mobile/mobile-install-banner.css");
 @import url("./mobile/mobile-profile-feed.css");
 @import url("./mobile/mobile-market.css");
-@import url("./mobile/mobile-create.css");
-@import url("./screens/home-mobile.css?v=20260614-home-app-shell-grid-pr3-1");
+@import url("./screens/home-mobile.css?v=20260618-home-upper-natural-flow-1");
+@import url("./screens/trips-fullscreen.css?v=20260614-trips-fullscreen-text-back-1");

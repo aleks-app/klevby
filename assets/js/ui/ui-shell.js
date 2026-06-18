@@ -129,7 +129,6 @@ function getVisibleSectionName() {
   if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
   if (!document.getElementById("feedSection")?.classList.contains("hidden")) return "feed";
   if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
-  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
   if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
   if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
   if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";
@@ -193,7 +192,7 @@ function updateHomeFloatButton() {
     return;
   }
 
-  if (["inner", "map"].includes(document.body.getAttribute("data-app-chrome-mode"))) {
+  if (["inner", "map", "trips"].includes(document.body.getAttribute("data-app-chrome-mode"))) {
     setHomeFloatButtonMode(btn, "");
     btn.classList.remove("show");
     return;
@@ -216,10 +215,10 @@ function setMobileTabActive(index) {
 }
 
 function scrollToPosts() {
-  const postsSection = document.getElementById("postsSection");
-  if (!postsSection) return;
+  const tripsSection = document.getElementById("tripsSection");
+  if (!tripsSection) return;
 
-  postsSection.scrollIntoView({ behavior: "smooth" });
+  tripsSection.scrollIntoView({ behavior: "smooth" });
 }
 
 function mobileScrollTo(id) {

@@ -162,7 +162,7 @@
       return;
     }
 
-    const status = document.getElementById("statusLine");
+    const status = document.getElementById("tripsFullscreenStatusLine");
     if (!status) return;
 
     status.textContent = message;
@@ -379,54 +379,9 @@
   }
 
   function ensureTripImageBlendStyles() {
-    if (document.getElementById("klevby-trip-image-blend-style")) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.id = "klevby-trip-image-blend-style";
-    style.textContent = `
-      #postsSection .trip-card,
-      #profileFeedSection .trip-card {
-        overflow: hidden;
-      }
-
-      #postsSection .card-img,
-      #profileFeedSection .card-img,
-      .post-modal-image {
-        position: relative;
-        overflow: hidden;
-        background-size: cover !important;
-        background-position: center !important;
-        background-repeat: no-repeat !important;
-      }
-
-      #postsSection .card-img::after,
-      #profileFeedSection .card-img::after,
-      .post-modal-image::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background:
-          radial-gradient(circle at 50% 20%, rgba(255,255,255,0.10), transparent 34%),
-          linear-gradient(180deg, rgba(2,4,3,0.05) 0%, rgba(2,4,3,0.12) 52%, rgba(2,4,3,0.48) 100%);
-        box-shadow:
-          inset 0 0 42px rgba(2,4,3,0.34),
-          inset 0 -36px 42px rgba(2,4,3,0.44);
-      }
-
-      #postsSection .card-img {
-        filter: saturate(1.06) contrast(1.02);
-      }
-
-      .post-modal-image {
-        filter: saturate(1.05) contrast(1.02);
-      }
-    `;
-
-    document.head.appendChild(style);
+    return false;
   }
+
 
   window.KlevbyPostsUtils = {
     isAuthLockError,
@@ -462,6 +417,6 @@
   ensureTripImageBlendStyles();
 
   console.log("Klevby posts utils loaded", {
-    version: "20260515-trip-card-images-1"
+    version: "20260618-trips-fullscreen-utils-1"
   });
 })();

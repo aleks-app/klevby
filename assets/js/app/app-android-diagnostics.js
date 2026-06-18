@@ -102,7 +102,9 @@
     const rect = element.getBoundingClientRect();
     return {
       top: rect.top,
+      right: rect.right,
       bottom: rect.bottom,
+      left: rect.left,
       height: rect.height,
       y: rect.y,
       width: rect.width
@@ -121,6 +123,191 @@
   function getVerticalGap(upperRect, lowerRect) {
     if (!upperRect || !lowerRect) return null;
     return lowerRect.top - upperRect.bottom;
+  }
+
+  function hasPositiveRect(rect) {
+    return Boolean(rect && rect.width > 0 && rect.height > 0);
+  }
+
+  function getTouchBarSurfaceElement(touchBar) {
+    if (!touchBar) return null;
+
+    return (
+      touchBar.querySelector(
+        '[data-touchbar-surface], .mobile-tabbar-surface, .touchbar-surface, .mobile-tabbar__surface'
+      ) || touchBar
+    );
+  }
+
+  function getHomeVisualApplicability(homeRects, chromeMode) {
+    return Boolean(
+      chromeMode === "home" &&
+        hasPositiveRect(homeRects.homeSection) &&
+        hasPositiveRect(homeRects.mobileTabbar) &&
+        hasPositiveRect(homeRects.weatherCard)
+    );
+  }
+
+
+  function evaluateHomeLayoutState({
+    homeVisualApplicable,
+    overlapPx,
+    weatherTouchBarVisualOverlapPx,
+    overflowPx,
+    weatherOverflowPx,
+    quickActionsEqualHeightPass,
+    bottomRhythmDelta,
+    feedAdCardToWeather,
+    weatherToTouchBar
+  } = {}) {
+    if (!homeVisualApplicable) {
+      return {
+        homeVisualHardFail: false,
+        homeVisualSoftWarning: false,
+        homeReleaseReady: true,
+        apkHomeVisualPass: "not_applicable",
+        homeDiagnosticSummary: {
+          layoutStable: true,
+          visualIntegrity: true,
+          rhythmIntegrity: "ok",
+          releaseRecommendation: "ready"
+        }
+      };
+    }
+
+    const hasPositiveBreakage = (value) => Number.isFinite(value) && value > 0;
+    const homeVisualHardFail = Boolean(
+      hasPositiveBreakage(overlapPx) ||
+        hasPositiveBreakage(weatherTouchBarVisualOverlapPx) ||
+        hasPositiveBreakage(overflowPx) ||
+        hasPositiveBreakage(weatherOverflowPx) ||
+        quickActionsEqualHeightPass === false
+    );
+    const rhythmGapMismatch =
+      Number.isFinite(feedAdCardToWeather) &&
+      Number.isFinite(weatherToTouchBar) &&
+      feedAdCardToWeather !== weatherToTouchBar;
+    const homeVisualSoftWarning = Boolean(
+      (Number.isFinite(bottomRhythmDelta) && bottomRhythmDelta > 2) || rhythmGapMismatch
+    );
+    const homeReleaseReady = !homeVisualHardFail;
+
+    return {
+      homeVisualHardFail,
+      homeVisualSoftWarning,
+      homeReleaseReady,
+      apkHomeVisualPass: homeReleaseReady,
+      homeDiagnosticSummary: {
+        layoutStable: homeReleaseReady,
+        visualIntegrity: !homeVisualHardFail,
+        rhythmIntegrity: homeVisualSoftWarning ? "warning" : "ok",
+        releaseRecommendation: homeReleaseReady ? "ready" : "fix required"
+      }
+    };
+  }
+
+  function collectHomeInternalGeometry() {
+    const html = document.documentElement;
+    const body = document.body;
+    const htmlStyles = getComputedStyle(html);
+    const headerRect = getLayoutRect(findAppHeader());
+    const touchBar = document.querySelector(".mobile-tabbar");
+    const touchBarSurface = getTouchBarSurfaceElement(touchBar);
+    const touchBarRect = getLayoutRect(touchBar);
+    const touchBarSurfaceRect = getLayoutRect(touchBarSurface);
+    const heroCopyRect = getLayoutRect(document.querySelector("#homeSection .hero-copy"));
+    const quickActionsWrapperRect = getLayoutRect(
+      document.querySelector("#homeSection .home-quick-actions")
+    );
+    const quickActionsRailRect = getLayoutRect(
+      document.querySelector("#homeSection .home-quick-actions-grid")
+    );
+    const feedTitleRowRect = getLayoutRect(
+      document.querySelector("#homeSection .home-feed-preview-head")
+    );
+    const feedAdCardRect = getLayoutRect(
+      document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
+        document.querySelector(
+          "#homeSection .home-feed-preview-slide, #homeSection .home-feed-preview-card"
+        )
+    );
+    const weatherCardRect = getLayoutRect(
+      document.querySelector("#homeSection .home-weather-card")
+    );
+    const quickActionCardRects = Array.from(
+      document.querySelectorAll("#homeSection .home-quick-action-card"),
+      getLayoutRect
+    );
+    const quickActionHeights = quickActionCardRects.map((rect) => rect?.height ?? null);
+    const measuredQuickActionHeights = quickActionHeights.filter(Number.isFinite);
+    const quickActionHeightDelta = measuredQuickActionHeights.length
+      ? Math.max(...measuredQuickActionHeights) - Math.min(...measuredQuickActionHeights)
+      : null;
+    const cssTokenNames = [
+      "--klevby-app-available-top",
+      "--klevby-app-available-bottom",
+      "--klevby-app-available-height",
+      "--klevby-app-available-bottom-offset",
+      "--klevby-home-section-gap"
+    ];
+
+    return {
+      viewportAppShell: {
+        window: {
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight
+        },
+        visualViewport: window.visualViewport
+          ? {
+              width: window.visualViewport.width,
+              height: window.visualViewport.height
+            }
+          : null,
+        headerBottom: headerRect?.bottom ?? null,
+        touchBarTop: touchBarRect?.top ?? null,
+        availableHeight:
+          headerRect && touchBarRect ? touchBarRect.top - headerRect.bottom : null,
+        homeDensity: {
+          html: html.getAttribute("data-home-density"),
+          body: body?.getAttribute("data-home-density") ?? null
+        },
+        cssTokens: Object.fromEntries(
+          cssTokenNames.map((name) => [name, htmlStyles.getPropertyValue(name).trim()])
+        )
+      },
+      rects: {
+        homeSection: getLayoutRect(document.querySelector("#homeSection")),
+        heroCopy: heroCopyRect,
+        quickActionsWrapper: quickActionsWrapperRect,
+        quickActionsRail: quickActionsRailRect,
+        quickActionCards: quickActionCardRects,
+        quickActionHeights,
+        quickActionHeightDelta,
+        quickActionsEqualHeightPass:
+          quickActionHeightDelta != null ? quickActionHeightDelta <= 1 : null,
+        feedTitleRow: feedTitleRowRect,
+        feedAdCard: feedAdCardRect,
+        weatherCard: weatherCardRect,
+        touchBar: touchBarRect,
+        touchBarSurface: touchBarSurfaceRect
+      },
+      verticalGaps: {
+        heroCopyToQuickActions: getVerticalGap(heroCopyRect, quickActionsWrapperRect),
+        quickActionsToFeedTitle: getVerticalGap(
+          quickActionsWrapperRect,
+          feedTitleRowRect
+        ),
+        feedTitleToFeedAdCard: getVerticalGap(feedTitleRowRect, feedAdCardRect),
+        feedAdCardToWeather: getVerticalGap(feedAdCardRect, weatherCardRect),
+        weatherToTouchBar: getVerticalGap(weatherCardRect, touchBarRect)
+      },
+      horizontalRails: {
+        touchBar: touchBarRect,
+        quickActionsRail: quickActionsRailRect,
+        feedAdCard: feedAdCardRect,
+        weatherCard: weatherCardRect
+      }
+    };
   }
 
   function getElementAttributes(element) {
@@ -204,12 +391,16 @@
 
     const diag = window.klevbyAndroidDiagnostics;
 
+    diag.collectHomeInternalGeometry = collectHomeInternalGeometry;
+    diag.evaluateHomeLayoutState = evaluateHomeLayoutState;
+
     diag.collect = function () {
       const home = document.querySelector("#homeSection");
       const header = findAppHeader();
       const headerInner =
         header?.querySelector(".header-inner") || document.querySelector(".header-inner");
       const touchBar = document.querySelector(".mobile-tabbar");
+      const touchBarSurface = getTouchBarSurfaceElement(touchBar);
       const body = document.body;
       const html = document.documentElement;
       const bodyStyles = body ? getComputedStyle(body) : null;
@@ -238,12 +429,37 @@
         feedImage: document.querySelector("#homeSection .home-feed-preview-image"),
         weatherCard: document.querySelector("#homeSection .home-weather-card"),
         weatherStrip: document.querySelector("#homeSection .home-weather-strip"),
-        touchBar
+        touchBar,
+        touchBarSurface
       };
       const homeRects = Object.fromEntries(
         Object.entries(homeElements).map(([name, element]) => [name, getLayoutRect(element)])
       );
       homeRects.mobileTabbar = homeRects.touchBar;
+      homeRects.paintedTouchBarSurface = homeRects.touchBarSurface;
+      const quickActionCardRects = Array.from(
+        document.querySelectorAll("#homeSection .home-quick-action-card"),
+        getLayoutRect
+      );
+      const quickActionHeights = quickActionCardRects.map((rect) => rect?.height ?? null);
+      const measuredQuickActionHeights = quickActionHeights.filter(Number.isFinite);
+      const quickActionHeightDelta = measuredQuickActionHeights.length
+        ? Math.max(...measuredQuickActionHeights) - Math.min(...measuredQuickActionHeights)
+        : null;
+      const quickActionsEqualHeightPass =
+        quickActionHeightDelta != null ? quickActionHeightDelta <= 1 : null;
+      const appChromeMode = body?.getAttribute("data-app-chrome-mode") || null;
+      const homeVisualApplicable = getHomeVisualApplicability(homeRects, appChromeMode);
+      const measuredTouchBarBoundaryRect = homeRects.touchBarSurface || homeRects.mobileTabbar;
+      const weatherToTouchBarMeasuredGap =
+        homeRects.weatherCard?.bottom != null && measuredTouchBarBoundaryRect?.top != null
+          ? measuredTouchBarBoundaryRect.top - homeRects.weatherCard.bottom
+          : null;
+      const weatherTouchBarVisualOverlapPx =
+        weatherToTouchBarMeasuredGap != null ? Math.max(0, -weatherToTouchBarMeasuredGap) : null;
+      const weatherTouchBarVisualPass = homeVisualApplicable
+        ? weatherTouchBarVisualOverlapPx === 0 && weatherToTouchBarMeasuredGap >= 8
+        : "not_applicable";
       const safeArea = getSafeAreaDiagnostics(htmlStyles);
       const headerMeasured = homeRects.header != null;
       const touchBarMeasured = homeRects.touchBar != null;
@@ -283,6 +499,18 @@
         homeRects.activeFeedCard,
         homeRects.weatherCard
       );
+      const verticalOverlapCandidates = [
+        getVerticalGap(homeRects.hero, homeRects.quickActions),
+        getVerticalGap(homeRects.quickActions, homeRects.feedPreview),
+        getVerticalGap(homeRects.feedHeader, homeRects.feedCard),
+        getVerticalGap(homeRects.feedCard, homeRects.weatherCard),
+        gapActiveFeedCardToWeather,
+        weatherToTouchBarMeasuredGap
+      ];
+      const measuredVerticalOverlapCandidates = verticalOverlapCandidates.filter(Number.isFinite);
+      const overlapPx = measuredVerticalOverlapCandidates.length
+        ? Math.max(0, ...measuredVerticalOverlapCandidates.map((gap) => -gap))
+        : null;
       const bottomRhythmDelta =
         gapActiveFeedCardToWeather != null && gapWeatherToTouchBar != null
           ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
@@ -300,9 +528,7 @@
         homeAvailableBottom != null && appShellViewport?.availableBottom != null
           ? homeAvailableBottom - appShellViewport.availableBottom
           : null;
-      const lowerFillY = Number.parseFloat(
-        htmlStyles.getPropertyValue("--klevby-home-lower-fill-y")
-      ) || 0;
+      const lowerFillY = ownerFitContract?.lowerFillY ?? 0;
       const homeFitContract = {
         clearancePx: 8,
         headerBottom: homeRects.header?.bottom ?? null,
@@ -315,6 +541,7 @@
         fallbackTopUsed,
         homeContentBottom,
         weatherBottom,
+        overlapPx,
         overflowPx,
         weatherOverflowPx,
         activeFeedCardMeasured: homeRects.activeFeedCard != null,
@@ -329,17 +556,54 @@
         rhythmAfter: ownerFitContract?.rhythmAfter ?? bottomRhythmDelta,
         solverApplied: ownerFitContract?.solverApplied === true,
         solverCapped: ownerFitContract?.solverCapped === true,
+        layoutFinalAuthority: ownerFitContract?.layoutFinalAuthority ?? "css",
+        appShellBoundaryAuthority: ownerFitContract?.appShellBoundaryAuthority === true,
+        lowerFillResetDuringVisibleFrame:
+          ownerFitContract?.lowerFillResetDuringVisibleFrame === true,
+        lowerFillWriter: ownerFitContract?.lowerFillWriter ?? "none",
+        finalCommitMutatesLayout: ownerFitContract?.finalCommitMutatesLayout === true,
+        weatherMovedAfterVisibleLock: ownerFitContract?.weatherMovedAfterVisibleLock === true,
+        finalLayoutCommitExecuted: ownerFitContract?.finalLayoutCommitExecuted === true,
+        finalLayoutCorrectionApplied: ownerFitContract?.finalLayoutCorrectionApplied === true,
+        finalWeatherGapPx: ownerFitContract?.finalWeatherGapPx ?? null,
+        finalSolverWasForced: ownerFitContract?.finalSolverWasForced === true,
+        finalLayoutLocked: ownerFitContract?.finalLayoutLocked === true,
+        homePipelineFrameExecuted: ownerFitContract?.homePipelineFrameExecuted === true,
+        homeSolverExecuted: ownerFitContract?.homeSolverExecuted === true,
+        homeCommitExecuted: ownerFitContract?.homeCommitExecuted === true,
+        homeFrameLocked: ownerFitContract?.homeFrameLocked === true,
+        homePipelineDurationMs: ownerFitContract?.homePipelineDurationMs ?? null,
+        finalWeatherTouchBarVisualPass: ownerFitContract?.weatherTouchBarVisualPass === true,
         fitPass: overflowPx != null && overflowPx <= 1 && availableHeight > 0,
         weatherFitPass:
           weatherOverflowPx != null &&
           gapWeatherToTouchBar != null &&
           weatherOverflowPx <= 1 &&
-          gapWeatherToTouchBar >= 10 &&
+          gapWeatherToTouchBar >= 8 &&
           availableHeight > 0
       };
+      const homeLayoutState = evaluateHomeLayoutState({
+        homeVisualApplicable,
+        overlapPx,
+        weatherTouchBarVisualOverlapPx,
+        overflowPx,
+        weatherOverflowPx,
+        quickActionsEqualHeightPass,
+        bottomRhythmDelta,
+        feedAdCardToWeather: gapActiveFeedCardToWeather,
+        weatherToTouchBar: gapWeatherToTouchBar
+      });
+      const {
+        homeVisualHardFail,
+        homeVisualSoftWarning,
+        homeReleaseReady,
+        homeDiagnosticSummary,
+        apkHomeVisualPass
+      } = homeLayoutState;
 
       return {
         timestamp: new Date().toISOString(),
+        homeInternalGeometry: collectHomeInternalGeometry(),
         locationHref: window.location.href,
         documentReadyState: document.readyState,
         documentVisibilityState: document.visibilityState,
@@ -390,11 +654,35 @@
         homeAvailableBottom,
         homeAvailableHeight,
         homeUsesAppShellContract,
+        appShellBoundaryAuthority: ownerFitContract?.appShellBoundaryAuthority === true,
         homeAppShellDeltaTop,
         homeAppShellDeltaBottom,
         homeSectionTopNegative:
           homeRects.homeSection?.top != null ? homeRects.homeSection.top < -1 : null,
         homeFitContract,
+        quickActionCards: quickActionCardRects,
+        quickActionHeights,
+        quickActionHeightDelta,
+        quickActionsEqualHeightPass: homeVisualApplicable
+          ? quickActionsEqualHeightPass
+          : "not_applicable",
+        weatherCard: homeRects.weatherCard,
+        mobileTabbar: homeRects.mobileTabbar,
+        paintedTouchBarSurface: homeRects.paintedTouchBarSurface,
+        weatherToTouchBarMeasuredGap: homeVisualApplicable
+          ? weatherToTouchBarMeasuredGap
+          : null,
+        weatherTouchBarVisualOverlapPx: homeVisualApplicable
+          ? weatherTouchBarVisualOverlapPx
+          : null,
+        weatherTouchBarVisualPass,
+        apkHomeVisualPass,
+        homeVisualHardFail,
+        homeVisualSoftWarning,
+        homeReleaseReady,
+        homeDiagnosticSummary,
+        homeVisualApplicable,
+        homeVisualSkipReason: homeVisualApplicable ? null : "home_inactive_or_unmeasured",
         homeSection: homeRects.homeSection,
         touchBar: homeRects.touchBar,
         homeLayout: {
@@ -405,6 +693,10 @@
             gapFeedHeaderToCard: getVerticalGap(homeRects.feedHeader, homeRects.feedCard),
             gapFeedCardToWeather: getVerticalGap(homeRects.feedCard, homeRects.weatherCard),
             gapWeatherToTouchBar: getVerticalGap(homeRects.weatherCard, homeRects.touchBar),
+            gapWeatherToPaintedTouchBarSurface: getVerticalGap(
+              homeRects.weatherCard,
+              homeRects.paintedTouchBarSurface
+            ),
             gapWeatherStripToTouchBar: getVerticalGap(homeRects.weatherStrip, homeRects.touchBar)
           },
           safeArea,
@@ -448,9 +740,6 @@
               .trim(),
             "--klevby-home-weather-strip-min-h": htmlStyles
               .getPropertyValue("--klevby-home-weather-strip-min-h")
-              .trim(),
-            "--klevby-home-weather-nudge-y": htmlStyles
-              .getPropertyValue("--klevby-home-weather-nudge-y")
               .trim()
           },
           computedStyles: {
