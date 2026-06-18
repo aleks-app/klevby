@@ -150,15 +150,8 @@ function goMobileFeed() {
 function goMobileCreate() {
   setMobileTabbarMode("home");
   setMobileTabActive(2);
-
-  if (typeof window.showCreatePostScreen === "function") {
-    window.showCreatePostScreen({ source: "create-button" });
-    return;
-  }
-
-  if (typeof window.showSection === "function") {
-    window.showSection("create");
-  }
+  console.info("[Trips] create trip flow is not implemented yet");
+  return false;
 }
 
 function goMobileMap() {
@@ -238,8 +231,8 @@ function goProfileTrips() {
 function goProfileCreate() {
   setMobileTabbarMode("home");
   setMobileTabActive(2);
-  showSection("home");
-  mobileScrollTo("createPanel");
+  console.info("[Trips] create trip flow is not implemented yet");
+  return false;
 }
 
 function goProfileSettings() {

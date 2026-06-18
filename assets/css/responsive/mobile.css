@@ -482,7 +482,6 @@
   }
 
   .home-feed-head,
-  .create-screen-head,
   .home-trip-link-card {
     margin: 12px 0;
     padding: 15px;
@@ -490,21 +489,18 @@
   }
 
   .home-feed-head,
-  .create-screen-head,
   .home-trip-link-card {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
 
-  .home-feed-head h2,
-  .create-screen-head h2 {
+  .home-feed-head h2 {
     font-size: 25px;
     letter-spacing: -0.55px;
   }
 
   .home-feed-head p,
-  .create-screen-head p,
   .home-trip-link-card span {
     font-size: 12.8px;
     line-height: 1.45;
@@ -517,8 +513,7 @@
   }
 
   .home-feed-actions .small-btn,
-  .home-trip-link-card .small-btn,
-  .create-screen-head .small-btn {
+  .home-trip-link-card .small-btn {
     width: 100%;
   }
 

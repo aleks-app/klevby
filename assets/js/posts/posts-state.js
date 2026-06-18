@@ -208,22 +208,6 @@
     window.klevbyActiveModalPost = value;
   }
 
-  function getPostModalCloseTimer() {
-    if (typeof postModalCloseTimer !== "undefined") {
-      return postModalCloseTimer;
-    }
-
-    return window.klevbyPostModalCloseTimer || null;
-  }
-
-  function setPostModalCloseTimer(value) {
-    if (typeof postModalCloseTimer !== "undefined") {
-      postModalCloseTimer = value;
-    }
-
-    window.klevbyPostModalCloseTimer = value;
-  }
-
   function getPostsLoadPromise() {
     return postsLoadPromise;
   }
@@ -283,8 +267,6 @@
     setCurrentEditingId,
     getActiveModalPost,
     setActiveModalPost,
-    getPostModalCloseTimer,
-    setPostModalCloseTimer,
     getPostsLoadPromise,
     setPostsLoadPromise,
     getPostsLoadRetryTimer,

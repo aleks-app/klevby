@@ -129,7 +129,6 @@ function getVisibleSectionName() {
   if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
   if (!document.getElementById("feedSection")?.classList.contains("hidden")) return "feed";
   if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
-  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
   if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
   if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
   if (!document.getElementById("pondsSection")?.classList.contains("hidden")) return "ponds";

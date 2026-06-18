@@ -21,7 +21,6 @@ let authReady = false;
 let posts = [];
 let editingId = null;
 let activeModalPost = null;
-let postModalCloseTimer = null;
 
 let authRestoreTimer = null;
 let authRestoreInProgress = false;
@@ -503,7 +502,6 @@ function getAppSections() {
     "homeSection",
     "feedSection",
     "tripsSection",
-    "createSection",
     "marketSection",
     "pondsSection",
     "mapSection",
@@ -603,7 +601,6 @@ function getVisibleSectionName() {
 
   if (!document.getElementById("homeSection")?.classList.contains("hidden")) return "home";
   if (!document.getElementById("tripsSection")?.classList.contains("hidden")) return "trips";
-  if (!document.getElementById("createSection")?.classList.contains("hidden")) return "create";
   if (!document.getElementById("mapSection")?.classList.contains("hidden")) return "map";
   if (!document.getElementById("waterBodyDetailSection")?.classList.contains("hidden")) return "water-body-detail";
   if (!document.getElementById("marketSection")?.classList.contains("hidden")) return "market";
@@ -703,7 +700,6 @@ function showSection(section) {
     home: "homeSection",
     feed: "feedSection",
     trips: "tripsSection",
-    create: "createSection",
     market: "marketSection",
     ponds: "pondsSection",
     map: "mapSection",
@@ -749,24 +745,6 @@ function showSection(section) {
     } else if (typeof window.renderPosts === "function") {
       window.renderPosts();
     }
-  }
-
-  if (safeSection === "create") {
-    setMobileTabVisual(2);
-
-    if (typeof window.fillAuthorLocal === "function") {
-      window.fillAuthorLocal();
-    }
-
-    setTimeout(() => {
-      const panel = document.getElementById("createPanel");
-      if (panel) {
-        panel.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
-      }
-    }, 80);
   }
 
   if (safeSection === "auth") {
@@ -1073,10 +1051,7 @@ function patchProfileOpenForExtraSections() {
       : undefined;
 
     const tripsSection = document.getElementById("tripsSection");
-    const createSection = document.getElementById("createSection");
-
     if (tripsSection) tripsSection.classList.add("hidden");
-    if (createSection) createSection.classList.add("hidden");
 
     setMobileTabVisual(null);
 

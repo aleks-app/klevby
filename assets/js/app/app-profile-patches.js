@@ -56,8 +56,7 @@
     [
       "homeSection",
       "tripsSection",
-      "createSection",
-      "marketSection",
+        "marketSection",
       "pondsSection",
       "mapSection",
       "authSection",
@@ -90,7 +89,7 @@
     }
 
     if (typeof window.showSection === "function") {
-      window.showSection("create");
+      console.info("[Trips] create trip flow is not implemented yet");
     }
   }
 
@@ -125,10 +124,7 @@
       const result = originalOpenProfile.apply(this, arguments);
 
       const tripsSection = document.getElementById("tripsSection");
-      const createSection = document.getElementById("createSection");
-
       if (tripsSection) tripsSection.classList.add("hidden");
-      if (createSection) createSection.classList.add("hidden");
 
       setMobileTabVisual(null);
 
