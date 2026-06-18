@@ -42,14 +42,15 @@ test("home JS keeps Rhythm Solver as the only lower-fill writer", () => {
   assert.match(ownerSource, /HOME_LOWER_FILL_CAPS/);
   assert.match(ownerSource, /standard[\s\S]*compact[\s\S]*tight/);
   assert.match(solverBody, /lowerGap - upperGap/);
+  assert.match(solverBody, /cssEffectRatio/);
   assert.match(solverBody, /HOME_CLEARANCE_PX/);
-  assert.match(applySolverBody, /--klevby-home-lower-fill-y/);
+  assert.match(ownerSource, /--klevby-home-lower-fill-y/);
   assert.match(applySolverBody, /lowerFillWriter: "home-layout-engine"/);
   assert.match(applySolverBody, /solverApplied/);
   assert.equal(
     (ownerSource.match(/setProperty\("--klevby-home-lower-fill-y"/g) || []).length,
-    2,
-    "Home layout engine may reset and then publish lower-fill in one solver pass"
+    1,
+    "Home layout engine must publish lower-fill through the solver-owned writer"
   );
 });
 
@@ -59,16 +60,17 @@ test("home layout pipeline has a final commit diagnostics pass", () => {
   assert.match(pipelineBody, /applyMeasuredHomeLayoutTokens\(measurement\)/);
   assert.match(pipelineBody, /applyHomeBottomRhythmSolver\(measurement\)/);
   assert.match(pipelineBody, /requestAnimationFrame\(\(\) =>/);
+  assert.match(pipelineBody, /refineHomeBottomRhythmSolver\(measurement, solver\)/);
   assert.match(pipelineBody, /homeCommitExecuted: true/);
   assert.match(pipelineBody, /finalLayoutCommitExecuted: true/);
   assert.match(pipelineBody, /weatherOverflowPx/);
   assert.match(pipelineBody, /weatherTouchBarVisualPass/);
 });
 
-test("home CSS distributes lower-fill through feed card and media tokens", () => {
+test("home CSS applies lower-fill to the outer feed slot and keeps media fill internal", () => {
   assert.match(homeCss, /--klevby-home-lower-fill-y:\s*0px/);
-  assert.match(homeCss, /--klevby-home-feed-card-fill-share:\s*calc\(var\(--klevby-home-lower-fill-y\) \* 0\.62\)/);
-  assert.match(homeCss, /--klevby-home-feed-image-fill-share:\s*calc\(var\(--klevby-home-lower-fill-y\) \* 0\.38\)/);
+  assert.match(homeCss, /--klevby-home-feed-card-fill-share:\s*var\(--klevby-home-lower-fill-y\)/);
+  assert.match(homeCss, /--klevby-home-feed-image-fill-share:\s*calc\(var\(--klevby-home-lower-fill-y\) \* 0\.24\)/);
   assert.match(
     homeCss,
     /#homeSection \.home-feed-preview-card \{[\s\S]*?min-height:\s*calc\(var\(--klevby-home-feed-card-min-h\) \+ var\(--klevby-home-feed-card-fill-share\)\)/
@@ -77,6 +79,17 @@ test("home CSS distributes lower-fill through feed card and media tokens", () =>
     homeCss,
     /#homeSection \.home-feed-preview-image \{[\s\S]*?min-height:\s*calc\(var\(--klevby-home-feed-image-min-h\) \+ var\(--klevby-home-feed-image-fill-share\)\)/
   );
+});
+
+test("home rhythm solver can refine the measured 12px/79px case without the old 44px cap", () => {
+  const combined = `${ownerSource}\n${homeCss}`;
+
+  assert.doesNotMatch(combined, /standard:\s*44/);
+  assert.match(ownerSource, /refineHomeBottomRhythmSolver/);
+  assert.match(ownerSource, /rhythmAfter\.bottomRhythmDelta > 2/);
+  assert.match(ownerSource, /rhythmAfter\.weatherOverflowPx === 0/);
+  assert.match(ownerSource, /currentFillY: appliedFillY/);
+  assert.match(ownerSource, /measuredEffect \/ appliedFillY/);
 });
 
 test("home layout contract stays universal", () => {

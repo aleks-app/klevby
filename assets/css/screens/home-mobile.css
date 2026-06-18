@@ -146,8 +146,8 @@
     --klevby-home-weather-strip-min-h: 58px;
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-lower-fill-y: 0px;
-    --klevby-home-feed-card-fill-share: calc(var(--klevby-home-lower-fill-y) * 0.62);
-    --klevby-home-feed-image-fill-share: calc(var(--klevby-home-lower-fill-y) * 0.38);
+    --klevby-home-feed-card-fill-share: var(--klevby-home-lower-fill-y);
+    --klevby-home-feed-image-fill-share: calc(var(--klevby-home-lower-fill-y) * 0.24);
   }
 
   :root[data-home-density="compact"] {
