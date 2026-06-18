@@ -128,16 +128,6 @@
     --klevby-home-hero-pad-inline: 26px;
     --klevby-home-hero-pad-bottom: 24px;
     --klevby-home-hero-margin-bottom: var(--kr-1);
-    --klevby-home-hero-copy-min-h: 168px;
-    --klevby-home-hero-copy-shift-x: -10px;
-    --klevby-home-hero-copy-shift-y: -152px;
-    --klevby-home-actions-gap-after-hero: var(--kr-3);
-    --klevby-home-quick-overlap: calc(
-      var(--klevby-home-actions-gap-after-hero)
-      + var(--klevby-home-hero-copy-shift-y)
-      - var(--klevby-home-hero-pad-bottom)
-      - var(--klevby-home-hero-margin-bottom)
-    );
     --klevby-home-quick-min-h: 121px;
     --klevby-home-section-gap: var(--kr-2);
     --klevby-home-feed-group-offset-y: 0px;
@@ -231,7 +221,6 @@
 
   #homeSection {
     position: absolute !important;
-    z-index: 1 !important;
     top: var(--klevby-app-available-top) !important;
     bottom: var(--klevby-app-available-bottom-offset) !important;
     height: var(--klevby-app-available-height) !important;
@@ -252,7 +241,6 @@
 
   #homeSection .hero {
     position: relative !important;
-    z-index: 1 !important;
     width: 100vw !important;
     max-width: 100vw !important;
     margin-left: 50% !important;
@@ -281,7 +269,6 @@
   }
 
   #homeSection .hero-copy {
-    min-height: var(--klevby-home-hero-copy-min-h) !important;
     width: calc(100vw - (2 * var(--klevby-home-content-inset))) !important;
     margin-left: calc(var(--klevby-home-content-inset) - var(--klevby-home-hero-pad-inline)) !important;
     margin-right: auto !important;
@@ -289,10 +276,6 @@
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-end !important;
-    transform: translate(
-      0,
-      calc(var(--klevby-home-hero-copy-shift-y) + 23px)
-    ) !important;
   }
 
   #homeSection .hero-slogan {
@@ -403,8 +386,7 @@
   #homeSection .home-quick-actions {
     display: block;
     position: relative;
-    z-index: 2;
-    margin: var(--klevby-home-quick-overlap) auto var(--klevby-home-section-gap);
+    margin: 0 auto var(--klevby-home-section-gap);
     padding: 0;
   }
 
@@ -468,7 +450,6 @@
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    transform: translateY(-9px);
   }
 
   #homeSection .home-quick-action-icon img {
@@ -488,7 +469,6 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    transform: translateY(-16px);
   }
 
   #homeSection .home-quick-action-label {
@@ -515,7 +495,6 @@
   #homeSection .home-feed-preview {
     display: block;
     position: relative;
-    z-index: 2;
     margin: 0 auto var(--klevby-home-section-gap);
     padding: 0;
   }
@@ -526,7 +505,6 @@
     justify-content: space-between;
     gap: 12px;
     margin: 0 2px var(--kr-1);
-    transform: translateY(-5px);
   }
 
   #homeSection .home-feed-preview-head .home-feed-preview-title {
@@ -1595,8 +1573,6 @@
     --klevby-home-hero-pad-top: 120px;
     --klevby-home-hero-pad-inline: 22px;
     --klevby-home-hero-pad-bottom: 23px;
-    --klevby-home-hero-copy-min-h: 162px;
-    --klevby-home-hero-copy-shift-y: -142px;
     --klevby-home-weather-strip-min-h: 54px;
   }
 
@@ -1828,8 +1804,6 @@
   :root[data-home-density="compact"] {
     --klevby-home-hero-min-h: 294px;
     --klevby-home-hero-pad-top: 112px;
-    --klevby-home-hero-copy-min-h: 144px;
-    --klevby-home-hero-copy-shift-y: -130px;
     --klevby-home-quick-min-h: 111px;
     --klevby-home-section-gap: var(--kr-2);
     --klevby-home-feed-card-min-h: 210px;
@@ -1962,8 +1936,6 @@
   :root[data-home-density="tight"] {
     --klevby-home-hero-min-h: 286px;
     --klevby-home-hero-pad-top: 108px;
-    --klevby-home-hero-copy-min-h: 136px;
-    --klevby-home-hero-copy-shift-y: -118px;
     --klevby-home-quick-min-h: 107px;
     --klevby-home-section-gap: var(--kr-2);
     --klevby-home-feed-group-offset-y: 0px;
