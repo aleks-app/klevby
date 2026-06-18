@@ -558,6 +558,13 @@
         rhythmAfter: ownerFitContract?.rhythmAfter ?? bottomRhythmDelta,
         solverApplied: ownerFitContract?.solverApplied === true,
         solverCapped: ownerFitContract?.solverCapped === true,
+        layoutFinalAuthority: ownerFitContract?.layoutFinalAuthority ?? "css",
+        appShellBoundaryAuthority: ownerFitContract?.appShellBoundaryAuthority === true,
+        lowerFillResetDuringVisibleFrame:
+          ownerFitContract?.lowerFillResetDuringVisibleFrame === true,
+        lowerFillWriter: ownerFitContract?.lowerFillWriter ?? "none",
+        finalCommitMutatesLayout: ownerFitContract?.finalCommitMutatesLayout === true,
+        weatherMovedAfterVisibleLock: ownerFitContract?.weatherMovedAfterVisibleLock === true,
         finalLayoutCommitExecuted: ownerFitContract?.finalLayoutCommitExecuted === true,
         finalLayoutCorrectionApplied: ownerFitContract?.finalLayoutCorrectionApplied === true,
         finalWeatherGapPx: ownerFitContract?.finalWeatherGapPx ?? null,
@@ -649,6 +656,7 @@
         homeAvailableBottom,
         homeAvailableHeight,
         homeUsesAppShellContract,
+        appShellBoundaryAuthority: ownerFitContract?.appShellBoundaryAuthority === true,
         homeAppShellDeltaTop,
         homeAppShellDeltaBottom,
         homeSectionTopNegative:
