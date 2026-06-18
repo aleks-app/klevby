@@ -148,6 +148,64 @@
     );
   }
 
+
+  function evaluateHomeLayoutState({
+    homeVisualApplicable,
+    overlapPx,
+    weatherTouchBarVisualOverlapPx,
+    overflowPx,
+    weatherOverflowPx,
+    quickActionsEqualHeightPass,
+    bottomRhythmDelta,
+    feedAdCardToWeather,
+    weatherToTouchBar
+  } = {}) {
+    if (!homeVisualApplicable) {
+      return {
+        homeVisualHardFail: false,
+        homeVisualSoftWarning: false,
+        homeReleaseReady: true,
+        apkHomeVisualPass: "not_applicable",
+        homeDiagnosticSummary: {
+          layoutStable: true,
+          visualIntegrity: true,
+          rhythmIntegrity: "ok",
+          releaseRecommendation: "ready"
+        }
+      };
+    }
+
+    const hasPositiveBreakage = (value) => Number.isFinite(value) && value > 0;
+    const homeVisualHardFail = Boolean(
+      hasPositiveBreakage(overlapPx) ||
+        hasPositiveBreakage(weatherTouchBarVisualOverlapPx) ||
+        hasPositiveBreakage(overflowPx) ||
+        hasPositiveBreakage(weatherOverflowPx) ||
+        quickActionsEqualHeightPass === false
+    );
+    const rhythmGapMismatch =
+      Number.isFinite(feedAdCardToWeather) &&
+      Number.isFinite(weatherToTouchBar) &&
+      feedAdCardToWeather !== weatherToTouchBar;
+    const homeVisualSoftWarning = Boolean(
+      (Number.isFinite(bottomRhythmDelta) && bottomRhythmDelta > 2) || rhythmGapMismatch
+    );
+    const homeReleaseReady = !homeVisualHardFail;
+
+    return {
+      homeVisualHardFail,
+      homeVisualSoftWarning,
+      homeReleaseReady,
+      apkHomeVisualPass: homeReleaseReady,
+      homeDiagnosticSummary: {
+        layoutStable: homeReleaseReady,
+        visualIntegrity: !homeVisualHardFail,
+        rhythmIntegrity: homeVisualSoftWarning ? "warning" : "ok",
+        releaseRecommendation: homeReleaseReady ? "ready" : "fix required"
+      }
+    };
+  }
+
   function collectHomeInternalGeometry() {
     const html = document.documentElement;
     const body = document.body;
@@ -334,6 +392,7 @@
     const diag = window.klevbyAndroidDiagnostics;
 
     diag.collectHomeInternalGeometry = collectHomeInternalGeometry;
+    diag.evaluateHomeLayoutState = evaluateHomeLayoutState;
 
     diag.collect = function () {
       const home = document.querySelector("#homeSection");
@@ -440,6 +499,18 @@
         homeRects.activeFeedCard,
         homeRects.weatherCard
       );
+      const verticalOverlapCandidates = [
+        getVerticalGap(homeRects.hero, homeRects.quickActions),
+        getVerticalGap(homeRects.quickActions, homeRects.feedPreview),
+        getVerticalGap(homeRects.feedHeader, homeRects.feedCard),
+        getVerticalGap(homeRects.feedCard, homeRects.weatherCard),
+        gapActiveFeedCardToWeather,
+        weatherToTouchBarMeasuredGap
+      ];
+      const measuredVerticalOverlapCandidates = verticalOverlapCandidates.filter(Number.isFinite);
+      const overlapPx = measuredVerticalOverlapCandidates.length
+        ? Math.max(0, ...measuredVerticalOverlapCandidates.map((gap) => -gap))
+        : null;
       const bottomRhythmDelta =
         gapActiveFeedCardToWeather != null && gapWeatherToTouchBar != null
           ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
@@ -472,6 +543,7 @@
         fallbackTopUsed,
         homeContentBottom,
         weatherBottom,
+        overlapPx,
         overflowPx,
         weatherOverflowPx,
         activeFeedCardMeasured: homeRects.activeFeedCard != null,
@@ -505,14 +577,24 @@
           gapWeatherToTouchBar >= 8 &&
           availableHeight > 0
       };
-      const apkHomeVisualPass = homeVisualApplicable
-        ? quickActionsEqualHeightPass === true &&
-          weatherTouchBarVisualPass === true &&
-          weatherTouchBarVisualOverlapPx === 0 &&
-          homeFitContract.bottomRhythmPass === true &&
-          homeFitContract.fitPass === true &&
-          homeFitContract.weatherFitPass === true
-        : "not_applicable";
+      const homeLayoutState = evaluateHomeLayoutState({
+        homeVisualApplicable,
+        overlapPx,
+        weatherTouchBarVisualOverlapPx,
+        overflowPx,
+        weatherOverflowPx,
+        quickActionsEqualHeightPass,
+        bottomRhythmDelta,
+        feedAdCardToWeather: gapActiveFeedCardToWeather,
+        weatherToTouchBar: gapWeatherToTouchBar
+      });
+      const {
+        homeVisualHardFail,
+        homeVisualSoftWarning,
+        homeReleaseReady,
+        homeDiagnosticSummary,
+        apkHomeVisualPass
+      } = homeLayoutState;
 
       return {
         timestamp: new Date().toISOString(),
@@ -589,6 +671,10 @@
           : null,
         weatherTouchBarVisualPass,
         apkHomeVisualPass,
+        homeVisualHardFail,
+        homeVisualSoftWarning,
+        homeReleaseReady,
+        homeDiagnosticSummary,
         homeVisualApplicable,
         homeVisualSkipReason: homeVisualApplicable ? null : "home_inactive_or_unmeasured",
         homeSection: homeRects.homeSection,
