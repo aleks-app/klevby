@@ -491,6 +491,11 @@
         finalWeatherGapPx: ownerFitContract?.finalWeatherGapPx ?? null,
         finalSolverWasForced: ownerFitContract?.finalSolverWasForced === true,
         finalLayoutLocked: ownerFitContract?.finalLayoutLocked === true,
+        homePipelineFrameExecuted: ownerFitContract?.homePipelineFrameExecuted === true,
+        homeSolverExecuted: ownerFitContract?.homeSolverExecuted === true,
+        homeCommitExecuted: ownerFitContract?.homeCommitExecuted === true,
+        homeFrameLocked: ownerFitContract?.homeFrameLocked === true,
+        homePipelineDurationMs: ownerFitContract?.homePipelineDurationMs ?? null,
         finalWeatherTouchBarVisualPass: ownerFitContract?.weatherTouchBarVisualPass === true,
         fitPass: overflowPx != null && overflowPx <= 1 && availableHeight > 0,
         weatherFitPass:
