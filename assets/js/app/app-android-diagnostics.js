@@ -248,7 +248,7 @@
       "--klevby-app-available-bottom",
       "--klevby-app-available-height",
       "--klevby-app-available-bottom-offset",
-      "--klevby-home-lower-fill-y"
+      "--klevby-home-section-gap"
     ];
 
     return {
@@ -528,9 +528,7 @@
         homeAvailableBottom != null && appShellViewport?.availableBottom != null
           ? homeAvailableBottom - appShellViewport.availableBottom
           : null;
-      const lowerFillY = Number.parseFloat(
-        htmlStyles.getPropertyValue("--klevby-home-lower-fill-y")
-      ) || 0;
+      const lowerFillY = ownerFitContract?.lowerFillY ?? 0;
       const homeFitContract = {
         clearancePx: 8,
         headerBottom: homeRects.header?.bottom ?? null,
@@ -742,9 +740,6 @@
               .trim(),
             "--klevby-home-weather-strip-min-h": htmlStyles
               .getPropertyValue("--klevby-home-weather-strip-min-h")
-              .trim(),
-            "--klevby-home-weather-nudge-y": htmlStyles
-              .getPropertyValue("--klevby-home-weather-nudge-y")
               .trim()
           },
           computedStyles: {

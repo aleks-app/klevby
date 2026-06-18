@@ -7,13 +7,7 @@
   const HOME_CLEARANCE_PX = 8;
   const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
   const HOME_COMPACT_AVAILABLE_HEIGHT_MIN = 670;
-  const HOME_MIN_LOWER_GAP_PX = 10;
   const HOME_RHYTHM_TARGET_DELTA_PX = 2;
-  const HOME_LOWER_FILL_CAPS = Object.freeze({
-    standard: 12,
-    compact: 40,
-    tight: 28
-  });
   const MOBILE_QUERY = "(max-width: 900px)";
   const FALLBACK_APP_SECTION_IDS = [
     "homeSection",
@@ -38,7 +32,7 @@
   let pipelineFrame = 0;
   let pipelineCommitFrame = 0;
   let activePipelineToken = 0;
-  let lowerFillWriter = "none";
+  let lowerFillWriter = "diagnostic-only";
   let lowerFillResetDuringVisibleFrame = false;
   let finalCommitMutatesLayout = false;
   let lockedWeatherTop = null;
@@ -77,20 +71,18 @@
     return "tight";
   }
 
-  function resolveHomeLowerFillCap(density) {
-    return HOME_LOWER_FILL_CAPS[density] ?? HOME_LOWER_FILL_CAPS.tight;
+  function resolveHomeLowerFillCap() {
+    return 0;
   }
 
   function resolveHomeLowerFill({
     upperGap,
     lowerGap,
-    maxFill,
-    minLowerGap = HOME_MIN_LOWER_GAP_PX
+    maxFill
   } = {}) {
     const measuredUpperGap = Number(upperGap);
     const measuredLowerGap = Number(lowerGap);
     const fillCap = Math.max(0, Number(maxFill) || 0);
-    const minimumLowerGap = Math.max(0, Number(minLowerGap) || 0);
 
     if (!Number.isFinite(measuredUpperGap) || !Number.isFinite(measuredLowerGap)) {
       return {
@@ -98,38 +90,27 @@
         lowerFillCap: fillCap,
         lowerFillReason: "measurement-unavailable",
         solverApplied: false,
-        solverCapped: false
+        solverCapped: false,
+        diagnosticOnly: true
       };
     }
 
     const imbalance = measuredLowerGap - measuredUpperGap;
-    if (imbalance <= HOME_RHYTHM_TARGET_DELTA_PX) {
-      return {
-        lowerFillY: 0,
-        lowerFillCap: fillCap,
-        lowerFillReason: imbalance < 0 ? "lower-gap-already-smaller" : "already-balanced",
-        solverApplied: false,
-        solverCapped: false
-      };
-    }
-
-    const safeFill = Math.max(0, measuredLowerGap - minimumLowerGap);
-    const lowerFillY = Math.min(imbalance, fillCap, safeFill);
-    const solverCapped = lowerFillY < imbalance;
-    let lowerFillReason = "rhythm-balanced";
-
-    if (solverCapped) {
-      lowerFillReason = safeFill < Math.min(imbalance, fillCap)
-        ? "minimum-lower-gap-cap"
-        : "density-cap";
+    let lowerFillReason = "already-balanced";
+    if (imbalance > HOME_RHYTHM_TARGET_DELTA_PX) {
+      lowerFillReason = "diagnostic-lower-gap-larger";
+    } else if (imbalance < -HOME_RHYTHM_TARGET_DELTA_PX) {
+      lowerFillReason = "diagnostic-lower-gap-smaller";
     }
 
     return {
-      lowerFillY,
-      lowerFillCap: fillCap,
+      lowerFillY: 0,
+      lowerFillCap: 0,
       lowerFillReason,
-      solverApplied: lowerFillY > 0,
-      solverCapped
+      solverApplied: false,
+      solverCapped: false,
+      diagnosticOnly: true,
+      measuredImbalance: imbalance
     };
   }
 
@@ -213,20 +194,6 @@
     return homeScreenLocked || finalLayoutLocked || isHomeScreenActive();
   }
 
-  function markLowerFillWriter(writer) {
-    if (!writer) return;
-    if (lowerFillWriter === "none" || lowerFillWriter === writer) {
-      lowerFillWriter = writer;
-      return;
-    }
-    lowerFillWriter = "conflicted";
-  }
-
-  function publishHomeLowerFill(root, fill, writer = "solver") {
-    markLowerFillWriter(writer);
-    root.style.setProperty("--klevby-home-lower-fill-y", `${fill}px`);
-  }
-
   function applyHomeBottomRhythmSolver(
     density,
     touchBar,
@@ -235,12 +202,8 @@
     const root = document.documentElement;
     if (!root || !touchBar) return null;
 
-    if (resetBeforeMeasure) {
-      if (isVisibleHomeFrame()) {
-        lowerFillResetDuringVisibleFrame = true;
-      } else {
-        publishHomeLowerFill(root, 0, "solver");
-      }
+    if (resetBeforeMeasure && isVisibleHomeFrame()) {
+      lowerFillResetDuringVisibleFrame = true;
     }
 
     const rhythmBefore = measureHomeBottomRhythm(touchBar);
@@ -249,10 +212,8 @@
       upperGap: rhythmBefore.upperGap,
       lowerGap: rhythmBefore.lowerGap,
       maxFill: lowerFillCap,
-      minLowerGap: HOME_MIN_LOWER_GAP_PX
     });
 
-    publishHomeLowerFill(root, result.lowerFillY);
     const rhythmAfter = measureHomeBottomRhythm(touchBar);
 
     lastHomeFitContract = {
@@ -269,7 +230,7 @@
       lowerFillY: result.lowerFillY,
       lowerFillCap: result.lowerFillCap,
       lowerFillReason: forced && !result.solverApplied ? "forced-no-fill-needed" : result.lowerFillReason,
-      solverApplied: result.solverApplied || forced,
+      solverApplied: false,
       homeSolverExecuted: forced || lastHomeFitContract?.homeSolverExecuted === true,
       solverCapped: result.solverCapped
     };
@@ -459,7 +420,7 @@
       lastHomeFitContract = {
         ...lastHomeFitContract,
         homeSolverExecuted: true,
-        solverApplied: true
+        solverApplied: false
       };
 
       applyMeasuredHomeLayoutTokens(measurement);
@@ -476,7 +437,7 @@
         finalLayoutLocked = true;
         lastHomeFitContract = {
           ...lastHomeFitContract,
-          solverApplied: true,
+          solverApplied: false,
           homeCommitExecuted: true,
           homeFrameLocked: true,
           finalLayoutLocked: true,
