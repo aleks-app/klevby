@@ -40,6 +40,7 @@
     clientHeight,
     headerRect = null,
     tabbarRect = null,
+    tabbarSurfaceRect = null,
     headerVisible = false,
     tabbarVisible = false
   } = {}) {
@@ -53,12 +54,17 @@
       finiteNonNegative(clientHeight);
     const cleanChromeMode = String(chromeMode || "").trim().toLowerCase();
     const measuredHeaderBottom = finiteNonNegative(headerRect?.bottom);
-    const measuredTabbarTop = finiteNonNegative(tabbarRect?.top, viewportHeight);
+    const measuredTabbarTop = finiteNonNegative(
+      (tabbarSurfaceRect || tabbarRect)?.top,
+      viewportHeight
+    );
     const availableTop = headerVisible
       ? clamp(measuredHeaderBottom, 0, viewportHeight)
       : 0;
     const usesTabbarBoundary =
-      cleanChromeMode !== "map" && tabbarVisible && tabbarRect != null;
+      cleanChromeMode !== "map" &&
+      tabbarVisible &&
+      (tabbarSurfaceRect != null || tabbarRect != null);
     const availableBottom = usesTabbarBoundary
       ? clamp(measuredTabbarTop, availableTop, viewportHeight)
       : viewportHeight;
@@ -122,6 +128,16 @@
       );
     }
 
+    function getTouchBarSurfaceElement(tabbar) {
+      if (!tabbar) return null;
+
+      return (
+        tabbar.querySelector(
+          '[data-touchbar-surface], .mobile-tabbar-surface, .touchbar-surface, .mobile-tabbar__surface'
+        ) || tabbar
+      );
+    }
+
     function measure() {
       const rootElement = documentObject.documentElement;
       const visualViewport = windowObject.visualViewport;
@@ -135,8 +151,10 @@
         finiteNonNegative(rootElement?.clientHeight);
       const header = getHeader();
       const tabbar = documentObject.querySelector(".mobile-tabbar");
+      const tabbarSurface = getTouchBarSurfaceElement(tabbar);
       const headerRect = header?.getBoundingClientRect() || null;
       const tabbarRect = tabbar?.getBoundingClientRect() || null;
+      const tabbarSurfaceRect = tabbarSurface?.getBoundingClientRect() || null;
       const chromeMode = getChromeMode();
 
       return calculateAppShellViewport({
@@ -149,6 +167,7 @@
         clientHeight: rootElement?.clientHeight,
         headerRect,
         tabbarRect,
+        tabbarSurfaceRect,
         headerVisible: isElementVisible(header, headerRect, viewportWidth, viewportHeight),
         tabbarVisible:
           String(chromeMode).trim().toLowerCase() !== "map" &&
