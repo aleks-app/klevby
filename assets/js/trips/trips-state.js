@@ -3,7 +3,6 @@
 
   const TYPE_VALUES = new Set(["all", "looking", "offering"]);
   const SHELF_VALUES = new Set(["active", "archive"]);
-  const FILTER_KEYS = new Set(["region", "date", "fishingType", "conditions"]);
   const listeners = new Set();
   const state = {
     selectedType: "all",
@@ -11,7 +10,6 @@
     selectedDateMode: "any",
     selectedFishingType: "any",
     selectedConditions: "any",
-    activeFilterKey: null,
     selectedShelf: "active",
     counts: {
       activeCount: 0,
@@ -46,11 +44,6 @@
     return setValue("selectedShelf", SHELF_VALUES.has(shelf) ? shelf : "active");
   }
 
-  function setActiveFilterKey(key) {
-    const next = key === null ? null : (FILTER_KEYS.has(key) ? key : null);
-    return setValue("activeFilterKey", next);
-  }
-
   function setCounts(counts = {}) {
     const activeCount = Number.isFinite(counts.activeCount) ? Math.max(0, counts.activeCount) : state.counts.activeCount;
     const archiveCount = Number.isFinite(counts.archiveCount) ? Math.max(0, counts.archiveCount) : state.counts.archiveCount;
@@ -74,7 +67,6 @@
     setSelectedDateMode: (value) => setValue("selectedDateMode", value || "any"),
     setSelectedFishingType: (value) => setValue("selectedFishingType", value || "any"),
     setSelectedConditions: (value) => setValue("selectedConditions", value || "any"),
-    setActiveFilterKey,
     setSelectedShelf,
     setCounts
   };

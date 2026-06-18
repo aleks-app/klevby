@@ -403,3 +403,7 @@ header[data-chrome-mode="trips"] .app-header-back-icon img {
 #tripsSection .trips-fullscreen-shelf {
   min-height: 16px;
 }
+
+#tripsSection .trips-fullscreen-filter-item.is-active {
+  color: #ffffff;
+}
