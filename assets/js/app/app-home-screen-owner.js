@@ -38,6 +38,11 @@
   let pipelineFrame = 0;
   let pipelineCommitFrame = 0;
   let activePipelineToken = 0;
+  let lowerFillWriter = "none";
+  let lowerFillResetDuringVisibleFrame = false;
+  let finalCommitMutatesLayout = false;
+  let lockedWeatherTop = null;
+  let weatherMovedAfterVisibleLock = false;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -204,7 +209,21 @@
     };
   }
 
-  function publishHomeLowerFill(root, fill) {
+  function isVisibleHomeFrame() {
+    return homeScreenLocked || finalLayoutLocked || isHomeScreenActive();
+  }
+
+  function markLowerFillWriter(writer) {
+    if (!writer) return;
+    if (lowerFillWriter === "none" || lowerFillWriter === writer) {
+      lowerFillWriter = writer;
+      return;
+    }
+    lowerFillWriter = "conflicted";
+  }
+
+  function publishHomeLowerFill(root, fill, writer = "solver") {
+    markLowerFillWriter(writer);
     root.style.setProperty("--klevby-home-lower-fill-y", `${fill}px`);
   }
 
@@ -216,7 +235,13 @@
     const root = document.documentElement;
     if (!root || !touchBar) return null;
 
-    if (resetBeforeMeasure) publishHomeLowerFill(root, 0);
+    if (resetBeforeMeasure) {
+      if (isVisibleHomeFrame()) {
+        lowerFillResetDuringVisibleFrame = true;
+      } else {
+        publishHomeLowerFill(root, 0, "solver");
+      }
+    }
 
     const rhythmBefore = measureHomeBottomRhythm(touchBar);
     const lowerFillCap = resolveHomeLowerFillCap(density);
@@ -256,41 +281,16 @@
     const root = document.documentElement;
     if (!root || !touchBar || !lastHomeFitContract) return null;
 
-    let finalSolverWasForced = false;
-    let finalLayoutCorrectionApplied = false;
+    const finalRhythm = measureHomeBottomRhythm(touchBar);
+    const weatherCard = document.querySelector("#homeSection .home-weather-card");
+    const weatherTop = weatherCard?.getBoundingClientRect?.().top ?? null;
 
-    if (lastHomeFitContract.solverApplied !== true) {
-      finalSolverWasForced = true;
-      applyHomeBottomRhythmSolver(density, touchBar, { forced: true });
-    }
-
-    let finalRhythm = measureHomeBottomRhythm(touchBar);
-    if (finalRhythm.weatherOverflowPx > 0) {
-      const currentFill = Number.parseFloat(
-        root.style.getPropertyValue("--klevby-home-lower-fill-y") || "0"
-      ) || 0;
-      const correctedFill = currentFill - finalRhythm.weatherOverflowPx;
-      publishHomeLowerFill(root, correctedFill);
-      finalLayoutCorrectionApplied = correctedFill !== currentFill;
-      finalRhythm = measureHomeBottomRhythm(touchBar);
-      lastHomeFitContract = {
-        ...lastHomeFitContract,
-        activeFeedCardMeasured: finalRhythm.activeFeedCardMeasured,
-        gapActiveFeedCardToWeather: finalRhythm.upperGap,
-        gapWeatherToTouchBar: finalRhythm.lowerGap,
-        bottomRhythmDelta: finalRhythm.bottomRhythmDelta,
-        bottomRhythmPass:
-          finalRhythm.bottomRhythmDelta != null && finalRhythm.bottomRhythmDelta <= 6,
-        rhythmAfter: finalRhythm.bottomRhythmDelta,
-        weatherOverflowPx: finalRhythm.weatherOverflowPx,
-        lowerFillY: correctedFill,
-        lowerFillReason: finalLayoutCorrectionApplied
-          ? "final-layout-clearance-correction"
-          : lastHomeFitContract.lowerFillReason
-      };
+    if (finalLayoutLocked && lockedWeatherTop != null && weatherTop != null) {
+      weatherMovedAfterVisibleLock = Math.abs(weatherTop - lockedWeatherTop) > 1;
     }
 
     finalLayoutLocked = true;
+    lockedWeatherTop = weatherTop;
     lastHomeFitContract = {
       ...lastHomeFitContract,
       activeFeedCardMeasured: finalRhythm.activeFeedCardMeasured,
@@ -301,11 +301,16 @@
         finalRhythm.bottomRhythmDelta != null && finalRhythm.bottomRhythmDelta <= 6,
       rhythmAfter: finalRhythm.bottomRhythmDelta,
       weatherOverflowPx: finalRhythm.weatherOverflowPx,
+      layoutFinalAuthority: "css",
+      lowerFillResetDuringVisibleFrame,
+      lowerFillWriter,
+      finalCommitMutatesLayout,
+      weatherMovedAfterVisibleLock,
       finalLayoutCommitExecuted: true,
       homeCommitExecuted: true,
-      finalLayoutCorrectionApplied,
+      finalLayoutCorrectionApplied: false,
       finalWeatherGapPx: finalRhythm.lowerGap,
-      finalSolverWasForced,
+      finalSolverWasForced: false,
       finalLayoutLocked,
       homeFrameLocked: finalLayoutLocked,
       weatherTouchBarVisualPass:
@@ -318,7 +323,13 @@
   function measureHomeFitContract() {
     const root = document.documentElement;
     const homeSection = document.getElementById(HOME_SECTION_ID);
-    const header = findAppHeader();
+    const appShell = window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
+    const homeUsesAppShellContract =
+      appShell?.chromeMode === "home" &&
+      Number.isFinite(appShell.availableTop) &&
+      Number.isFinite(appShell.availableBottom) &&
+      Number.isFinite(appShell.availableHeight);
+    const header = homeUsesAppShellContract ? null : findAppHeader();
     const touchBar = document.querySelector(".mobile-tabbar");
     if (!root || !homeSection || !touchBar) return null;
 
@@ -327,12 +338,6 @@
     const mobileTabbarRect = touchBar.getBoundingClientRect();
     const headerMeasured = headerRect != null;
     const touchBarMeasured = true;
-    const appShell = window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
-    const homeUsesAppShellContract =
-      appShell?.chromeMode === "home" &&
-      Number.isFinite(appShell.availableTop) &&
-      Number.isFinite(appShell.availableBottom) &&
-      Number.isFinite(appShell.availableHeight);
     const fallbackTopUsed = !homeUsesAppShellContract && !headerMeasured;
     const fallbackAvailableTop = headerRect?.bottom ?? homeSectionRect.top;
     const fallbackAvailableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
@@ -358,6 +363,7 @@
       touchBarMeasured,
       fallbackTopUsed,
       homeUsesAppShellContract,
+      appShellBoundaryAuthority: homeUsesAppShellContract,
       appShellAvailableTop: appShell?.availableTop ?? null,
       appShellAvailableBottom: appShell?.availableBottom ?? null,
       appShellAvailableHeight: appShell?.availableHeight ?? null,
@@ -384,6 +390,11 @@
       lowerFillReason: "baseline-pending",
       solverApplied: false,
       solverCapped: false,
+      layoutFinalAuthority: "css",
+      lowerFillResetDuringVisibleFrame,
+      lowerFillWriter,
+      finalCommitMutatesLayout,
+      weatherMovedAfterVisibleLock,
       finalLayoutCommitExecuted: false,
       finalLayoutCorrectionApplied: false,
       finalWeatherGapPx: null,
@@ -443,7 +454,7 @@
 
       applyHomeBottomRhythmSolver(measurement.density, measurement.touchBar, {
         forced: true,
-        resetBeforeMeasure: true
+        resetBeforeMeasure: false
       });
       lastHomeFitContract = {
         ...lastHomeFitContract,
