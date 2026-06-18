@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v17-maplibre-depth-readiness-20260613-1";
-const SW_BUILD_VERSION = "20260613-maplibre-depth-readiness-1";
+const CACHE_NAME = "klevby-cache-v18-trips-create-hard-disable-20260618-1";
+const SW_BUILD_VERSION = "20260618-trips-create-hard-disable-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [

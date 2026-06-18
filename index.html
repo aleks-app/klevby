@@ -97,7 +97,7 @@
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/css/main.css?v=20260616-onest-display-2">
+  <link rel="stylesheet" href="assets/css/main.css?v=20260618-trips-create-hard-disable-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -507,64 +507,6 @@
             </button>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section id="createSection" class="hidden">
-      <div class="create-screen-head">
-        <div>
-          <div class="section-kicker">Создание</div>
-          <h2>Создать выезд</h2>
-          <p>Заполни объявление: куда едешь, когда, есть ли транспорт и сколько мест.</p>
-        </div>
-
-        <button class="small-btn gray" type="button" onclick="setMode('all')">К объявлениям</button>
-      </div>
-
-      <div class="panel" id="createPanel">
-        <h2 id="formTitle">Создать выезд</h2>
-
-        <div class="form-row">
-          <input id="nameInput" placeholder="Nickname / имя на сайте" />
-          <input id="cityInput" placeholder="Город отправления" />
-        </div>
-
-        <div class="form-row">
-          <input id="destinationInput" placeholder="Куда едешь: Минское море, Нарочь..." />
-          <input id="tripTimeInput" placeholder="Когда словами: завтра утром, в субботу..." />
-        </div>
-
-        <input id="tripDateInput" type="date" aria-label="Дата выезда" />
-
-        <div class="form-row">
-          <select id="fishingTypeInput">
-            <option value="">Тип рыбалки</option>
-            <option value="Спиннинг">Спиннинг</option>
-            <option value="Фидер">Фидер</option>
-            <option value="Поплавок">Поплавок</option>
-            <option value="Карпфишинг">Карпфишинг</option>
-            <option value="Зимняя">Зимняя</option>
-          </select>
-
-          <select id="transportInput">
-            <option value="">Транспорт</option>
-            <option value="Есть машина">Есть машина</option>
-            <option value="Ищу место в машине">Ищу место в машине</option>
-            <option value="Есть лодка">Есть лодка</option>
-            <option value="Без транспорта">Без транспорта</option>
-          </select>
-        </div>
-
-        <input id="seatsInput" placeholder="Места: 1 свободное, 2 места, экипаж набран..." />
-        <textarea id="textInput" placeholder="Описание: детали выезда, снасти, лодка, опыт, что взять с собой"></textarea>
-        <input id="telegramInput" placeholder="Telegram username, @username или https://t.me/username" />
-
-        <div class="actions">
-          <button class="small-btn green" onclick="savePost()">Сохранить</button>
-          <button id="cancelEditBtn" class="small-btn gray hidden" onclick="cancelEdit()">Отмена</button>
-        </div>
-
-        <div id="formMessage" class="auth-status"></div>
       </div>
     </section>
 
@@ -984,24 +926,6 @@
     </div>
   </div>
 
-  <div id="postModal" class="post-modal-backdrop hidden" onclick="handlePostModalBackdrop(event)">
-    <div class="post-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="postModalTitle" onclick="event.stopPropagation()">
-      <button class="post-modal-close" onclick="closePostModal()" aria-label="Закрыть">×</button>
-      <div class="post-modal-scroll">
-        <div id="postModalImage" class="post-modal-image"></div>
-        <div class="post-modal-content">
-          <div class="post-modal-card">
-            <div class="post-modal-kicker">🎣 Выезд на рыбалку</div>
-            <h2 id="postModalTitle" class="post-modal-title">Объявление</h2>
-            <div id="postModalMeta" class="post-modal-meta"></div>
-            <div id="postModalText" class="post-modal-text"></div>
-            <button id="postModalWriteBtn" class="post-modal-write" onclick="writePostAuthor()">Написать</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="mobile-tabbar" aria-label="Нижняя навигация">
     <button class="mobile-tab-btn active" onclick="goMobileFeed()"><span class="mobile-tab-icon"></span><span class="mobile-tab-text">Лента</span></button>
     <button class="mobile-tab-btn" onclick="goMobileMap()"><span class="mobile-tab-icon"></span><span class="mobile-tab-text">Карта</span></button>
@@ -1016,15 +940,12 @@
   <script src="assets/js/pwa.js?v=20260524-pwa-update-pr8-1" defer></script>
   <script src="assets/js/auth.js?v=20260529-auth-credential-clearing-1" defer></script>
   <script src="assets/js/posts/posts-state.js?v=20260605-mine-trips-archive-1" defer></script>
-  <script src="assets/js/posts/posts-utils.js?v=20260618-trips-fullscreen-utils-1" defer></script>
+  <script src="assets/js/posts/posts-utils.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/posts/posts-api.js?v=20260524-posts-resume-owner-pr13-1" defer></script>
-  <script src="assets/js/posts/posts-render.js?v=20260614-trips-graphite-filter-skin-1" defer></script>
-  <script src="assets/js/posts/posts-modal.js?v=20260515-posts-modal-owner-icons-1" defer></script>
-  <script src="assets/js/posts/posts-form.js?v=20260515-posts-form-trip-date-required-ui-1" defer></script>
-  <script src="assets/js/posts/posts-actions.js?v=20260515-posts-actions-rest-auth-1" defer></script>
-  <script src="assets/js/posts.js?v=20260515-posts-bridge-modal-check-1" defer></script>
+  <script src="assets/js/posts/posts-render.js?v=20260618-trips-create-hard-disable-1" defer></script>
+  <script src="assets/js/posts.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/ui/ui-shell.js?v=20260607-map-app-screen-1" defer></script>
-  <script src="assets/js/ui/ui-tabbar.js?v=20260603-feed-section-split-cache-1" defer></script>
+  <script src="assets/js/ui/ui-tabbar.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/ui/ui-profile-bridge.js?v=20260529-profile-bridge-delegate-1" defer></script>
   <script src="assets/js/ui.js?v=20260513-ui-profile-bridge-split-1" defer></script>
   <script src="assets/js/profile/profile-utils.js?v=20260513-profile-utils-split-1" defer></script>
@@ -1079,11 +1000,11 @@
   <script src="assets/js/app/app-navigation.js?v=20260607-map-app-screen-1" defer></script>
   <script src="assets/js/app/app-splash.js?v=20260513-app-splash-split-1" defer></script>
   <script src="assets/js/app/app-profile-patches.js?v=20260529-logout-profile-guest-1" defer></script>
-  <script src="assets/js/app/app-mobile-actions.js?v=20260603-feed-section-split-cache-1" defer></script>
+  <script src="assets/js/app/app-mobile-actions.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/app/app-ui-helpers.js?v=20260513-app-ui-helpers-split-1" defer></script>
   <script src="assets/js/app/app-filters.js?v=20260513-app-filters-split-1" defer></script>
   <script src="assets/js/app/app-global-events.js?v=20260513-app-global-events-split-1" defer></script>
-  <script src="assets/js/app/app-trip-actions.js?v=20260605-mine-trips-archive-1" defer></script>
+  <script src="assets/js/app/app-trip-actions.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/app/app-window-exports.js?v=20260603-feed-section-split-cache-1" defer></script>
   <script src="assets/js/app/app-ponds-bridge.js?v=20260513-app-ponds-bridge-split-1" defer></script>
   <script src="assets/js/supabase/supabase-core.js?v=20260524-supabase-auth-pr2-1" defer></script>
@@ -1102,7 +1023,7 @@
   <script src="assets/js/app/app-resume-manager.js?v=20260524-feed-observability-pr26-1" defer></script>
   <script src="assets/js/app/app-viewport-debug.js?v=20260530-viewport-debug-1" defer></script>
   <script src="assets/js/app/app-android-diagnostics.js?v=20260614-home-internal-geometry-1" defer></script>
-  <script src="assets/js/app.js?v=20260607-map-app-screen-1" defer></script>
+  <script src="assets/js/app.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
   <script src="assets/js/chat-state.js?v=20260506-1" defer></script>
   <script src="assets/js/chat-push.js?v=20260504-1" defer></script>

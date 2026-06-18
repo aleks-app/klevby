@@ -321,8 +321,7 @@
     const sectionIds = [
       "homeSection",
       "tripsSection",
-      "createSection",
-      "marketSection",
+        "marketSection",
       "pondsSection",
       "mapSection",
       "authSection",

@@ -19,7 +19,6 @@
     "homeSection",
     "feedSection",
     "tripsSection",
-    "createSection",
     "marketSection",
     "pondsSection",
     "mapSection",
