@@ -248,7 +248,8 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   min-width: 0;
   min-height: 39px;
   padding: 0 4px;
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   color: rgba(245, 248, 252, 0.88);
   font: inherit;
@@ -256,6 +257,11 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   font-weight: 500;
   line-height: 1.15;
   cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 #tripsSection .trips-fullscreen-filter-item span {
@@ -276,8 +282,28 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   pointer-events: none;
 }
 
-#tripsSection .trips-fullscreen-filter-item-accent {
-  color: #f47a2b;
+#tripsSection .trips-fullscreen-filter-item.is-active {
+  z-index: 1;
+  color: #f0b06a;
+  background: rgba(244, 122, 43, 0.14);
+  border-color: rgba(244, 122, 43, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(244, 122, 43, 0.1);
+}
+
+#tripsSection .trips-fullscreen-filter-item.is-active::after {
+  display: none;
+}
+
+#tripsSection .trips-fullscreen-filter-item:active {
+  background: rgba(245, 248, 252, 0.06);
+}
+
+#tripsSection .trips-fullscreen-filter-item.is-active:active {
+  background: rgba(244, 122, 43, 0.2);
+}
+
+#tripsSection .trips-fullscreen-filter-item-accent:not(.is-active) {
+  color: rgba(245, 248, 252, 0.88);
 }
 
 #tripsSection .trips-fullscreen-list-header {
@@ -325,8 +351,6 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
 }
 
 #tripsSection .trips-fullscreen-list-sort {
-  appearance: none;
-  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -339,15 +363,17 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
+  pointer-events: none;
+  user-select: none;
   cursor: default;
 }
 
 #tripsSection .trips-fullscreen-list-sort-label {
-  color: rgba(245, 248, 252, 0.54);
+  color: rgba(245, 248, 252, 0.48);
 }
 
 #tripsSection .trips-fullscreen-list-sort-value {
-  color: #f47a2b;
+  color: rgba(244, 122, 43, 0.72);
 }
 
 
