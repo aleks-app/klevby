@@ -145,6 +145,26 @@
     --klevby-home-feed-image-min-h: 130px;
     --klevby-home-weather-strip-min-h: 58px;
     --klevby-home-bottom-reserve: 0px;
+    --klevby-home-lower-fill-y: 0px;
+    --klevby-home-feed-card-fill-share: calc(var(--klevby-home-lower-fill-y) * 0.62);
+    --klevby-home-feed-image-fill-share: calc(var(--klevby-home-lower-fill-y) * 0.38);
+  }
+
+  :root[data-home-density="compact"] {
+    --klevby-home-hero-min-h: 302px;
+    --klevby-home-hero-pad-top: 112px;
+    --klevby-home-quick-min-h: 112px;
+    --klevby-home-feed-card-min-h: 214px;
+    --klevby-home-feed-image-min-h: 122px;
+  }
+
+  :root[data-home-density="tight"] {
+    --klevby-home-hero-min-h: 286px;
+    --klevby-home-hero-pad-top: 102px;
+    --klevby-home-quick-min-h: 104px;
+    --klevby-home-feed-card-min-h: 202px;
+    --klevby-home-feed-image-min-h: 114px;
+    --klevby-home-section-gap: 8px;
   }
 
   html:has(#homeSection:not(.hidden)) {
@@ -565,7 +585,7 @@
     gap: 8px;
     margin: 0;
     padding: 14px;
-    min-height: var(--klevby-home-feed-card-min-h);
+    min-height: calc(var(--klevby-home-feed-card-min-h) + var(--klevby-home-feed-card-fill-share));
     border: 1px solid rgba(244, 178, 74, 0.14);
     border-radius: 18px;
     background:
@@ -741,7 +761,7 @@
     overflow: hidden;
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    min-height: var(--klevby-home-feed-image-min-h);
+    min-height: calc(var(--klevby-home-feed-image-min-h) + var(--klevby-home-feed-image-fill-share));
     align-self: stretch;
     background: rgba(0, 0, 0, 0.24);
   }
@@ -750,7 +770,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    min-height: var(--klevby-home-feed-image-min-h);
+    min-height: calc(var(--klevby-home-feed-image-min-h) + var(--klevby-home-feed-image-fill-share));
     object-fit: cover;
     object-position: center;
   }
@@ -763,7 +783,7 @@
   #homeSection .home-feed-preview-rotator-viewport {
     position: relative;
     width: 100%;
-    min-height: var(--klevby-home-feed-card-min-h);
+    min-height: calc(var(--klevby-home-feed-card-min-h) + var(--klevby-home-feed-card-fill-share));
   }
 
   #homeSection .home-feed-preview-rotator:not(.is-ready) .home-feed-preview-slide--ad {
