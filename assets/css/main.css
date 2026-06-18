@@ -1,4 +1,5 @@
 @import url("./base/global.css?v=20260607-bottom-chrome-contract-1");
+@import url("./base/klevgo-design-tokens.css?v=20260618-design-system-v1-foundation-1");
 
 @import url("./layout/header.css?v=20260614-home-header-brand-copy-1");
 @import url("./layout/bottom-nav.css");

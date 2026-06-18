@@ -1,0 +1,93 @@
+/*
+ * KlevGo Design System v1 foundation.
+ * Final color, radius, typography, and state values will be refined after Figma.
+ * Existing screens are not migrated automatically by this file.
+ * New components should use semantic tokens instead of hardcoded colors/radii.
+ */
+
+:root {
+  /* Brand / Accent colors */
+  --klevgo-color-accent: #E06B00;
+  --klevgo-color-accent-strong: #C85A18;
+  --klevgo-color-accent-soft: rgba(224, 107, 0, 0.18);
+  --klevgo-color-accent-muted: rgba(224, 107, 0, 0.12);
+
+  /* Text colors */
+  --klevgo-text-primary: #fff8ea;
+  --klevgo-text-secondary: rgba(255, 248, 234, 0.68);
+  --klevgo-text-muted: rgba(255, 248, 234, 0.44);
+  --klevgo-text-disabled: rgba(255, 248, 234, 0.32);
+  --klevgo-text-on-accent: #fff8f0;
+
+  /* Background / surfaces */
+  --klevgo-bg-app: #040807;
+  --klevgo-bg-screen: #0b1210;
+  --klevgo-surface-card: rgba(18, 24, 21, 0.96);
+  --klevgo-surface-glass: rgba(255, 255, 255, 0.07);
+  --klevgo-surface-muted: rgba(255, 255, 255, 0.11);
+  --klevgo-surface-overlay: rgba(0, 0, 0, 0.46);
+
+  /* Borders */
+  --klevgo-border-subtle: rgba(255, 255, 255, 0.10);
+  --klevgo-border-strong: rgba(255, 255, 255, 0.18);
+  --klevgo-border-accent: rgba(224, 107, 0, 0.42);
+
+  /* Radius */
+  --klevgo-radius-xs: 6px;
+  --klevgo-radius-sm: 10px;
+  --klevgo-radius-md: 14px;
+  --klevgo-radius-lg: 18px;
+  --klevgo-radius-card: 24px;
+  --klevgo-radius-sheet: 28px;
+  --klevgo-radius-pill: 999px;
+  --klevgo-radius-button: 10px;
+
+  /* Spacing scale */
+  --klevgo-space-1: 4px;
+  --klevgo-space-2: 8px;
+  --klevgo-space-3: 12px;
+  --klevgo-space-4: 16px;
+  --klevgo-space-5: 20px;
+  --klevgo-space-6: 24px;
+  --klevgo-space-7: 32px;
+  --klevgo-space-8: 40px;
+
+  /* Typography placeholders. Do not change global font-family from this file. */
+  --klevgo-font-body: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --klevgo-font-heading: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --klevgo-font-display: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --klevgo-font-weight-regular: 400;
+  --klevgo-font-weight-medium: 500;
+  --klevgo-font-weight-semibold: 600;
+  --klevgo-font-weight-bold: 700;
+  --klevgo-line-height-tight: 1.12;
+  --klevgo-line-height-normal: 1.38;
+  --klevgo-line-height-relaxed: 1.55;
+
+  /* Component semantic tokens: buttons */
+  --klevgo-button-primary-bg: var(--klevgo-color-accent, #E06B00);
+  --klevgo-button-primary-text: var(--klevgo-text-on-accent, #fff8f0);
+  --klevgo-button-primary-radius: var(--klevgo-radius-button, 10px);
+  --klevgo-button-secondary-bg: var(--klevgo-surface-glass, rgba(255, 255, 255, 0.07));
+  --klevgo-button-secondary-text: var(--klevgo-text-primary, #fff8ea);
+  --klevgo-button-disabled-bg: var(--klevgo-surface-muted, rgba(255, 255, 255, 0.11));
+  --klevgo-button-disabled-text: var(--klevgo-text-disabled, rgba(255, 248, 234, 0.32));
+
+  /* Component semantic tokens: cards */
+  --klevgo-card-bg: var(--klevgo-surface-card, rgba(18, 24, 21, 0.96));
+  --klevgo-card-border: var(--klevgo-border-subtle, rgba(255, 255, 255, 0.10));
+  --klevgo-card-radius: var(--klevgo-radius-card, 24px);
+  --klevgo-card-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
+
+  /* Component semantic tokens: filters */
+  --klevgo-filter-text: var(--klevgo-text-secondary, rgba(255, 248, 234, 0.68));
+  --klevgo-filter-text-active: var(--klevgo-color-accent, #E06B00);
+  --klevgo-filter-bg: transparent;
+  --klevgo-filter-bg-active: var(--klevgo-color-accent-muted, rgba(224, 107, 0, 0.12));
+  --klevgo-filter-radius: var(--klevgo-radius-button, 10px);
+
+  /* Trips-specific bridge tokens */
+  --klevgo-trips-filter-active-text: var(--klevgo-filter-text-active, #E06B00);
+  --klevgo-trips-filter-row-bg: #0B1118;
+  --klevgo-trips-shelf-bg: rgba(4, 10, 16, 0.82);
+}
