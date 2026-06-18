@@ -472,7 +472,7 @@
           <div class="trips-fullscreen-hero">
             <h2 class="trips-fullscreen-hero-title">Выезды<br>на рыбалку</h2>
             <p class="trips-fullscreen-hero-description">Найдите компанию или предложите<br>свободное место в машине или лодке.</p>
-            <button class="trips-fullscreen-hero-cta" type="button" onclick="showCreatePostScreen()">Создать выезд</button>
+            <button class="trips-fullscreen-hero-cta" type="button" onclick="console.info('[Trips] create trip flow is not implemented yet')">Создать выезд</button>
           </div>
 
           <div class="trips-fullscreen-type-tabs" role="tablist" aria-label="Тип выезда">
@@ -507,72 +507,6 @@
             </button>
           </div>
         </div>
-      </div>
-
-      <div class="trips-legacy-ui">
-      <div class="trips-hero">
-        <div>
-          <div class="section-kicker">Напарники</div>
-          <h2>Выезды на рыбалку</h2>
-          <p>Здесь только объявления: кто куда едет, кто ищет компанию, у кого есть свободное место или лодка.</p>
-        </div>
-
-        <button class="small-btn green" type="button" onclick="showCreatePostScreen()">Создать выезд</button>
-      </div>
-
-      <div id="statusLine" class="info-line">Загрузка объявлений...</div>
-
-      <div id="mineTripsSwitcher" class="mine-trips-switcher hidden" role="group" aria-label="Показать мои актуальные или прошедшие выезды">
-        <button
-          class="mine-trips-switcher-btn is-active"
-          type="button"
-          data-mine-trips-mode="active"
-          aria-pressed="true"
-          onclick="setMineTripsMode('active')"
-        >Актуальные</button>
-        <button
-          class="mine-trips-switcher-btn"
-          type="button"
-          data-mine-trips-mode="expired"
-          aria-pressed="false"
-          onclick="setMineTripsMode('expired')"
-        >Прошедшие <span id="mineExpiredTripsCount" class="mine-trips-count hidden"></span></button>
-      </div>
-
-      <div class="filter-card">
-        <div class="filter-title">
-          <h3>Фильтр объявлений</h3>
-          <span>Компактный поиск по выездам</span>
-        </div>
-
-        <div class="filters">
-          <input id="searchInput" placeholder="Поиск: лодка, карп, завтра..." oninput="renderPosts()" />
-
-          <select id="citySelect" onchange="renderPosts()">
-            <option value="">Выберите город</option>
-            <option value="Минск">Минск</option><option value="Гомель">Гомель</option><option value="Могилев">Могилев</option><option value="Витебск">Витебск</option><option value="Гродно">Гродно</option><option value="Брест">Брест</option><option value="Барановичи">Барановичи</option><option value="Бобруйск">Бобруйск</option><option value="Борисов">Борисов</option><option value="Пинск">Пинск</option><option value="Орша">Орша</option><option value="Мозырь">Мозырь</option><option value="Солигорск">Солигорск</option><option value="Новополоцк">Новополоцк</option><option value="Лида">Лида</option><option value="Молодечно">Молодечно</option><option value="Полоцк">Полоцк</option><option value="Жлобин">Жлобин</option><option value="Слуцк">Слуцк</option><option value="Светлогорск">Светлогорск</option><option value="Речица">Речица</option><option value="Жодино">Жодино</option><option value="Кобрин">Кобрин</option><option value="Сморгонь">Сморгонь</option><option value="Волковыск">Волковыск</option>
-          </select>
-
-          <select id="typeSelect" onchange="renderPosts()">
-            <option value="">Способ ловли</option>
-            <option value="Спиннинг">Спиннинг</option>
-            <option value="Фидер">Фидер</option>
-            <option value="Поплавок">Поплавок</option>
-            <option value="Карпфишинг">Карпфишинг</option>
-            <option value="Зимняя">Зимняя</option>
-          </select>
-
-          <label class="check">
-            <input type="checkbox" id="telegramOnly" onchange="renderPosts()" /> Telegram
-          </label>
-
-          <button class="filter-reset" onclick="resetFilters()">Сбросить</button>
-        </div>
-      </div>
-
-      <div id="postsSection" class="grid">
-        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-      </div>
       </div>
     </section>
 
@@ -1082,7 +1016,7 @@
   <script src="assets/js/pwa.js?v=20260524-pwa-update-pr8-1" defer></script>
   <script src="assets/js/auth.js?v=20260529-auth-credential-clearing-1" defer></script>
   <script src="assets/js/posts/posts-state.js?v=20260605-mine-trips-archive-1" defer></script>
-  <script src="assets/js/posts/posts-utils.js?v=20260515-trip-card-images-1" defer></script>
+  <script src="assets/js/posts/posts-utils.js?v=20260618-trips-fullscreen-utils-1" defer></script>
   <script src="assets/js/posts/posts-api.js?v=20260524-posts-resume-owner-pr13-1" defer></script>
   <script src="assets/js/posts/posts-render.js?v=20260614-trips-graphite-filter-skin-1" defer></script>
   <script src="assets/js/posts/posts-modal.js?v=20260515-posts-modal-owner-icons-1" defer></script>

@@ -462,12 +462,9 @@ function showStatus(message, isError = false) {
     return;
   }
 
-  const status = document.getElementById("statusLine");
-  if (!status) return;
-
-  status.textContent = message;
-  status.classList.toggle("error-line", isError);
+  console[isError ? "warn" : "info"]("[Trips] status", message);
 }
+
 
 function showFormMessage(message, isError = false) {
   const helpers = getAppUiHelpers();
@@ -912,30 +909,8 @@ function setMineTripsMode(mode) {
 }
 
 function showCreatePostScreen(options = {}) {
-  closeMobileMenuFromAppNavigation();
-
-  const actions = getAppTripActions();
-
-  if (typeof actions.showCreatePostScreen === "function") {
-    return actions.showCreatePostScreen(options, {
-      setProfileReturnMode,
-      enterCreateMode: window.KlevbyPostsForm?.enterCreateMode,
-      showSection
-    });
-  }
-
-  const fromProfile = Boolean(options.fromProfile);
-
-  if (fromProfile) {
-    setProfileReturnMode(true);
-  }
-
-  if (typeof window.KlevbyPostsForm?.enterCreateMode === "function") {
-    window.KlevbyPostsForm.enterCreateMode();
-  }
-
-  showSection("create");
-  return true;
+  console.info("[Trips] create trip flow is not implemented yet", options);
+  return false;
 }
 
 function showTripsBoard(mode = "all") {
@@ -997,7 +972,7 @@ function goMobileCreate() {
     return;
   }
 
-  showCreatePostScreen();
+  showCreatePostScreen({ source: "mobile-create" });
 }
 
 function goMobileWeather() {

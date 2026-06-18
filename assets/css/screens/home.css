@@ -491,7 +491,6 @@
 }
 
 .home-feed-head,
-.trips-hero,
 .create-screen-head,
 .home-trip-link-card {
   margin: 16px 0;
@@ -507,7 +506,6 @@
 }
 
 .home-feed-head,
-.trips-hero,
 .create-screen-head {
   display: flex;
   align-items: center;
@@ -516,7 +514,6 @@
 }
 
 .home-feed-head h2,
-.trips-hero h2,
 .create-screen-head h2 {
   margin: 0;
   color: #fff8ea;
@@ -527,7 +524,6 @@
 }
 
 .home-feed-head p,
-.trips-hero p,
 .create-screen-head p {
   max-width: 720px;
   margin: 8px 0 0;

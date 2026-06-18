@@ -177,7 +177,7 @@
       return;
     }
 
-    const status = document.getElementById("statusLine");
+    const status = document.getElementById("tripsFullscreenStatusLine");
     if (!status) return;
 
     status.textContent = message;
@@ -735,7 +735,7 @@
     const retry = Number(options.retry || 0);
     const silent = Boolean(options.silent);
 
-    const postsSection = document.getElementById("postsSection");
+    const tripsFullscreenPostsSection = document.getElementById("tripsFullscreenPostsSection");
     const existingPosts = getPostsArray();
     const activePostsLoadPromise = getPostsLoadPromise();
 
@@ -757,8 +757,8 @@
         showStatusSafe("Загрузка объявлений...");
       }
 
-      if (!silent && postsSection && !existingPosts.length) {
-        postsSection.innerHTML = `
+      if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
+        tripsFullscreenPostsSection.innerHTML = `
           <div class="skeleton"></div>
           <div class="skeleton"></div>
           <div class="skeleton"></div>
@@ -773,8 +773,8 @@
           showStatusSafe("Supabase ещё не готов. Повторяем загрузку объявлений...");
         }
 
-        if (!silent && postsSection && !existingPosts.length) {
-          postsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
+        if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
+          tripsFullscreenPostsSection.innerHTML = '<div class="info-line">Supabase ещё не готов. Повторяем загрузку...</div>';
         }
 
         schedulePostsLoad(900);
@@ -793,8 +793,8 @@
             showStatusSafe("Загрузка объявлений заняла слишком много времени. Повторяем...");
           }
 
-          if (!silent && postsSection && !existingPosts.length) {
-            postsSection.innerHTML = `
+          if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
+            tripsFullscreenPostsSection.innerHTML = `
               <div class="info-line">
                 Загрузка объявлений заняла слишком много времени. Повторяем...
               </div>
@@ -826,8 +826,8 @@
           showStatusSafe(message, true);
         }
 
-        if (!silent && postsSection && !existingPosts.length) {
-          postsSection.innerHTML = `
+        if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
+          tripsFullscreenPostsSection.innerHTML = `
             <div class="info-line error-line">
               Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
             </div>
@@ -858,8 +858,8 @@
           showStatusSafe(message, true);
         }
 
-        if (!silent && postsSection && !existingPosts.length) {
-          postsSection.innerHTML = `
+        if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
+          tripsFullscreenPostsSection.innerHTML = `
             <div class="info-line error-line">
               Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
             </div>

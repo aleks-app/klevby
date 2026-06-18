@@ -481,21 +481,7 @@
     display: none;
   }
 
-  #statusLine.info-line {
-    width: 100%;
-    margin: 14px 0 10px;
-    padding: 12px 14px;
-    text-align: center;
-    background: rgba(14, 21, 18, 0.78);
-    border: 1px solid rgba(244,178,74,0.14);
-    border-radius: 20px;
-    color: var(--gold);
-    font-size: 13.5px;
-    font-weight: 700;
-  }
-
   .home-feed-head,
-  .trips-hero,
   .create-screen-head,
   .home-trip-link-card {
     margin: 12px 0;
@@ -504,7 +490,6 @@
   }
 
   .home-feed-head,
-  .trips-hero,
   .create-screen-head,
   .home-trip-link-card {
     flex-direction: column;
@@ -513,14 +498,12 @@
   }
 
   .home-feed-head h2,
-  .trips-hero h2,
   .create-screen-head h2 {
     font-size: 25px;
     letter-spacing: -0.55px;
   }
 
   .home-feed-head p,
-  .trips-hero p,
   .create-screen-head p,
   .home-trip-link-card span {
     font-size: 12.8px;
@@ -535,14 +518,8 @@
 
   .home-feed-actions .small-btn,
   .home-trip-link-card .small-btn,
-  .trips-hero .small-btn,
   .create-screen-head .small-btn {
     width: 100%;
-  }
-
-  .filter-card {
-    padding: 18px;
-    margin: 14px 0;
   }
 
   .filter-title {

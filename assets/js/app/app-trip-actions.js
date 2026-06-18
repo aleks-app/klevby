@@ -72,30 +72,10 @@
   }
 
   function showCreatePostScreen(options = {}, dependencies = {}) {
-    const fromProfile = Boolean(options.fromProfile);
-
-    if (fromProfile) {
-      if (typeof dependencies.setProfileReturnMode === "function") {
-        dependencies.setProfileReturnMode(true);
-      } else {
-        setProfileReturnMode(true);
-      }
-    }
-
-    if (typeof dependencies.enterCreateMode === "function") {
-      dependencies.enterCreateMode();
-    } else if (typeof window.KlevbyPostsForm?.enterCreateMode === "function") {
-      window.KlevbyPostsForm.enterCreateMode();
-    }
-
-    if (typeof dependencies.showSection === "function") {
-      dependencies.showSection("create");
-    } else if (typeof window.showSection === "function") {
-      window.showSection("create");
-    }
-
-    return true;
+    console.info("[Trips] create trip flow is not implemented yet", { options, dependencies });
+    return false;
   }
+
 
   window.KlevbyAppTripActions = {
     setMode,
