@@ -216,10 +216,10 @@ function setMobileTabActive(index) {
 }
 
 function scrollToPosts() {
-  const postsSection = document.getElementById("postsSection");
-  if (!postsSection) return;
+  const tripsSection = document.getElementById("tripsSection");
+  if (!tripsSection) return;
 
-  postsSection.scrollIntoView({ behavior: "smooth" });
+  tripsSection.scrollIntoView({ behavior: "smooth" });
 }
 
 function mobileScrollTo(id) {

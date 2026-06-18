@@ -152,7 +152,7 @@ function goMobileCreate() {
   setMobileTabActive(2);
 
   if (typeof window.showCreatePostScreen === "function") {
-    window.showCreatePostScreen();
+    window.showCreatePostScreen({ source: "create-button" });
     return;
   }
 
@@ -232,7 +232,7 @@ function goProfileTrips() {
   }
 
   showSection("home");
-  mobileScrollTo("postsSection");
+  mobileScrollTo("tripsSection");
 }
 
 function goProfileCreate() {

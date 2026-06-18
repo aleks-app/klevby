@@ -1253,7 +1253,7 @@ function openProfileTripsView() {
     setProfileTabActive(1);
     updateProfileHomeFloatButton();
 
-    const posts = document.getElementById("postsSection");
+    const posts = document.getElementById("tripsSection");
     if (posts) {
       posts.scrollIntoView({
         behavior: "smooth",
