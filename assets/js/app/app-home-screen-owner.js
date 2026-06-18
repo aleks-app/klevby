@@ -7,7 +7,6 @@
   const HOME_CLEARANCE_PX = 8;
   const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
   const HOME_COMPACT_AVAILABLE_HEIGHT_MIN = 670;
-  const HOME_RHYTHM_TARGET_DELTA_PX = 2;
   const MOBILE_QUERY = "(max-width: 900px)";
   const FALLBACK_APP_SECTION_IDS = [
     "homeSection",
@@ -28,15 +27,8 @@
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
-  let finalLayoutLocked = false;
   let pipelineFrame = 0;
-  let pipelineCommitFrame = 0;
   let activePipelineToken = 0;
-  let lowerFillWriter = "diagnostic-only";
-  let lowerFillResetDuringVisibleFrame = false;
-  let finalCommitMutatesLayout = false;
-  let lockedWeatherTop = null;
-  let weatherMovedAfterVisibleLock = false;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -69,49 +61,6 @@
     if (measuredHeight >= HOME_STANDARD_AVAILABLE_HEIGHT_MIN) return "standard";
     if (measuredHeight >= HOME_COMPACT_AVAILABLE_HEIGHT_MIN) return "compact";
     return "tight";
-  }
-
-  function resolveHomeLowerFillCap() {
-    return 0;
-  }
-
-  function resolveHomeLowerFill({
-    upperGap,
-    lowerGap,
-    maxFill
-  } = {}) {
-    const measuredUpperGap = Number(upperGap);
-    const measuredLowerGap = Number(lowerGap);
-    const fillCap = Math.max(0, Number(maxFill) || 0);
-
-    if (!Number.isFinite(measuredUpperGap) || !Number.isFinite(measuredLowerGap)) {
-      return {
-        lowerFillY: 0,
-        lowerFillCap: fillCap,
-        lowerFillReason: "measurement-unavailable",
-        solverApplied: false,
-        solverCapped: false,
-        diagnosticOnly: true
-      };
-    }
-
-    const imbalance = measuredLowerGap - measuredUpperGap;
-    let lowerFillReason = "already-balanced";
-    if (imbalance > HOME_RHYTHM_TARGET_DELTA_PX) {
-      lowerFillReason = "diagnostic-lower-gap-larger";
-    } else if (imbalance < -HOME_RHYTHM_TARGET_DELTA_PX) {
-      lowerFillReason = "diagnostic-lower-gap-smaller";
-    }
-
-    return {
-      lowerFillY: 0,
-      lowerFillCap: 0,
-      lowerFillReason,
-      solverApplied: false,
-      solverCapped: false,
-      diagnosticOnly: true,
-      measuredImbalance: imbalance
-    };
   }
 
   function resolveAppHeight(root) {
@@ -190,97 +139,6 @@
     };
   }
 
-  function isVisibleHomeFrame() {
-    return homeScreenLocked || finalLayoutLocked || isHomeScreenActive();
-  }
-
-  function applyHomeBottomRhythmSolver(
-    density,
-    touchBar,
-    { forced = false, resetBeforeMeasure = false } = {}
-  ) {
-    const root = document.documentElement;
-    if (!root || !touchBar) return null;
-
-    if (resetBeforeMeasure && isVisibleHomeFrame()) {
-      lowerFillResetDuringVisibleFrame = true;
-    }
-
-    const rhythmBefore = measureHomeBottomRhythm(touchBar);
-    const lowerFillCap = resolveHomeLowerFillCap(density);
-    const result = resolveHomeLowerFill({
-      upperGap: rhythmBefore.upperGap,
-      lowerGap: rhythmBefore.lowerGap,
-      maxFill: lowerFillCap,
-    });
-
-    const rhythmAfter = measureHomeBottomRhythm(touchBar);
-
-    lastHomeFitContract = {
-      ...lastHomeFitContract,
-      activeFeedCardMeasured: rhythmAfter.activeFeedCardMeasured,
-      gapActiveFeedCardToWeather: rhythmAfter.upperGap,
-      gapWeatherToTouchBar: rhythmAfter.lowerGap,
-      bottomRhythmDelta: rhythmAfter.bottomRhythmDelta,
-      bottomRhythmPass:
-        rhythmAfter.bottomRhythmDelta != null && rhythmAfter.bottomRhythmDelta <= 6,
-      rhythmBefore: rhythmBefore.bottomRhythmDelta,
-      rhythmAfter: rhythmAfter.bottomRhythmDelta,
-      weatherOverflowPx: rhythmAfter.weatherOverflowPx,
-      lowerFillY: result.lowerFillY,
-      lowerFillCap: result.lowerFillCap,
-      lowerFillReason: forced && !result.solverApplied ? "forced-no-fill-needed" : result.lowerFillReason,
-      solverApplied: false,
-      homeSolverExecuted: forced || lastHomeFitContract?.homeSolverExecuted === true,
-      solverCapped: result.solverCapped
-    };
-
-    return { result, rhythmBefore, rhythmAfter };
-  }
-
-  function FINAL_LAYOUT_COMMIT(density, touchBar) {
-    const root = document.documentElement;
-    if (!root || !touchBar || !lastHomeFitContract) return null;
-
-    const finalRhythm = measureHomeBottomRhythm(touchBar);
-    const weatherCard = document.querySelector("#homeSection .home-weather-card");
-    const weatherTop = weatherCard?.getBoundingClientRect?.().top ?? null;
-
-    if (finalLayoutLocked && lockedWeatherTop != null && weatherTop != null) {
-      weatherMovedAfterVisibleLock = Math.abs(weatherTop - lockedWeatherTop) > 1;
-    }
-
-    finalLayoutLocked = true;
-    lockedWeatherTop = weatherTop;
-    lastHomeFitContract = {
-      ...lastHomeFitContract,
-      activeFeedCardMeasured: finalRhythm.activeFeedCardMeasured,
-      gapActiveFeedCardToWeather: finalRhythm.upperGap,
-      gapWeatherToTouchBar: finalRhythm.lowerGap,
-      bottomRhythmDelta: finalRhythm.bottomRhythmDelta,
-      bottomRhythmPass:
-        finalRhythm.bottomRhythmDelta != null && finalRhythm.bottomRhythmDelta <= 6,
-      rhythmAfter: finalRhythm.bottomRhythmDelta,
-      weatherOverflowPx: finalRhythm.weatherOverflowPx,
-      layoutFinalAuthority: "css",
-      lowerFillResetDuringVisibleFrame,
-      lowerFillWriter,
-      finalCommitMutatesLayout,
-      weatherMovedAfterVisibleLock,
-      finalLayoutCommitExecuted: true,
-      homeCommitExecuted: true,
-      finalLayoutCorrectionApplied: false,
-      finalWeatherGapPx: finalRhythm.lowerGap,
-      finalSolverWasForced: false,
-      finalLayoutLocked,
-      homeFrameLocked: finalLayoutLocked,
-      weatherTouchBarVisualPass:
-        finalRhythm.lowerGap != null && finalRhythm.lowerGap >= HOME_CLEARANCE_PX
-    };
-
-    return { ...lastHomeFitContract };
-  }
-
   function measureHomeFitContract() {
     const root = document.documentElement;
     const homeSection = document.getElementById(HOME_SECTION_ID);
@@ -337,30 +195,14 @@
       appHeight,
       currentDensity: density,
       homePipelineFrameExecuted: false,
-      homeSolverExecuted: false,
-      homeCommitExecuted: false,
-      homeFrameLocked: false,
       homePipelineDurationMs: 0,
       activeFeedCardMeasured: false,
       gapActiveFeedCardToWeather: null,
       gapWeatherToTouchBar: null,
       bottomRhythmDelta: null,
       bottomRhythmPass: false,
-      lowerFillY: 0,
-      lowerFillCap: resolveHomeLowerFillCap(density),
-      lowerFillReason: "baseline-pending",
-      solverApplied: false,
-      solverCapped: false,
       layoutFinalAuthority: "css",
-      lowerFillResetDuringVisibleFrame,
-      lowerFillWriter,
-      finalCommitMutatesLayout,
-      weatherMovedAfterVisibleLock,
-      finalLayoutCommitExecuted: false,
-      finalLayoutCorrectionApplied: false,
       finalWeatherGapPx: null,
-      finalSolverWasForced: false,
-      finalLayoutLocked: false,
       weatherTouchBarVisualPass: false,
       timestamp: new Date().toISOString()
     };
@@ -390,13 +232,11 @@
     const token = ++activePipelineToken;
 
     if (pipelineFrame) window.cancelAnimationFrame(pipelineFrame);
-    if (pipelineCommitFrame) window.cancelAnimationFrame(pipelineCommitFrame);
 
     pipelineFrame = window.requestAnimationFrame((startTime) => {
       pipelineFrame = 0;
       if (token !== activePipelineToken) return;
 
-      finalLayoutLocked = false;
       const pipelineStartedAt =
         typeof performance !== "undefined" && typeof performance.now === "function"
           ? performance.now()
@@ -404,46 +244,27 @@
       const measurement = measureHomeFitContract();
       if (!measurement) return;
 
+      applyMeasuredHomeLayoutTokens(measurement);
+
+      const finalRhythm = measureHomeBottomRhythm(measurement.touchBar);
+      const endedAt =
+        typeof performance !== "undefined" && typeof performance.now === "function"
+          ? performance.now()
+          : startTime;
       lastHomeFitContract = {
         ...lastHomeFitContract,
         homePipelineFrameExecuted: true,
-        homeSolverExecuted: false,
-        homeCommitExecuted: false,
-        homeFrameLocked: false,
-        homePipelineDurationMs: 0
+        activeFeedCardMeasured: finalRhythm.activeFeedCardMeasured,
+        gapActiveFeedCardToWeather: finalRhythm.upperGap,
+        gapWeatherToTouchBar: finalRhythm.lowerGap,
+        bottomRhythmDelta: finalRhythm.bottomRhythmDelta,
+        bottomRhythmPass: finalRhythm.bottomRhythmDelta === 0,
+        weatherOverflowPx: finalRhythm.weatherOverflowPx,
+        finalWeatherGapPx: finalRhythm.lowerGap,
+        weatherTouchBarVisualPass:
+          finalRhythm.lowerGap != null && finalRhythm.lowerGap >= HOME_CLEARANCE_PX,
+        homePipelineDurationMs: Math.max(0, endedAt - pipelineStartedAt)
       };
-
-      applyHomeBottomRhythmSolver(measurement.density, measurement.touchBar, {
-        forced: true,
-        resetBeforeMeasure: false
-      });
-      lastHomeFitContract = {
-        ...lastHomeFitContract,
-        homeSolverExecuted: true,
-        solverApplied: false
-      };
-
-      applyMeasuredHomeLayoutTokens(measurement);
-
-      pipelineCommitFrame = window.requestAnimationFrame((commitTime) => {
-        pipelineCommitFrame = 0;
-        if (token !== activePipelineToken || finalLayoutLocked) return;
-
-        FINAL_LAYOUT_COMMIT(measurement.density, measurement.touchBar);
-        const endedAt =
-          typeof performance !== "undefined" && typeof performance.now === "function"
-            ? performance.now()
-            : commitTime;
-        finalLayoutLocked = true;
-        lastHomeFitContract = {
-          ...lastHomeFitContract,
-          solverApplied: false,
-          homeCommitExecuted: true,
-          homeFrameLocked: true,
-          finalLayoutLocked: true,
-          homePipelineDurationMs: Math.max(0, endedAt - pipelineStartedAt)
-        };
-      });
     });
 
     return getHomeFitContract();
@@ -674,17 +495,13 @@
     updateHomeFitContract,
     HOME_LAYOUT_PIPELINE_FRAME,
     resolveMeasuredHomeDensity,
-    resolveHomeLowerFill,
     getHomeFitContract,
-    FINAL_LAYOUT_COMMIT,
     isHomeScreenActive
   });
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
       resolveMeasuredHomeDensity,
-      resolveHomeLowerFillCap,
-      resolveHomeLowerFill
     };
   }
 
