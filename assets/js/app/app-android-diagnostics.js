@@ -125,12 +125,38 @@
     return lowerRect.top - upperRect.bottom;
   }
 
+  function hasPositiveRect(rect) {
+    return Boolean(rect && rect.width > 0 && rect.height > 0);
+  }
+
+  function getTouchBarSurfaceElement(touchBar) {
+    if (!touchBar) return null;
+
+    return (
+      touchBar.querySelector(
+        '[data-touchbar-surface], .mobile-tabbar-surface, .touchbar-surface, .mobile-tabbar__surface'
+      ) || touchBar
+    );
+  }
+
+  function getHomeVisualApplicability(homeRects, chromeMode) {
+    return Boolean(
+      chromeMode === "home" &&
+        hasPositiveRect(homeRects.homeSection) &&
+        hasPositiveRect(homeRects.mobileTabbar) &&
+        hasPositiveRect(homeRects.weatherCard)
+    );
+  }
+
   function collectHomeInternalGeometry() {
     const html = document.documentElement;
     const body = document.body;
     const htmlStyles = getComputedStyle(html);
     const headerRect = getLayoutRect(findAppHeader());
-    const touchBarRect = getLayoutRect(document.querySelector(".mobile-tabbar"));
+    const touchBar = document.querySelector(".mobile-tabbar");
+    const touchBarSurface = getTouchBarSurfaceElement(touchBar);
+    const touchBarRect = getLayoutRect(touchBar);
+    const touchBarSurfaceRect = getLayoutRect(touchBarSurface);
     const heroCopyRect = getLayoutRect(document.querySelector("#homeSection .hero-copy"));
     const quickActionsWrapperRect = getLayoutRect(
       document.querySelector("#homeSection .home-quick-actions")
@@ -150,6 +176,15 @@
     const weatherCardRect = getLayoutRect(
       document.querySelector("#homeSection .home-weather-card")
     );
+    const quickActionCardRects = Array.from(
+      document.querySelectorAll("#homeSection .home-quick-action-card"),
+      getLayoutRect
+    );
+    const quickActionHeights = quickActionCardRects.map((rect) => rect?.height ?? null);
+    const measuredQuickActionHeights = quickActionHeights.filter(Number.isFinite);
+    const quickActionHeightDelta = measuredQuickActionHeights.length
+      ? Math.max(...measuredQuickActionHeights) - Math.min(...measuredQuickActionHeights)
+      : null;
     const cssTokenNames = [
       "--klevby-app-available-top",
       "--klevby-app-available-bottom",
@@ -187,14 +222,16 @@
         heroCopy: heroCopyRect,
         quickActionsWrapper: quickActionsWrapperRect,
         quickActionsRail: quickActionsRailRect,
-        quickActionCards: Array.from(
-          document.querySelectorAll("#homeSection .home-quick-action-card"),
-          getLayoutRect
-        ),
+        quickActionCards: quickActionCardRects,
+        quickActionHeights,
+        quickActionHeightDelta,
+        quickActionsEqualHeightPass:
+          quickActionHeightDelta != null ? quickActionHeightDelta <= 1 : null,
         feedTitleRow: feedTitleRowRect,
         feedAdCard: feedAdCardRect,
         weatherCard: weatherCardRect,
-        touchBar: touchBarRect
+        touchBar: touchBarRect,
+        touchBarSurface: touchBarSurfaceRect
       },
       verticalGaps: {
         heroCopyToQuickActions: getVerticalGap(heroCopyRect, quickActionsWrapperRect),
@@ -304,6 +341,7 @@
       const headerInner =
         header?.querySelector(".header-inner") || document.querySelector(".header-inner");
       const touchBar = document.querySelector(".mobile-tabbar");
+      const touchBarSurface = getTouchBarSurfaceElement(touchBar);
       const body = document.body;
       const html = document.documentElement;
       const bodyStyles = body ? getComputedStyle(body) : null;
@@ -332,12 +370,37 @@
         feedImage: document.querySelector("#homeSection .home-feed-preview-image"),
         weatherCard: document.querySelector("#homeSection .home-weather-card"),
         weatherStrip: document.querySelector("#homeSection .home-weather-strip"),
-        touchBar
+        touchBar,
+        touchBarSurface
       };
       const homeRects = Object.fromEntries(
         Object.entries(homeElements).map(([name, element]) => [name, getLayoutRect(element)])
       );
       homeRects.mobileTabbar = homeRects.touchBar;
+      homeRects.paintedTouchBarSurface = homeRects.touchBarSurface;
+      const quickActionCardRects = Array.from(
+        document.querySelectorAll("#homeSection .home-quick-action-card"),
+        getLayoutRect
+      );
+      const quickActionHeights = quickActionCardRects.map((rect) => rect?.height ?? null);
+      const measuredQuickActionHeights = quickActionHeights.filter(Number.isFinite);
+      const quickActionHeightDelta = measuredQuickActionHeights.length
+        ? Math.max(...measuredQuickActionHeights) - Math.min(...measuredQuickActionHeights)
+        : null;
+      const quickActionsEqualHeightPass =
+        quickActionHeightDelta != null ? quickActionHeightDelta <= 1 : null;
+      const appChromeMode = body?.getAttribute("data-app-chrome-mode") || null;
+      const homeVisualApplicable = getHomeVisualApplicability(homeRects, appChromeMode);
+      const measuredTouchBarBoundaryRect = homeRects.touchBarSurface || homeRects.mobileTabbar;
+      const weatherToTouchBarMeasuredGap =
+        homeRects.weatherCard?.bottom != null && measuredTouchBarBoundaryRect?.top != null
+          ? measuredTouchBarBoundaryRect.top - homeRects.weatherCard.bottom
+          : null;
+      const weatherTouchBarVisualOverlapPx =
+        weatherToTouchBarMeasuredGap != null ? Math.max(0, -weatherToTouchBarMeasuredGap) : null;
+      const weatherTouchBarVisualPass = homeVisualApplicable
+        ? weatherTouchBarVisualOverlapPx === 0 && weatherToTouchBarMeasuredGap >= 10
+        : "not_applicable";
       const safeArea = getSafeAreaDiagnostics(htmlStyles);
       const headerMeasured = homeRects.header != null;
       const touchBarMeasured = homeRects.touchBar != null;
@@ -431,6 +494,14 @@
           gapWeatherToTouchBar >= 10 &&
           availableHeight > 0
       };
+      const apkHomeVisualPass = homeVisualApplicable
+        ? quickActionsEqualHeightPass === true &&
+          weatherTouchBarVisualPass === true &&
+          weatherTouchBarVisualOverlapPx === 0 &&
+          homeFitContract.bottomRhythmPass === true &&
+          homeFitContract.fitPass === true &&
+          homeFitContract.weatherFitPass === true
+        : "not_applicable";
 
       return {
         timestamp: new Date().toISOString(),
@@ -490,6 +561,25 @@
         homeSectionTopNegative:
           homeRects.homeSection?.top != null ? homeRects.homeSection.top < -1 : null,
         homeFitContract,
+        quickActionCards: quickActionCardRects,
+        quickActionHeights,
+        quickActionHeightDelta,
+        quickActionsEqualHeightPass: homeVisualApplicable
+          ? quickActionsEqualHeightPass
+          : "not_applicable",
+        weatherCard: homeRects.weatherCard,
+        mobileTabbar: homeRects.mobileTabbar,
+        paintedTouchBarSurface: homeRects.paintedTouchBarSurface,
+        weatherToTouchBarMeasuredGap: homeVisualApplicable
+          ? weatherToTouchBarMeasuredGap
+          : null,
+        weatherTouchBarVisualOverlapPx: homeVisualApplicable
+          ? weatherTouchBarVisualOverlapPx
+          : null,
+        weatherTouchBarVisualPass,
+        apkHomeVisualPass,
+        homeVisualApplicable,
+        homeVisualSkipReason: homeVisualApplicable ? null : "home_inactive_or_unmeasured",
         homeSection: homeRects.homeSection,
         touchBar: homeRects.touchBar,
         homeLayout: {
@@ -500,6 +590,10 @@
             gapFeedHeaderToCard: getVerticalGap(homeRects.feedHeader, homeRects.feedCard),
             gapFeedCardToWeather: getVerticalGap(homeRects.feedCard, homeRects.weatherCard),
             gapWeatherToTouchBar: getVerticalGap(homeRects.weatherCard, homeRects.touchBar),
+            gapWeatherToPaintedTouchBarSurface: getVerticalGap(
+              homeRects.weatherCard,
+              homeRects.paintedTouchBarSurface
+            ),
             gapWeatherStripToTouchBar: getVerticalGap(homeRects.weatherStrip, homeRects.touchBar)
           },
           safeArea,

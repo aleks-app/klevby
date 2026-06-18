@@ -93,3 +93,20 @@ test("prefers visualViewport dimensions over inner dimensions", () => {
   assert.equal(result.viewportHeight, 620);
   assert.equal(result.availableHeight, 500);
 });
+
+test("home mode can use an inner painted tabbar surface as the lower boundary", () => {
+  const result = calculateAppShellViewport({
+    chromeMode: "home",
+    innerWidth: 390,
+    innerHeight: 844,
+    headerRect: { bottom: 72 },
+    tabbarRect: { top: 748 },
+    tabbarSurfaceRect: { top: 762 },
+    headerVisible: true,
+    tabbarVisible: true
+  });
+
+  assert.equal(result.availableBottom, 762);
+  assert.equal(result.availableHeight, 690);
+  assert.equal(result.availableBottomOffset, 82);
+});
