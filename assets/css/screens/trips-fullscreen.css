@@ -377,3 +377,17 @@ header[data-chrome-mode="trips"] .app-header-back-icon img {
   width: 16px;
   height: 16px;
 }
+
+#tripsSection .trips-fullscreen-posts-section {
+  display: block;
+  min-height: 24px;
+  margin-top: 8px;
+}
+
+#tripsSection .trips-fullscreen-shelf {
+  min-height: 16px;
+}
+
+#tripsSection .trips-fullscreen-filter-item.is-active {
+  color: #ffffff;
+}

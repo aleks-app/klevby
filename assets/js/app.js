@@ -738,12 +738,8 @@ function showSection(section) {
   if (safeSection === "trips") {
     setMobileTabVisual(0);
 
-    if (typeof window.loadPosts === "function") {
-      window.loadPosts({ force: true }).catch((error) => {
-        console.warn("Klevby trips: не удалось загрузить объявления при открытии раздела:", error);
-      });
-    } else if (typeof window.renderPosts === "function") {
-      window.renderPosts();
+    if (typeof window.KlevbyTripsScreenOwner?.open === "function") {
+      window.KlevbyTripsScreenOwner.open();
     }
   }
 
@@ -950,7 +946,8 @@ function goMobileCreate() {
     return;
   }
 
-  showCreatePostScreen({ source: "mobile-create" });
+  console.info("[Trips] create trip flow is not implemented yet");
+  return false;
 }
 
 function goMobileWeather() {

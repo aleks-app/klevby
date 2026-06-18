@@ -476,9 +476,9 @@
           </div>
 
           <div class="trips-fullscreen-type-tabs" role="tablist" aria-label="Тип выезда">
-            <button class="trips-fullscreen-type-tab is-active" type="button">Все</button>
-            <button class="trips-fullscreen-type-tab" type="button">Ищу компанию</button>
-            <button class="trips-fullscreen-type-tab" type="button">Есть место</button>
+            <button class="trips-fullscreen-type-tab is-active" type="button" data-trips-type="all">Все</button>
+            <button class="trips-fullscreen-type-tab" type="button" data-trips-type="looking">Ищу компанию</button>
+            <button class="trips-fullscreen-type-tab" type="button" data-trips-type="offering">Есть место</button>
           </div>
 
           <div class="trips-fullscreen-filter-row" aria-label="Фильтры выездов">
@@ -505,6 +505,11 @@
               <span class="trips-fullscreen-list-sort-label">Сортировка:</span>
               <span class="trips-fullscreen-list-sort-value">новые</span>
             </button>
+          </div>
+
+          <div id="tripsFullscreenPostsSection" class="trips-fullscreen-posts-section" data-selected-shelf="active">
+            <section id="tripsFullscreenActiveShelf" class="trips-fullscreen-shelf" aria-label="Актуальные выезды"></section>
+            <section id="tripsFullscreenArchiveShelf" class="trips-fullscreen-shelf" aria-label="Архив выездов" hidden></section>
           </div>
         </div>
       </div>
@@ -944,6 +949,12 @@
   <script src="assets/js/posts/posts-api.js?v=20260524-posts-resume-owner-pr13-1" defer></script>
   <script src="assets/js/posts/posts-render.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/posts.js?v=20260618-trips-create-hard-disable-1" defer></script>
+  <script src="assets/js/trips/trips-state.js?v=20260618-trips-foundation-1" defer></script>
+  <script src="assets/js/trips/trips-lifecycle.js?v=20260618-trips-foundation-1" defer></script>
+  <script src="assets/js/trips/trips-filters.js?v=20260618-trips-foundation-1" defer></script>
+  <script src="assets/js/trips/trips-list-owner.js?v=20260618-trips-foundation-1" defer></script>
+  <script src="assets/js/trips/trips-render.js?v=20260618-trips-foundation-1" defer></script>
+  <script src="assets/js/trips/trips-screen-owner.js?v=20260618-trips-foundation-1" defer></script>
   <script src="assets/js/ui/ui-shell.js?v=20260607-map-app-screen-1" defer></script>
   <script src="assets/js/ui/ui-tabbar.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/ui/ui-profile-bridge.js?v=20260529-profile-bridge-delegate-1" defer></script>
