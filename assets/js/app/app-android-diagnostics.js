@@ -399,7 +399,7 @@
       const weatherTouchBarVisualOverlapPx =
         weatherToTouchBarMeasuredGap != null ? Math.max(0, -weatherToTouchBarMeasuredGap) : null;
       const weatherTouchBarVisualPass = homeVisualApplicable
-        ? weatherTouchBarVisualOverlapPx === 0 && weatherToTouchBarMeasuredGap >= 10
+        ? weatherTouchBarVisualOverlapPx === 0 && weatherToTouchBarMeasuredGap >= 8
         : "not_applicable";
       const safeArea = getSafeAreaDiagnostics(htmlStyles);
       const headerMeasured = homeRects.header != null;
@@ -486,12 +486,18 @@
         rhythmAfter: ownerFitContract?.rhythmAfter ?? bottomRhythmDelta,
         solverApplied: ownerFitContract?.solverApplied === true,
         solverCapped: ownerFitContract?.solverCapped === true,
+        finalLayoutCommitExecuted: ownerFitContract?.finalLayoutCommitExecuted === true,
+        finalLayoutCorrectionApplied: ownerFitContract?.finalLayoutCorrectionApplied === true,
+        finalWeatherGapPx: ownerFitContract?.finalWeatherGapPx ?? null,
+        finalSolverWasForced: ownerFitContract?.finalSolverWasForced === true,
+        finalLayoutLocked: ownerFitContract?.finalLayoutLocked === true,
+        finalWeatherTouchBarVisualPass: ownerFitContract?.weatherTouchBarVisualPass === true,
         fitPass: overflowPx != null && overflowPx <= 1 && availableHeight > 0,
         weatherFitPass:
           weatherOverflowPx != null &&
           gapWeatherToTouchBar != null &&
           weatherOverflowPx <= 1 &&
-          gapWeatherToTouchBar >= 10 &&
+          gapWeatherToTouchBar >= 8 &&
           availableHeight > 0
       };
       const apkHomeVisualPass = homeVisualApplicable

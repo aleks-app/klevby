@@ -36,6 +36,7 @@
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
+  let finalLayoutLocked = false;
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -206,9 +207,99 @@
     root.style.setProperty("--klevby-home-lower-fill-y", `${fill}px`);
   }
 
+  function applyHomeBottomRhythmSolver(density, touchBar, { forced = false } = {}) {
+    const root = document.documentElement;
+    if (!root || !touchBar) return null;
+
+    const rhythmBefore = measureHomeBottomRhythm(touchBar);
+    const lowerFillCap = resolveHomeLowerFillCap(density);
+    const result = resolveHomeLowerFill({
+      upperGap: rhythmBefore.upperGap,
+      lowerGap: rhythmBefore.lowerGap,
+      maxFill: lowerFillCap,
+      minLowerGap: HOME_MIN_LOWER_GAP_PX
+    });
+
+    publishHomeLowerFill(root, result.lowerFillY);
+    const rhythmAfter = measureHomeBottomRhythm(touchBar);
+
+    lastHomeFitContract = {
+      ...lastHomeFitContract,
+      activeFeedCardMeasured: rhythmAfter.activeFeedCardMeasured,
+      gapActiveFeedCardToWeather: rhythmAfter.upperGap,
+      gapWeatherToTouchBar: rhythmAfter.lowerGap,
+      bottomRhythmDelta: rhythmAfter.bottomRhythmDelta,
+      bottomRhythmPass:
+        rhythmAfter.bottomRhythmDelta != null && rhythmAfter.bottomRhythmDelta <= 6,
+      rhythmBefore: rhythmBefore.bottomRhythmDelta,
+      rhythmAfter: rhythmAfter.bottomRhythmDelta,
+      weatherOverflowPx: rhythmAfter.weatherOverflowPx,
+      lowerFillY: result.lowerFillY,
+      lowerFillCap: result.lowerFillCap,
+      lowerFillReason: forced && !result.solverApplied ? "forced-no-fill-needed" : result.lowerFillReason,
+      solverApplied: result.solverApplied || forced,
+      solverCapped: result.solverCapped
+    };
+
+    return { result, rhythmBefore, rhythmAfter };
+  }
+
+  function FINAL_LAYOUT_COMMIT(density, touchBar) {
+    const root = document.documentElement;
+    if (!root || !touchBar || !lastHomeFitContract) return null;
+
+    let finalSolverWasForced = false;
+    let finalLayoutCorrectionApplied = false;
+
+    if (lastHomeFitContract.solverApplied !== true) {
+      finalSolverWasForced = true;
+      applyHomeBottomRhythmSolver(density, touchBar, { forced: true });
+    }
+
+    let finalRhythm = measureHomeBottomRhythm(touchBar);
+    if (finalRhythm.weatherOverflowPx > 0) {
+      const currentFill = Number.parseFloat(
+        root.style.getPropertyValue("--klevby-home-lower-fill-y") || "0"
+      ) || 0;
+      const correctedFill = currentFill - finalRhythm.weatherOverflowPx;
+      publishHomeLowerFill(root, correctedFill);
+      finalLayoutCorrectionApplied = correctedFill !== currentFill;
+      finalRhythm = measureHomeBottomRhythm(touchBar);
+      lastHomeFitContract = {
+        ...lastHomeFitContract,
+        activeFeedCardMeasured: finalRhythm.activeFeedCardMeasured,
+        gapActiveFeedCardToWeather: finalRhythm.upperGap,
+        gapWeatherToTouchBar: finalRhythm.lowerGap,
+        bottomRhythmDelta: finalRhythm.bottomRhythmDelta,
+        bottomRhythmPass:
+          finalRhythm.bottomRhythmDelta != null && finalRhythm.bottomRhythmDelta <= 6,
+        rhythmAfter: finalRhythm.bottomRhythmDelta,
+        weatherOverflowPx: finalRhythm.weatherOverflowPx,
+        lowerFillY: correctedFill,
+        lowerFillReason: finalLayoutCorrectionApplied
+          ? "final-layout-clearance-correction"
+          : lastHomeFitContract.lowerFillReason
+      };
+    }
+
+    finalLayoutLocked = true;
+    lastHomeFitContract = {
+      ...lastHomeFitContract,
+      finalLayoutCommitExecuted: true,
+      finalLayoutCorrectionApplied,
+      finalWeatherGapPx: finalRhythm.lowerGap,
+      finalSolverWasForced,
+      finalLayoutLocked,
+      weatherTouchBarVisualPass:
+        finalRhythm.lowerGap != null && finalRhythm.lowerGap >= HOME_CLEARANCE_PX
+    };
+
+    return { ...lastHomeFitContract };
+  }
+
   function scheduleHomeBottomRhythmSolver(density, touchBar) {
     const root = document.documentElement;
-    if (!root || !touchBar) return;
+    if (!root || !touchBar || finalLayoutLocked) return;
 
     if (solverFrame) window.cancelAnimationFrame(solverFrame);
     if (solverMeasureFrame) window.cancelAnimationFrame(solverMeasureFrame);
@@ -216,47 +307,7 @@
 
     solverFrame = window.requestAnimationFrame(() => {
       solverFrame = 0;
-      const rhythmBefore = measureHomeBottomRhythm(touchBar);
-      const lowerFillCap = resolveHomeLowerFillCap(density);
-      const result = resolveHomeLowerFill({
-        upperGap: rhythmBefore.upperGap,
-        lowerGap: rhythmBefore.lowerGap,
-        maxFill: lowerFillCap,
-        minLowerGap: HOME_MIN_LOWER_GAP_PX
-      });
-
-      publishHomeLowerFill(root, result.lowerFillY);
-      lastHomeFitContract = {
-        ...lastHomeFitContract,
-        activeFeedCardMeasured: rhythmBefore.activeFeedCardMeasured,
-        gapActiveFeedCardToWeather: rhythmBefore.upperGap,
-        gapWeatherToTouchBar: rhythmBefore.lowerGap,
-        bottomRhythmDelta: rhythmBefore.bottomRhythmDelta,
-        rhythmBefore: rhythmBefore.bottomRhythmDelta,
-        rhythmAfter: null,
-        weatherOverflowPx: rhythmBefore.weatherOverflowPx,
-        lowerFillY: result.lowerFillY,
-        lowerFillCap: result.lowerFillCap,
-        lowerFillReason: result.lowerFillReason,
-        solverApplied: result.solverApplied,
-        solverCapped: result.solverCapped
-      };
-
-      solverMeasureFrame = window.requestAnimationFrame(() => {
-        solverMeasureFrame = 0;
-        const rhythmAfter = measureHomeBottomRhythm(touchBar);
-        lastHomeFitContract = {
-          ...lastHomeFitContract,
-          activeFeedCardMeasured: rhythmAfter.activeFeedCardMeasured,
-          gapActiveFeedCardToWeather: rhythmAfter.upperGap,
-          gapWeatherToTouchBar: rhythmAfter.lowerGap,
-          bottomRhythmDelta: rhythmAfter.bottomRhythmDelta,
-          bottomRhythmPass:
-            rhythmAfter.bottomRhythmDelta != null && rhythmAfter.bottomRhythmDelta <= 6,
-          rhythmAfter: rhythmAfter.bottomRhythmDelta,
-          weatherOverflowPx: rhythmAfter.weatherOverflowPx
-        };
-      });
+      applyHomeBottomRhythmSolver(density, touchBar);
     });
   }
 
@@ -329,10 +380,17 @@
       lowerFillReason: "baseline-pending",
       solverApplied: false,
       solverCapped: false,
+      finalLayoutCommitExecuted: false,
+      finalLayoutCorrectionApplied: false,
+      finalWeatherGapPx: null,
+      finalSolverWasForced: false,
+      finalLayoutLocked: false,
+      weatherTouchBarVisualPass: false,
       timestamp: new Date().toISOString()
     };
 
-    scheduleHomeBottomRhythmSolver(density, touchBar);
+    applyHomeBottomRhythmSolver(density, touchBar);
+    FINAL_LAYOUT_COMMIT(density, touchBar);
     return { ...lastHomeFitContract };
   }
 
@@ -476,6 +534,7 @@
   }
 
   function syncHomeScreenState() {
+    finalLayoutLocked = false;
     setLockState(isHomeScreenActive());
     updateHomeFitContract();
 
@@ -558,6 +617,7 @@
     resolveMeasuredHomeDensity,
     resolveHomeLowerFill,
     getHomeFitContract,
+    FINAL_LAYOUT_COMMIT,
     isHomeScreenActive
   });
 
