@@ -1,16 +1,26 @@
+:root:is([data-home-density="standard"], [data-home-density="tight"]) #homeSection.kg-screen[data-home-layout="grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    position: relative !important;
+}
+
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
     margin-top: -150px !important;
     margin-bottom: 24px !important;
 }
 
+/* СКРЫВАЕМ ВСЕ КАРТОЧКИ ИЗ ЛЕНТЫ, ДЕЛАЕМ БЛОК ПУСТЫМ */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
     position: relative !important;
     margin-top: -20px !important;
     margin-bottom: 24px !important;
+    height: 0 !important; /* Схлопываем высоту */
+    visibility: hidden !important; /* Прячем содержимое */
 }
 
-/* Опустили Погоду ещё на 20px вниз к полу */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: relative !important;
     margin-top: -5px !important;
