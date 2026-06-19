@@ -4,6 +4,7 @@
   const HOME_SECTION_ID = "homeSection";
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
+  const HOME_CLEARANCE_PX = 8;
   const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
   const HOME_COMPACT_AVAILABLE_HEIGHT_MIN = 670;
   const HOME_MIN_LOWER_GAP_PX = 10;
@@ -33,11 +34,34 @@
   let solverMeasureFrame = 0;
   let observer = null;
   let hasCapturedFirstSync = false;
+  let standaloneViewportReady = false;
+  let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
 
   function getPositiveHeight(value) {
     const height = Number(value);
     return Number.isFinite(height) && height > 0 ? height : 0;
+  }
+
+  function isStandalonePwa() {
+    if (isNativeApp()) return false;
+
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (root?.classList.contains("pwa-standalone")) return true;
+    if (body?.classList.contains("pwa-installed")) return true;
+
+    try {
+      if (
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(display-mode: standalone)").matches
+      ) {
+        return true;
+      }
+    } catch (_) {}
+
+    return navigator.standalone === true;
   }
 
   function resolveMeasuredHomeDensity(availableHeight) {
@@ -103,6 +127,45 @@
     };
   }
 
+  function resolveAppHeight(root) {
+    const visualViewportHeight = getPositiveHeight(window.visualViewport?.height);
+    const innerHeight = getPositiveHeight(window.innerHeight);
+    const clientHeight = getPositiveHeight(root.clientHeight);
+
+    if (isNativeApp()) {
+      return visualViewportHeight || innerHeight || clientHeight;
+    }
+
+    if (isStandalonePwa()) {
+      const layoutHeight = Math.max(innerHeight, clientHeight);
+      return layoutHeight || visualViewportHeight;
+    }
+
+    return visualViewportHeight || innerHeight || clientHeight;
+  }
+
+  function updateAppHeight() {
+    const root = document.documentElement;
+    if (!root) return 0;
+
+    const height = resolveAppHeight(root);
+
+    if (!height) return 0;
+
+    const roundedHeight = Math.round(height);
+    root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
+    return roundedHeight;
+  }
+
+  function findAppHeader() {
+    return (
+      document.querySelector("header[data-chrome-mode]") ||
+      document.querySelector("body header") ||
+      document.querySelector("header") ||
+      document.querySelector(".app-header")
+    );
+  }
+
   function findActiveHomeFeedCard() {
     return (
       document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
@@ -136,7 +199,7 @@
       upperGap,
       lowerGap,
       bottomRhythmDelta: Math.abs(upperGap - lowerGap),
-      weatherOverflowPx: Math.max(0, weatherCardRect.bottom - touchBarRect.top)
+      weatherOverflowPx: Math.max(0, weatherCardRect.bottom - (touchBarRect.top - HOME_CLEARANCE_PX))
     };
   }
 
@@ -198,29 +261,37 @@
     });
   }
 
-  function getAppShellContract() {
-    const appShell = window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
-    if (
-      appShell?.chromeMode === "home" &&
-      Number.isFinite(appShell.availableTop) &&
-      Number.isFinite(appShell.availableBottom) &&
-      Number.isFinite(appShell.availableHeight)
-    ) {
-      return appShell;
-    }
-
-    return null;
-  }
-
   function updateHomeFitContract() {
     const root = document.documentElement;
     const homeSection = document.getElementById(HOME_SECTION_ID);
+    const header = findAppHeader();
     const touchBar = document.querySelector(".mobile-tabbar");
-    const appShell = getAppShellContract();
-    if (!root || !homeSection || !touchBar || !appShell) return null;
+    if (!root || !homeSection || !touchBar) return null;
 
+    const headerRect = header?.getBoundingClientRect() || null;
+    const homeSectionRect = homeSection.getBoundingClientRect();
     const mobileTabbarRect = touchBar.getBoundingClientRect();
-    const { availableTop, availableBottom, availableHeight } = appShell;
+    const headerMeasured = headerRect != null;
+    const touchBarMeasured = true;
+    const appShell = window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
+    const homeUsesAppShellContract =
+      appShell?.chromeMode === "home" &&
+      Number.isFinite(appShell.availableTop) &&
+      Number.isFinite(appShell.availableBottom) &&
+      Number.isFinite(appShell.availableHeight);
+    const fallbackTopUsed = !homeUsesAppShellContract && !headerMeasured;
+    const fallbackAvailableTop = headerRect?.bottom ?? homeSectionRect.top;
+    const fallbackAvailableBottom = mobileTabbarRect.top - HOME_CLEARANCE_PX;
+    const availableTop = homeUsesAppShellContract
+      ? appShell.availableTop
+      : fallbackAvailableTop;
+    const availableBottom = homeUsesAppShellContract
+      ? appShell.availableBottom
+      : fallbackAvailableBottom;
+    const availableHeight = homeUsesAppShellContract
+      ? appShell.availableHeight
+      : Math.max(0, availableBottom - availableTop);
+    const appHeight = resolveAppHeight(root);
     const density = resolveMeasuredHomeDensity(availableHeight);
 
     root.style.setProperty("--klevby-home-available-top", `${availableTop}px`);
@@ -229,21 +300,25 @@
     root.setAttribute(HOME_DENSITY_ATTRIBUTE, density);
 
     lastHomeFitContract = {
-      headerBottom: availableTop,
+      headerBottom: headerRect?.bottom ?? null,
       touchBarTop: mobileTabbarRect.top,
       availableTop,
       availableBottom,
       availableHeight,
-      headerMeasured: true,
-      touchBarMeasured: true,
-      fallbackTopUsed: false,
-      homeUsesAppShellContract: true,
-      appShellAvailableTop: appShell.availableTop,
-      appShellAvailableBottom: appShell.availableBottom,
-      appShellAvailableHeight: appShell.availableHeight,
-      homeAppShellDeltaTop: 0,
-      homeAppShellDeltaBottom: 0,
-      appHeight: appShell.viewportHeight,
+      headerMeasured,
+      touchBarMeasured,
+      fallbackTopUsed,
+      homeUsesAppShellContract,
+      appShellAvailableTop: appShell?.availableTop ?? null,
+      appShellAvailableBottom: appShell?.availableBottom ?? null,
+      appShellAvailableHeight: appShell?.availableHeight ?? null,
+      homeAppShellDeltaTop: homeUsesAppShellContract
+        ? availableTop - appShell.availableTop
+        : null,
+      homeAppShellDeltaBottom: homeUsesAppShellContract
+        ? availableBottom - appShell.availableBottom
+        : null,
+      appHeight,
       currentDensity: density,
       activeFeedCardMeasured: false,
       gapActiveFeedCardToWeather: null,
@@ -362,6 +437,20 @@
     homeScreenLocked = false;
   }
 
+  function shouldDeferStandaloneHomeLock() {
+    if (!isStandalonePwa() || standaloneViewportReady) return false;
+
+    const height = updateAppHeight();
+    if (height) deferredStandaloneHeight = Math.max(deferredStandaloneHeight, height);
+
+    if (document.readyState === "complete") {
+      standaloneViewportReady = true;
+      return false;
+    }
+
+    return true;
+  }
+
   function setLockState(shouldLock) {
     const root = document.documentElement;
     const body = document.body;
@@ -372,6 +461,12 @@
       return;
     }
 
+    if (shouldDeferStandaloneHomeLock()) {
+      clearLockState(root, body);
+      return;
+    }
+
+    updateAppHeight();
     root.setAttribute(LOCK_ATTRIBUTE, "true");
     body.setAttribute(LOCK_ATTRIBUTE, "true");
 
@@ -401,6 +496,17 @@
   }
 
   function handleViewportChange() {
+    const height = updateAppHeight();
+
+    if (
+      isStandalonePwa() &&
+      !standaloneViewportReady &&
+      (document.readyState === "complete" ||
+        (deferredStandaloneHeight && height > deferredStandaloneHeight))
+    ) {
+      standaloneViewportReady = true;
+    }
+
     scheduleSync();
   }
 
@@ -424,9 +530,12 @@
     initialized = true;
     window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
+    updateAppHeight();
     updateHomeFitContract();
     observeStateOwners();
 
+    window.addEventListener("resize", handleViewportChange, { passive: true });
+    window.addEventListener("orientationchange", handleViewportChange, { passive: true });
     window.addEventListener("load", handleViewportChange, { passive: true });
     window.addEventListener("pageshow", handleViewportChange, { passive: true });
     window.addEventListener("klevby-app-shell-updated", scheduleSync, { passive: true });
@@ -434,6 +543,10 @@
       if (!document.hidden) handleViewportChange();
     });
 
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleViewportChange, { passive: true });
+      window.visualViewport.addEventListener("scroll", handleViewportChange, { passive: true });
+    }
 
     syncHomeScreenState();
   }
@@ -441,6 +554,7 @@
   const homeScreenOwner = Object.freeze({
     init,
     syncHomeScreenState,
+    updateAppHeight,
     updateHomeFitContract,
     resolveMeasuredHomeDensity,
     resolveHomeLowerFill,

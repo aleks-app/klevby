@@ -21,10 +21,6 @@
     availableBottomOffset: "--klevby-app-available-bottom-offset"
   });
 
-  const LEGACY_VIEWPORT_ALIASES = Object.freeze({
-    viewportHeight: "--klevby-app-height"
-  });
-
   function finiteNonNegative(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) && number >= 0 ? number : fallback;
@@ -86,8 +82,6 @@
     let initialized = false;
     let updateFrame = 0;
     let observer = null;
-    let layoutWatchdog = 0;
-    let delayedRemeasureScheduled = false;
     let lastMeasurement = null;
 
     function getChromeMode() {
@@ -162,34 +156,10 @@
       });
     }
 
-    function measurementChanged(nextMeasurement) {
-      if (!lastMeasurement) return true;
-
-      return [
-        "viewportWidth",
-        "viewportHeight",
-        "availableTop",
-        "availableBottom",
-        "availableHeight",
-        "availableBottomOffset",
-        "chromeMode",
-        "headerVisible",
-        "tabbarVisible"
-      ].some((key) => lastMeasurement[key] !== nextMeasurement[key]);
-    }
-
     function publish(measurement) {
-      if (!measurementChanged(measurement)) {
-        return lastMeasurement;
-      }
-
       const style = documentObject.documentElement.style;
 
       Object.entries(CSS_VARIABLES).forEach(([property, variable]) => {
-        style.setProperty(variable, `${measurement[property]}px`);
-      });
-
-      Object.entries(LEGACY_VIEWPORT_ALIASES).forEach(([property, variable]) => {
         style.setProperty(variable, `${measurement[property]}px`);
       });
 
@@ -203,12 +173,8 @@
       return lastMeasurement;
     }
 
-    function measureAndPublish() {
-      return publish(measure());
-    }
-
     function update() {
-      return measureAndPublish();
+      return publish(measure());
     }
 
     function scheduleUpdate() {
@@ -216,30 +182,8 @@
 
       updateFrame = windowObject.requestAnimationFrame(() => {
         updateFrame = 0;
-        measureAndPublish();
+        update();
       });
-    }
-
-
-    function scheduleDelayedRemeasure() {
-      if (delayedRemeasureScheduled) return;
-      delayedRemeasureScheduled = true;
-
-      windowObject.requestAnimationFrame(() => {
-        windowObject.setTimeout(() => {
-          measureAndPublish();
-        }, 400);
-      });
-    }
-
-    function startLayoutWatchdog() {
-      if (layoutWatchdog) {
-        windowObject.clearInterval(layoutWatchdog);
-      }
-
-      layoutWatchdog = windowObject.setInterval(() => {
-        measureAndPublish();
-      }, 2500);
     }
 
     function observeChromeMode() {
@@ -272,9 +216,7 @@
 
       const initializeDocumentMeasurement = () => {
         observeChromeMode();
-        measureAndPublish();
-        scheduleDelayedRemeasure();
-        startLayoutWatchdog();
+        update();
       };
 
       if (documentObject.readyState === "loading") {
