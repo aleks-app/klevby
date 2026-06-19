@@ -1,6 +1,6 @@
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
-    margin-top: -120px !important; /* Тянем Кнопки НАВЕРХ к аватарке, они потащат за собой всё остальное */
+    margin-top: -120px !important;
     margin-bottom: 24px !important;
 }
 
@@ -11,8 +11,8 @@
 }
 
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
-    position: relative !important; /* Вернули в поезд! Никакого абсолюта */
-    margin-top: -10px !important; /* Аккуратный нахлёст, чтобы не было вибрации */
-    margin-bottom: 90px !important; /* Зазор до тачбара */
+    position: relative !important;
+    margin-top: -5px !important; /* Ровно 5 пикселей вверх к аватарке */
+    margin-bottom: 90px !important;
     z-index: 10 !important;
 }
