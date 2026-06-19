@@ -24,7 +24,7 @@
   const HOME_SKELETON_TAP_ZONE_ID = "homeSkeletonDevTapZone";
   const HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID = "homeSkeletonDiagnosticsOverlay";
   const HOME_SKELETON_RUNTIME_STYLE_ID = "homeSkeletonRuntimeStyle";
-  const HOME_SKELETON_INLINE_STYLE_PROPS = Object.freeze([
+  const HOME_SKELETON_ROOT_INLINE_STYLE_PROPS = Object.freeze([
     "position",
     "top",
     "left",
@@ -35,7 +35,15 @@
     "min-height",
     "max-height",
     "margin",
+    "margin-top",
+    "margin-right",
+    "margin-bottom",
+    "margin-left",
     "padding",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
     "transform",
     "overflow",
     "display",
@@ -46,7 +54,6 @@
     "box-sizing"
   ]);
   const HOME_SKELETON_SLOT_INLINE_STYLE_PROPS = Object.freeze([
-    "display",
     "width",
     "min-width",
     "max-width",
@@ -54,10 +61,14 @@
     "min-inline-size",
     "max-inline-size",
     "margin",
-    "margin-top",
-    "margin-bottom",
     "margin-left",
     "margin-right",
+    "margin-top",
+    "margin-bottom",
+    "justify-self",
+    "place-self",
+    "align-self",
+    "display",
     "position",
     "inset",
     "left",
@@ -65,14 +76,16 @@
     "top",
     "bottom",
     "transform",
-    "box-sizing",
     "overflow",
-    "justify-self",
-    "place-self",
-    "min-height",
+    "box-sizing",
     "height",
-    "align-self",
-    "padding"
+    "min-height",
+    "max-height",
+    "padding",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left"
   ]);
   const HOME_SKELETON_TAP_COUNT = 7;
   const HOME_SKELETON_TAP_WINDOW_MS = 2500;
@@ -193,6 +206,35 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     return style;
   }
 
+  function removeSkeletonInlineStyleProperty(element, property) {
+    if (!element) return;
+    element.style.setProperty(property, "", "");
+    element.style.removeProperty(property);
+  }
+
+  function clearHomeSkeletonRootInlineStyles(homeSection = document.getElementById(HOME_SECTION_ID)) {
+    if (!homeSection) return false;
+
+    HOME_SKELETON_ROOT_INLINE_STYLE_PROPS.forEach((property) => {
+      removeSkeletonInlineStyleProperty(homeSection, property);
+    });
+    return true;
+  }
+
+  function clearHomeSkeletonSlotInlineStyles(homeSection = document.getElementById(HOME_SECTION_ID)) {
+    if (!homeSection) return false;
+
+    const slotSelectors = [".home-quick-actions", ".home-feed-preview", ".home-weather-card"];
+    slotSelectors.forEach((selector) => {
+      const element = homeSection.querySelector(selector);
+      if (!element) return;
+
+      HOME_SKELETON_SLOT_INLINE_STYLE_PROPS.forEach((property) => {
+        removeSkeletonInlineStyleProperty(element, property);
+      });
+    });
+    return true;
+  }
 
   function applyHomeSkeletonRootInlineStyle(active) {
     const homeSection = document.getElementById(HOME_SECTION_ID);
@@ -221,14 +263,18 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       return true;
     }
 
-    HOME_SKELETON_INLINE_STYLE_PROPS.forEach((property) => {
-      homeSection.style.removeProperty(property);
-    });
-    return false;
+    return clearHomeSkeletonRootInlineStyles(homeSection);
   }
 
   function applyHomeSkeletonSlotInlineStyles(active) {
     const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!homeSection) return;
+
+    if (active !== true) {
+      clearHomeSkeletonSlotInlineStyles(homeSection);
+      return;
+    }
+
     const inset = getCssPixelValue(homeSection, "--klevby-home-content-inset") ?? 22;
     const homeWidth = homeSection?.getBoundingClientRect().width ?? 0;
     const railWidth = Math.max(0, homeWidth - (2 * inset));
@@ -285,15 +331,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     slots.forEach(({ element, styles }) => {
       if (!element) return;
 
-      if (active === true) {
-        Object.entries({ ...sharedStyles, ...styles }).forEach(([property, value]) => {
-          element.style.setProperty(property, value, "important");
-        });
-        return;
-      }
-
-      HOME_SKELETON_SLOT_INLINE_STYLE_PROPS.forEach((property) => {
-        element.style.removeProperty(property);
+      Object.entries({ ...sharedStyles, ...styles }).forEach(([property, value]) => {
+        element.style.setProperty(property, value, "important");
       });
     });
   }
@@ -303,6 +342,17 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
 
     const value = homeSection.style.getPropertyValue(property).trim();
     const priority = homeSection.style.getPropertyPriority(property).trim();
+    if (!value) return null;
+
+    return priority ? `${value}!${priority}` : value;
+  }
+
+  function readHomeSkeletonSlotInlineStyleValue(selector, property, homeSection = document.getElementById(HOME_SECTION_ID)) {
+    const element = homeSection?.querySelector(selector);
+    if (!element) return null;
+
+    const value = element.style.getPropertyValue(property).trim();
+    const priority = element.style.getPropertyPriority(property).trim();
     if (!value) return null;
 
     return priority ? `${value}!${priority}` : value;
@@ -418,6 +468,13 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       inlineDisplayValue: readHomeSkeletonInlineStyleValue(homeSection, "display"),
       inlineTopValue: readHomeSkeletonInlineStyleValue(homeSection, "top"),
       inlineHeightValue: readHomeSkeletonInlineStyleValue(homeSection, "height"),
+      homeInlinePosition: readHomeSkeletonInlineStyleValue(homeSection, "position"),
+      homeInlineDisplay: readHomeSkeletonInlineStyleValue(homeSection, "display"),
+      homeInlineTop: readHomeSkeletonInlineStyleValue(homeSection, "top"),
+      homeInlineHeight: readHomeSkeletonInlineStyleValue(homeSection, "height"),
+      quickInlineWidth: readHomeSkeletonSlotInlineStyleValue(".home-quick-actions", "width", homeSection),
+      feedInlineWidth: readHomeSkeletonSlotInlineStyleValue(".home-feed-preview", "width", homeSection),
+      weatherInlineWidth: readHomeSkeletonSlotInlineStyleValue(".home-weather-card", "width", homeSection),
       quickRect,
       feedRect,
       weatherRect,
@@ -498,6 +555,11 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
 
   function disableHomeSkeletonMode() {
     writeHomeSkeletonStorageFlag(false);
+    setHomeSkeletonState(false);
+    clearHomeSkeletonRootInlineStyles();
+    clearHomeSkeletonSlotInlineStyles();
+    updateHomeFitContract();
+    refreshHomeSkeletonDiagnosticsOverlay();
     syncHomeScreenState();
     return isHomeSkeletonMode();
   }
@@ -574,10 +636,13 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       ["marginTop", contract.homeComputedMarginTop],
       ["transform", contract.homeComputedTransform],
       ["display", contract.homeComputedDisplay],
-      ["inlinePos", contract.inlinePositionValue],
-      ["inlineDisplay", contract.inlineDisplayValue],
-      ["inlineTop", contract.inlineTopValue],
-      ["inlineHeight", contract.inlineHeightValue],
+      ["inlinePos", contract.inlinePositionValue ?? contract.homeInlinePosition],
+      ["inlineDisplay", contract.inlineDisplayValue ?? contract.homeInlineDisplay],
+      ["inlineTop", contract.inlineTopValue ?? contract.homeInlineTop],
+      ["inlineHeight", contract.inlineHeightValue ?? contract.homeInlineHeight],
+      ["quickInlineWidth", contract.quickInlineWidth],
+      ["feedInlineWidth", contract.feedInlineWidth],
+      ["weatherInlineWidth", contract.weatherInlineWidth],
       ["viewportWidth", contract.viewportWidth],
       ["expectedRailLeft", contract.expectedRailLeft],
       ["expectedRailWidth", contract.expectedRailWidth],

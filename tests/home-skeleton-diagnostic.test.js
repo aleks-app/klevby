@@ -26,6 +26,8 @@ test("EXIT SKELETON removes diagnostic attributes and root\/slot inline styles",
   assert.match(owner, /homeSection\.removeAttribute\(HOME_SKELETON_ATTRIBUTE\)/);
   assert.match(owner, /applyHomeSkeletonRootInlineStyle\(false\)/);
   assert.match(owner, /applyHomeSkeletonSlotInlineStyles\(false\)/);
-  assert.match(owner, /HOME_SKELETON_INLINE_STYLE_PROPS\.forEach\(\(property\) => \{\s*homeSection\.style\.removeProperty\(property\);\s*\}\)/);
-  assert.match(owner, /HOME_SKELETON_SLOT_INLINE_STYLE_PROPS\.forEach\(\(property\) => \{\s*element\.style\.removeProperty\(property\);\s*\}\)/);
+  assert.match(owner, /clearHomeSkeletonRootInlineStyles/);
+  assert.match(owner, /clearHomeSkeletonSlotInlineStyles/);
+  assert.match(owner, /HOME_SKELETON_ROOT_INLINE_STYLE_PROPS\.forEach\(\(property\) => \{\s*removeSkeletonInlineStyleProperty\(homeSection, property\);\s*\}\)/);
+  assert.match(owner, /HOME_SKELETON_SLOT_INLINE_STYLE_PROPS\.forEach\(\(property\) => \{\s*removeSkeletonInlineStyleProperty\(element, property\);\s*\}\)/);
 });
