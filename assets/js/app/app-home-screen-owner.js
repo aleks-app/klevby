@@ -412,8 +412,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       feedRect &&
       weatherRect &&
       heroRect.bottom <= quickRect.top &&
-      quickRect.top <= feedRect.top &&
-      feedRect.top <= weatherRect.top
+      quickRect.bottom <= feedRect.top &&
+      feedRect.bottom <= weatherRect.top
     );
     const expectedTop = Number.isFinite(availableTop) ? availableTop : (headerRect?.bottom ?? null);
     const expectedBottom = Number.isFinite(availableBottom) ? availableBottom : (touchBarRect?.top ?? null);
@@ -463,15 +463,20 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       heroRect,
       heroTop: heroRect?.top ?? null,
       heroBottom: heroRect?.bottom ?? null,
+      heroHeight: heroRect?.height ?? null,
       quickTop: quickRect?.top ?? null,
       quickBottom: quickRect?.bottom ?? null,
+      quickHeight: quickRect?.height ?? null,
       feedTop: feedRect?.top ?? null,
       feedBottom: feedRect?.bottom ?? null,
+      feedHeight: feedRect?.height ?? null,
       weatherTop: weatherRect?.top ?? null,
       weatherBottom: weatherRect?.bottom ?? null,
+      weatherHeight: weatherRect?.height ?? null,
       heroToQuickGap,
       quickToFeedGap,
       feedToWeatherGap,
+      weatherToTouchBar: weatherToTouchBarPx,
       orderPass,
       quickRect,
       feedRect,
@@ -488,18 +493,18 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       touchBarTop: touchBarRect?.top ?? expectedBottom,
       topDeltaPx,
       bottomDeltaPx,
-      quickHeight: quickRect?.height ?? null,
       quickLeft: quickRect?.left ?? null,
       quickWidth: quickRect?.width ?? null,
       feedSlotHeight: feedRect?.height ?? null,
       feedLeft: feedRect?.left ?? null,
       feedWidth: feedRect?.width ?? null,
-      weatherHeight: weatherRect?.height ?? null,
       weatherLeft: weatherRect?.left ?? null,
       weatherWidth: weatherRect?.width ?? null,
       weatherToTouchBarPx,
       weatherOverflowPx,
       homeOverflowPx,
+      weatherOv: weatherOverflowPx,
+      homeOv: homeOverflowPx,
       bottomRhythmDeltaPx,
       slotsOverlap: Boolean(
         quickRect && feedRect && weatherRect &&
@@ -1141,6 +1146,9 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
         homeOverflowPx: null,
         slotsOverlap: null,
         feedHeightDeltaPx: null,
+        feedHeightBeforeRotation: null,
+        feedHeightAfterRotation: null,
+        weatherTopDeltaAfterRotation: null,
         weatherTopDeltaPx: null
       };
     }
@@ -1223,6 +1231,9 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       homeOverflowPx,
       slotsOverlap,
       feedHeightDeltaPx,
+      feedHeightBeforeRotation: feedRect?.height ?? null,
+      feedHeightAfterRotation: activeFeedCardRect?.height ?? null,
+      weatherTopDeltaAfterRotation: weatherTopDeltaPx,
       weatherTopDeltaPx
     };
   }

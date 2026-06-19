@@ -11,6 +11,7 @@
     --kg-home-grid-gap: var(--klevby-home-section-gap, 14px);
     --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 18px);
     --kg-home-grid-lower-fill-y: var(--klevby-home-lower-fill-y, 0px);
+    --kg-home-grid-weather-clearance-y: var(--klevby-home-weather-clearance-y, 12px);
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] {
@@ -29,7 +30,8 @@
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     align-items: stretch;
     align-content: stretch;
-    row-gap: 0;
+    row-gap: var(--kg-home-grid-gap);
+    padding-bottom: var(--kg-home-grid-weather-clearance-y);
     box-sizing: border-box;
     container-type: size;
     container-name: kg-home-screen;
