@@ -17,7 +17,7 @@ body[data-app-chrome-mode="trips"] #klevbyAppRoot > header {
   overflow: visible;
   background: transparent;
   border: 0;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 body[data-app-chrome-mode="trips"] #klevbyAppRoot > header .header-inner {
@@ -83,7 +83,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   position: absolute;
   inset: 0;
   z-index: 1;
-  pointer-events: none;
+  pointer-events: auto;
   background: transparent;
 }
 
@@ -205,7 +205,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   width: 1px;
   height: calc(100% - 28px);
   background: rgba(236, 244, 252, 0.12);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 #tripsSection .trips-fullscreen-type-tab.is-active {
@@ -275,7 +275,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   width: 1px;
   height: calc(100% - 18px);
   background: rgba(236, 244, 252, 0.10);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 #tripsSection .trips-fullscreen-filter-item.is-active {
@@ -353,7 +353,7 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
-  pointer-events: none;
+  pointer-events: auto;
   user-select: none;
   cursor: default;
 }
