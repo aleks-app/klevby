@@ -308,6 +308,22 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     return priority ? `${value}!${priority}` : value;
   }
 
+  function readHomeSkeletonSlotInlineDiagnostics(element) {
+    if (!element) {
+      return {
+        inlineDisplayValue: null,
+        inlineWidthValue: null,
+        inlinePositionValue: null
+      };
+    }
+
+    return {
+      inlineDisplayValue: readHomeSkeletonInlineStyleValue(element, "display"),
+      inlineWidthValue: readHomeSkeletonInlineStyleValue(element, "width"),
+      inlinePositionValue: readHomeSkeletonInlineStyleValue(element, "position")
+    };
+  }
+
   function isHomeSkeletonMode(homeSection = document.getElementById(HOME_SECTION_ID)) {
     return (
       document.body?.getAttribute(HOME_SKELETON_ATTRIBUTE) === "true" ||
@@ -360,13 +376,18 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const quick = document.querySelector("#homeSection .home-quick-actions");
     const feed = document.querySelector("#homeSection .home-feed-preview");
     const weather = document.querySelector("#homeSection .home-weather-card");
+    const hero = document.querySelector("#homeSection .hero");
     const headerRect = readRectDiagnostics(header);
     const touchBarRect = readRectDiagnostics(touchBar);
     const homeRect = readRectDiagnostics(homeSection);
     const homeComputedStyle = homeSection ? window.getComputedStyle(homeSection) : null;
+    const heroRect = readRectDiagnostics(hero);
     const quickRect = readRectDiagnostics(quick);
     const feedRect = readRectDiagnostics(feed);
     const weatherRect = readRectDiagnostics(weather);
+    const quickInline = readHomeSkeletonSlotInlineDiagnostics(quick);
+    const feedInline = readHomeSkeletonSlotInlineDiagnostics(feed);
+    const weatherInline = readHomeSkeletonSlotInlineDiagnostics(weather);
 
     const weatherToTouchBarPx = weatherRect && touchBarRect
       ? touchBarRect.top - weatherRect.bottom
@@ -383,6 +404,17 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const bottomRhythmDeltaPx = feedToWeatherGap != null && weatherToTouchBarPx != null
       ? Math.abs(feedToWeatherGap - weatherToTouchBarPx)
       : null;
+    const heroToQuickGap = heroRect && quickRect ? quickRect.top - heroRect.bottom : null;
+    const quickToFeedGap = quickRect && feedRect ? feedRect.top - quickRect.bottom : null;
+    const orderPass = Boolean(
+      heroRect &&
+      quickRect &&
+      feedRect &&
+      weatherRect &&
+      heroRect.bottom <= quickRect.top &&
+      quickRect.top <= feedRect.top &&
+      feedRect.top <= weatherRect.top
+    );
     const expectedTop = Number.isFinite(availableTop) ? availableTop : (headerRect?.bottom ?? null);
     const expectedBottom = Number.isFinite(availableBottom) ? availableBottom : (touchBarRect?.top ?? null);
     const topDeltaPx = homeRect && expectedTop != null
@@ -418,6 +450,29 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       inlineDisplayValue: readHomeSkeletonInlineStyleValue(homeSection, "display"),
       inlineTopValue: readHomeSkeletonInlineStyleValue(homeSection, "top"),
       inlineHeightValue: readHomeSkeletonInlineStyleValue(homeSection, "height"),
+      quickInlineDisplayValue: quickInline.inlineDisplayValue,
+      quickInlineWidthValue: quickInline.inlineWidthValue,
+      quickInlinePositionValue: quickInline.inlinePositionValue,
+      feedInlineDisplayValue: feedInline.inlineDisplayValue,
+      feedInlineWidthValue: feedInline.inlineWidthValue,
+      feedInlinePositionValue: feedInline.inlinePositionValue,
+      weatherInlineDisplayValue: weatherInline.inlineDisplayValue,
+      weatherInlineWidthValue: weatherInline.inlineWidthValue,
+      weatherInlinePositionValue: weatherInline.inlinePositionValue,
+      realMode: !isHomeSkeletonMode(homeSection),
+      heroRect,
+      heroTop: heroRect?.top ?? null,
+      heroBottom: heroRect?.bottom ?? null,
+      quickTop: quickRect?.top ?? null,
+      quickBottom: quickRect?.bottom ?? null,
+      feedTop: feedRect?.top ?? null,
+      feedBottom: feedRect?.bottom ?? null,
+      weatherTop: weatherRect?.top ?? null,
+      weatherBottom: weatherRect?.bottom ?? null,
+      heroToQuickGap,
+      quickToFeedGap,
+      feedToWeatherGap,
+      orderPass,
       quickRect,
       feedRect,
       weatherRect,
@@ -578,6 +633,29 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       ["inlineDisplay", contract.inlineDisplayValue],
       ["inlineTop", contract.inlineTopValue],
       ["inlineHeight", contract.inlineHeightValue],
+      ["realMode", contract.realMode],
+      ["heroTop", contract.heroTop],
+      ["heroBottom", contract.heroBottom],
+      ["quickTop", contract.quickTop],
+      ["quickBottom", contract.quickBottom],
+      ["feedTop", contract.feedTop],
+      ["feedBottom", contract.feedBottom],
+      ["weatherTop", contract.weatherTop],
+      ["weatherBottom", contract.weatherBottom],
+      ["heroToQuickGap", contract.heroToQuickGap],
+      ["quickToFeedGap", contract.quickToFeedGap],
+      ["feedToWeatherGap", contract.feedToWeatherGap],
+      ["weatherToTouchBar", contract.weatherToTouchBarPx],
+      ["orderPass", contract.orderPass],
+      ["quickInline", [contract.quickInlineDisplayValue, contract.quickInlineWidthValue, contract.quickInlinePositionValue]
+        .map(formatHomeSkeletonDiagnosticValue)
+        .join("/")],
+      ["feedInline", [contract.feedInlineDisplayValue, contract.feedInlineWidthValue, contract.feedInlinePositionValue]
+        .map(formatHomeSkeletonDiagnosticValue)
+        .join("/")],
+      ["weatherInline", [contract.weatherInlineDisplayValue, contract.weatherInlineWidthValue, contract.weatherInlinePositionValue]
+        .map(formatHomeSkeletonDiagnosticValue)
+        .join("/")],
       ["viewportWidth", contract.viewportWidth],
       ["expectedRailLeft", contract.expectedRailLeft],
       ["expectedRailWidth", contract.expectedRailWidth],

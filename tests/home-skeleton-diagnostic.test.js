@@ -29,3 +29,22 @@ test("EXIT SKELETON removes diagnostic attributes and root\/slot inline styles",
   assert.match(owner, /HOME_SKELETON_INLINE_STYLE_PROPS\.forEach\(\(property\) => \{\s*homeSection\.style\.removeProperty\(property\);\s*\}\)/);
   assert.match(owner, /HOME_SKELETON_SLOT_INLINE_STYLE_PROPS\.forEach\(\(property\) => \{\s*element\.style\.removeProperty\(property\);\s*\}\)/);
 });
+
+test("Home diagnostics report real-mode order and skeleton inline cleanup", () => {
+  const owner = read(homeOwnerPath);
+
+  assert.match(owner, /realMode:\s*!isHomeSkeletonMode\(homeSection\)/);
+  assert.match(owner, /heroTop:\s*heroRect\?\.top \?\? null/);
+  assert.match(owner, /quickTop:\s*quickRect\?\.top \?\? null/);
+  assert.match(owner, /feedTop:\s*feedRect\?\.top \?\? null/);
+  assert.match(owner, /weatherTop:\s*weatherRect\?\.top \?\? null/);
+  assert.match(owner, /heroToQuickGap/);
+  assert.match(owner, /quickToFeedGap/);
+  assert.match(owner, /feedToWeatherGap/);
+  assert.match(owner, /weatherToTouchBar/);
+  assert.match(owner, /orderPass/);
+  assert.match(owner, /readHomeSkeletonSlotInlineDiagnostics/);
+  assert.match(owner, /quickInlineDisplayValue/);
+  assert.match(owner, /feedInlineWidthValue/);
+  assert.match(owner, /weatherInlinePositionValue/);
+});
