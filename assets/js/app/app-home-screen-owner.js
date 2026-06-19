@@ -19,6 +19,12 @@
   const HOME_GRID_DIAGNOSTIC_PASS_DELTA_PX = 2;
   const HOME_GRID_SAFETY_PASS_DELTA_PX = 6;
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
+  const HOME_SKELETON_ATTRIBUTE = "data-home-skeleton";
+  const HOME_SKELETON_STORAGE_KEY = "klevgo:home-skeleton";
+  const HOME_SKELETON_TAP_ZONE_ID = "homeSkeletonDevTapZone";
+  const HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID = "homeSkeletonDiagnosticsOverlay";
+  const HOME_SKELETON_TAP_COUNT = 7;
+  const HOME_SKELETON_TAP_WINDOW_MS = 2500;
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
   const HOME_CLEARANCE_PX = 8;
   const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
@@ -50,6 +56,259 @@
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
+
+
+  function isHomeSkeletonMode(homeSection = document.getElementById(HOME_SECTION_ID)) {
+    return (
+      document.body?.getAttribute(HOME_SKELETON_ATTRIBUTE) === "true" ||
+      homeSection?.getAttribute(HOME_SKELETON_ATTRIBUTE) === "true"
+    );
+  }
+
+  function setHomeSkeletonState(active) {
+    const body = document.body;
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!body || !homeSection) return;
+
+    if (active) {
+      body.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
+      homeSection.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
+      return;
+    }
+
+    body.removeAttribute(HOME_SKELETON_ATTRIBUTE);
+    homeSection.removeAttribute(HOME_SKELETON_ATTRIBUTE);
+  }
+
+  function readRectDiagnostics(element) {
+    if (!element) return null;
+
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      height: rect.height
+    };
+  }
+
+  function resolveHomeSkeletonGeometryDiagnostics({
+    header,
+    touchBar,
+    homeSection,
+    availableHeight
+  } = {}) {
+    const quick = document.querySelector("#homeSection .home-quick-actions");
+    const feed = document.querySelector("#homeSection .home-feed-preview");
+    const weather = document.querySelector("#homeSection .home-weather-card");
+    const headerRect = readRectDiagnostics(header);
+    const touchBarRect = readRectDiagnostics(touchBar);
+    const homeRect = readRectDiagnostics(homeSection);
+    const quickRect = readRectDiagnostics(quick);
+    const feedRect = readRectDiagnostics(feed);
+    const weatherRect = readRectDiagnostics(weather);
+
+    const weatherToTouchBarPx = weatherRect && touchBarRect
+      ? touchBarRect.top - weatherRect.bottom
+      : null;
+    const weatherOverflowPx = weatherRect && touchBarRect
+      ? Math.max(0, weatherRect.bottom - touchBarRect.top)
+      : null;
+    const homeOverflowPx = homeRect && touchBarRect
+      ? Math.max(0, homeRect.bottom - touchBarRect.top)
+      : null;
+    const feedToWeatherGap = feedRect && weatherRect
+      ? weatherRect.top - feedRect.bottom
+      : null;
+    const bottomRhythmDeltaPx = feedToWeatherGap != null && weatherToTouchBarPx != null
+      ? Math.abs(feedToWeatherGap - weatherToTouchBarPx)
+      : null;
+
+    return {
+      skeletonMode: isHomeSkeletonMode(homeSection),
+      headerRect,
+      touchBarRect,
+      homeSectionRect: homeRect,
+      homeGridRootRect: homeRect,
+      quickRect,
+      feedRect,
+      weatherRect,
+      availableHeight,
+      quickHeight: quickRect?.height ?? null,
+      feedSlotHeight: feedRect?.height ?? null,
+      weatherHeight: weatherRect?.height ?? null,
+      weatherToTouchBarPx,
+      weatherOverflowPx,
+      homeOverflowPx,
+      bottomRhythmDeltaPx,
+      slotsOverlap: Boolean(
+        quickRect && feedRect && weatherRect &&
+        (quickRect.bottom > feedRect.top || feedRect.bottom > weatherRect.top)
+      )
+    };
+  }
+
+
+  function readHomeSkeletonStorageFlag() {
+    try {
+      return window.localStorage?.getItem(HOME_SKELETON_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function writeHomeSkeletonStorageFlag(enabled) {
+    try {
+      window.localStorage?.setItem(HOME_SKELETON_STORAGE_KEY, enabled ? "true" : "false");
+    } catch (_) {
+      // Keep the in-memory DOM state in sync even when storage is unavailable.
+    }
+
+    return enabled === true;
+  }
+
+  function shouldEnableHomeSkeletonMode() {
+    return readHomeSkeletonStorageFlag();
+  }
+
+  function applyHomeSkeletonModeFromState(homeActive = isHomeScreenActive()) {
+    const enabled = homeActive && shouldEnableHomeSkeletonMode();
+    setHomeSkeletonState(enabled);
+    return enabled;
+  }
+
+  function enableHomeSkeletonMode() {
+    writeHomeSkeletonStorageFlag(true);
+    syncHomeScreenState();
+    return isHomeSkeletonMode();
+  }
+
+  function disableHomeSkeletonMode() {
+    writeHomeSkeletonStorageFlag(false);
+    syncHomeScreenState();
+    return isHomeSkeletonMode();
+  }
+
+  function toggleHomeSkeletonMode() {
+    writeHomeSkeletonStorageFlag(!shouldEnableHomeSkeletonMode());
+    syncHomeScreenState();
+    return isHomeSkeletonMode();
+  }
+
+  function ensureHomeSkeletonTapZone() {
+    if (!document.body) return null;
+
+    const existingZone = document.getElementById(HOME_SKELETON_TAP_ZONE_ID);
+    if (existingZone) return existingZone;
+
+    const zone = document.createElement("button");
+    zone.id = HOME_SKELETON_TAP_ZONE_ID;
+    zone.className = "home-skeleton-dev-tap-zone";
+    zone.type = "button";
+    zone.setAttribute("aria-label", "Exit Home skeleton diagnostic mode");
+    zone.textContent = "EXIT SKELETON";
+    document.body.appendChild(zone);
+
+    return zone;
+  }
+
+  function ensureHomeSkeletonDiagnosticsOverlay() {
+    if (!document.body) return null;
+
+    const existingOverlay = document.getElementById(HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID);
+    if (existingOverlay) return existingOverlay;
+
+    const overlay = document.createElement("div");
+    overlay.id = HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID;
+    overlay.className = "home-skeleton-diagnostics-overlay";
+    overlay.setAttribute("aria-live", "polite");
+    document.body.appendChild(overlay);
+
+    return overlay;
+  }
+
+  function formatHomeSkeletonDiagnosticValue(value) {
+    if (value == null) return "null";
+    if (typeof value === "boolean") return String(value);
+    if (typeof value === "number") return Number.isFinite(value) ? String(Math.round(value)) : "null";
+    return String(value);
+  }
+
+  function refreshHomeSkeletonDiagnosticsOverlay() {
+    const overlay = ensureHomeSkeletonDiagnosticsOverlay();
+    if (!overlay) return null;
+
+    const contract = getHomeFitContract() || {};
+    const homeHeight = contract.homeSectionRect?.height ?? contract.homeHeight ?? null;
+    const rows = [
+      ["skeleton", contract.skeletonMode],
+      ["available", contract.availableHeight],
+      ["home", homeHeight],
+      ["quick", contract.quickHeight],
+      ["feed", contract.feedSlotHeight],
+      ["weather", contract.weatherHeight],
+      ["toTouch", contract.weatherToTouchBarPx],
+      ["weatherOv", contract.weatherOverflowPx],
+      ["homeOv", contract.homeOverflowPx],
+      ["overlap", contract.slotsOverlap],
+      ["rhythmΔ", contract.bottomRhythmDeltaPx]
+    ];
+
+    overlay.textContent = [
+      "SKELETON DIAG",
+      ...rows.map(([label, value]) => `${label}: ${formatHomeSkeletonDiagnosticValue(value)}`)
+    ].join("\n");
+
+    return overlay.textContent;
+  }
+
+  function isEventInsideHomeSkeletonTapZone(event, zone) {
+    if (!event || !zone) return false;
+
+    const rect = zone.getBoundingClientRect();
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    );
+  }
+
+  function bindHomeSkeletonTapToggle() {
+    const target = ensureHomeSkeletonTapZone();
+    ensureHomeSkeletonDiagnosticsOverlay();
+    if (!target || target.dataset.homeSkeletonTapToggleBound === "true") return;
+
+    let tapCount = 0;
+    let firstTapAt = 0;
+
+    target.dataset.homeSkeletonTapToggleBound = "true";
+    target.addEventListener("click", () => {
+      if (isHomeSkeletonMode()) {
+        tapCount = 0;
+        firstTapAt = 0;
+        disableHomeSkeletonMode();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (isHomeSkeletonMode()) return;
+      if (!isEventInsideHomeSkeletonTapZone(event, target)) return;
+
+      const now = Date.now();
+      if (!firstTapAt || now - firstTapAt > HOME_SKELETON_TAP_WINDOW_MS) {
+        firstTapAt = now;
+        tapCount = 0;
+      }
+
+      tapCount += 1;
+
+      if (tapCount < HOME_SKELETON_TAP_COUNT) return;
+
+      tapCount = 0;
+      firstTapAt = 0;
+      enableHomeSkeletonMode();
+    });
+  }
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -712,6 +971,13 @@
       kernelHeaderBottom: appShell?.headerBottom,
       kernelHeaderHeight: appShell?.headerHeight
     });
+    const homeSkeletonGeometry = resolveHomeSkeletonGeometryDiagnostics({
+      header,
+      touchBar,
+      homeSection,
+      availableHeight
+    });
+
     const homeTouchBarFrame = resolveHomeTouchBarFrameContract({
       contractActive: homeScreenContract.homeScreenContractActive,
       homeBottom: homeSectionRect.bottom,
@@ -759,6 +1025,7 @@
       ...homeScreenContract,
       ...homeHeaderFrame,
       ...homeTouchBarFrame,
+      ...homeSkeletonGeometry,
       solverMode: "retired-pending",
       solverRetired: HOME_SOLVER_RETIREMENT_ENABLED,
       solverFallbackActive: false,
@@ -780,6 +1047,7 @@
     };
 
     updateHomeSolverRetirementState(density, touchBar);
+    refreshHomeSkeletonDiagnosticsOverlay();
     return { ...lastHomeFitContract };
   }
 
@@ -924,6 +1192,7 @@
 
   function syncHomeScreenState() {
     const homeActive = isHomeScreenActive();
+    applyHomeSkeletonModeFromState(homeActive);
     setLockState(homeActive);
     setHomeGridContractState(homeActive);
     setHomeScreenContractIntegrationState(homeActive);
@@ -980,6 +1249,8 @@
     window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
     updateAppHeight();
+    bindHomeSkeletonTapToggle();
+    applyHomeSkeletonModeFromState(isHomeScreenActive());
     setHomeGridContractState(isHomeScreenActive());
     updateHomeFitContract();
     observeStateOwners();
@@ -1016,7 +1287,13 @@
     resolveHomeHeaderFrameContract,
     resolveHomeTouchBarFrameContract,
     getHomeFitContract,
-    isHomeScreenActive
+    isHomeScreenActive,
+    isHomeSkeletonMode,
+    shouldEnableHomeSkeletonMode,
+    enableHomeSkeletonMode,
+    disableHomeSkeletonMode,
+    toggleHomeSkeletonMode,
+    refreshHomeSkeletonDiagnosticsOverlay
   });
 
   if (typeof module !== "undefined" && module.exports) {

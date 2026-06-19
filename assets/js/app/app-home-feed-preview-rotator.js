@@ -26,8 +26,21 @@
       let activeIndex = 0;
       let timerId = 0;
 
+      function isHomeSkeletonMode() {
+        const home = document.getElementById(HOME_SECTION_ID);
+        return (
+          document.body?.getAttribute("data-home-skeleton") === "true" ||
+          home?.getAttribute("data-home-skeleton") === "true"
+        );
+      }
+
       function syncViewportHeight() {
         if (!viewport || !feedSlide) return;
+
+        if (isHomeSkeletonMode()) {
+          viewport.style.minHeight = "";
+          return;
+        }
 
         const height = Math.ceil(feedSlide.getBoundingClientRect().height);
         if (height > 0) {
