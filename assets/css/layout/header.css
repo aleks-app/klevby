@@ -1,4 +1,6 @@
 header {
+  --kg-header-safe-top: var(--kg-safe-top, env(safe-area-inset-top, 0px));
+  --kg-header-frame-bottom: var(--kg-screen-top-frame-offset, var(--kg-shell-top, var(--klevby-app-available-top, 0px)));
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -458,7 +460,7 @@ header[data-chrome-mode="feed"] .mobile-actions {
 
 @media (max-width: 900px) {
   body[data-app-chrome-mode="home"] header {
-    padding: calc(env(safe-area-inset-top) - 6px) 0 5px;
+    padding: calc(var(--kg-header-safe-top, env(safe-area-inset-top, 0px)) - 6px) 0 5px;
   }
 
   body[data-app-chrome-mode="home"] header .header-inner {

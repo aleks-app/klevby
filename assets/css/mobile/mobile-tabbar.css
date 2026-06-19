@@ -11,12 +11,12 @@
 
   .mobile-tabbar {
     position: fixed;
-    left: var(--klevby-app-inline-inset);
-    right: var(--klevby-app-inline-inset);
-    bottom: var(--klevby-touchbar-bottom-offset);
+    left: var(--kg-screen-inline, var(--klevby-app-inline-inset));
+    right: var(--kg-screen-inline, var(--klevby-app-inline-inset));
+    bottom: var(--kg-touchbar-bottom-offset, var(--klevby-touchbar-bottom-offset));
     z-index: 1100;
 
-    height: var(--klevby-touchbar-height);
+    height: var(--kg-touchbar-height, var(--klevby-touchbar-height));
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: stretch;

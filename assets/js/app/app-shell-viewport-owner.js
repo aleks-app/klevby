@@ -6,11 +6,15 @@
   }
 
   if (root && root.document) {
+    root.KlevGoViewportKernel = api;
     root.KlevbyAppShellViewportOwner = api.createAppShellViewportOwner(root, root.document);
     root.KlevbyAppShellViewportOwner.init();
   }
 })(typeof window !== "undefined" ? window : null, function () {
   "use strict";
+
+  const VIEWPORT_KERNEL_ROLE = "core-viewport-kernel";
+  const VIEWPORT_KERNEL_ENTRYPOINT = "assets/js/app/app-shell-viewport-owner.js";
 
   const CSS_VARIABLES = Object.freeze({
     viewportWidth: "--klevby-app-viewport-width",
@@ -19,6 +23,29 @@
     availableBottom: "--klevby-app-available-bottom",
     availableHeight: "--klevby-app-available-height",
     availableBottomOffset: "--klevby-app-available-bottom-offset"
+  });
+
+  const KG_CSS_VARIABLES = Object.freeze({
+    viewportWidth: "--kg-viewport-width",
+    viewportHeight: "--kg-viewport-height",
+    availableTop: "--kg-shell-top",
+    availableBottom: "--kg-shell-bottom",
+    availableHeight: "--kg-shell-height",
+    availableBottomOffset: "--kg-shell-bottom-offset"
+  });
+
+  const HEADER_FRAME_CSS_VARIABLES = Object.freeze({
+    headerTop: "--kg-header-top",
+    headerBottom: "--kg-header-bottom",
+    headerHeight: "--kg-header-height-measured",
+    headerTopOffset: "--kg-header-top-offset-measured"
+  });
+
+  const TOUCHBAR_FRAME_CSS_VARIABLES = Object.freeze({
+    touchbarTop: "--kg-touchbar-top",
+    touchbarBottom: "--kg-touchbar-bottom",
+    touchbarHeight: "--kg-touchbar-height-measured",
+    touchbarBottomOffset: "--kg-touchbar-bottom-offset-measured"
   });
 
   function finiteNonNegative(value, fallback = 0) {
@@ -52,11 +79,16 @@
       finiteNonNegative(innerHeight) ||
       finiteNonNegative(clientHeight);
     const cleanChromeMode = String(chromeMode || "").trim().toLowerCase();
+    const measuredHeaderTop = finiteNonNegative(headerRect?.top);
     const measuredHeaderBottom = finiteNonNegative(headerRect?.bottom);
     const measuredTabbarTop = finiteNonNegative(tabbarRect?.top, viewportHeight);
     const availableTop = headerVisible
       ? clamp(measuredHeaderBottom, 0, viewportHeight)
       : 0;
+    const headerTop = headerVisible ? clamp(measuredHeaderTop, 0, availableTop) : 0;
+    const headerBottom = headerVisible ? availableTop : 0;
+    const headerHeight = headerVisible ? Math.max(0, headerBottom - headerTop) : 0;
+    const headerTopOffset = headerVisible ? headerTop : 0;
     const usesTabbarBoundary =
       cleanChromeMode !== "map" && tabbarVisible && tabbarRect != null;
     const availableBottom = usesTabbarBoundary
@@ -64,6 +96,15 @@
       : viewportHeight;
     const availableHeight = Math.max(0, availableBottom - availableTop);
     const availableBottomOffset = Math.max(0, viewportHeight - availableBottom);
+    const measuredTabbarBottom = finiteNonNegative(tabbarRect?.bottom, viewportHeight);
+    const touchbarTop = usesTabbarBoundary ? availableBottom : viewportHeight;
+    const touchbarBottom = usesTabbarBoundary
+      ? clamp(measuredTabbarBottom, touchbarTop, viewportHeight)
+      : viewportHeight;
+    const touchbarHeight = usesTabbarBoundary ? Math.max(0, touchbarBottom - touchbarTop) : 0;
+    const touchbarBottomOffset = usesTabbarBoundary
+      ? Math.max(0, viewportHeight - touchbarBottom)
+      : 0;
 
     return {
       chromeMode: cleanChromeMode,
@@ -73,6 +114,14 @@
       availableBottom,
       availableHeight,
       availableBottomOffset,
+      headerTop,
+      headerBottom,
+      headerHeight,
+      headerTopOffset,
+      touchbarTop,
+      touchbarBottom,
+      touchbarHeight,
+      touchbarBottomOffset,
       headerVisible: Boolean(headerVisible),
       tabbarVisible: cleanChromeMode === "map" ? false : Boolean(tabbarVisible)
     };
@@ -163,6 +212,18 @@
         style.setProperty(variable, `${measurement[property]}px`);
       });
 
+      Object.entries(KG_CSS_VARIABLES).forEach(([property, variable]) => {
+        style.setProperty(variable, `${measurement[property]}px`);
+      });
+
+      Object.entries(HEADER_FRAME_CSS_VARIABLES).forEach(([property, variable]) => {
+        style.setProperty(variable, `${measurement[property]}px`);
+      });
+
+      Object.entries(TOUCHBAR_FRAME_CSS_VARIABLES).forEach(([property, variable]) => {
+        style.setProperty(variable, `${measurement[property]}px`);
+      });
+
       lastMeasurement = Object.freeze({ ...measurement });
       windowObject.dispatchEvent(
         new windowObject.CustomEvent("klevby-app-shell-updated", {
@@ -238,8 +299,18 @@
     });
   }
 
+  const calculateViewportKernel = calculateAppShellViewport;
+  const createViewportKernel = createAppShellViewportOwner;
+
   return Object.freeze({
+    VIEWPORT_KERNEL_ROLE,
+    VIEWPORT_KERNEL_ENTRYPOINT,
     CSS_VARIABLES,
+    KG_CSS_VARIABLES,
+    HEADER_FRAME_CSS_VARIABLES,
+    TOUCHBAR_FRAME_CSS_VARIABLES,
+    calculateViewportKernel,
+    createViewportKernel,
     calculateAppShellViewport,
     createAppShellViewportOwner
   });

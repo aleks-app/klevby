@@ -211,7 +211,7 @@
     -webkit-backdrop-filter: blur(18px) saturate(0.92);
   }
 
-  #homeSection {
+  #homeSection:not(.kg-screen) {
     position: absolute !important;
     z-index: 1 !important;
     top: var(--klevby-app-available-top) !important;

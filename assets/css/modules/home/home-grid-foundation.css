@@ -1,0 +1,98 @@
+/*
+ * PR-5 — Home CSS Grid Foundation.
+ *
+ * PR-8 cleanly integrates the shared .kg-screen contract with the Home grid.
+ * The runtime Home owner adds .kg-screen and data-home-layout="grid" only while
+ * Home is active. The legacy solver remains active as read-only/safety-fill.
+ *
+ * Do not remove or override --klevby-home-lower-fill-y here.
+ */
+
+@media (max-width: 767px) {
+  :root {
+    --kg-home-grid-inline: var(--klevby-home-content-inset, var(--kg-screen-inline, 22px));
+    --kg-home-grid-gap: var(--klevby-home-section-gap, 14px);
+    --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 18px);
+    --kg-home-grid-lower-fill-y: var(--klevby-home-lower-fill-y, 0px);
+    --kg-home-grid-hero-row: minmax(0, var(--klevby-home-hero-min-h, auto));
+    --kg-home-grid-actions-row: minmax(0, auto);
+    --kg-home-grid-feed-row: minmax(0, auto);
+    --kg-home-grid-weather-row: minmax(0, auto);
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      var(--kg-home-grid-hero-row)
+      var(--kg-home-grid-actions-row)
+      var(--kg-home-grid-feed-row)
+      var(--kg-home-grid-weather-row);
+    grid-template-areas:
+      "hero"
+      "actions"
+      "feed"
+      "weather";
+    align-content: start;
+    row-gap: 0;
+    overflow: hidden;
+    container-type: size;
+    container-name: kg-home-screen;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .hero {
+    grid-area: hero;
+    min-width: 0;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions {
+    grid-area: actions;
+    min-width: 0;
+    width: calc(100% - (2 * var(--kg-home-grid-inline)));
+    margin:
+      var(--klevby-home-quick-overlap)
+      auto
+      calc(var(--kg-home-grid-gap) + var(--kg-home-grid-feed-offset-y));
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-feed-preview {
+    grid-area: feed;
+    min-width: 0;
+    width: calc(100% - (2 * var(--kg-home-grid-inline)));
+    margin: 0 auto var(--kg-home-grid-gap);
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-weather-card {
+    grid-area: weather;
+    min-width: 0;
+    width: calc(100% - (2 * var(--kg-home-grid-inline)));
+    margin: 0 auto var(--kg-home-grid-gap);
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > #forecastPanel {
+    display: none;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-rotator-viewport {
+    min-height: var(--klevby-home-feed-card-min-h);
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-card {
+    min-height: var(--klevby-home-feed-card-min-h);
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image img {
+    min-height: var(--klevby-home-feed-image-min-h);
+  }
+
+  :root[data-home-density="compact"] {
+    --kg-home-grid-gap: var(--klevby-home-section-gap, 12px);
+    --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 18px);
+  }
+
+  :root[data-home-density="tight"] {
+    --kg-home-grid-gap: var(--klevby-home-section-gap, 12px);
+    --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 12px);
+  }
+}

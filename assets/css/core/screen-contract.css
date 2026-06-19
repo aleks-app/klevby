@@ -1,0 +1,51 @@
+/*
+ * KlevGo Screen Contract CSS
+ *
+ * This file defines the future shared screen contract only.
+ * PR-4 must not migrate existing screens to these classes yet.
+ * Runtime measurements still come from the Viewport Kernel through --kg-* tokens.
+ */
+
+/*
+ * PR-11: .kg-screen is framed by the same top and bottom boundaries
+ * that the Viewport Kernel derives from the visible Header bottom
+ * and TouchBar top edges.
+ * Do not add device-specific offsets here.
+ */
+
+.kg-screen {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  top: var(--kg-screen-top-frame-offset, var(--kg-shell-top, var(--klevby-app-available-top, 0px)));
+  bottom: var(--kg-screen-bottom-frame-offset, var(--kg-shell-bottom-offset, var(--klevby-app-available-bottom-offset, 0px)));
+  height: var(--kg-shell-height, var(--klevby-app-available-height, 100dvh));
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.kg-screen--scroll,
+.kg-screen[data-scroll="y"] {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.kg-screen__content {
+  width: 100%;
+  min-height: 100%;
+  padding-inline: var(--kg-screen-inline, var(--klevby-app-inline-inset, 16px));
+  box-sizing: border-box;
+}
+
+.kg-screen__content--no-inline-padding {
+  padding-inline: 0;
+}
+
+.kg-screen__safe-block {
+  padding-top: var(--kg-safe-top, env(safe-area-inset-top, 0px));
+  padding-bottom: var(--kg-safe-bottom, env(safe-area-inset-bottom, 0px));
+}

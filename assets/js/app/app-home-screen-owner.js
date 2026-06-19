@@ -2,6 +2,22 @@
   "use strict";
 
   const HOME_SECTION_ID = "homeSection";
+  const HOME_LAYOUT_ATTRIBUTE = "data-home-layout";
+  const HOME_LAYOUT_GRID_VALUE = "grid";
+  const HOME_LAYOUT_LEGACY_VALUE = "legacy";
+  const HOME_GRID_CONTRACT_ATTRIBUTE = "data-home-grid-contract";
+  const HOME_GRID_FALLBACK_ATTRIBUTE = "data-home-grid-fallback";
+  const HOME_SOLVER_MODE_ATTRIBUTE = "data-home-solver-mode";
+  const HOME_SOLVER_RETIREMENT_ATTRIBUTE = "data-home-solver-retirement";
+  const HOME_LEGACY_SOLVER_EMERGENCY_ATTRIBUTE = "data-home-legacy-solver-emergency";
+  const HOME_LEGACY_SOLVER_EMERGENCY_STORAGE_KEY = "klevgo:home:legacy-solver-emergency";
+  const HOME_SCREEN_CONTRACT_CLASS = "kg-screen";
+  const HOME_SCREEN_CONTRACT_MODE = "clean-integration";
+  const HOME_SCREEN_CONTRACT_PASS_DELTA_PX = 2;
+  const HOME_GRID_CONTRACT_ENABLED = true;
+  const HOME_SOLVER_RETIREMENT_ENABLED = true;
+  const HOME_GRID_DIAGNOSTIC_PASS_DELTA_PX = 2;
+  const HOME_GRID_SAFETY_PASS_DELTA_PX = 6;
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
   const HOME_CLEARANCE_PX = 8;
@@ -29,8 +45,6 @@
   let initialized = false;
   let homeScreenLocked = false;
   let syncFrame = 0;
-  let solverFrame = 0;
-  let solverMeasureFrame = 0;
   let observer = null;
   let hasCapturedFirstSync = false;
   let standaloneViewportReady = false;
@@ -40,6 +54,215 @@
   function getPositiveHeight(value) {
     const height = Number(value);
     return Number.isFinite(height) && height > 0 ? height : 0;
+  }
+
+  function getFiniteNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function getAbsoluteDelta(a, b) {
+    const first = getFiniteNumber(a);
+    const second = getFiniteNumber(b);
+    if (first == null || second == null) return null;
+    return Math.abs(first - second);
+  }
+
+  function getCssPixelValue(root, token) {
+    if (!root || typeof getComputedStyle !== "function") return null;
+
+    const value = getComputedStyle(root).getPropertyValue(token).trim();
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function resolveHomeScreenContractIntegration({
+    contractActive,
+    contractClassActive,
+    kgShellTop,
+    kgShellHeight,
+    kgShellBottomOffset,
+    legacyShellTop,
+    legacyShellHeight,
+    legacyShellBottomOffset,
+    homeTop,
+    homeBottom,
+    homeHeight,
+    expectedTop,
+    expectedBottom,
+    expectedHeight
+  } = {}) {
+    const active = contractActive === true;
+
+    if (!active) {
+      return {
+        homeScreenContractMode: "inactive",
+        homeScreenContractActive: false,
+        homeScreenContractClassActive: contractClassActive === true,
+        homeScreenContractTokenBridgePass: null,
+        homeScreenContractRectPass: null,
+        homeScreenContractPass: null,
+        homeScreenContractReason: "inactive",
+        homeScreenContractTopDeltaPx: null,
+        homeScreenContractBottomDeltaPx: null,
+        homeScreenContractHeightDeltaPx: null,
+        homeScreenContractTokenTopDeltaPx: null,
+        homeScreenContractTokenHeightDeltaPx: null,
+        homeScreenContractTokenBottomOffsetDeltaPx: null
+      };
+    }
+
+    const tokenTopDelta = getAbsoluteDelta(kgShellTop, legacyShellTop);
+    const tokenHeightDelta = getAbsoluteDelta(kgShellHeight, legacyShellHeight);
+    const tokenBottomOffsetDelta = getAbsoluteDelta(kgShellBottomOffset, legacyShellBottomOffset);
+    const topDelta = getAbsoluteDelta(homeTop, expectedTop);
+    const bottomDelta = getAbsoluteDelta(homeBottom, expectedBottom);
+    const heightDelta = getAbsoluteDelta(homeHeight, expectedHeight);
+    const tokenBridgePass =
+      tokenTopDelta != null &&
+      tokenHeightDelta != null &&
+      tokenBottomOffsetDelta != null &&
+      tokenTopDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX &&
+      tokenHeightDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX &&
+      tokenBottomOffsetDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const rectPass =
+      topDelta != null &&
+      bottomDelta != null &&
+      heightDelta != null &&
+      topDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX &&
+      bottomDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX &&
+      heightDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+
+    let reason = "integrated";
+    if (contractClassActive !== true) reason = "kg-screen-class-missing";
+    else if (!tokenBridgePass) reason = "kg-token-bridge-mismatch";
+    else if (!rectPass) reason = "home-rect-contract-mismatch";
+
+    return {
+      homeScreenContractMode: HOME_SCREEN_CONTRACT_MODE,
+      homeScreenContractActive: true,
+      homeScreenContractClassActive: contractClassActive === true,
+      homeScreenContractTokenBridgePass: tokenBridgePass,
+      homeScreenContractRectPass: rectPass,
+      homeScreenContractPass: contractClassActive === true && tokenBridgePass && rectPass,
+      homeScreenContractReason: reason,
+      homeScreenContractTopDeltaPx: topDelta,
+      homeScreenContractBottomDeltaPx: bottomDelta,
+      homeScreenContractHeightDeltaPx: heightDelta,
+      homeScreenContractTokenTopDeltaPx: tokenTopDelta,
+      homeScreenContractTokenHeightDeltaPx: tokenHeightDelta,
+      homeScreenContractTokenBottomOffsetDeltaPx: tokenBottomOffsetDelta
+    };
+  }
+
+  function resolveHomeHeaderFrameContract({
+    contractActive,
+    homeTop,
+    headerTop,
+    headerBottom,
+    headerHeight,
+    appShellAvailableTop,
+    kernelHeaderBottom,
+    kernelHeaderHeight
+  } = {}) {
+    if (contractActive !== true) {
+      return {
+        homeHeaderFrameMode: "inactive",
+        homeHeaderFramePass: null,
+        homeHeaderFrameReason: "inactive",
+        homeHeaderFrameEdgeDeltaPx: null,
+        homeHeaderFrameShellDeltaPx: null,
+        homeHeaderFrameKernelBottomDeltaPx: null,
+        homeHeaderFrameKernelHeightDeltaPx: null,
+        homeHeaderTop: headerTop ?? null,
+        homeHeaderBottom: headerBottom ?? null,
+        homeHeaderHeight: headerHeight ?? null
+      };
+    }
+
+    const edgeDelta = getAbsoluteDelta(homeTop, headerBottom);
+    const shellDelta = getAbsoluteDelta(appShellAvailableTop, headerBottom);
+    const kernelBottomDelta = getAbsoluteDelta(kernelHeaderBottom, headerBottom);
+    const kernelHeightDelta = getAbsoluteDelta(kernelHeaderHeight, headerHeight);
+    const edgePass = edgeDelta != null && edgeDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const shellPass = shellDelta == null || shellDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const kernelBottomPass =
+      kernelBottomDelta == null || kernelBottomDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const kernelHeightPass =
+      kernelHeightDelta == null || kernelHeightDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+
+    let reason = "bound";
+    if (!edgePass) reason = "screen-top-not-on-header-bottom";
+    else if (!shellPass) reason = "shell-top-header-mismatch";
+    else if (!kernelBottomPass) reason = "kernel-header-bottom-mismatch";
+    else if (!kernelHeightPass) reason = "kernel-header-height-mismatch";
+
+    return {
+      homeHeaderFrameMode: "screen-header-integration",
+      homeHeaderFramePass: edgePass && shellPass && kernelBottomPass && kernelHeightPass,
+      homeHeaderFrameReason: reason,
+      homeHeaderFrameEdgeDeltaPx: edgeDelta,
+      homeHeaderFrameShellDeltaPx: shellDelta,
+      homeHeaderFrameKernelBottomDeltaPx: kernelBottomDelta,
+      homeHeaderFrameKernelHeightDeltaPx: kernelHeightDelta,
+      homeHeaderTop: headerTop ?? null,
+      homeHeaderBottom: headerBottom ?? null,
+      homeHeaderHeight: headerHeight ?? null
+    };
+  }
+
+  function resolveHomeTouchBarFrameContract({
+    contractActive,
+    homeBottom,
+    touchBarTop,
+    touchBarBottom,
+    touchBarHeight,
+    appShellAvailableBottom,
+    kernelTouchBarTop,
+    kernelTouchBarHeight
+  } = {}) {
+    if (contractActive !== true) {
+      return {
+        homeTouchBarFrameMode: "inactive",
+        homeTouchBarFramePass: null,
+        homeTouchBarFrameReason: "inactive",
+        homeTouchBarFrameEdgeDeltaPx: null,
+        homeTouchBarFrameShellDeltaPx: null,
+        homeTouchBarFrameKernelTopDeltaPx: null,
+        homeTouchBarFrameKernelHeightDeltaPx: null,
+        homeTouchBarTop: touchBarTop ?? null,
+        homeTouchBarBottom: touchBarBottom ?? null,
+        homeTouchBarHeight: touchBarHeight ?? null
+      };
+    }
+
+    const edgeDelta = getAbsoluteDelta(homeBottom, touchBarTop);
+    const shellDelta = getAbsoluteDelta(appShellAvailableBottom, touchBarTop);
+    const kernelTopDelta = getAbsoluteDelta(kernelTouchBarTop, touchBarTop);
+    const kernelHeightDelta = getAbsoluteDelta(kernelTouchBarHeight, touchBarHeight);
+    const edgePass = edgeDelta != null && edgeDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const shellPass = shellDelta == null || shellDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const kernelTopPass = kernelTopDelta == null || kernelTopDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+    const kernelHeightPass = kernelHeightDelta == null || kernelHeightDelta <= HOME_SCREEN_CONTRACT_PASS_DELTA_PX;
+
+    let reason = "bound";
+    if (!edgePass) reason = "screen-bottom-not-on-touchbar-top";
+    else if (!shellPass) reason = "shell-bottom-touchbar-mismatch";
+    else if (!kernelTopPass) reason = "kernel-touchbar-top-mismatch";
+    else if (!kernelHeightPass) reason = "kernel-touchbar-height-mismatch";
+
+    return {
+      homeTouchBarFrameMode: "screen-touchbar-integration",
+      homeTouchBarFramePass: edgePass && shellPass && kernelTopPass && kernelHeightPass,
+      homeTouchBarFrameReason: reason,
+      homeTouchBarFrameEdgeDeltaPx: edgeDelta,
+      homeTouchBarFrameShellDeltaPx: shellDelta,
+      homeTouchBarFrameKernelTopDeltaPx: kernelTopDelta,
+      homeTouchBarFrameKernelHeightDeltaPx: kernelHeightDelta,
+      homeTouchBarTop: touchBarTop ?? null,
+      homeTouchBarBottom: touchBarBottom ?? null,
+      homeTouchBarHeight: touchBarHeight ?? null
+    };
   }
 
   function isStandalonePwa() {
@@ -202,62 +425,233 @@
     };
   }
 
-  function publishHomeLowerFill(root, fill) {
-    root.style.setProperty("--klevby-home-lower-fill-y", `${fill}px`);
+  function resolveHomeGridSolverMode(rhythm) {
+    const measured = rhythm?.activeFeedCardMeasured === true;
+    const delta = Number(rhythm?.bottomRhythmDelta);
+    const overflow = Number(rhythm?.weatherOverflowPx);
+
+    if (!measured || !Number.isFinite(delta) || !Number.isFinite(overflow)) {
+      return {
+        solverMode: "safety-fill",
+        gridDiagnosticPass: false,
+        gridSafetyPass: false,
+        homeGridReason: "measurement-unavailable"
+      };
+    }
+
+    if (overflow > 0) {
+      return {
+        solverMode: "safety-fill",
+        gridDiagnosticPass: false,
+        gridSafetyPass: false,
+        homeGridReason: "weather-overflow"
+      };
+    }
+
+    const gridDiagnosticPass = delta <= HOME_GRID_DIAGNOSTIC_PASS_DELTA_PX;
+    const gridSafetyPass = delta <= HOME_GRID_SAFETY_PASS_DELTA_PX;
+
+    return {
+      solverMode: gridDiagnosticPass ? "read-only" : "safety-fill",
+      gridDiagnosticPass,
+      gridSafetyPass,
+      homeGridReason: gridDiagnosticPass
+        ? "grid-balanced"
+        : gridSafetyPass
+          ? "diagnostic-delta-only"
+          : "bottom-rhythm-delta"
+    };
   }
 
-  function scheduleHomeBottomRhythmSolver(density, touchBar) {
+  function isHomeGridContractActive() {
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    return homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) === HOME_LAYOUT_GRID_VALUE;
+  }
+
+  function setHomeGridContractState(shouldEnable) {
     const root = document.documentElement;
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!root || !homeSection) return false;
+
+    if (!shouldEnable || !HOME_GRID_CONTRACT_ENABLED) {
+      homeSection.removeAttribute(HOME_LAYOUT_ATTRIBUTE);
+      root.removeAttribute(HOME_GRID_CONTRACT_ATTRIBUTE);
+      root.removeAttribute(HOME_GRID_FALLBACK_ATTRIBUTE);
+      root.removeAttribute(HOME_SOLVER_MODE_ATTRIBUTE);
+      root.removeAttribute(HOME_SOLVER_RETIREMENT_ATTRIBUTE);
+      return false;
+    }
+
+    homeSection.setAttribute(HOME_LAYOUT_ATTRIBUTE, HOME_LAYOUT_GRID_VALUE);
+    root.setAttribute(HOME_GRID_CONTRACT_ATTRIBUTE, "integrated");
+    if (!root.hasAttribute(HOME_SOLVER_MODE_ATTRIBUTE)) {
+      root.setAttribute(HOME_SOLVER_MODE_ATTRIBUTE, "retired-pending");
+    }
+    return true;
+  }
+
+  function setHomeScreenContractIntegrationState(shouldEnable) {
+    const root = document.documentElement;
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!root || !homeSection) return false;
+
+    if (!shouldEnable || !HOME_GRID_CONTRACT_ENABLED) {
+      homeSection.classList.remove(HOME_SCREEN_CONTRACT_CLASS);
+      homeSection.removeAttribute("data-home-screen-contract");
+      root.removeAttribute("data-home-screen-contract");
+      root.removeAttribute("data-home-screen-contract-pass");
+      return false;
+    }
+
+    homeSection.classList.add(HOME_SCREEN_CONTRACT_CLASS);
+    homeSection.removeAttribute("data-home-screen-contract");
+    root.removeAttribute("data-home-screen-contract");
+    root.removeAttribute("data-home-screen-contract-pass");
+    return true;
+  }
+
+  function publishHomeLowerFill(root, fill) {
+    if (!root) return;
+
+    const normalizedFill = Math.max(0, Number(fill) || 0);
+    const nextValue = `${normalizedFill}px`;
+    if (root.style.getPropertyValue("--klevby-home-lower-fill-y") === nextValue) return;
+
+    root.style.setProperty("--klevby-home-lower-fill-y", nextValue);
+  }
+
+  function isHomeLegacySolverEmergencyEnabled(root = document.documentElement) {
+    if (root?.getAttribute(HOME_LEGACY_SOLVER_EMERGENCY_ATTRIBUTE) === "true") return true;
+
+    try {
+      return window.localStorage?.getItem(HOME_LEGACY_SOLVER_EMERGENCY_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function resolveHomeRetiredSolverState({
+    gridContractActive,
+    gridMode,
+    legacySolverResult,
+    emergencyEnabled = false
+  } = {}) {
+    const suggestedLowerFillY = Math.max(0, Number(legacySolverResult?.lowerFillY) || 0);
+    const legacySolverWouldApply = legacySolverResult?.solverApplied === true || suggestedLowerFillY > 0;
+    const gridSolverMode = gridMode?.solverMode || "safety-fill";
+
+    if (!HOME_SOLVER_RETIREMENT_ENABLED || gridContractActive !== true) {
+      return {
+        solverMode: "legacy-active",
+        solverRetired: false,
+        solverFallbackActive: legacySolverWouldApply,
+        solverEmergencyEnabled: false,
+        appliedLowerFillY: suggestedLowerFillY,
+        legacySolverSuggestedLowerFillY: suggestedLowerFillY,
+        legacySolverWouldApply,
+        homeSolverRetirementReason: "legacy-layout"
+      };
+    }
+
+    if (gridSolverMode === "safety-fill" && suggestedLowerFillY > 0) {
+      return {
+        solverMode: "safety-fill",
+        solverRetired: false,
+        solverFallbackActive: true,
+        solverEmergencyEnabled: emergencyEnabled === true,
+        appliedLowerFillY: suggestedLowerFillY,
+        legacySolverSuggestedLowerFillY: suggestedLowerFillY,
+        legacySolverWouldApply,
+        homeSolverRetirementReason: emergencyEnabled
+          ? "emergency-safety-fill"
+          : "grid-needs-safety-fill"
+      };
+    }
+
+    const readOnlyClean = gridSolverMode === "read-only";
+
+    return {
+      solverMode: readOnlyClean ? "retired-read-only" : "retired-watch",
+      solverRetired: true,
+      solverFallbackActive: false,
+      solverEmergencyEnabled: emergencyEnabled === true,
+      appliedLowerFillY: 0,
+      legacySolverSuggestedLowerFillY: suggestedLowerFillY,
+      legacySolverWouldApply,
+      homeSolverRetirementReason: readOnlyClean
+        ? "grid-read-only-clean"
+        : gridMode?.homeGridReason || "grid-needs-watch"
+    };
+  }
+
+  function updateHomeSolverRetirementState(density, touchBar) {
+    const root = document.documentElement;
+    const homeSection = document.getElementById(HOME_SECTION_ID);
     if (!root || !touchBar) return;
 
-    if (solverFrame) window.cancelAnimationFrame(solverFrame);
-    if (solverMeasureFrame) window.cancelAnimationFrame(solverMeasureFrame);
-    publishHomeLowerFill(root, 0);
-
-    solverFrame = window.requestAnimationFrame(() => {
-      solverFrame = 0;
-      const rhythmBefore = measureHomeBottomRhythm(touchBar);
-      const lowerFillCap = resolveHomeLowerFillCap(density);
-      const result = resolveHomeLowerFill({
-        upperGap: rhythmBefore.upperGap,
-        lowerGap: rhythmBefore.lowerGap,
-        maxFill: lowerFillCap,
-        minLowerGap: HOME_MIN_LOWER_GAP_PX
-      });
-
-      publishHomeLowerFill(root, result.lowerFillY);
-      lastHomeFitContract = {
-        ...lastHomeFitContract,
-        activeFeedCardMeasured: rhythmBefore.activeFeedCardMeasured,
-        gapActiveFeedCardToWeather: rhythmBefore.upperGap,
-        gapWeatherToTouchBar: rhythmBefore.lowerGap,
-        bottomRhythmDelta: rhythmBefore.bottomRhythmDelta,
-        rhythmBefore: rhythmBefore.bottomRhythmDelta,
-        rhythmAfter: null,
-        weatherOverflowPx: rhythmBefore.weatherOverflowPx,
-        lowerFillY: result.lowerFillY,
-        lowerFillCap: result.lowerFillCap,
-        lowerFillReason: result.lowerFillReason,
-        solverApplied: result.solverApplied,
-        solverCapped: result.solverCapped
-      };
-
-      solverMeasureFrame = window.requestAnimationFrame(() => {
-        solverMeasureFrame = 0;
-        const rhythmAfter = measureHomeBottomRhythm(touchBar);
-        lastHomeFitContract = {
-          ...lastHomeFitContract,
-          activeFeedCardMeasured: rhythmAfter.activeFeedCardMeasured,
-          gapActiveFeedCardToWeather: rhythmAfter.upperGap,
-          gapWeatherToTouchBar: rhythmAfter.lowerGap,
-          bottomRhythmDelta: rhythmAfter.bottomRhythmDelta,
-          bottomRhythmPass:
-            rhythmAfter.bottomRhythmDelta != null && rhythmAfter.bottomRhythmDelta <= 6,
-          rhythmAfter: rhythmAfter.bottomRhythmDelta,
-          weatherOverflowPx: rhythmAfter.weatherOverflowPx
-        };
-      });
+    const gridContractActive = isHomeGridContractActive();
+    const homeLayoutMode = homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) || HOME_LAYOUT_LEGACY_VALUE;
+    const rhythm = measureHomeBottomRhythm(touchBar);
+    const lowerFillCap = resolveHomeLowerFillCap(density);
+    const result = resolveHomeLowerFill({
+      upperGap: rhythm.upperGap,
+      lowerGap: rhythm.lowerGap,
+      maxFill: lowerFillCap,
+      minLowerGap: HOME_MIN_LOWER_GAP_PX
     });
+    const gridMode = gridContractActive
+      ? resolveHomeGridSolverMode(rhythm)
+      : {
+          solverMode: "legacy-active",
+          gridDiagnosticPass: null,
+          gridSafetyPass: null,
+          homeGridReason: "legacy-layout"
+        };
+    const retirement = resolveHomeRetiredSolverState({
+      gridContractActive,
+      gridMode,
+      legacySolverResult: result,
+      emergencyEnabled: isHomeLegacySolverEmergencyEnabled(root)
+    });
+
+    publishHomeLowerFill(root, retirement.appliedLowerFillY);
+    root.setAttribute(HOME_SOLVER_MODE_ATTRIBUTE, retirement.solverMode);
+    root.setAttribute(HOME_SOLVER_RETIREMENT_ATTRIBUTE, retirement.solverRetired ? "true" : "false");
+
+    if (gridContractActive) {
+      root.setAttribute(HOME_GRID_FALLBACK_ATTRIBUTE, retirement.solverFallbackActive ? "true" : "false");
+    } else {
+      root.removeAttribute(HOME_GRID_FALLBACK_ATTRIBUTE);
+    }
+
+    lastHomeFitContract = {
+      ...lastHomeFitContract,
+      homeLayoutMode,
+      homeGridContractActive: gridContractActive,
+      homeGridReadOnlyPass: gridMode.gridDiagnosticPass,
+      homeGridSafetyPass: gridMode.gridSafetyPass,
+      homeGridReason: gridMode.homeGridReason,
+      solverMode: retirement.solverMode,
+      solverRetired: retirement.solverRetired,
+      solverFallbackActive: retirement.solverFallbackActive,
+      solverEmergencyEnabled: retirement.solverEmergencyEnabled,
+      homeSolverRetirementReason: retirement.homeSolverRetirementReason,
+      activeFeedCardMeasured: rhythm.activeFeedCardMeasured,
+      gapActiveFeedCardToWeather: rhythm.upperGap,
+      gapWeatherToTouchBar: rhythm.lowerGap,
+      bottomRhythmDelta: rhythm.bottomRhythmDelta,
+      bottomRhythmPass: rhythm.bottomRhythmDelta != null && rhythm.bottomRhythmDelta <= 6,
+      rhythmBefore: rhythm.bottomRhythmDelta,
+      rhythmAfter: rhythm.bottomRhythmDelta,
+      weatherOverflowPx: rhythm.weatherOverflowPx,
+      lowerFillY: retirement.appliedLowerFillY,
+      legacySolverSuggestedLowerFillY: retirement.legacySolverSuggestedLowerFillY,
+      lowerFillCap: result.lowerFillCap,
+      lowerFillReason: result.lowerFillReason,
+      legacySolverWouldApply: retirement.legacySolverWouldApply,
+      solverApplied: retirement.appliedLowerFillY > 0,
+      solverCapped: result.solverCapped
+    };
   }
 
   function updateHomeFitContract() {
@@ -292,6 +686,44 @@
       : Math.max(0, availableBottom - availableTop);
     const appHeight = resolveAppHeight(root);
     const density = resolveMeasuredHomeDensity(availableHeight);
+    const homeScreenContract = resolveHomeScreenContractIntegration({
+      contractActive: homeSection.classList.contains(HOME_SCREEN_CONTRACT_CLASS),
+      contractClassActive: homeSection.classList.contains(HOME_SCREEN_CONTRACT_CLASS),
+      kgShellTop: getCssPixelValue(root, "--kg-shell-top"),
+      kgShellHeight: getCssPixelValue(root, "--kg-shell-height"),
+      kgShellBottomOffset: getCssPixelValue(root, "--kg-shell-bottom-offset"),
+      legacyShellTop: getCssPixelValue(root, "--klevby-app-available-top"),
+      legacyShellHeight: getCssPixelValue(root, "--klevby-app-available-height"),
+      legacyShellBottomOffset: getCssPixelValue(root, "--klevby-app-available-bottom-offset"),
+      homeTop: homeSectionRect.top,
+      homeBottom: homeSectionRect.bottom,
+      homeHeight: homeSectionRect.height,
+      expectedTop: availableTop,
+      expectedBottom: availableBottom,
+      expectedHeight: availableHeight
+    });
+    const homeHeaderFrame = resolveHomeHeaderFrameContract({
+      contractActive: homeScreenContract.homeScreenContractActive,
+      homeTop: homeSectionRect.top,
+      headerTop: headerRect?.top,
+      headerBottom: headerRect?.bottom,
+      headerHeight: headerRect?.height,
+      appShellAvailableTop: appShell?.availableTop,
+      kernelHeaderBottom: appShell?.headerBottom,
+      kernelHeaderHeight: appShell?.headerHeight
+    });
+    const homeTouchBarFrame = resolveHomeTouchBarFrameContract({
+      contractActive: homeScreenContract.homeScreenContractActive,
+      homeBottom: homeSectionRect.bottom,
+      touchBarTop: mobileTabbarRect.top,
+      touchBarBottom: mobileTabbarRect.bottom,
+      touchBarHeight: mobileTabbarRect.height,
+      appShellAvailableBottom: appShell?.availableBottom,
+      kernelTouchBarTop: appShell?.touchbarTop,
+      kernelTouchBarHeight: appShell?.touchbarHeight
+    });
+
+    root.removeAttribute("data-home-screen-contract-pass");
 
     root.style.setProperty("--klevby-home-available-top", `${availableTop}px`);
     root.style.setProperty("--klevby-home-available-bottom", `${availableBottom}px`);
@@ -319,20 +751,35 @@
         : null,
       appHeight,
       currentDensity: density,
+      homeLayoutMode: homeSection.getAttribute(HOME_LAYOUT_ATTRIBUTE) || HOME_LAYOUT_LEGACY_VALUE,
+      homeGridContractActive: isHomeGridContractActive(),
+      homeGridReadOnlyPass: null,
+      homeGridSafetyPass: null,
+      homeGridReason: "baseline-pending",
+      ...homeScreenContract,
+      ...homeHeaderFrame,
+      ...homeTouchBarFrame,
+      solverMode: "retired-pending",
+      solverRetired: HOME_SOLVER_RETIREMENT_ENABLED,
+      solverFallbackActive: false,
+      solverEmergencyEnabled: false,
+      homeSolverRetirementReason: "baseline-pending",
       activeFeedCardMeasured: false,
       gapActiveFeedCardToWeather: null,
       gapWeatherToTouchBar: null,
       bottomRhythmDelta: null,
       bottomRhythmPass: false,
       lowerFillY: 0,
+      legacySolverSuggestedLowerFillY: 0,
       lowerFillCap: resolveHomeLowerFillCap(density),
       lowerFillReason: "baseline-pending",
+      legacySolverWouldApply: false,
       solverApplied: false,
       solverCapped: false,
       timestamp: new Date().toISOString()
     };
 
-    scheduleHomeBottomRhythmSolver(density, touchBar);
+    updateHomeSolverRetirementState(density, touchBar);
     return { ...lastHomeFitContract };
   }
 
@@ -476,7 +923,10 @@
   }
 
   function syncHomeScreenState() {
-    setLockState(isHomeScreenActive());
+    const homeActive = isHomeScreenActive();
+    setLockState(homeActive);
+    setHomeGridContractState(homeActive);
+    setHomeScreenContractIntegrationState(homeActive);
     updateHomeFitContract();
 
     if (!hasCapturedFirstSync) {
@@ -530,6 +980,7 @@
     window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
     updateAppHeight();
+    setHomeGridContractState(isHomeScreenActive());
     updateHomeFitContract();
     observeStateOwners();
 
@@ -557,6 +1008,13 @@
     updateHomeFitContract,
     resolveMeasuredHomeDensity,
     resolveHomeLowerFill,
+    resolveHomeGridSolverMode,
+    resolveHomeRetiredSolverState,
+    setHomeGridContractState,
+    setHomeScreenContractIntegrationState,
+    resolveHomeScreenContractIntegration,
+    resolveHomeHeaderFrameContract,
+    resolveHomeTouchBarFrameContract,
     getHomeFitContract,
     isHomeScreenActive
   });
@@ -565,7 +1023,12 @@
     module.exports = {
       resolveMeasuredHomeDensity,
       resolveHomeLowerFillCap,
-      resolveHomeLowerFill
+      resolveHomeLowerFill,
+      resolveHomeGridSolverMode,
+      resolveHomeRetiredSolverState,
+      resolveHomeScreenContractIntegration,
+      resolveHomeHeaderFrameContract,
+      resolveHomeTouchBarFrameContract
     };
   }
 

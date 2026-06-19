@@ -12,6 +12,32 @@
   --klevby-app-available-height: 100dvh;
   --klevby-app-available-bottom-offset: 0px;
   --klevby-app-inline-inset: 16px;
+  /* Core Token Bridge — new kg shell aliases. Do not consume in feature CSS yet. */
+  --kg-viewport-width: var(--klevby-app-viewport-width);
+  --kg-viewport-height: var(--klevby-app-viewport-height);
+  --kg-shell-top: var(--klevby-app-available-top);
+  --kg-shell-bottom: var(--klevby-app-available-bottom);
+  --kg-shell-height: var(--klevby-app-available-height);
+  --kg-shell-bottom-offset: var(--klevby-app-available-bottom-offset);
+  --kg-screen-inline: var(--klevby-app-inline-inset);
+  --kg-safe-top: env(safe-area-inset-top, 0px);
+  --kg-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* PR-11 Header frame aliases — mirror Kernel top chrome tokens only. */
+  --kg-header-top: 0px;
+  --kg-header-bottom: var(--kg-shell-top, var(--klevby-app-available-top, 0px));
+  --kg-header-height: var(--kg-header-height-measured, var(--kg-header-bottom));
+  --kg-header-top-offset: var(--kg-header-top-offset-measured, 0px);
+  --kg-header-frame-total: var(--kg-header-bottom);
+  --kg-screen-top-frame-offset: var(--kg-header-frame-total);
+
+  /* PR-10 TouchBar frame aliases — mirror legacy bottom chrome tokens only. */
+  --kg-touchbar-height: var(--klevby-touchbar-height);
+  --kg-touchbar-bottom-gap: var(--klevby-touchbar-bottom-gap);
+  --kg-touchbar-bottom-offset: var(--klevby-touchbar-bottom-offset);
+  --kg-touchbar-frame-total: var(--klevby-bottom-chrome-total);
+  --kg-screen-touchbar-clearance: 8px;
+  --kg-screen-bottom-frame-offset: var(--kg-shell-bottom-offset, var(--klevby-app-available-bottom-offset));
   --klevgo-font-display: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   --bg: #040807;

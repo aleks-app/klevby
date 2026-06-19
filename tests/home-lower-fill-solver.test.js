@@ -4,7 +4,8 @@ const assert = require("node:assert/strict");
 const {
   resolveMeasuredHomeDensity,
   resolveHomeLowerFillCap,
-  resolveHomeLowerFill
+  resolveHomeLowerFill,
+  resolveHomeGridSolverMode
 } = require("../assets/js/app/app-home-screen-owner.js");
 
 test("allows compact height near 699px to fully balance the measured lower rhythm", () => {
@@ -73,4 +74,44 @@ test("reports when the minimum lower gap limits fill", () => {
   assert.equal(result.lowerFillY, 5);
   assert.equal(result.solverCapped, true);
   assert.equal(result.lowerFillReason, "minimum-lower-gap-cap");
+});
+
+
+test("keeps the Home grid contract solver read-only when rhythm is already balanced", () => {
+  const result = resolveHomeGridSolverMode({
+    activeFeedCardMeasured: true,
+    bottomRhythmDelta: 2,
+    weatherOverflowPx: 0
+  });
+
+  assert.equal(result.solverMode, "read-only");
+  assert.equal(result.gridDiagnosticPass, true);
+  assert.equal(result.gridSafetyPass, true);
+  assert.equal(result.homeGridReason, "grid-balanced");
+});
+
+test("uses the legacy lower-fill solver as safety when grid rhythm is not diagnostic-clean", () => {
+  const result = resolveHomeGridSolverMode({
+    activeFeedCardMeasured: true,
+    bottomRhythmDelta: 10,
+    weatherOverflowPx: 0
+  });
+
+  assert.equal(result.solverMode, "safety-fill");
+  assert.equal(result.gridDiagnosticPass, false);
+  assert.equal(result.gridSafetyPass, false);
+  assert.equal(result.homeGridReason, "bottom-rhythm-delta");
+});
+
+test("forces safety-fill when grid contract weather overflows the TouchBar clearance", () => {
+  const result = resolveHomeGridSolverMode({
+    activeFeedCardMeasured: true,
+    bottomRhythmDelta: 0,
+    weatherOverflowPx: 1
+  });
+
+  assert.equal(result.solverMode, "safety-fill");
+  assert.equal(result.gridDiagnosticPass, false);
+  assert.equal(result.gridSafetyPass, false);
+  assert.equal(result.homeGridReason, "weather-overflow");
 });
