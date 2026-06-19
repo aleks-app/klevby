@@ -10,10 +10,10 @@
     margin-bottom: 24px !important;
 }
 
-/* Опустили погоду вниз к тачбару на 20 пикселей */
+/* Опустили Погоду ещё на 20px вниз к полу */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: relative !important;
-    margin-top: -25px !important;
+    margin-top: -5px !important;
     margin-bottom: 90px !important;
     z-index: 10 !important;
 }
