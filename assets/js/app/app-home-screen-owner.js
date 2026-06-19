@@ -23,6 +23,7 @@
   const HOME_SKELETON_STORAGE_KEY = "klevgo:home-skeleton";
   const HOME_SKELETON_TAP_ZONE_ID = "homeSkeletonDevTapZone";
   const HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID = "homeSkeletonDiagnosticsOverlay";
+  const HOME_SKELETON_RUNTIME_STYLE_ID = "homeSkeletonRuntimeStyle";
   const HOME_SKELETON_TAP_COUNT = 7;
   const HOME_SKELETON_TAP_WINDOW_MS = 2500;
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
@@ -57,6 +58,63 @@
   let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
 
+
+  function ensureHomeSkeletonRuntimeStyle() {
+    if (!document.head) return null;
+
+    const css = `
+body[data-home-skeleton="true"] #homeSection,
+body[data-home-skeleton="true"] #homeSection.kg-screen,
+body[data-home-skeleton="true"] #homeSection[data-home-layout="grid"],
+body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] {
+  position: fixed !important;
+  top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+  min-height: 0 !important;
+  max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  align-items: stretch !important;
+  align-content: stretch !important;
+  row-gap: 12px !important;
+  box-sizing: border-box !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview,
+body[data-home-skeleton="true"] #homeSection .home-weather-card {
+  position: relative !important;
+  inset: auto !important;
+  margin: 0 auto !important;
+  transform: none !important;
+}
+`.trim();
+    let style = document.getElementById(HOME_SKELETON_RUNTIME_STYLE_ID);
+
+    if (!style) {
+      style = document.createElement("style");
+      style.id = HOME_SKELETON_RUNTIME_STYLE_ID;
+      document.head.appendChild(style);
+    } else if (style.parentNode !== document.head) {
+      document.head.appendChild(style);
+    } else if (style.nextSibling) {
+      document.head.appendChild(style);
+    }
+
+    if (style.textContent !== css) {
+      style.textContent = css;
+    }
+
+    return style;
+  }
 
   function isHomeSkeletonMode(homeSection = document.getElementById(HOME_SECTION_ID)) {
     return (
@@ -144,6 +202,7 @@
       homeLayoutAttr: homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) ?? null,
       bodySkeletonAttr: document.body?.getAttribute(HOME_SKELETON_ATTRIBUTE) ?? null,
       homeSkeletonAttr: homeSection?.getAttribute(HOME_SKELETON_ATTRIBUTE) ?? null,
+      runtimeStylePresent: Boolean(document.getElementById(HOME_SKELETON_RUNTIME_STYLE_ID)),
       homePosition: homeComputedStyle?.position ?? null,
       homeComputedTop: homeComputedStyle?.top ?? null,
       homeComputedBottom: homeComputedStyle?.bottom ?? null,
@@ -200,6 +259,7 @@
   }
 
   function applyHomeSkeletonModeFromState(homeActive = isHomeScreenActive()) {
+    ensureHomeSkeletonRuntimeStyle();
     const enabled = homeActive && shouldEnableHomeSkeletonMode();
     setHomeSkeletonState(enabled);
     return enabled;
@@ -207,6 +267,7 @@
 
   function enableHomeSkeletonMode() {
     writeHomeSkeletonStorageFlag(true);
+    ensureHomeSkeletonRuntimeStyle();
     syncHomeScreenState();
     return isHomeSkeletonMode();
   }
@@ -282,6 +343,7 @@
       ["homeLayoutAttr", contract.homeLayoutAttr],
       ["bodySkeletonAttr", contract.bodySkeletonAttr],
       ["homeSkeletonAttr", contract.homeSkeletonAttr],
+      ["runtimeStylePresent", contract.runtimeStylePresent],
       ["position", contract.homePosition],
       ["computedTop", contract.homeComputedTop],
       ["computedBottom", contract.homeComputedBottom],
@@ -1239,6 +1301,7 @@
 
   function syncHomeScreenState() {
     const homeActive = isHomeScreenActive();
+    ensureHomeSkeletonRuntimeStyle();
     applyHomeSkeletonModeFromState(homeActive);
     setLockState(homeActive);
     setHomeGridContractState(homeActive);
@@ -1296,6 +1359,7 @@
     window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
     updateAppHeight();
+    ensureHomeSkeletonRuntimeStyle();
     bindHomeSkeletonTapToggle();
     applyHomeSkeletonModeFromState(isHomeScreenActive());
     setHomeGridContractState(isHomeScreenActive());
