@@ -6,22 +6,23 @@
     position: relative !important;
 }
 
-/* Возвращаем кнопки на чистый воздух, чтобы текст на них не лез */
+/* Подтягиваем кнопки к тексту ровно, без фанатизма */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
-    margin-top: -50px !important;
-    margin-bottom: 20px !important;
+    margin-top: -35px !important;
+    margin-bottom: 24px !important;
     z-index: 5 !important;
 }
 
-/* Сильнее поднимаем саму Ленту, чтобы разъехался нахлёст */
+/* Ленту НЕ ТЯНЕМ вверх, а просто даём ей отступ снизу, чтобы она не ложилась под Погоду */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
     position: relative !important;
-    margin-top: -120px !important; /* Утягиваем её выше, чтобы убрать кашу */
-    z-index: 6 !important;
+    margin-top: 0 !important;
+    margin-bottom: 110px !important; /* Толчок, чтобы раздвинуть пирог */
+    z-index: 5 !important;
 }
 
-/* Погода зафиксирована */
+/* Погода зафиксирована жёстко на месте */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: absolute !important;
     bottom: 138px !important;
