@@ -6,6 +6,9 @@
   const BUTTON_CONTAINER_ID = "klevbyAndroidDiagnosticsControls";
   const LOGO_TAP_TARGET = 7;
   const LOGO_TAP_RESET_MS = 4000;
+  const HOME_SKELETON_STORAGE_KEY = "klevgo:home-skeleton";
+  const HOME_SKELETON_ATTRIBUTE = "data-home-skeleton";
+  const SKELETON_STATUS_ID = "klevbyDiagnosticsSkeletonStatus";
 
   const params = new URLSearchParams(window.location.search);
   const hasAndroidDebugFlag = params.get("klevbyAndroidDebug") === "1";
@@ -88,6 +91,67 @@
     return isIphone() && isStandaloneMode()
       ? "KlevGo iPhone PWA Home Diagnostics"
       : "KlevGo Android Diagnostics";
+  }
+
+  function readHomeSkeletonStorageFlag() {
+    try {
+      return window.localStorage.getItem(HOME_SKELETON_STORAGE_KEY);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function collectSkeletonDiagnostics(ownerFitContract) {
+    const owner = window.KlevbyHomeScreenOwner;
+    const body = document.body;
+    const homeSection = document.getElementById("homeSection");
+    const fitContract =
+      ownerFitContract || (owner && typeof owner.getHomeFitContract === "function"
+        ? owner.getHomeFitContract()
+        : null);
+
+    return {
+      skeletonApiLoaded: typeof owner?.enableHomeSkeletonMode === "function",
+      skeletonStorageFlag: readHomeSkeletonStorageFlag(),
+      bodyHomeSkeletonAttr: body?.getAttribute(HOME_SKELETON_ATTRIBUTE) ?? null,
+      homeSectionSkeletonAttr: homeSection?.getAttribute(HOME_SKELETON_ATTRIBUTE) ?? null,
+      skeletonModeFromContract: fitContract?.skeletonMode ?? null,
+      hasSkeletonDevTapZone: document.getElementById("homeSkeletonDevTapZone") != null,
+      hasSkeletonDiagnosticsOverlay:
+        document.getElementById("homeSkeletonDiagnosticsOverlay") != null
+    };
+  }
+
+  function setSkeletonStatusMessage(message) {
+    const status = document.getElementById(SKELETON_STATUS_ID);
+    if (!status) return;
+
+    status.textContent = message || "";
+    status.style.display = message ? "block" : "none";
+  }
+
+  function refreshSkeletonDiagnostics() {
+    window.KlevbyHomeScreenOwner?.updateHomeFitContract?.();
+    window.KlevbyHomeScreenOwner?.refreshHomeSkeletonDiagnosticsOverlay?.();
+  }
+
+  function enableSkeletonFromDiagnostics() {
+    const owner = window.KlevbyHomeScreenOwner;
+    if (typeof owner?.enableHomeSkeletonMode !== "function") {
+      setSkeletonStatusMessage("Skeleton API not loaded");
+      return false;
+    }
+
+    owner.enableHomeSkeletonMode();
+    refreshSkeletonDiagnostics();
+    setSkeletonStatusMessage("Skeleton enabled");
+    return true;
+  }
+
+  function disableSkeletonFromDiagnostics() {
+    window.KlevbyHomeScreenOwner?.disableHomeSkeletonMode?.();
+    refreshSkeletonDiagnostics();
+    setSkeletonStatusMessage("Skeleton disabled");
   }
 
   function getDiagnosticsFilename() {
@@ -382,6 +446,7 @@
           ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
           : null;
       const ownerFitContract = window.KlevbyHomeScreenOwner?.getHomeFitContract?.() || null;
+      const skeletonDiagnostics = collectSkeletonDiagnostics(ownerFitContract);
       const homeAvailableTop = ownerFitContract?.availableTop ?? null;
       const homeAvailableBottom = ownerFitContract?.availableBottom ?? null;
       const homeAvailableHeight = ownerFitContract?.availableHeight ?? null;
@@ -490,6 +555,8 @@
         homeSectionTopNegative:
           homeRects.homeSection?.top != null ? homeRects.homeSection.top < -1 : null,
         homeFitContract,
+        ...skeletonDiagnostics,
+        homeSkeleton: skeletonDiagnostics,
         homeSection: homeRects.homeSection,
         touchBar: homeRects.touchBar,
         homeLayout: {
@@ -751,6 +818,33 @@
       window.klevbyAndroidDiagnostics.saveJSON();
     });
     container.appendChild(downloadButton);
+
+    const enableSkeletonButton = createDiagnosticsButton("Enable Skeleton", () => {
+      enableSkeletonFromDiagnostics();
+    });
+    container.appendChild(enableSkeletonButton);
+
+    const disableSkeletonButton = createDiagnosticsButton(
+      "Disable Skeleton",
+      () => {
+        disableSkeletonFromDiagnostics();
+      },
+      {
+        background: "#356A48"
+      }
+    );
+    container.appendChild(disableSkeletonButton);
+
+    const skeletonStatus = document.createElement("div");
+    skeletonStatus.id = SKELETON_STATUS_ID;
+    skeletonStatus.style.display = "none";
+    skeletonStatus.style.background = "rgba(8,12,10,0.92)";
+    skeletonStatus.style.color = "#fff";
+    skeletonStatus.style.padding = "6px 8px";
+    skeletonStatus.style.borderRadius = "6px";
+    skeletonStatus.style.fontSize = "11px";
+    skeletonStatus.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+    container.appendChild(skeletonStatus);
 
     const copyButton = createDiagnosticsButton("Copy JSON", async () => {
       const copied = await window.klevbyAndroidDiagnostics.copyJSON();

@@ -29,6 +29,13 @@
       let activeIndex = 0;
       let timerId = 0;
 
+      function isHomeSkeletonMode() {
+        return (
+          document.body?.getAttribute("data-home-skeleton") === "true" ||
+          homeSection?.getAttribute("data-home-skeleton") === "true"
+        );
+      }
+
       function isHomeMeasuredGridMode() {
         return homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) === HOME_LAYOUT_GRID_VALUE;
       }
@@ -42,7 +49,7 @@
       function syncViewportHeight() {
         if (!viewport || !feedSlide) return;
 
-        if (isHomeMeasuredGridMode()) {
+        if (isHomeSkeletonMode() || isHomeMeasuredGridMode()) {
           clearViewportHeight();
           return;
         }

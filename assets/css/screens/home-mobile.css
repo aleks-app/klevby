@@ -227,6 +227,25 @@
     background: transparent !important;
   }
 
+  body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] {
+    position: fixed !important;
+    z-index: 1 !important;
+    top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    min-height: 0 !important;
+    max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    transform: none !important;
+    background: transparent !important;
+  }
+
   #homeSection::before {
     content: none !important;
     display: none !important;

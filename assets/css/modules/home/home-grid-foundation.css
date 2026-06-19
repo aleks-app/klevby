@@ -160,3 +160,191 @@
     --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 12px);
   }
 }
+
+
+/* Temporary Home skeleton geometry diagnostic.
+   Keeps one owner for vertical slots between measured header and TouchBar. */
+body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] {
+    position: fixed !important;
+    top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    align-items: stretch !important;
+    align-content: stretch !important;
+    row-gap: 12px !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+}
+
+body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] > :not(.home-quick-actions):not(.home-feed-preview):not(.home-weather-card) {
+    display: none !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview,
+body[data-home-skeleton="true"] #homeSection .home-weather-card {
+    display: grid !important;
+    width: calc(100% - (2 * var(--klevby-home-content-inset, 22px))) !important;
+    margin: 0 auto !important;
+    transform: none !important;
+    position: relative !important;
+    inset: auto !important;
+    z-index: 2 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions {
+    min-height: 112px !important;
+    align-self: start !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-feed-preview {
+    height: 100% !important;
+    min-height: 0 !important;
+    align-self: stretch !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-weather-card {
+    min-height: 78px !important;
+    align-self: end !important;
+    padding: 0 !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions > *,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview > *,
+body[data-home-skeleton="true"] #homeSection .home-weather-card > * {
+    display: none !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions::before,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview::before,
+body[data-home-skeleton="true"] #homeSection .home-weather-card::before {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: inherit !important;
+    border: 1px dashed rgba(255, 248, 234, 0.42) !important;
+    border-radius: 18px !important;
+    background: rgba(8, 16, 23, 0.64) !important;
+    color: rgba(255, 248, 234, 0.82) !important;
+    font: 800 12px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    letter-spacing: 0.14em !important;
+    box-sizing: border-box !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions::before {
+    content: "QUICK SLOT" !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-feed-preview::before {
+    content: "FEED SLOT" !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-weather-card::before {
+    content: "WEATHER SLOT" !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-feed-preview-card,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview-image,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview-image img,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview-rotator-viewport {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+
+.home-skeleton-dev-tap-zone {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+    right: calc(env(safe-area-inset-right, 0px) + 8px) !important;
+    z-index: 2147483000 !important;
+    width: 56px !important;
+    height: 56px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 16px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    background: transparent !important;
+    color: transparent !important;
+    font: 800 10px/1.1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    letter-spacing: 0.08em !important;
+    text-align: center !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+body[data-home-skeleton="true"] .home-skeleton-dev-tap-zone {
+    pointer-events: auto !important;
+    width: 112px !important;
+    height: 34px !important;
+    padding: 0 10px !important;
+    border: 1px solid rgba(255, 248, 234, 0.42) !important;
+    opacity: 1 !important;
+    background: rgba(8, 16, 23, 0.88) !important;
+    color: rgba(255, 248, 234, 0.92) !important;
+    box-shadow: 0 8px 20px rgba(0, 8, 16, 0.34) !important;
+}
+
+
+.home-skeleton-diagnostics-overlay {
+    display: none !important;
+    position: fixed !important;
+    left: calc(env(safe-area-inset-left, 0px) + 12px) !important;
+    right: calc(env(safe-area-inset-right, 0px) + 12px) !important;
+    bottom: calc(var(--klevby-bottom-chrome-total, 86px) + env(safe-area-inset-bottom, 0px) + 10px) !important;
+    z-index: 2147482000 !important;
+    max-width: 240px !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    border: 1px solid rgba(255, 248, 234, 0.30) !important;
+    border-radius: 12px !important;
+    background: rgba(6, 12, 18, 0.86) !important;
+    color: rgba(255, 248, 234, 0.90) !important;
+    box-shadow: 0 10px 24px rgba(0, 8, 16, 0.34) !important;
+    font: 700 10px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+    white-space: pre-line !important;
+    pointer-events: none !important;
+}
+
+body[data-home-skeleton="true"] .home-skeleton-diagnostics-overlay {
+    display: block !important;
+}
+
+/* Final Home skeleton viewport override.
+   Must stay after legacy density/flex rules so skeleton mode anchors #homeSection to measured shell geometry. */
+body[data-home-skeleton="true"] #homeSection,
+body[data-home-skeleton="true"] #homeSection.kg-screen,
+body[data-home-skeleton="true"] #homeSection[data-home-layout="grid"],
+body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] {
+    position: fixed !important;
+    top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    min-height: 0 !important;
+    max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    align-items: stretch !important;
+    align-content: stretch !important;
+    row-gap: 12px !important;
+    box-sizing: border-box !important;
+}

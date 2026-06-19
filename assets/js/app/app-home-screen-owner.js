@@ -19,6 +19,63 @@
   const HOME_GRID_DIAGNOSTIC_PASS_DELTA_PX = 2;
   const HOME_GRID_SAFETY_PASS_DELTA_PX = 6;
   const LOCK_ATTRIBUTE = "data-home-screen-lock";
+  const HOME_SKELETON_ATTRIBUTE = "data-home-skeleton";
+  const HOME_SKELETON_STORAGE_KEY = "klevgo:home-skeleton";
+  const HOME_SKELETON_TAP_ZONE_ID = "homeSkeletonDevTapZone";
+  const HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID = "homeSkeletonDiagnosticsOverlay";
+  const HOME_SKELETON_RUNTIME_STYLE_ID = "homeSkeletonRuntimeStyle";
+  const HOME_SKELETON_INLINE_STYLE_PROPS = Object.freeze([
+    "position",
+    "top",
+    "left",
+    "right",
+    "bottom",
+    "width",
+    "height",
+    "min-height",
+    "max-height",
+    "margin",
+    "padding",
+    "transform",
+    "overflow",
+    "display",
+    "grid-template-rows",
+    "align-items",
+    "align-content",
+    "row-gap",
+    "box-sizing"
+  ]);
+  const HOME_SKELETON_SLOT_INLINE_STYLE_PROPS = Object.freeze([
+    "display",
+    "width",
+    "min-width",
+    "max-width",
+    "inline-size",
+    "min-inline-size",
+    "max-inline-size",
+    "margin",
+    "margin-top",
+    "margin-bottom",
+    "margin-left",
+    "margin-right",
+    "position",
+    "inset",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "transform",
+    "box-sizing",
+    "overflow",
+    "justify-self",
+    "place-self",
+    "min-height",
+    "height",
+    "align-self",
+    "padding"
+  ]);
+  const HOME_SKELETON_TAP_COUNT = 7;
+  const HOME_SKELETON_TAP_WINDOW_MS = 2500;
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
   const HOME_CLEARANCE_PX = 8;
   const HOME_STANDARD_AVAILABLE_HEIGHT_MIN = 720;
@@ -50,6 +107,555 @@
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
+  let homeSkeletonSessionEnabled = false;
+
+
+  function ensureHomeSkeletonRuntimeStyle() {
+    if (!document.head) return null;
+
+    const css = `
+body[data-home-skeleton="true"] #homeSection,
+body[data-home-skeleton="true"] #homeSection.kg-screen,
+body[data-home-skeleton="true"] #homeSection[data-home-layout="grid"],
+body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] {
+  position: fixed !important;
+  top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+  min-height: 0 !important;
+  max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  align-items: stretch !important;
+  align-content: stretch !important;
+  row-gap: 12px !important;
+  box-sizing: border-box !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions,
+body[data-home-skeleton="true"] #homeSection .home-feed-preview,
+body[data-home-skeleton="true"] #homeSection .home-weather-card {
+  display: grid !important;
+  width: calc(100% - (2 * var(--klevby-home-content-inset, 22px))) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  position: relative !important;
+  inset: auto !important;
+  margin: 0 auto !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  justify-self: center !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions {
+  min-height: 112px !important;
+  height: auto !important;
+  align-self: start !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-feed-preview {
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-weather-card {
+  min-height: 78px !important;
+  height: auto !important;
+  align-self: end !important;
+  padding: 0 !important;
+}
+`.trim();
+    let style = document.getElementById(HOME_SKELETON_RUNTIME_STYLE_ID);
+
+    if (!style) {
+      style = document.createElement("style");
+      style.id = HOME_SKELETON_RUNTIME_STYLE_ID;
+      document.head.appendChild(style);
+    } else if (style.parentNode !== document.head) {
+      document.head.appendChild(style);
+    } else if (style.nextSibling) {
+      document.head.appendChild(style);
+    }
+
+    if (style.textContent !== css) {
+      style.textContent = css;
+    }
+
+    return style;
+  }
+
+
+  function applyHomeSkeletonRootInlineStyle(active) {
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!homeSection) return false;
+
+    if (active === true) {
+      homeSection.style.setProperty("position", "fixed", "important");
+      homeSection.style.setProperty("top", "var(--klevby-home-available-top, var(--klevby-app-available-top))", "important");
+      homeSection.style.setProperty("left", "0", "important");
+      homeSection.style.setProperty("right", "0", "important");
+      homeSection.style.setProperty("bottom", "auto", "important");
+      homeSection.style.setProperty("width", "100%", "important");
+      homeSection.style.setProperty("height", "var(--klevby-home-available-height, var(--klevby-app-available-height))", "important");
+      homeSection.style.setProperty("min-height", "0", "important");
+      homeSection.style.setProperty("max-height", "var(--klevby-home-available-height, var(--klevby-app-available-height))", "important");
+      homeSection.style.setProperty("margin", "0", "important");
+      homeSection.style.setProperty("padding", "0", "important");
+      homeSection.style.setProperty("transform", "none", "important");
+      homeSection.style.setProperty("overflow", "hidden", "important");
+      homeSection.style.setProperty("display", "grid", "important");
+      homeSection.style.setProperty("grid-template-rows", "auto minmax(0, 1fr) auto", "important");
+      homeSection.style.setProperty("align-items", "stretch", "important");
+      homeSection.style.setProperty("align-content", "stretch", "important");
+      homeSection.style.setProperty("row-gap", "12px", "important");
+      homeSection.style.setProperty("box-sizing", "border-box", "important");
+      return true;
+    }
+
+    HOME_SKELETON_INLINE_STYLE_PROPS.forEach((property) => {
+      homeSection.style.removeProperty(property);
+    });
+    return false;
+  }
+
+  function applyHomeSkeletonSlotInlineStyles(active) {
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    const inset = getCssPixelValue(homeSection, "--klevby-home-content-inset") ?? 22;
+    const homeWidth = homeSection?.getBoundingClientRect().width ?? 0;
+    const railWidth = Math.max(0, homeWidth - (2 * inset));
+    const railWidthPx = `${railWidth}px`;
+    const insetPx = `${inset}px`;
+    const slots = [
+      {
+        element: document.querySelector("#homeSection .home-quick-actions"),
+        styles: {
+          "min-height": "112px",
+          height: "auto",
+          "align-self": "start"
+        }
+      },
+      {
+        element: document.querySelector("#homeSection .home-feed-preview"),
+        styles: {
+          height: "100%",
+          "min-height": "0",
+          "align-self": "stretch"
+        }
+      },
+      {
+        element: document.querySelector("#homeSection .home-weather-card"),
+        styles: {
+          "min-height": "78px",
+          height: "auto",
+          "align-self": "end",
+          padding: "0"
+        }
+      }
+    ];
+    const sharedStyles = {
+      width: railWidthPx,
+      "min-width": railWidthPx,
+      "max-width": railWidthPx,
+      "inline-size": railWidthPx,
+      "min-inline-size": railWidthPx,
+      "max-inline-size": railWidthPx,
+      margin: "0",
+      "margin-top": "0",
+      "margin-bottom": "0",
+      "margin-left": insetPx,
+      "margin-right": insetPx,
+      "justify-self": "stretch",
+      "place-self": "stretch center",
+      "box-sizing": "border-box",
+      display: "grid",
+      position: "relative",
+      transform: "none",
+      overflow: "hidden"
+    };
+
+    slots.forEach(({ element, styles }) => {
+      if (!element) return;
+
+      if (active === true) {
+        Object.entries({ ...sharedStyles, ...styles }).forEach(([property, value]) => {
+          element.style.setProperty(property, value, "important");
+        });
+        return;
+      }
+
+      HOME_SKELETON_SLOT_INLINE_STYLE_PROPS.forEach((property) => {
+        element.style.removeProperty(property);
+      });
+    });
+  }
+
+  function readHomeSkeletonInlineStyleValue(homeSection, property) {
+    if (!homeSection) return null;
+
+    const value = homeSection.style.getPropertyValue(property).trim();
+    const priority = homeSection.style.getPropertyPriority(property).trim();
+    if (!value) return null;
+
+    return priority ? `${value}!${priority}` : value;
+  }
+
+  function isHomeSkeletonMode(homeSection = document.getElementById(HOME_SECTION_ID)) {
+    return (
+      document.body?.getAttribute(HOME_SKELETON_ATTRIBUTE) === "true" ||
+      homeSection?.getAttribute(HOME_SKELETON_ATTRIBUTE) === "true"
+    );
+  }
+
+  function setHomeSkeletonState(active) {
+    const body = document.body;
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!body || !homeSection) return;
+
+    if (active) {
+      body.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
+      homeSection.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
+      ensureHomeSkeletonRuntimeStyle();
+      applyHomeSkeletonRootInlineStyle(true);
+      applyHomeSkeletonSlotInlineStyles(true);
+      return;
+    }
+
+    body.removeAttribute(HOME_SKELETON_ATTRIBUTE);
+    homeSection.removeAttribute(HOME_SKELETON_ATTRIBUTE);
+    applyHomeSkeletonRootInlineStyle(false);
+    applyHomeSkeletonSlotInlineStyles(false);
+  }
+
+  function readRectDiagnostics(element) {
+    if (!element) return null;
+
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      height: rect.height,
+      left: rect.left,
+      right: rect.right,
+      width: rect.width
+    };
+  }
+
+  function resolveHomeSkeletonGeometryDiagnostics({
+    header,
+    touchBar,
+    homeSection,
+    availableTop,
+    availableBottom,
+    availableHeight
+  } = {}) {
+    const quick = document.querySelector("#homeSection .home-quick-actions");
+    const feed = document.querySelector("#homeSection .home-feed-preview");
+    const weather = document.querySelector("#homeSection .home-weather-card");
+    const headerRect = readRectDiagnostics(header);
+    const touchBarRect = readRectDiagnostics(touchBar);
+    const homeRect = readRectDiagnostics(homeSection);
+    const homeComputedStyle = homeSection ? window.getComputedStyle(homeSection) : null;
+    const quickRect = readRectDiagnostics(quick);
+    const feedRect = readRectDiagnostics(feed);
+    const weatherRect = readRectDiagnostics(weather);
+
+    const weatherToTouchBarPx = weatherRect && touchBarRect
+      ? touchBarRect.top - weatherRect.bottom
+      : null;
+    const weatherOverflowPx = weatherRect && touchBarRect
+      ? Math.max(0, weatherRect.bottom - touchBarRect.top)
+      : null;
+    const homeOverflowPx = homeRect && touchBarRect
+      ? Math.max(0, homeRect.bottom - touchBarRect.top)
+      : null;
+    const feedToWeatherGap = feedRect && weatherRect
+      ? weatherRect.top - feedRect.bottom
+      : null;
+    const bottomRhythmDeltaPx = feedToWeatherGap != null && weatherToTouchBarPx != null
+      ? Math.abs(feedToWeatherGap - weatherToTouchBarPx)
+      : null;
+    const expectedTop = Number.isFinite(availableTop) ? availableTop : (headerRect?.bottom ?? null);
+    const expectedBottom = Number.isFinite(availableBottom) ? availableBottom : (touchBarRect?.top ?? null);
+    const topDeltaPx = homeRect && expectedTop != null
+      ? homeRect.top - expectedTop
+      : null;
+    const bottomDeltaPx = homeRect && expectedBottom != null
+      ? homeRect.bottom - expectedBottom
+      : null;
+    const viewportWidth = getPositiveHeight(window.visualViewport?.width) || getPositiveHeight(window.innerWidth);
+    const expectedRailLeft = getCssPixelValue(document.documentElement, "--klevby-home-content-inset") ?? 22;
+    const expectedRailWidth = viewportWidth
+      ? Math.max(0, viewportWidth - (2 * expectedRailLeft))
+      : null;
+
+    return {
+      skeletonMode: isHomeSkeletonMode(homeSection),
+      headerRect,
+      touchBarRect,
+      homeSectionRect: homeRect,
+      homeGridRootRect: homeRect,
+      homeClassName: homeSection?.className ?? null,
+      homeLayoutAttr: homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) ?? null,
+      bodySkeletonAttr: document.body?.getAttribute(HOME_SKELETON_ATTRIBUTE) ?? null,
+      homeSkeletonAttr: homeSection?.getAttribute(HOME_SKELETON_ATTRIBUTE) ?? null,
+      runtimeStylePresent: Boolean(document.getElementById(HOME_SKELETON_RUNTIME_STYLE_ID)),
+      homePosition: homeComputedStyle?.position ?? null,
+      homeComputedTop: homeComputedStyle?.top ?? null,
+      homeComputedBottom: homeComputedStyle?.bottom ?? null,
+      homeComputedMarginTop: homeComputedStyle?.marginTop ?? null,
+      homeComputedTransform: homeComputedStyle?.transform ?? null,
+      homeComputedDisplay: homeComputedStyle?.display ?? null,
+      inlinePositionValue: readHomeSkeletonInlineStyleValue(homeSection, "position"),
+      inlineDisplayValue: readHomeSkeletonInlineStyleValue(homeSection, "display"),
+      inlineTopValue: readHomeSkeletonInlineStyleValue(homeSection, "top"),
+      inlineHeightValue: readHomeSkeletonInlineStyleValue(homeSection, "height"),
+      quickRect,
+      feedRect,
+      weatherRect,
+      viewportWidth,
+      expectedRailLeft,
+      expectedRailWidth,
+      availableHeight,
+      homeTop: homeRect?.top ?? null,
+      expectedTop,
+      availableTop: expectedTop,
+      homeBottom: homeRect?.bottom ?? null,
+      expectedBottom,
+      touchBarTop: touchBarRect?.top ?? expectedBottom,
+      topDeltaPx,
+      bottomDeltaPx,
+      quickHeight: quickRect?.height ?? null,
+      quickLeft: quickRect?.left ?? null,
+      quickWidth: quickRect?.width ?? null,
+      feedSlotHeight: feedRect?.height ?? null,
+      feedLeft: feedRect?.left ?? null,
+      feedWidth: feedRect?.width ?? null,
+      weatherHeight: weatherRect?.height ?? null,
+      weatherLeft: weatherRect?.left ?? null,
+      weatherWidth: weatherRect?.width ?? null,
+      weatherToTouchBarPx,
+      weatherOverflowPx,
+      homeOverflowPx,
+      bottomRhythmDeltaPx,
+      slotsOverlap: Boolean(
+        quickRect && feedRect && weatherRect &&
+        (quickRect.bottom > feedRect.top || feedRect.bottom > weatherRect.top)
+      )
+    };
+  }
+
+
+  function readHomeSkeletonStorageFlag() {
+    try {
+      return window.localStorage?.getItem(HOME_SKELETON_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function writeHomeSkeletonStorageFlag(enabled) {
+    homeSkeletonSessionEnabled = enabled === true;
+
+    try {
+      if (homeSkeletonSessionEnabled) {
+        window.localStorage?.setItem(HOME_SKELETON_STORAGE_KEY, "session");
+      } else {
+        window.localStorage?.removeItem(HOME_SKELETON_STORAGE_KEY);
+      }
+    } catch (_) {
+      // Keep the in-memory DOM state in sync even when storage is unavailable.
+    }
+
+    return homeSkeletonSessionEnabled;
+  }
+
+  function shouldEnableHomeSkeletonMode() {
+    return homeSkeletonSessionEnabled === true;
+  }
+
+  function applyHomeSkeletonModeFromState(homeActive = isHomeScreenActive()) {
+    ensureHomeSkeletonRuntimeStyle();
+    const enabled = homeActive && shouldEnableHomeSkeletonMode();
+    setHomeSkeletonState(enabled);
+    return enabled;
+  }
+
+  function enableHomeSkeletonMode() {
+    writeHomeSkeletonStorageFlag(true);
+    ensureHomeSkeletonRuntimeStyle();
+    syncHomeScreenState();
+    return isHomeSkeletonMode();
+  }
+
+  function disableHomeSkeletonMode() {
+    writeHomeSkeletonStorageFlag(false);
+    syncHomeScreenState();
+    return isHomeSkeletonMode();
+  }
+
+  function toggleHomeSkeletonMode() {
+    writeHomeSkeletonStorageFlag(!shouldEnableHomeSkeletonMode());
+    syncHomeScreenState();
+    return isHomeSkeletonMode();
+  }
+
+  function ensureHomeSkeletonTapZone() {
+    if (!document.body) return null;
+
+    const existingZone = document.getElementById(HOME_SKELETON_TAP_ZONE_ID);
+    if (existingZone) return existingZone;
+
+    const zone = document.createElement("button");
+    zone.id = HOME_SKELETON_TAP_ZONE_ID;
+    zone.className = "home-skeleton-dev-tap-zone";
+    zone.type = "button";
+    zone.setAttribute("aria-label", "Exit Home skeleton diagnostic mode");
+    zone.textContent = "EXIT SKELETON";
+    document.body.appendChild(zone);
+
+    return zone;
+  }
+
+  function ensureHomeSkeletonDiagnosticsOverlay() {
+    if (!document.body) return null;
+
+    const existingOverlay = document.getElementById(HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID);
+    if (existingOverlay) return existingOverlay;
+
+    const overlay = document.createElement("div");
+    overlay.id = HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID;
+    overlay.className = "home-skeleton-diagnostics-overlay";
+    overlay.setAttribute("aria-live", "polite");
+    document.body.appendChild(overlay);
+
+    return overlay;
+  }
+
+  function formatHomeSkeletonDiagnosticValue(value) {
+    if (value == null) return "null";
+    if (typeof value === "boolean") return String(value);
+    if (typeof value === "number") return Number.isFinite(value) ? String(Math.round(value)) : "null";
+    return String(value);
+  }
+
+  function refreshHomeSkeletonDiagnosticsOverlay() {
+    const overlay = ensureHomeSkeletonDiagnosticsOverlay();
+    if (!overlay) return null;
+
+    const contract = getHomeFitContract() || {};
+    const homeHeight = contract.homeSectionRect?.height ?? contract.homeHeight ?? null;
+    const rows = [
+      ["skeleton", contract.skeletonMode],
+      ["available", contract.availableHeight],
+      ["home", homeHeight],
+      ["homeTop", contract.homeTop],
+      ["expectedTop", contract.expectedTop ?? contract.availableTop],
+      ["homeBottom", contract.homeBottom],
+      ["expectedBottom", contract.expectedBottom ?? contract.touchBarTop],
+      ["topDelta", contract.topDeltaPx],
+      ["bottomDelta", contract.bottomDeltaPx],
+      ["homeClassName", contract.homeClassName],
+      ["homeLayoutAttr", contract.homeLayoutAttr],
+      ["bodySkeletonAttr", contract.bodySkeletonAttr],
+      ["homeSkeletonAttr", contract.homeSkeletonAttr],
+      ["runtimeStylePresent", contract.runtimeStylePresent],
+      ["position", contract.homePosition],
+      ["computedTop", contract.homeComputedTop],
+      ["computedBottom", contract.homeComputedBottom],
+      ["marginTop", contract.homeComputedMarginTop],
+      ["transform", contract.homeComputedTransform],
+      ["display", contract.homeComputedDisplay],
+      ["inlinePos", contract.inlinePositionValue],
+      ["inlineDisplay", contract.inlineDisplayValue],
+      ["inlineTop", contract.inlineTopValue],
+      ["inlineHeight", contract.inlineHeightValue],
+      ["viewportWidth", contract.viewportWidth],
+      ["expectedRailLeft", contract.expectedRailLeft],
+      ["expectedRailWidth", contract.expectedRailWidth],
+      ["quick", contract.quickHeight],
+      ["railQ", contract.quickLeft == null || contract.quickWidth == null
+        ? null
+        : `${formatHomeSkeletonDiagnosticValue(contract.quickLeft)},${formatHomeSkeletonDiagnosticValue(contract.quickWidth)}`],
+      ["feed", contract.feedSlotHeight],
+      ["railF", contract.feedLeft == null || contract.feedWidth == null
+        ? null
+        : `${formatHomeSkeletonDiagnosticValue(contract.feedLeft)},${formatHomeSkeletonDiagnosticValue(contract.feedWidth)}`],
+      ["weather", contract.weatherHeight],
+      ["railW", contract.weatherLeft == null || contract.weatherWidth == null
+        ? null
+        : `${formatHomeSkeletonDiagnosticValue(contract.weatherLeft)},${formatHomeSkeletonDiagnosticValue(contract.weatherWidth)}`],
+      ["toTouch", contract.weatherToTouchBarPx],
+      ["weatherOv", contract.weatherOverflowPx],
+      ["homeOv", contract.homeOverflowPx],
+      ["overlap", contract.slotsOverlap],
+      ["rhythmΔ", contract.bottomRhythmDeltaPx]
+    ];
+
+    overlay.textContent = [
+      "SKELETON DIAG",
+      ...rows.map(([label, value]) => `${label}: ${formatHomeSkeletonDiagnosticValue(value)}`)
+    ].join("\n");
+
+    return overlay.textContent;
+  }
+
+  function isEventInsideHomeSkeletonTapZone(event, zone) {
+    if (!event || !zone) return false;
+
+    const rect = zone.getBoundingClientRect();
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    );
+  }
+
+  function bindHomeSkeletonTapToggle() {
+    const target = ensureHomeSkeletonTapZone();
+    ensureHomeSkeletonDiagnosticsOverlay();
+    if (!target || target.dataset.homeSkeletonTapToggleBound === "true") return;
+
+    let tapCount = 0;
+    let firstTapAt = 0;
+
+    target.dataset.homeSkeletonTapToggleBound = "true";
+    target.addEventListener("click", () => {
+      if (isHomeSkeletonMode()) {
+        tapCount = 0;
+        firstTapAt = 0;
+        disableHomeSkeletonMode();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (isHomeSkeletonMode()) return;
+      if (!isEventInsideHomeSkeletonTapZone(event, target)) return;
+
+      const now = Date.now();
+      if (!firstTapAt || now - firstTapAt > HOME_SKELETON_TAP_WINDOW_MS) {
+        firstTapAt = now;
+        tapCount = 0;
+      }
+
+      tapCount += 1;
+
+      if (tapCount < HOME_SKELETON_TAP_COUNT) return;
+
+      tapCount = 0;
+      firstTapAt = 0;
+      enableHomeSkeletonMode();
+    });
+  }
 
   function getPositiveHeight(value) {
     const height = Number(value);
@@ -376,6 +982,8 @@
 
     const roundedHeight = Math.round(height);
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
+    applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode());
+    applyHomeSkeletonSlotInlineStyles(isHomeSkeletonMode());
     return roundedHeight;
   }
 
@@ -882,6 +1490,16 @@
     root.style.setProperty("--klevby-home-available-bottom", `${availableBottom}px`);
     root.style.setProperty("--klevby-home-available-height", `${availableHeight}px`);
     root.setAttribute(HOME_DENSITY_ATTRIBUTE, density);
+    applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode(homeSection));
+    applyHomeSkeletonSlotInlineStyles(isHomeSkeletonMode(homeSection));
+    const homeSkeletonGeometry = resolveHomeSkeletonGeometryDiagnostics({
+      header,
+      touchBar,
+      homeSection,
+      availableTop,
+      availableBottom,
+      availableHeight
+    });
 
     lastHomeFitContract = {
       headerBottom: headerRect?.bottom ?? null,
@@ -912,13 +1530,14 @@
       ...homeScreenContract,
       ...homeHeaderFrame,
       ...homeTouchBarFrame,
+      ...homeSkeletonGeometry,
       ...homeGridGeometry,
       homeTop: homeSectionRect.top,
       homeBottom: homeSectionRect.bottom,
       homeHeight: homeSectionRect.height,
-      homeOv: homeGridGeometry.homeOverflowPx,
-      overlap: homeGridGeometry.slotsOverlap,
-      toTouch: homeGridGeometry.weatherToTouchBarPx,
+      homeOv: homeGridGeometry.homeOverflowPx ?? homeSkeletonGeometry.homeOverflowPx,
+      overlap: homeGridGeometry.slotsOverlap ?? homeSkeletonGeometry.slotsOverlap,
+      toTouch: homeGridGeometry.weatherToTouchBarPx ?? homeSkeletonGeometry.weatherToTouchBarPx,
       solverMode: "retired-pending",
       solverRetired: HOME_SOLVER_RETIREMENT_ENABLED,
       solverFallbackActive: false,
@@ -940,6 +1559,7 @@
     };
 
     updateHomeSolverRetirementState(density, touchBar);
+    refreshHomeSkeletonDiagnosticsOverlay();
     return { ...lastHomeFitContract };
   }
 
@@ -1084,10 +1704,14 @@
 
   function syncHomeScreenState() {
     const homeActive = isHomeScreenActive();
+    ensureHomeSkeletonRuntimeStyle();
+    applyHomeSkeletonModeFromState(homeActive);
     setLockState(homeActive);
     setHomeGridContractState(homeActive);
     setHomeScreenContractIntegrationState(homeActive);
     updateHomeFitContract();
+    applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode());
+    applyHomeSkeletonSlotInlineStyles(isHomeSkeletonMode());
 
     if (!hasCapturedFirstSync) {
       hasCapturedFirstSync = true;
@@ -1140,6 +1764,9 @@
     window.KlevbyShellDebug?.capture("app-home-screen-owner init");
 
     updateAppHeight();
+    ensureHomeSkeletonRuntimeStyle();
+    bindHomeSkeletonTapToggle();
+    applyHomeSkeletonModeFromState(isHomeScreenActive());
     setHomeGridContractState(isHomeScreenActive());
     updateHomeFitContract();
     observeStateOwners();
@@ -1176,7 +1803,13 @@
     resolveHomeHeaderFrameContract,
     resolveHomeTouchBarFrameContract,
     getHomeFitContract,
-    isHomeScreenActive
+    isHomeScreenActive,
+    isHomeSkeletonMode,
+    shouldEnableHomeSkeletonMode,
+    enableHomeSkeletonMode,
+    disableHomeSkeletonMode,
+    toggleHomeSkeletonMode,
+    refreshHomeSkeletonDiagnosticsOverlay
   });
 
   if (typeof module !== "undefined" && module.exports) {
