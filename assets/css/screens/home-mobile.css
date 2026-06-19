@@ -119,15 +119,15 @@
     --klevby-home-surface-accent-border: rgba(244, 140, 60, 0.10);
     --klevby-home-lower-fill-y: 0px;
     --klevby-home-header-pull: 86px;
-    --klevby-home-hero-min-h: 318px;
-    --klevby-home-hero-pad-top: 124px;
+    --klevby-home-hero-min-h: 286px;
+    --klevby-home-hero-pad-top: 104px;
     --klevby-home-hero-pad-inline: 26px;
-    --klevby-home-hero-pad-bottom: 24px;
+    --klevby-home-hero-pad-bottom: 14px;
     --klevby-home-hero-margin-bottom: 8px;
-    --klevby-home-hero-copy-min-h: 168px;
+    --klevby-home-hero-copy-min-h: 148px;
     --klevby-home-hero-copy-shift-x: -10px;
     --klevby-home-hero-copy-shift-y: -152px;
-    --klevby-home-actions-gap-after-hero: 15px;
+    --klevby-home-actions-gap-after-hero: 14px;
     --klevby-home-quick-overlap: var(--klevby-home-actions-gap-after-hero);
     --klevby-home-quick-min-h: 121px;
     --klevby-home-section-gap: 14px;
@@ -138,6 +138,7 @@
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 0px;
     --klevby-home-weather-nudge-y: 0px;
+    --klevby-home-weather-clearance-y: 12px;
   }
 
   html:has(#homeSection:not(.hidden)) {
@@ -1561,11 +1562,11 @@
    */
   :root {
     --klevby-home-header-pull: 84px;
-    --klevby-home-hero-min-h: 334px;
-    --klevby-home-hero-pad-top: 120px;
+    --klevby-home-hero-min-h: 302px;
+    --klevby-home-hero-pad-top: 100px;
     --klevby-home-hero-pad-inline: 22px;
-    --klevby-home-hero-pad-bottom: 23px;
-    --klevby-home-hero-copy-min-h: 162px;
+    --klevby-home-hero-pad-bottom: 14px;
+    --klevby-home-hero-copy-min-h: 144px;
     --klevby-home-hero-copy-shift-y: -142px;
     --klevby-home-weather-strip-min-h: 54px;
   }
@@ -1796,8 +1797,8 @@
    * HOME FIXED-FIT TOKENS — compact density (670px–719.99px available).
    */
   :root[data-home-density="compact"] {
-    --klevby-home-hero-min-h: 294px;
-    --klevby-home-hero-pad-top: 112px;
+    --klevby-home-hero-min-h: 270px;
+    --klevby-home-hero-pad-top: 98px;
     --klevby-home-hero-copy-min-h: 144px;
     --klevby-home-hero-copy-shift-y: -130px;
     --klevby-home-quick-min-h: 111px;
@@ -1931,9 +1932,9 @@
    * Reductions are distributed across large blocks while preserving tap targets.
    */
   :root[data-home-density="tight"] {
-    --klevby-home-hero-min-h: 286px;
-    --klevby-home-hero-pad-top: 108px;
-    --klevby-home-hero-copy-min-h: 136px;
+    --klevby-home-hero-min-h: 260px;
+    --klevby-home-hero-pad-top: 94px;
+    --klevby-home-hero-copy-min-h: 126px;
     --klevby-home-hero-copy-shift-y: -118px;
     --klevby-home-quick-min-h: 107px;
     --klevby-home-section-gap: 12px;

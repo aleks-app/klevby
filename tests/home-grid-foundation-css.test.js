@@ -37,6 +37,7 @@ test("home grid foundation keeps legacy Home solver tokens as fallback", () => {
 
   assert.match(css, /--klevby-home-lower-fill-y/);
   assert.match(css, /--kg-home-grid-lower-fill-y:\s*var\(--klevby-home-lower-fill-y,\s*0px\)/);
+  assert.match(css, /--kg-home-grid-weather-clearance-y:\s*var\(--klevby-home-weather-clearance-y,\s*12px\)/);
 });
 
 test("home grid foundation uses measured shell geometry and adaptive feed row", () => {
@@ -45,6 +46,8 @@ test("home grid foundation uses measured shell geometry and adaptive feed row", 
   assert.match(css, /--klevby-home-available-top/);
   assert.match(css, /--klevby-home-available-height/);
   assert.match(css, /grid-template-rows:\s*auto auto minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /row-gap:\s*var\(--kg-home-grid-gap\)/);
+  assert.match(css, /padding-bottom:\s*var\(--kg-home-grid-weather-clearance-y\)/);
   assert.match(css, /> \.hero\s*\{[^}]*grid-row:\s*1/s);
   assert.match(css, /> \.home-quick-actions\s*\{[^}]*grid-row:\s*2/s);
   assert.match(css, /> \.home-feed-preview\s*\{[^}]*grid-row:\s*3/s);
