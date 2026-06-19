@@ -118,51 +118,10 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   color: #f5f8fc;
 }
 
-#tripsSection .trips-fullscreen-hero-description {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.38;
-  max-width: 286px;
-  color: rgba(236, 244, 252, 0.68);
-}
-
-#tripsSection .trips-fullscreen-hero-cta {
-  appearance: none;
-  -webkit-appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 188px;
-  min-height: 40px;
-  margin-top: 8px;
-  padding: 0 18px;
-  border: 1px solid rgba(244, 122, 43, 0.28);
-  border-radius: 10px;
-  background: linear-gradient(135deg, #f47a2b 0%, #c85a18 100%);
-  color: #fff8f0;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  cursor: pointer;
-  box-shadow:
-    0 10px 24px rgba(0, 8, 16, 0.32),
-    0 4px 14px rgba(244, 122, 43, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-#tripsSection .trips-fullscreen-hero-cta:active {
-  transform: scale(0.98);
-  box-shadow:
-    0 4px 12px rgba(0, 8, 16, 0.28),
-    inset 0 3px 8px rgba(0, 0, 0, 0.22);
-}
-
 #tripsSection .trips-fullscreen-type-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 408px;
+  width: min(408px, 100%);
   min-height: 47px;
   margin-top: 18px;
   padding: 4px;
@@ -220,153 +179,12 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   display: none;
 }
 
-#tripsSection .trips-fullscreen-filter-row {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr 1fr 0.82fr;
-  width: 408px;
-  min-height: 47px;
-  margin-top: 10px;
-  padding: 4px;
-  border: 1px solid rgba(88, 108, 124, 0.24);
-  border-radius: 10px;
-  background: #0B1118;
-  box-shadow:
-    0 10px 24px rgba(0, 8, 16, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+#tripsSection .trips-fullscreen-list-body {
+  flex: 1 1 auto;
+  width: min(408px, 100%);
+  min-height: 0;
+  margin-top: 12px;
 }
-
-#tripsSection .trips-fullscreen-filter-item {
-  appearance: none;
-  -webkit-appearance: none;
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
-  min-height: 39px;
-  padding: 0 4px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(245, 248, 252, 0.88);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.15;
-  cursor: pointer;
-  transition: opacity 0.16s ease;
-}
-
-#tripsSection .trips-fullscreen-filter-item span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#tripsSection .trips-fullscreen-filter-item:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  top: 9px;
-  right: 0;
-  width: 1px;
-  height: calc(100% - 18px);
-  background: rgba(236, 244, 252, 0.10);
-  pointer-events: none;
-}
-
-#tripsSection .trips-fullscreen-filter-item.is-active {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-}
-
-#tripsSection .trips-fullscreen-filter-item.is-active span {
-  color: #e06b00;
-}
-
-#tripsSection .trips-fullscreen-filter-item:active {
-  opacity: 0.78;
-}
-
-#tripsSection .trips-fullscreen-filter-item-accent:not(.is-active) {
-  color: rgba(245, 248, 252, 0.88);
-}
-
-#tripsSection .trips-fullscreen-list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 408px;
-  max-width: 100%;
-  margin-top: 14px;
-}
-
-#tripsSection .trips-fullscreen-list-heading {
-  display: inline-flex;
-  align-items: baseline;
-  min-width: 0;
-}
-
-#tripsSection .trips-fullscreen-list-title {
-  margin: 0;
-  font-family: var(--klevgo-font-display) !important;
-  font-size: 15px !important;
-  line-height: 1.15 !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em;
-  color: rgba(245, 248, 252, 0.96);
-}
-
-#tripsSection .trips-fullscreen-list-title span {
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  font-weight: inherit !important;
-  letter-spacing: inherit;
-  color: inherit;
-}
-
-#tripsSection .trips-fullscreen-list-count {
-  margin-left: 6px;
-  font-family: var(--klevgo-font-display) !important;
-  font-size: 15px !important;
-  line-height: 1.15 !important;
-  font-weight: 600 !important;
-  color: rgba(245, 248, 252, 0.58);
-}
-
-#tripsSection .trips-fullscreen-list-sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  pointer-events: none;
-  user-select: none;
-  cursor: default;
-}
-
-#tripsSection .trips-fullscreen-list-sort-label {
-  color: rgba(245, 248, 252, 0.48);
-}
-
-#tripsSection .trips-fullscreen-list-sort-value {
-  color: rgba(244, 122, 43, 0.72);
-}
-
-
 
 header[data-chrome-mode="trips"] .logo.app-header-logo,
 header[data-chrome-mode="trips"] .mobile-menu-wrap,
@@ -404,6 +222,129 @@ header[data-chrome-mode="trips"] .app-header-back-icon img {
   min-height: 16px;
 }
 
-#tripsSection .trips-fullscreen-filter-item.is-active {
-  color: #ffffff;
+#tripsSection .trips-fullscreen-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 8px;
+}
+
+#tripsSection .trips-fullscreen-list-heading {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+#tripsSection .trips-fullscreen-list-title {
+  margin: 0;
+  font-family: var(--klevgo-font-display) !important;
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: rgba(245, 248, 252, 0.96);
+}
+
+#tripsSection .trips-fullscreen-list-count {
+  margin-left: 6px;
+  font-family: var(--klevgo-font-display) !important;
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
+  color: rgba(245, 248, 252, 0.58);
+}
+
+#tripsSection .trips-fullscreen-list-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  pointer-events: none;
+  user-select: none;
+  cursor: default;
+}
+
+#tripsSection .trips-fullscreen-list-sort-label {
+  color: rgba(245, 248, 252, 0.48);
+}
+
+#tripsSection .trips-fullscreen-list-sort-value {
+  color: rgba(244, 122, 43, 0.72);
+}
+
+#tripsSection .trips-fullscreen-posts-section {
+  display: grid;
+  gap: 8px;
+  min-height: 24px;
+}
+
+#tripsSection .trips-fullscreen-skeleton,
+#tripsSection .trips-fullscreen-card {
+  min-height: 74px;
+  border: 1px solid rgba(88, 108, 124, 0.22);
+  border-radius: 14px;
+  background: rgba(4, 10, 16, 0.76);
+  box-shadow:
+    0 10px 24px rgba(0, 8, 16, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+#tripsSection .trips-fullscreen-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+#tripsSection .trips-fullscreen-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  transform: translateX(-100%);
+  animation: tripsFullscreenSkeleton 1.35s ease-in-out infinite;
+}
+
+#tripsSection .trips-fullscreen-card {
+  padding: 12px 14px;
+  color: rgba(245, 248, 252, 0.82);
+}
+
+#tripsSection .trips-fullscreen-card-kicker {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(244, 122, 43, 0.78);
+}
+
+#tripsSection .trips-fullscreen-card h4 {
+  margin: 0 0 5px;
+  font-family: var(--klevgo-font-display) !important;
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: rgba(245, 248, 252, 0.96);
+}
+
+#tripsSection .trips-fullscreen-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(236, 244, 252, 0.66);
+}
+
+@keyframes tripsFullscreenSkeleton {
+  100% {
+    transform: translateX(100%);
+  }
 }
