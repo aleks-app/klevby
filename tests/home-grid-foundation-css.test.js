@@ -55,6 +55,18 @@ test("home grid foundation uses measured shell geometry and adaptive feed row", 
   assert.doesNotMatch(css, /margin-top:\s*-/);
 });
 
+
+test("home feed preview constrains the active card inside its grid slot", () => {
+  const css = read(cssPath);
+
+  assert.match(css, /> \.home-feed-preview\s*\{[^}]*display:\s*grid/s);
+  assert.match(css, /> \.home-feed-preview\s*\{[^}]*grid-template-rows:\s*auto minmax\(0,\s*1fr\)/s);
+  assert.match(css, /\.home-feed-preview-head\s*\{[^}]*grid-row:\s*1/s);
+  assert.match(css, /\.home-feed-preview-rotator\s*\{[^}]*grid-row:\s*2/s);
+  assert.match(css, /\.home-feed-preview-rotator,[\s\S]*?\.home-feed-preview-card\s*\{[^}]*height:\s*100%/s);
+  assert.match(css, /\.home-feed-preview-rotator,[\s\S]*?\.home-feed-preview-card\s*\{[^}]*overflow:\s*hidden/s);
+});
+
 test("home grid foundation lets kg-screen own shell height", () => {
   const css = read(cssPath);
 
