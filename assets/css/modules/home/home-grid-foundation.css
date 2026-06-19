@@ -1,28 +1,162 @@
-:root:is([data-home-density="standard"], [data-home-density="tight"]) #homeSection.kg-screen[data-home-layout="grid"] {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    align-items: stretch !important;
-    position: relative !important;
-}
+/*
+ * Home grid geometry contract — shell-anchored screen root + three stable slots.
+ *
+ * Runtime Home owner adds .kg-screen and data-home-layout="grid" while Home is active.
+ * Legacy lower-fill remains a rhythm token only; it must not grow the external feed slot.
+ */
 
-:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
-    position: relative !important;
-    margin-top: -150px !important;
-    margin-bottom: 24px !important;
-}
+@media (max-width: 767px) {
+  :root {
+    --kg-home-grid-inline: var(--klevby-home-content-inset, var(--kg-screen-inline, 22px));
+    --kg-home-grid-gap: var(--klevby-home-section-gap, 14px);
+    --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 18px);
+    --kg-home-grid-lower-fill-y: var(--klevby-home-lower-fill-y, 0px);
+  }
 
-/* Вернули Ленту в исходное состояние, баннеры снова на месте */
-:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
-    position: relative !important;
-    margin-top: -20px !important;
-    margin-bottom: 24px !important;
-}
+  #homeSection.kg-screen[data-home-layout="grid"] {
+    position: fixed;
+    top: var(--klevby-home-available-top, var(--klevby-app-available-top));
+    bottom: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: var(--klevby-home-available-height, var(--klevby-app-available-height));
+    min-height: 0;
+    max-height: var(--klevby-home-available-height, var(--klevby-app-available-height));
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    align-items: stretch;
+    align-content: stretch;
+    row-gap: 0;
+    box-sizing: border-box;
+    container-type: size;
+    container-name: kg-home-screen;
+    z-index: 1;
+  }
 
-/* Погоду возвращаем на -5px, как было до судорог */
-:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
-    position: relative !important;
-    margin-top: -5px !important;
-    margin-bottom: 90px !important;
-    z-index: 10 !important;
+  body[data-home-screen-lock="true"]
+    #homeSection.kg-screen[data-home-layout="grid"]:not(.hidden) {
+    position: fixed !important;
+    top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
+    bottom: auto !important;
+    height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    min-height: 0 !important;
+    max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .hero {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .hero .hero-feature-chip,
+  #homeSection.kg-screen[data-home-layout="grid"] > .hero button {
+    pointer-events: auto;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > #forecastPanel {
+    display: none;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions {
+    grid-row: 1;
+    position: relative;
+    inset: auto;
+    z-index: 2;
+    width: calc(100% - (2 * var(--kg-home-grid-inline)));
+    margin: 0 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    align-self: start;
+    transform: none;
+    overflow: visible;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-feed-preview {
+    grid-row: 2;
+    position: relative;
+    inset: auto;
+    z-index: 2;
+    width: calc(100% - (2 * var(--kg-home-grid-inline)));
+    margin: 0 auto;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    box-sizing: border-box;
+    align-self: stretch;
+    transform: none;
+    overflow: hidden;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-weather-card {
+    grid-row: 3;
+    position: relative;
+    inset: auto;
+    z-index: 2;
+    width: calc(100% - (2 * var(--kg-home-grid-inline)));
+    margin: 0 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    align-self: end;
+    transform: none;
+    overflow: hidden;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-rotator,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-rotator-viewport,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-slide,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-card {
+    min-height: 0;
+    max-height: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-rotator {
+    position: relative;
+    width: 100%;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-rotator-viewport {
+    position: relative;
+    width: 100%;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image img,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-ad-banner {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image {
+    position: relative;
+    min-height: 0;
+    max-height: 100%;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image img {
+    position: absolute;
+    inset: 0;
+  }
+
+  :root[data-home-density="compact"] {
+    --kg-home-grid-gap: var(--klevby-home-section-gap, 12px);
+    --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 18px);
+  }
+
+  :root[data-home-density="tight"] {
+    --kg-home-grid-gap: var(--klevby-home-section-gap, 12px);
+    --kg-home-grid-feed-offset-y: var(--klevby-home-feed-group-offset-y, 12px);
+  }
 }

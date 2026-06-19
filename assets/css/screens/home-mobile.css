@@ -2025,12 +2025,43 @@
     padding-bottom: 0;
   }
 
-  body[data-home-screen-lock="true"] #homeSection:not(.hidden) {
+  body[data-home-screen-lock="true"] #homeSection:not(.kg-screen):not(.hidden) {
     top: var(--klevby-app-available-top) !important;
     bottom: var(--klevby-app-available-bottom-offset) !important;
     height: var(--klevby-app-available-height) !important;
     min-height: var(--klevby-app-available-height) !important;
     max-height: var(--klevby-app-available-height) !important;
     overflow: hidden !important;
+  }
+}
+
+/*
+ * Real Home grid mode — neutralize legacy flow offsets that predate the shell contract.
+ * Loaded before home-grid-foundation.css; foundation owns root geometry and slot rails.
+ */
+@media (max-width: 767px) {
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions,
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-feed-preview,
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-weather-card {
+    margin-top: 0;
+    margin-bottom: 0;
+    bottom: auto;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-weather-card {
+    transform: none;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-card,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-rotator-viewport,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image,
+  #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-image img {
+    min-height: 0;
+    max-height: 100%;
   }
 }

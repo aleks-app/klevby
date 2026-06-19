@@ -3,6 +3,8 @@
 
   const ROTATOR_ID = "homeFeedPreviewRotator";
   const HOME_SECTION_ID = "homeSection";
+  const HOME_LAYOUT_ATTRIBUTE = "data-home-layout";
+  const HOME_LAYOUT_GRID_VALUE = "grid";
   const SLIDE_MS = 4500;
   const POLL_MS = 1000;
 
@@ -23,11 +25,27 @@
 
       const viewport = rotator.querySelector(".home-feed-preview-rotator-viewport");
       const feedSlide = rotator.querySelector(".home-feed-preview-slide--feed");
+      const homeSection = document.getElementById(HOME_SECTION_ID);
       let activeIndex = 0;
       let timerId = 0;
 
+      function isHomeMeasuredGridMode() {
+        return homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) === HOME_LAYOUT_GRID_VALUE;
+      }
+
+      function clearViewportHeight() {
+        if (!viewport) return;
+        viewport.style.removeProperty("min-height");
+        viewport.style.removeProperty("height");
+      }
+
       function syncViewportHeight() {
         if (!viewport || !feedSlide) return;
+
+        if (isHomeMeasuredGridMode()) {
+          clearViewportHeight();
+          return;
+        }
 
         const height = Math.ceil(feedSlide.getBoundingClientRect().height);
         if (height > 0) {
@@ -80,6 +98,14 @@
         attributes: true,
         attributeFilter: ["data-home-density"]
       });
+
+      if (homeSection) {
+        const layoutObserver = new MutationObserver(syncViewportHeight);
+        layoutObserver.observe(homeSection, {
+          attributes: true,
+          attributeFilter: [HOME_LAYOUT_ATTRIBUTE]
+        });
+      }
 
       document.addEventListener("visibilitychange", () => {
         if (canRotate()) {

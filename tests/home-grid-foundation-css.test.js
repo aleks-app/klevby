@@ -15,7 +15,7 @@ function read(filePath) {
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
   const legacyImport = './screens/home-mobile.css?v=20260619-home-contract-clean-1';
-  const foundationImport = './modules/home/home-grid-foundation.css?v=20260619-home-grid-rhythm-1';
+  const foundationImport = './modules/home/home-grid-foundation.css?v=20260610-home-grid-geometry-pr1';
 
   assert.ok(mainCss.includes(legacyImport));
   assert.ok(mainCss.includes(foundationImport));
@@ -37,8 +37,15 @@ test("home grid foundation keeps legacy Home solver tokens as fallback", () => {
 
   assert.match(css, /--klevby-home-lower-fill-y/);
   assert.match(css, /--kg-home-grid-lower-fill-y:\s*var\(--klevby-home-lower-fill-y,\s*0px\)/);
-  assert.match(css, /--klevby-home-feed-card-min-h/);
-  assert.match(css, /--klevby-home-feed-image-min-h/);
+});
+
+test("home grid foundation uses measured shell geometry and adaptive feed row", () => {
+  const css = read(cssPath);
+
+  assert.match(css, /--klevby-home-available-top/);
+  assert.match(css, /--klevby-home-available-height/);
+  assert.match(css, /grid-template-rows:\s*auto minmax\(0,\s*1fr\) auto/);
+  assert.doesNotMatch(css, /margin-top:\s*-/);
 });
 
 test("home grid foundation lets kg-screen own shell height", () => {

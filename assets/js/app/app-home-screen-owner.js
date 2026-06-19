@@ -397,6 +397,150 @@
     );
   }
 
+  function measureSlotRailRect(element, expectedRailLeft, expectedRailWidth) {
+    if (!element) {
+      return {
+        left: null,
+        width: null,
+        leftDeltaPx: null,
+        widthDeltaPx: null
+      };
+    }
+
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      width: rect.width,
+      leftDeltaPx: getAbsoluteDelta(rect.left, expectedRailLeft),
+      widthDeltaPx: getAbsoluteDelta(rect.width, expectedRailWidth)
+    };
+  }
+
+  function rectsOverlapVertically(firstRect, secondRect) {
+    if (!firstRect || !secondRect) return false;
+    return firstRect.bottom > secondRect.top && firstRect.top < secondRect.bottom;
+  }
+
+  function measureHomeGridGeometry({
+    homeSection,
+    root,
+    touchBar,
+    homeSectionRect,
+    availableTop,
+    availableBottom,
+    availableHeight
+  } = {}) {
+    if (!homeSection || homeSection.getAttribute(HOME_LAYOUT_ATTRIBUTE) !== HOME_LAYOUT_GRID_VALUE) {
+      return {
+        realModeRootTop: null,
+        realModeRootBottom: null,
+        expectedTop: availableTop ?? null,
+        expectedBottom: availableBottom ?? null,
+        topDelta: null,
+        bottomDelta: null,
+        homeHeightDeltaPx: null,
+        expectedRailLeft: null,
+        expectedRailWidth: null,
+        railQ: null,
+        railF: null,
+        railW: null,
+        quickRailLeft: null,
+        quickRailWidth: null,
+        feedRailLeft: null,
+        feedRailWidth: null,
+        weatherRailLeft: null,
+        weatherRailWidth: null,
+        weatherToTouchBarPx: null,
+        weatherOverflowPx: null,
+        homeOverflowPx: null,
+        slotsOverlap: null,
+        feedHeightDeltaPx: null,
+        weatherTopDeltaPx: null
+      };
+    }
+
+    const contentInset =
+      getCssPixelValue(root, "--klevby-home-content-inset") ??
+      getCssPixelValue(root, "--kg-home-grid-inline") ??
+      22;
+    const viewportWidth = getPositiveHeight(window.innerWidth) || root.clientWidth || 0;
+    const expectedRailLeft = contentInset;
+    const expectedRailWidth = Math.max(0, viewportWidth - contentInset * 2);
+    const quickActions = homeSection.querySelector(".home-quick-actions");
+    const feedPreview = homeSection.querySelector(".home-feed-preview");
+    const weatherCard = homeSection.querySelector(".home-weather-card");
+    const feedSlot = feedPreview;
+    const touchBarRect = touchBar?.getBoundingClientRect() || null;
+    const quickRect = quickActions?.getBoundingClientRect() || null;
+    const feedRect = feedPreview?.getBoundingClientRect() || null;
+    const weatherRect = weatherCard?.getBoundingClientRect() || null;
+    const railQ = measureSlotRailRect(quickActions, expectedRailLeft, expectedRailWidth);
+    const railF = measureSlotRailRect(feedPreview, expectedRailLeft, expectedRailWidth);
+    const railW = measureSlotRailRect(weatherCard, expectedRailLeft, expectedRailWidth);
+    const realModeRootTop = homeSectionRect?.top ?? null;
+    const realModeRootBottom = homeSectionRect?.bottom ?? null;
+    const topDelta = getAbsoluteDelta(realModeRootTop, availableTop);
+    const bottomDelta = getAbsoluteDelta(realModeRootBottom, availableBottom);
+    const homeHeightDeltaPx = getAbsoluteDelta(homeSectionRect?.height, availableHeight);
+    const weatherToTouchBarPx =
+      weatherRect && touchBarRect ? touchBarRect.top - weatherRect.bottom : null;
+    const weatherOverflowPx =
+      weatherRect && Number.isFinite(availableBottom)
+        ? Math.max(0, weatherRect.bottom - availableBottom)
+        : null;
+    const homeOverflowPx =
+      homeSectionRect && Number.isFinite(availableBottom)
+        ? Math.max(0, homeSectionRect.bottom - availableBottom)
+        : null;
+    const slotsOverlap =
+      quickRect && feedRect && weatherRect
+        ? rectsOverlapVertically(quickRect, feedRect) ||
+          rectsOverlapVertically(feedRect, weatherRect) ||
+          rectsOverlapVertically(quickRect, weatherRect)
+        : null;
+    const activeFeedCard = findActiveHomeFeedCard();
+    const activeFeedCardRect = activeFeedCard?.getBoundingClientRect() || null;
+    const feedHeightDeltaPx =
+      feedSlot && activeFeedCardRect
+        ? getAbsoluteDelta(feedSlot.height, activeFeedCardRect.height)
+        : null;
+    const weatherTopDeltaPx =
+      feedRect && weatherRect ? getAbsoluteDelta(weatherRect.top, feedRect.bottom) : null;
+
+    return {
+      realModeRootTop,
+      realModeRootBottom,
+      expectedTop: availableTop ?? null,
+      expectedBottom: availableBottom ?? null,
+      topDelta,
+      bottomDelta,
+      homeHeightDeltaPx,
+      expectedRailLeft,
+      expectedRailWidth,
+      railQ: `${Math.round(railQ.left ?? 0)},${Math.round(railQ.width ?? 0)}`,
+      railF: `${Math.round(railF.left ?? 0)},${Math.round(railF.width ?? 0)}`,
+      railW: `${Math.round(railW.left ?? 0)},${Math.round(railW.width ?? 0)}`,
+      quickRailLeft: railQ.left,
+      quickRailWidth: railQ.width,
+      quickRailLeftDeltaPx: railQ.leftDeltaPx,
+      quickRailWidthDeltaPx: railQ.widthDeltaPx,
+      feedRailLeft: railF.left,
+      feedRailWidth: railF.width,
+      feedRailLeftDeltaPx: railF.leftDeltaPx,
+      feedRailWidthDeltaPx: railF.widthDeltaPx,
+      weatherRailLeft: railW.left,
+      weatherRailWidth: railW.width,
+      weatherRailLeftDeltaPx: railW.leftDeltaPx,
+      weatherRailWidthDeltaPx: railW.widthDeltaPx,
+      weatherToTouchBarPx,
+      weatherOverflowPx,
+      homeOverflowPx,
+      slotsOverlap,
+      feedHeightDeltaPx,
+      weatherTopDeltaPx
+    };
+  }
+
   function measureHomeBottomRhythm(touchBar) {
     const activeFeedCard = findActiveHomeFeedCard();
     const weatherCard = document.querySelector("#homeSection .home-weather-card");
@@ -722,6 +866,15 @@
       kernelTouchBarTop: appShell?.touchbarTop,
       kernelTouchBarHeight: appShell?.touchbarHeight
     });
+    const homeGridGeometry = measureHomeGridGeometry({
+      homeSection,
+      root,
+      touchBar,
+      homeSectionRect,
+      availableTop,
+      availableBottom,
+      availableHeight
+    });
 
     root.removeAttribute("data-home-screen-contract-pass");
 
@@ -759,6 +912,13 @@
       ...homeScreenContract,
       ...homeHeaderFrame,
       ...homeTouchBarFrame,
+      ...homeGridGeometry,
+      homeTop: homeSectionRect.top,
+      homeBottom: homeSectionRect.bottom,
+      homeHeight: homeSectionRect.height,
+      homeOv: homeGridGeometry.homeOverflowPx,
+      overlap: homeGridGeometry.slotsOverlap,
+      toTouch: homeGridGeometry.weatherToTouchBarPx,
       solverMode: "retired-pending",
       solverRetired: HOME_SOLVER_RETIREMENT_ENABLED,
       solverFallbackActive: false,
