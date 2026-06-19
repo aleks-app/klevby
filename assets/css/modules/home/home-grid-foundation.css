@@ -12,15 +12,14 @@
     margin-bottom: 24px !important;
 }
 
-/* СКРЫВАЕМ ВСЕ КАРТОЧКИ ИЗ ЛЕНТЫ, ДЕЛАЕМ БЛОК ПУСТЫМ */
+/* Вернули Ленту в исходное состояние, баннеры снова на месте */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
     position: relative !important;
     margin-top: -20px !important;
     margin-bottom: 24px !important;
-    height: 0 !important; /* Схлопываем высоту */
-    visibility: hidden !important; /* Прячем содержимое */
 }
 
+/* Погоду возвращаем на -5px, как было до судорог */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: relative !important;
     margin-top: -5px !important;
