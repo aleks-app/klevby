@@ -95,6 +95,8 @@
     header,
     touchBar,
     homeSection,
+    availableTop,
+    availableBottom,
     availableHeight
   } = {}) {
     const quick = document.querySelector("#homeSection .home-quick-actions");
@@ -122,6 +124,14 @@
     const bottomRhythmDeltaPx = feedToWeatherGap != null && weatherToTouchBarPx != null
       ? Math.abs(feedToWeatherGap - weatherToTouchBarPx)
       : null;
+    const expectedTop = Number.isFinite(availableTop) ? availableTop : (headerRect?.bottom ?? null);
+    const expectedBottom = Number.isFinite(availableBottom) ? availableBottom : (touchBarRect?.top ?? null);
+    const topDeltaPx = homeRect && expectedTop != null
+      ? homeRect.top - expectedTop
+      : null;
+    const bottomDeltaPx = homeRect && expectedBottom != null
+      ? homeRect.bottom - expectedBottom
+      : null;
 
     return {
       skeletonMode: isHomeSkeletonMode(homeSection),
@@ -133,6 +143,14 @@
       feedRect,
       weatherRect,
       availableHeight,
+      homeTop: homeRect?.top ?? null,
+      expectedTop,
+      availableTop: expectedTop,
+      homeBottom: homeRect?.bottom ?? null,
+      expectedBottom,
+      touchBarTop: touchBarRect?.top ?? expectedBottom,
+      topDeltaPx,
+      bottomDeltaPx,
       quickHeight: quickRect?.height ?? null,
       feedSlotHeight: feedRect?.height ?? null,
       weatherHeight: weatherRect?.height ?? null,
@@ -243,6 +261,12 @@
       ["skeleton", contract.skeletonMode],
       ["available", contract.availableHeight],
       ["home", homeHeight],
+      ["homeTop", contract.homeTop],
+      ["expectedTop", contract.expectedTop ?? contract.availableTop],
+      ["homeBottom", contract.homeBottom],
+      ["expectedBottom", contract.expectedBottom ?? contract.touchBarTop],
+      ["topDelta", contract.topDeltaPx],
+      ["bottomDelta", contract.bottomDeltaPx],
       ["quick", contract.quickHeight],
       ["feed", contract.feedSlotHeight],
       ["weather", contract.weatherHeight],
@@ -975,6 +999,8 @@
       header,
       touchBar,
       homeSection,
+      availableTop,
+      availableBottom,
       availableHeight
     });
 
