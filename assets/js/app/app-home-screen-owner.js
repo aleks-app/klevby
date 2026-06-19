@@ -107,6 +107,7 @@
   let standaloneViewportReady = false;
   let deferredStandaloneHeight = 0;
   let lastHomeFitContract = null;
+  let homeSkeletonSessionEnabled = false;
 
 
   function ensureHomeSkeletonRuntimeStyle() {
@@ -462,17 +463,23 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
   }
 
   function writeHomeSkeletonStorageFlag(enabled) {
+    homeSkeletonSessionEnabled = enabled === true;
+
     try {
-      window.localStorage?.setItem(HOME_SKELETON_STORAGE_KEY, enabled ? "true" : "false");
+      if (homeSkeletonSessionEnabled) {
+        window.localStorage?.setItem(HOME_SKELETON_STORAGE_KEY, "session");
+      } else {
+        window.localStorage?.removeItem(HOME_SKELETON_STORAGE_KEY);
+      }
     } catch (_) {
       // Keep the in-memory DOM state in sync even when storage is unavailable.
     }
 
-    return enabled === true;
+    return homeSkeletonSessionEnabled;
   }
 
   function shouldEnableHomeSkeletonMode() {
-    return readHomeSkeletonStorageFlag();
+    return homeSkeletonSessionEnabled === true;
   }
 
   function applyHomeSkeletonModeFromState(homeActive = isHomeScreenActive()) {
