@@ -6,16 +6,17 @@
     position: relative !important;
 }
 
+/* Поднимаем кнопки на 100 пикселей выше текущего */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
-    margin-top: -50px !important;
+    margin-top: -150px !important;
     margin-bottom: 20px !important;
     z-index: 5 !important;
 }
 
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
     position: relative !important;
-    margin-top: -10px !important;
+    margin-top: -65px !important;
     z-index: 5 !important;
 }
 
