@@ -12,7 +12,7 @@
 
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: relative !important;
-    margin-top: -5px !important; /* Ровно 5 пикселей вверх к аватарке */
+    margin-top: -15px !important; /* Подняли ещё на 10px наверх */
     margin-bottom: 90px !important;
     z-index: 10 !important;
 }
