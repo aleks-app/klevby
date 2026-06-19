@@ -119,12 +119,12 @@
     --klevby-home-surface-accent-border: rgba(244, 140, 60, 0.10);
     --klevby-home-lower-fill-y: 0px;
     --klevby-home-header-pull: 86px;
-    --klevby-home-hero-min-h: 252px;
-    --klevby-home-hero-pad-top: 88px;
+    --klevby-home-hero-min-h: 190px;
+    --klevby-home-hero-pad-top: 80px;
     --klevby-home-hero-pad-inline: 26px;
-    --klevby-home-hero-pad-bottom: 10px;
+    --klevby-home-hero-pad-bottom: 0px;
     --klevby-home-hero-margin-bottom: 8px;
-    --klevby-home-hero-copy-min-h: 132px;
+    --klevby-home-hero-copy-min-h: 124px;
     --klevby-home-hero-copy-shift-x: -10px;
     --klevby-home-hero-copy-shift-y: -152px;
     --klevby-home-actions-gap-after-hero: 18px;
@@ -1562,11 +1562,11 @@
    */
   :root {
     --klevby-home-header-pull: 84px;
-    --klevby-home-hero-min-h: 268px;
-    --klevby-home-hero-pad-top: 88px;
+    --klevby-home-hero-min-h: 202px;
+    --klevby-home-hero-pad-top: 80px;
     --klevby-home-hero-pad-inline: 22px;
-    --klevby-home-hero-pad-bottom: 10px;
-    --klevby-home-hero-copy-min-h: 132px;
+    --klevby-home-hero-pad-bottom: 0px;
+    --klevby-home-hero-copy-min-h: 124px;
     --klevby-home-hero-copy-shift-y: -142px;
     --klevby-home-weather-strip-min-h: 54px;
   }
@@ -1797,9 +1797,9 @@
    * HOME FIXED-FIT TOKENS — compact density (670px–719.99px available).
    */
   :root[data-home-density="compact"] {
-    --klevby-home-hero-min-h: 242px;
-    --klevby-home-hero-pad-top: 86px;
-    --klevby-home-hero-copy-min-h: 128px;
+    --klevby-home-hero-min-h: 188px;
+    --klevby-home-hero-pad-top: 78px;
+    --klevby-home-hero-copy-min-h: 120px;
     --klevby-home-hero-copy-shift-y: -130px;
     --klevby-home-quick-min-h: 111px;
     --klevby-home-section-gap: 12px;
@@ -1932,9 +1932,9 @@
    * Reductions are distributed across large blocks while preserving tap targets.
    */
   :root[data-home-density="tight"] {
-    --klevby-home-hero-min-h: 236px;
-    --klevby-home-hero-pad-top: 84px;
-    --klevby-home-hero-copy-min-h: 112px;
+    --klevby-home-hero-min-h: 184px;
+    --klevby-home-hero-pad-top: 76px;
+    --klevby-home-hero-copy-min-h: 108px;
     --klevby-home-hero-copy-shift-y: -118px;
     --klevby-home-quick-min-h: 107px;
     --klevby-home-section-gap: 12px;
