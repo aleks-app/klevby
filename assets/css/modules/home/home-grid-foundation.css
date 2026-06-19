@@ -1,5 +1,5 @@
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
-    margin-top: -60px !important;
+    margin-top: -25px !important;
     position: relative !important;
     z-index: 10 !important;
 }
