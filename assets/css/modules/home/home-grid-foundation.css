@@ -1,34 +1,18 @@
-:root:is([data-home-density="standard"], [data-home-density="tight"]) #homeSection.kg-screen[data-home-layout="grid"] {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    align-items: stretch !important;
-    position: relative !important;
-}
-
-/* Подтягиваем кнопки к тексту ровно, без фанатизма */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
-    margin-top: -35px !important;
+    margin-top: -120px !important; /* Тянем Кнопки НАВЕРХ к аватарке, они потащат за собой всё остальное */
     margin-bottom: 24px !important;
-    z-index: 5 !important;
 }
 
-/* Ленту НЕ ТЯНЕМ вверх, а просто даём ей отступ снизу, чтобы она не ложилась под Погоду */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
     position: relative !important;
     margin-top: 0 !important;
-    margin-bottom: 110px !important; /* Толчок, чтобы раздвинуть пирог */
-    z-index: 5 !important;
+    margin-bottom: 24px !important;
 }
 
-/* Погода зафиксирована жёстко на месте */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
-    position: absolute !important;
-    bottom: 138px !important;
-    left: 22px !important;
-    right: 22px !important;
-    height: 80px !important;
-    margin: 0 !important;
+    position: relative !important; /* Вернули в поезд! Никакого абсолюта */
+    margin-top: -10px !important; /* Аккуратный нахлёст, чтобы не было вибрации */
+    margin-bottom: 90px !important; /* Зазор до тачбара */
     z-index: 10 !important;
 }
