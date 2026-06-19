@@ -1,18 +1,20 @@
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
-    margin-top: -150px !important; /* Потащили весь поезд выше к аватарке на 30px */
+    margin-top: -150px !important;
     margin-bottom: 24px !important;
 }
 
+/* Поднимаем Ленту на 20px наверх к кнопкам */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
     position: relative !important;
-    margin-top: 0 !important;
+    margin-top: -20px !important;
     margin-bottom: 24px !important;
 }
 
+/* Погоду пока держим на месте, смотрим как разъедется нахлёст */
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: relative !important;
-    margin-top: -45px !important; /* Подняли саму погоду ещё на 30px к Ленте */
+    margin-top: -45px !important;
     margin-bottom: 90px !important;
     z-index: 10 !important;
 }
