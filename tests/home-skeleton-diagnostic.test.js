@@ -44,6 +44,11 @@ test("Home diagnostics report real-mode order and skeleton inline cleanup", () =
   assert.match(owner, /weatherToTouchBar/);
   assert.match(owner, /orderPass/);
   assert.match(owner, /heroHeight:\s*heroRect\?\.height \?\? null/);
+  assert.match(owner, /heroCopyTop:\s*heroCopyRect\?\.top \?\? null/);
+  assert.match(owner, /heroCopyBottom:\s*heroCopyRect\?\.bottom \?\? null/);
+  assert.match(owner, /heroCopyHeight:\s*heroCopyRect\?\.height \?\? null/);
+  assert.match(owner, /heroCopyToQuickActions/);
+  assert.match(owner, /heroTailAfterCopy/);
   assert.match(owner, /quickBottom:\s*quickRect\?\.bottom \?\? null/);
   assert.match(owner, /quickHeight:\s*quickRect\?\.height \?\? null/);
   assert.match(owner, /feedBottom:\s*feedRect\?\.bottom \?\? null/);

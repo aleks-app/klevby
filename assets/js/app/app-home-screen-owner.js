@@ -382,6 +382,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const homeRect = readRectDiagnostics(homeSection);
     const homeComputedStyle = homeSection ? window.getComputedStyle(homeSection) : null;
     const heroRect = readRectDiagnostics(hero);
+    const heroCopyRect = readRectDiagnostics(document.querySelector("#homeSection .hero-copy"));
     const quickRect = readRectDiagnostics(quick);
     const feedRect = readRectDiagnostics(feed);
     const weatherRect = readRectDiagnostics(weather);
@@ -405,6 +406,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       ? Math.abs(feedToWeatherGap - weatherToTouchBarPx)
       : null;
     const heroToQuickGap = heroRect && quickRect ? quickRect.top - heroRect.bottom : null;
+    const heroCopyToQuickActions = heroCopyRect && quickRect ? quickRect.top - heroCopyRect.bottom : null;
+    const heroTailAfterCopy = heroRect && heroCopyRect ? heroRect.bottom - heroCopyRect.bottom : null;
     const quickToFeedGap = quickRect && feedRect ? feedRect.top - quickRect.bottom : null;
     const orderPass = Boolean(
       heroRect &&
@@ -464,6 +467,10 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       heroTop: heroRect?.top ?? null,
       heroBottom: heroRect?.bottom ?? null,
       heroHeight: heroRect?.height ?? null,
+      heroCopyRect,
+      heroCopyTop: heroCopyRect?.top ?? null,
+      heroCopyBottom: heroCopyRect?.bottom ?? null,
+      heroCopyHeight: heroCopyRect?.height ?? null,
       quickTop: quickRect?.top ?? null,
       quickBottom: quickRect?.bottom ?? null,
       quickHeight: quickRect?.height ?? null,
@@ -474,6 +481,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       weatherBottom: weatherRect?.bottom ?? null,
       weatherHeight: weatherRect?.height ?? null,
       heroToQuickGap,
+      heroCopyToQuickActions,
+      heroTailAfterCopy,
       quickToFeedGap,
       feedToWeatherGap,
       weatherToTouchBar: weatherToTouchBarPx,
