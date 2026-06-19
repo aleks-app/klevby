@@ -6,9 +6,22 @@
     position: relative !important;
 }
 
+:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
+    position: relative !important;
+    margin-top: -50px !important;
+    margin-bottom: 20px !important;
+    z-index: 5 !important;
+}
+
+:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-feed-preview {
+    position: relative !important;
+    margin-top: -10px !important;
+    z-index: 5 !important;
+}
+
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: absolute !important;
-    bottom: 98px !important;
+    bottom: 138px !important;
     left: 22px !important;
     right: 22px !important;
     height: 80px !important;
