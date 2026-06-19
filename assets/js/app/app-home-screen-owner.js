@@ -24,6 +24,27 @@
   const HOME_SKELETON_TAP_ZONE_ID = "homeSkeletonDevTapZone";
   const HOME_SKELETON_DIAGNOSTICS_OVERLAY_ID = "homeSkeletonDiagnosticsOverlay";
   const HOME_SKELETON_RUNTIME_STYLE_ID = "homeSkeletonRuntimeStyle";
+  const HOME_SKELETON_INLINE_STYLE_PROPS = Object.freeze([
+    "position",
+    "top",
+    "left",
+    "right",
+    "bottom",
+    "width",
+    "height",
+    "min-height",
+    "max-height",
+    "margin",
+    "padding",
+    "transform",
+    "overflow",
+    "display",
+    "grid-template-rows",
+    "align-items",
+    "align-content",
+    "row-gap",
+    "box-sizing"
+  ]);
   const HOME_SKELETON_TAP_COUNT = 7;
   const HOME_SKELETON_TAP_WINDOW_MS = 2500;
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
@@ -116,6 +137,50 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     return style;
   }
 
+
+  function applyHomeSkeletonRootInlineStyle(active) {
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    if (!homeSection) return false;
+
+    if (active === true) {
+      homeSection.style.setProperty("position", "fixed", "important");
+      homeSection.style.setProperty("top", "var(--klevby-home-available-top, var(--klevby-app-available-top))", "important");
+      homeSection.style.setProperty("left", "0", "important");
+      homeSection.style.setProperty("right", "0", "important");
+      homeSection.style.setProperty("bottom", "auto", "important");
+      homeSection.style.setProperty("width", "100%", "important");
+      homeSection.style.setProperty("height", "var(--klevby-home-available-height, var(--klevby-app-available-height))", "important");
+      homeSection.style.setProperty("min-height", "0", "important");
+      homeSection.style.setProperty("max-height", "var(--klevby-home-available-height, var(--klevby-app-available-height))", "important");
+      homeSection.style.setProperty("margin", "0", "important");
+      homeSection.style.setProperty("padding", "0", "important");
+      homeSection.style.setProperty("transform", "none", "important");
+      homeSection.style.setProperty("overflow", "hidden", "important");
+      homeSection.style.setProperty("display", "grid", "important");
+      homeSection.style.setProperty("grid-template-rows", "auto minmax(0, 1fr) auto", "important");
+      homeSection.style.setProperty("align-items", "stretch", "important");
+      homeSection.style.setProperty("align-content", "stretch", "important");
+      homeSection.style.setProperty("row-gap", "12px", "important");
+      homeSection.style.setProperty("box-sizing", "border-box", "important");
+      return true;
+    }
+
+    HOME_SKELETON_INLINE_STYLE_PROPS.forEach((property) => {
+      homeSection.style.removeProperty(property);
+    });
+    return false;
+  }
+
+  function readHomeSkeletonInlineStyleValue(homeSection, property) {
+    if (!homeSection) return null;
+
+    const value = homeSection.style.getPropertyValue(property).trim();
+    const priority = homeSection.style.getPropertyPriority(property).trim();
+    if (!value) return null;
+
+    return priority ? `${value}!${priority}` : value;
+  }
+
   function isHomeSkeletonMode(homeSection = document.getElementById(HOME_SECTION_ID)) {
     return (
       document.body?.getAttribute(HOME_SKELETON_ATTRIBUTE) === "true" ||
@@ -131,11 +196,14 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     if (active) {
       body.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
       homeSection.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
+      ensureHomeSkeletonRuntimeStyle();
+      applyHomeSkeletonRootInlineStyle(true);
       return;
     }
 
     body.removeAttribute(HOME_SKELETON_ATTRIBUTE);
     homeSection.removeAttribute(HOME_SKELETON_ATTRIBUTE);
+    applyHomeSkeletonRootInlineStyle(false);
   }
 
   function readRectDiagnostics(element) {
@@ -209,6 +277,10 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       homeComputedMarginTop: homeComputedStyle?.marginTop ?? null,
       homeComputedTransform: homeComputedStyle?.transform ?? null,
       homeComputedDisplay: homeComputedStyle?.display ?? null,
+      inlinePositionValue: readHomeSkeletonInlineStyleValue(homeSection, "position"),
+      inlineDisplayValue: readHomeSkeletonInlineStyleValue(homeSection, "display"),
+      inlineTopValue: readHomeSkeletonInlineStyleValue(homeSection, "top"),
+      inlineHeightValue: readHomeSkeletonInlineStyleValue(homeSection, "height"),
       quickRect,
       feedRect,
       weatherRect,
@@ -350,6 +422,10 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       ["marginTop", contract.homeComputedMarginTop],
       ["transform", contract.homeComputedTransform],
       ["display", contract.homeComputedDisplay],
+      ["inlinePos", contract.inlinePositionValue],
+      ["inlineDisplay", contract.inlineDisplayValue],
+      ["inlineTop", contract.inlineTopValue],
+      ["inlineHeight", contract.inlineHeightValue],
       ["quick", contract.quickHeight],
       ["feed", contract.feedSlotHeight],
       ["weather", contract.weatherHeight],
@@ -742,6 +818,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
 
     const roundedHeight = Math.round(height);
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
+    applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode());
     return roundedHeight;
   }
 
@@ -1104,6 +1181,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     root.style.setProperty("--klevby-home-available-bottom", `${availableBottom}px`);
     root.style.setProperty("--klevby-home-available-height", `${availableHeight}px`);
     root.setAttribute(HOME_DENSITY_ATTRIBUTE, density);
+    applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode(homeSection));
 
     lastHomeFitContract = {
       headerBottom: headerRect?.bottom ?? null,
@@ -1307,6 +1385,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     setHomeGridContractState(homeActive);
     setHomeScreenContractIntegrationState(homeActive);
     updateHomeFitContract();
+    applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode());
 
     if (!hasCapturedFirstSync) {
       hasCapturedFirstSync = true;
