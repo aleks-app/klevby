@@ -1,5 +1,17 @@
-:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
-    margin-top: -4px !important;
+:root:is([data-home-density="standard"], [data-home-density="tight"]) #homeSection.kg-screen[data-home-layout="grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
     position: relative !important;
+}
+
+:root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
+    position: absolute !important;
+    bottom: 6px !important;
+    left: 22px !important;
+    right: 22px !important;
+    height: 80px !important;
+    margin: 0 !important;
     z-index: 10 !important;
 }
