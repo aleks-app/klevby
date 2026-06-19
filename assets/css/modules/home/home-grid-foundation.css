@@ -8,7 +8,7 @@
 
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: absolute !important;
-    bottom: 11px !important;
+    bottom: 12px !important;
     left: 22px !important;
     right: 22px !important;
     height: 80px !important;
