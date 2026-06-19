@@ -45,7 +45,8 @@ test("home grid foundation uses measured shell geometry and adaptive feed row", 
 
   assert.match(css, /--klevby-home-available-top/);
   assert.match(css, /--klevby-home-available-height/);
-  assert.match(css, /grid-template-rows:\s*auto auto minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /grid-template-rows:[\s\S]*minmax\(0,\s*var\(--kg-home-grid-hero-row-max-h\)\)[\s\S]*minmax\(var\(--kg-home-grid-feed-row-min-h\),\s*1fr\)[\s\S]*auto/);
+  assert.match(css, /--kg-home-grid-feed-card-visual-min-h:\s*var\(--klevby-home-feed-card-visual-min-h,\s*184px\)/);
   assert.match(css, /row-gap:\s*var\(--kg-home-grid-gap\)/);
   assert.match(css, /padding-bottom:\s*var\(--kg-home-grid-weather-clearance-y\)/);
   assert.match(css, /> \.hero\s*\{[^}]*grid-row:\s*1/s);
