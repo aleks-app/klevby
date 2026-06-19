@@ -50,7 +50,14 @@
     "width",
     "min-width",
     "max-width",
+    "inline-size",
+    "min-inline-size",
+    "max-inline-size",
     "margin",
+    "margin-top",
+    "margin-bottom",
+    "margin-left",
+    "margin-right",
     "position",
     "inset",
     "left",
@@ -61,6 +68,7 @@
     "box-sizing",
     "overflow",
     "justify-self",
+    "place-self",
     "min-height",
     "height",
     "align-self",
@@ -219,6 +227,12 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
   }
 
   function applyHomeSkeletonSlotInlineStyles(active) {
+    const homeSection = document.getElementById(HOME_SECTION_ID);
+    const inset = getCssPixelValue(homeSection, "--klevby-home-content-inset") ?? 22;
+    const homeWidth = homeSection?.getBoundingClientRect().width ?? 0;
+    const railWidth = Math.max(0, homeWidth - (2 * inset));
+    const railWidthPx = `${railWidth}px`;
+    const insetPx = `${inset}px`;
     const slots = [
       {
         element: document.querySelector("#homeSection .home-quick-actions"),
@@ -247,21 +261,24 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       }
     ];
     const sharedStyles = {
-      display: "grid",
-      width: "calc(100% - (2 * var(--klevby-home-content-inset, 22px)))",
-      "min-width": "0",
-      "max-width": "none",
-      margin: "0 auto",
-      position: "relative",
-      inset: "auto",
-      left: "auto",
-      right: "auto",
-      top: "auto",
-      bottom: "auto",
-      transform: "none",
+      width: railWidthPx,
+      "min-width": railWidthPx,
+      "max-width": railWidthPx,
+      "inline-size": railWidthPx,
+      "min-inline-size": railWidthPx,
+      "max-inline-size": railWidthPx,
+      margin: "0",
+      "margin-top": "0",
+      "margin-bottom": "0",
+      "margin-left": insetPx,
+      "margin-right": insetPx,
+      "justify-self": "stretch",
+      "place-self": "stretch center",
       "box-sizing": "border-box",
-      overflow: "hidden",
-      "justify-self": "center"
+      display: "grid",
+      position: "relative",
+      transform: "none",
+      overflow: "hidden"
     };
 
     slots.forEach(({ element, styles }) => {
