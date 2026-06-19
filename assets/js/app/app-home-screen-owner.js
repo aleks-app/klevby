@@ -45,6 +45,27 @@
     "row-gap",
     "box-sizing"
   ]);
+  const HOME_SKELETON_SLOT_INLINE_STYLE_PROPS = Object.freeze([
+    "display",
+    "width",
+    "min-width",
+    "max-width",
+    "margin",
+    "position",
+    "inset",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "transform",
+    "box-sizing",
+    "overflow",
+    "justify-self",
+    "min-height",
+    "height",
+    "align-self",
+    "padding"
+  ]);
   const HOME_SKELETON_TAP_COUNT = 7;
   const HOME_SKELETON_TAP_WINDOW_MS = 2500;
   const HOME_DENSITY_ATTRIBUTE = "data-home-density";
@@ -112,10 +133,36 @@ body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] 
 body[data-home-skeleton="true"] #homeSection .home-quick-actions,
 body[data-home-skeleton="true"] #homeSection .home-feed-preview,
 body[data-home-skeleton="true"] #homeSection .home-weather-card {
+  display: grid !important;
+  width: calc(100% - (2 * var(--klevby-home-content-inset, 22px))) !important;
+  min-width: 0 !important;
+  max-width: none !important;
   position: relative !important;
   inset: auto !important;
   margin: 0 auto !important;
   transform: none !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  justify-self: center !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-quick-actions {
+  min-height: 112px !important;
+  height: auto !important;
+  align-self: start !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-feed-preview {
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+}
+
+body[data-home-skeleton="true"] #homeSection .home-weather-card {
+  min-height: 78px !important;
+  height: auto !important;
+  align-self: end !important;
+  padding: 0 !important;
 }
 `.trim();
     let style = document.getElementById(HOME_SKELETON_RUNTIME_STYLE_ID);
@@ -171,6 +218,68 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     return false;
   }
 
+  function applyHomeSkeletonSlotInlineStyles(active) {
+    const slots = [
+      {
+        element: document.querySelector("#homeSection .home-quick-actions"),
+        styles: {
+          "min-height": "112px",
+          height: "auto",
+          "align-self": "start"
+        }
+      },
+      {
+        element: document.querySelector("#homeSection .home-feed-preview"),
+        styles: {
+          height: "100%",
+          "min-height": "0",
+          "align-self": "stretch"
+        }
+      },
+      {
+        element: document.querySelector("#homeSection .home-weather-card"),
+        styles: {
+          "min-height": "78px",
+          height: "auto",
+          "align-self": "end",
+          padding: "0"
+        }
+      }
+    ];
+    const sharedStyles = {
+      display: "grid",
+      width: "calc(100% - (2 * var(--klevby-home-content-inset, 22px)))",
+      "min-width": "0",
+      "max-width": "none",
+      margin: "0 auto",
+      position: "relative",
+      inset: "auto",
+      left: "auto",
+      right: "auto",
+      top: "auto",
+      bottom: "auto",
+      transform: "none",
+      "box-sizing": "border-box",
+      overflow: "hidden",
+      "justify-self": "center"
+    };
+
+    slots.forEach(({ element, styles }) => {
+      if (!element) return;
+
+      if (active === true) {
+        Object.entries({ ...sharedStyles, ...styles }).forEach(([property, value]) => {
+          element.style.setProperty(property, value, "important");
+        });
+        return;
+      }
+
+      HOME_SKELETON_SLOT_INLINE_STYLE_PROPS.forEach((property) => {
+        element.style.removeProperty(property);
+      });
+    });
+  }
+
   function readHomeSkeletonInlineStyleValue(homeSection, property) {
     if (!homeSection) return null;
 
@@ -198,12 +307,14 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       homeSection.setAttribute(HOME_SKELETON_ATTRIBUTE, "true");
       ensureHomeSkeletonRuntimeStyle();
       applyHomeSkeletonRootInlineStyle(true);
+      applyHomeSkeletonSlotInlineStyles(true);
       return;
     }
 
     body.removeAttribute(HOME_SKELETON_ATTRIBUTE);
     homeSection.removeAttribute(HOME_SKELETON_ATTRIBUTE);
     applyHomeSkeletonRootInlineStyle(false);
+    applyHomeSkeletonSlotInlineStyles(false);
   }
 
   function readRectDiagnostics(element) {
@@ -213,7 +324,10 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     return {
       top: rect.top,
       bottom: rect.bottom,
-      height: rect.height
+      height: rect.height,
+      left: rect.left,
+      right: rect.right,
+      width: rect.width
     };
   }
 
@@ -259,6 +373,11 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const bottomDeltaPx = homeRect && expectedBottom != null
       ? homeRect.bottom - expectedBottom
       : null;
+    const viewportWidth = getPositiveHeight(window.visualViewport?.width) || getPositiveHeight(window.innerWidth);
+    const expectedRailLeft = getCssPixelValue(document.documentElement, "--klevby-home-content-inset") ?? 22;
+    const expectedRailWidth = viewportWidth
+      ? Math.max(0, viewportWidth - (2 * expectedRailLeft))
+      : null;
 
     return {
       skeletonMode: isHomeSkeletonMode(homeSection),
@@ -284,6 +403,9 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       quickRect,
       feedRect,
       weatherRect,
+      viewportWidth,
+      expectedRailLeft,
+      expectedRailWidth,
       availableHeight,
       homeTop: homeRect?.top ?? null,
       expectedTop,
@@ -294,8 +416,14 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       topDeltaPx,
       bottomDeltaPx,
       quickHeight: quickRect?.height ?? null,
+      quickLeft: quickRect?.left ?? null,
+      quickWidth: quickRect?.width ?? null,
       feedSlotHeight: feedRect?.height ?? null,
+      feedLeft: feedRect?.left ?? null,
+      feedWidth: feedRect?.width ?? null,
       weatherHeight: weatherRect?.height ?? null,
+      weatherLeft: weatherRect?.left ?? null,
+      weatherWidth: weatherRect?.width ?? null,
       weatherToTouchBarPx,
       weatherOverflowPx,
       homeOverflowPx,
@@ -426,9 +554,21 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       ["inlineDisplay", contract.inlineDisplayValue],
       ["inlineTop", contract.inlineTopValue],
       ["inlineHeight", contract.inlineHeightValue],
+      ["viewportWidth", contract.viewportWidth],
+      ["expectedRailLeft", contract.expectedRailLeft],
+      ["expectedRailWidth", contract.expectedRailWidth],
       ["quick", contract.quickHeight],
+      ["railQ", contract.quickLeft == null || contract.quickWidth == null
+        ? null
+        : `${formatHomeSkeletonDiagnosticValue(contract.quickLeft)},${formatHomeSkeletonDiagnosticValue(contract.quickWidth)}`],
       ["feed", contract.feedSlotHeight],
+      ["railF", contract.feedLeft == null || contract.feedWidth == null
+        ? null
+        : `${formatHomeSkeletonDiagnosticValue(contract.feedLeft)},${formatHomeSkeletonDiagnosticValue(contract.feedWidth)}`],
       ["weather", contract.weatherHeight],
+      ["railW", contract.weatherLeft == null || contract.weatherWidth == null
+        ? null
+        : `${formatHomeSkeletonDiagnosticValue(contract.weatherLeft)},${formatHomeSkeletonDiagnosticValue(contract.weatherWidth)}`],
       ["toTouch", contract.weatherToTouchBarPx],
       ["weatherOv", contract.weatherOverflowPx],
       ["homeOv", contract.homeOverflowPx],
@@ -819,6 +959,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const roundedHeight = Math.round(height);
     root.style.setProperty("--klevby-app-height", `${roundedHeight}px`);
     applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode());
+    applyHomeSkeletonSlotInlineStyles(isHomeSkeletonMode());
     return roundedHeight;
   }
 
@@ -1155,15 +1296,6 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       kernelHeaderBottom: appShell?.headerBottom,
       kernelHeaderHeight: appShell?.headerHeight
     });
-    const homeSkeletonGeometry = resolveHomeSkeletonGeometryDiagnostics({
-      header,
-      touchBar,
-      homeSection,
-      availableTop,
-      availableBottom,
-      availableHeight
-    });
-
     const homeTouchBarFrame = resolveHomeTouchBarFrameContract({
       contractActive: homeScreenContract.homeScreenContractActive,
       homeBottom: homeSectionRect.bottom,
@@ -1182,6 +1314,15 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     root.style.setProperty("--klevby-home-available-height", `${availableHeight}px`);
     root.setAttribute(HOME_DENSITY_ATTRIBUTE, density);
     applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode(homeSection));
+    applyHomeSkeletonSlotInlineStyles(isHomeSkeletonMode(homeSection));
+    const homeSkeletonGeometry = resolveHomeSkeletonGeometryDiagnostics({
+      header,
+      touchBar,
+      homeSection,
+      availableTop,
+      availableBottom,
+      availableHeight
+    });
 
     lastHomeFitContract = {
       headerBottom: headerRect?.bottom ?? null,
@@ -1386,6 +1527,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     setHomeScreenContractIntegrationState(homeActive);
     updateHomeFitContract();
     applyHomeSkeletonRootInlineStyle(isHomeSkeletonMode());
+    applyHomeSkeletonSlotInlineStyles(isHomeSkeletonMode());
 
     if (!hasCapturedFirstSync) {
       hasCapturedFirstSync = true;
