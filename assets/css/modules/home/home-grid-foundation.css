@@ -32,21 +32,22 @@
    Keeps one owner for vertical slots between measured header and TouchBar. */
 body[data-home-skeleton="true"] #homeSection.kg-screen[data-home-layout="grid"] {
     position: fixed !important;
+    top: var(--klevby-home-available-top, var(--klevby-app-available-top)) !important;
     left: 0 !important;
     right: 0 !important;
-    top: var(--klevby-home-available-top, var(--klevby-app-available-top, 0px)) !important;
-    bottom: auto !important;
     height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
-    min-height: 0 !important;
     max-height: var(--klevby-home-available-height, var(--klevby-app-available-height)) !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
     overflow: hidden !important;
     display: grid !important;
     grid-template-rows: auto minmax(0, 1fr) auto !important;
     align-items: stretch !important;
     align-content: stretch !important;
     row-gap: 12px !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+    transform: none !important;
     box-sizing: border-box !important;
 }
 
