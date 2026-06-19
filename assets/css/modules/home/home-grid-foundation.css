@@ -1,6 +1,6 @@
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-quick-actions {
     position: relative !important;
-    margin-top: -120px !important;
+    margin-top: -150px !important; /* Потащили весь поезд выше к аватарке на 30px */
     margin-bottom: 24px !important;
 }
 
@@ -12,7 +12,7 @@
 
 :root:is([data-home-density="standard"], [data-home-density="tight"]) .home-weather-card {
     position: relative !important;
-    margin-top: -15px !important; /* Подняли ещё на 10px наверх */
+    margin-top: -45px !important; /* Подняли саму погоду ещё на 30px к Ленте */
     margin-bottom: 90px !important;
     z-index: 10 !important;
 }
