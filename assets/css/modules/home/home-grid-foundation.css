@@ -33,7 +33,12 @@
       "actions"
       "feed"
       "weather";
-    align-content: start;
+  /*
+   * Distribute leftover shell height between Home sections instead of
+   * packing rows at the top edge (which leaves a large weather→TouchBar gap).
+   * space-evenly keeps feed↔weather and weather↔TouchBar gaps in rhythm.
+   */
+    align-content: space-evenly;
     row-gap: 0;
     overflow: hidden;
     container-type: size;

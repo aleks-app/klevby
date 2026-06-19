@@ -15,7 +15,7 @@ function read(filePath) {
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
   const legacyImport = './screens/home-mobile.css?v=20260619-home-contract-clean-1';
-  const foundationImport = './modules/home/home-grid-foundation.css?v=20260619-home-contract-clean-1';
+  const foundationImport = './modules/home/home-grid-foundation.css?v=20260619-home-grid-rhythm-1';
 
   assert.ok(mainCss.includes(legacyImport));
   assert.ok(mainCss.includes(foundationImport));
