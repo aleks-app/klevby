@@ -105,6 +105,7 @@
     const headerRect = readRectDiagnostics(header);
     const touchBarRect = readRectDiagnostics(touchBar);
     const homeRect = readRectDiagnostics(homeSection);
+    const homeComputedStyle = homeSection ? window.getComputedStyle(homeSection) : null;
     const quickRect = readRectDiagnostics(quick);
     const feedRect = readRectDiagnostics(feed);
     const weatherRect = readRectDiagnostics(weather);
@@ -139,6 +140,12 @@
       touchBarRect,
       homeSectionRect: homeRect,
       homeGridRootRect: homeRect,
+      homePosition: homeComputedStyle?.position ?? null,
+      homeComputedTop: homeComputedStyle?.top ?? null,
+      homeComputedBottom: homeComputedStyle?.bottom ?? null,
+      homeComputedMarginTop: homeComputedStyle?.marginTop ?? null,
+      homeComputedTransform: homeComputedStyle?.transform ?? null,
+      homeComputedDisplay: homeComputedStyle?.display ?? null,
       quickRect,
       feedRect,
       weatherRect,
@@ -267,6 +274,12 @@
       ["expectedBottom", contract.expectedBottom ?? contract.touchBarTop],
       ["topDelta", contract.topDeltaPx],
       ["bottomDelta", contract.bottomDeltaPx],
+      ["position", contract.homePosition],
+      ["computedTop", contract.homeComputedTop],
+      ["computedBottom", contract.homeComputedBottom],
+      ["marginTop", contract.homeComputedMarginTop],
+      ["transform", contract.homeComputedTransform],
+      ["display", contract.homeComputedDisplay],
       ["quick", contract.quickHeight],
       ["feed", contract.feedSlotHeight],
       ["weather", contract.weatherHeight],
