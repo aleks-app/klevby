@@ -1221,7 +1221,22 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       : null;
     const topBudgetUsed = quickRect && homeSectionRect ? quickRect.top - homeSectionRect.top : null;
     const bottomBudgetUsed = homeSectionRect && weatherRect ? homeSectionRect.bottom - weatherRect.top : null;
-    const feedVisualPass = activeFeedCardRect ? activeFeedCardRect.height >= 200 : false;
+    const feedAdCardClientHeight = Number.isFinite(activeFeedCard?.clientHeight)
+      ? activeFeedCard.clientHeight
+      : null;
+    const feedAdCardScrollHeight = Number.isFinite(activeFeedCard?.scrollHeight)
+      ? activeFeedCard.scrollHeight
+      : null;
+    const feedAdCardOverflowY =
+      feedAdCardClientHeight != null && feedAdCardScrollHeight != null
+        ? Math.max(0, feedAdCardScrollHeight - feedAdCardClientHeight)
+        : null;
+    const feedContentFits = feedAdCardOverflowY != null ? feedAdCardOverflowY <= 1 : null;
+    const feedVisualPass = activeFeedCardRect
+      ? feedAdCardOverflowY > 1
+        ? activeFeedCardRect.height + 1 >= (feedAdCardScrollHeight ?? activeFeedCardRect.height)
+        : activeFeedCardRect.height >= 190
+      : false;
     const upperWhitespacePass = heroCopyToQuickActions != null ? heroCopyToQuickActions <= 95 : false;
     const computedBudgetTokens = {
       "--klevby-home-hero-row-max-h": getCssPixelValue(root, "--klevby-home-hero-row-max-h"),
@@ -1269,6 +1284,10 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       feedAdCardTop: activeFeedCardRect?.top ?? null,
       feedAdCardBottom: activeFeedCardRect?.bottom ?? null,
       feedAdCardHeight: activeFeedCardRect?.height ?? null,
+      feedAdCardClientHeight,
+      feedAdCardScrollHeight,
+      feedAdCardOverflowY,
+      feedContentFits,
       weatherTop: weatherRect?.top ?? null,
       weatherBottom: weatherRect?.bottom ?? null,
       weatherHeight: weatherRect?.height ?? null,
