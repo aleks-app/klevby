@@ -283,8 +283,7 @@
 
   #homeSection .hero::after {
     border-radius: 0 !important;
-    background:
-      linear-gradient(180deg, transparent 62%, rgba(6, 14, 22, 0.26) 88%, rgba(6, 17, 26, 0.42) 100%) !important;
+    background: none !important;
   }
 
   #homeSection .hero-copy {
