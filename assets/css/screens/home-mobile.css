@@ -296,9 +296,10 @@
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-end !important;
-    transform: translate(
+    transform: translate3d(
       0,
-      calc(var(--klevby-home-hero-copy-shift-y) + 23px + var(--klevby-home-hero-copy-nudge-y))
+      calc(var(--klevby-home-hero-copy-shift-y) + 23px + var(--klevby-home-hero-copy-nudge-y)),
+      0
     ) !important;
   }
 

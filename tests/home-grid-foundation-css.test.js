@@ -15,7 +15,7 @@ function read(filePath) {
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
   const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-row-budget-1';
-  const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-row-budget-1';
+  const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-copy-nudge-wiring';
 
   assert.ok(mainCss.includes(legacyImport));
   assert.ok(mainCss.includes(foundationImport));
@@ -59,6 +59,19 @@ test("home grid foundation uses measured shell geometry and stretch feed row", (
   assert.match(css, /> \.home-weather-card\s*\{[^}]*margin-top:\s*0/s);
   assert.doesNotMatch(css, /> \.home-weather-card\s*\{[^}]*margin-top:\s*auto/s);
   assert.doesNotMatch(css, /margin-top:\s*-/);
+});
+
+test("home grid foundation wires hero-copy nudge to the shared root token", () => {
+  const css = read(cssPath);
+
+  assert.doesNotMatch(
+    css,
+    /#homeSection\.kg-screen\[data-home-layout="grid"\]\s*\{[^}]*--klevby-home-hero-copy-nudge-y:/s
+  );
+  assert.match(
+    css,
+    /#homeSection\.kg-screen\[data-home-layout="grid"\] \.hero-copy\s*\{[^}]*\+ var\(--klevby-home-hero-copy-nudge-y\)/s
+  );
 });
 
 
