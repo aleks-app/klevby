@@ -184,6 +184,44 @@
     );
   }
 
+
+  function getHomeHeroCopyComputedDiagnostics(heroCopy, homeSection = document.querySelector("#homeSection")) {
+    if (!heroCopy) return null;
+
+    const heroCopyStyle = getComputedStyle(heroCopy);
+    const root = document.documentElement;
+    return {
+      heroCopyClassName: heroCopy.className || null,
+      heroCopyTransform: heroCopyStyle.transform || null,
+      heroCopyTranslate: heroCopyStyle.translate || null,
+      heroCopyPosition: heroCopyStyle.position || null,
+      heroCopyPaddingTop: heroCopyStyle.paddingTop || null,
+      heroCopyPaddingBottom: heroCopyStyle.paddingBottom || null,
+      heroCopyMarginTop: heroCopyStyle.marginTop || null,
+      heroCopyMarginBottom: heroCopyStyle.marginBottom || null,
+      heroCopyDisplay: heroCopyStyle.display || null,
+      heroCopyJustifyContent: heroCopyStyle.justifyContent || null,
+      heroCopyMinHeight: heroCopyStyle.minHeight || null,
+      heroCopyHeight: heroCopyStyle.height || null,
+      homeSectionClassName: homeSection?.className || null,
+      homeSectionLayout: homeSection?.getAttribute("data-home-layout") ?? null,
+      rootHomeGridContract: root?.getAttribute("data-home-grid-contract") ?? null,
+      rootHomeDensity: root?.getAttribute("data-home-density") ?? null
+    };
+  }
+
+  function getCssDeliveryDiagnostics() {
+    const targetNames = ["main.css", "home-mobile.css", "home-grid-foundation.css"];
+    const stylesheetHrefs = Array.from(document.styleSheets || [])
+      .map((sheet) => sheet?.href || null)
+      .filter((href) => href && targetNames.some((name) => href.includes(name)));
+
+    return {
+      stylesheetHrefs,
+      serviceWorkerControllerScriptURL: navigator.serviceWorker?.controller?.scriptURL ?? null
+    };
+  }
+
   function getVerticalGap(upperRect, lowerRect) {
     if (!upperRect || !lowerRect) return null;
     return lowerRect.top - upperRect.bottom;
@@ -195,7 +233,9 @@
     const htmlStyles = getComputedStyle(html);
     const headerRect = getLayoutRect(findAppHeader());
     const touchBarRect = getLayoutRect(document.querySelector(".mobile-tabbar"));
-    const heroCopyRect = getLayoutRect(document.querySelector("#homeSection .hero-copy"));
+    const heroCopy = document.querySelector("#homeSection .hero-copy");
+    const homeSection = document.querySelector("#homeSection");
+    const heroCopyRect = getLayoutRect(heroCopy);
     const quickActionsWrapperRect = getLayoutRect(
       document.querySelector("#homeSection .home-quick-actions")
     );
@@ -247,7 +287,7 @@
         )
       },
       rects: {
-        homeSection: getLayoutRect(document.querySelector("#homeSection")),
+        homeSection: getLayoutRect(homeSection),
         heroCopy: heroCopyRect,
         quickActionsWrapper: quickActionsWrapperRect,
         quickActionsRail: quickActionsRailRect,
@@ -260,6 +300,8 @@
         weatherCard: weatherCardRect,
         touchBar: touchBarRect
       },
+      heroCopyComputed: getHomeHeroCopyComputedDiagnostics(heroCopy, homeSection),
+      cssDelivery: getCssDeliveryDiagnostics(),
       verticalGaps: {
         heroCopyToQuickActions: getVerticalGap(heroCopyRect, quickActionsWrapperRect),
         quickActionsToFeedTitle: getVerticalGap(
@@ -512,6 +554,7 @@
       return {
         timestamp: new Date().toISOString(),
         homeInternalGeometry: collectHomeInternalGeometry(),
+        cssDelivery: getCssDeliveryDiagnostics(),
         locationHref: window.location.href,
         documentReadyState: document.readyState,
         documentVisibilityState: document.visibilityState,
@@ -637,6 +680,7 @@
               .trim()
           },
           computedStyles: {
+            heroCopyMeasured: getHomeHeroCopyComputedDiagnostics(homeElements.heroCopy, homeElements.homeSection),
             hero: getSelectedComputedStyles(homeElements.hero, [
               "minHeight",
               "paddingTop",
