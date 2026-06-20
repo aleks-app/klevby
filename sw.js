@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v19-home-hero-copy-nudge-wiring-20260620";
-const SW_BUILD_VERSION = "20260620-home-hero-copy-nudge-wiring";
+const CACHE_NAME = "klevby-cache-v20-home-hero-copy-nudge-48-20260620";
+const SW_BUILD_VERSION = "20260620-home-hero-copy-nudge-48";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [

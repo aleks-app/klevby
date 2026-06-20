@@ -15,13 +15,13 @@ function read(filePath) {
 test("index.html loads main.css with hero copy nudge wiring cache bust", () => {
   const index = read(indexPath);
 
-  assert.match(index, /assets\/css\/main\.css\?v=20260620-home-hero-copy-nudge-wiring/);
+  assert.match(index, /assets\/css\/main\.css\?v=20260620-home-hero-copy-nudge-48/);
 });
 
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
-  const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-copy-nudge-wiring';
-  const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-copy-nudge-wiring';
+  const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-copy-nudge-48';
+  const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-copy-nudge-48';
 
   assert.ok(mainCss.includes(legacyImport));
   assert.ok(mainCss.includes(foundationImport));
