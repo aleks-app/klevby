@@ -12,15 +12,15 @@ function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-test("index.html loads main.css with home feed title onest cache bust", () => {
+test("index.html loads main.css with home hero slogan onest cache bust", () => {
   const index = read(indexPath);
 
-  assert.match(index, /assets\/css\/main\.css\?v=20260610-home-feed-title-onest/);
+  assert.match(index, /assets\/css\/main\.css\?v=20260620-home-hero-slogan-onest-1/);
 });
 
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
-  const legacyImport = './screens/home-mobile.css?v=20260610-home-feed-title-onest';
+  const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-slogan-onest-1';
   const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-copy-nudge-48';
 
   assert.ok(mainCss.includes(legacyImport));
@@ -77,6 +77,19 @@ test("home feed preview title uses Onest display font", () => {
   assert.doesNotMatch(
     homeMobileCss,
     /#homeSection \.home-feed-preview-link[^{]*\{[^}]*font-family:\s*var\(--klevgo-font-display\)/s
+  );
+});
+
+test("home hero slogan uses Onest display font", () => {
+  const homeMobileCss = read(path.join(root, "assets/css/screens/home-mobile.css"));
+
+  assert.match(
+    homeMobileCss,
+    /#homeSection \.hero-slogan\s*\{[^}]*font-family:\s*"Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif/s
+  );
+  assert.doesNotMatch(
+    homeMobileCss,
+    /#homeSection \.hero-slogan\s*\{[^}]*font-family:\s*"Inter"/s
   );
 });
 
