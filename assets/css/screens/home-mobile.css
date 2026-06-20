@@ -120,8 +120,8 @@
     --klevby-home-lower-fill-y: 0px;
     --klevby-home-header-pull: 86px;
     --klevby-home-hero-min-h: 118px;
-    --klevby-home-hero-row-max-h: 213px;
-    --klevby-home-hero-pad-top: 80px;
+    --klevby-home-hero-row-max-h: 225px;
+    --klevby-home-hero-pad-top: 86px;
     --klevby-home-hero-pad-inline: 26px;
     --klevby-home-hero-pad-bottom: 0px;
     --klevby-home-hero-margin-bottom: 8px;
@@ -130,6 +130,7 @@
     --klevby-home-hero-copy-shift-y: -126px;
     --klevby-home-hero-copy-nudge-y: 42px;
     --klevby-home-actions-gap-after-hero: 18px;
+    --klevby-home-hero-to-quick-grid-gap: 2px;
     --klevby-home-hero-copy-to-quick-gap: 50px;
     --klevby-home-quick-to-feed-gap: 22px;
     --klevby-home-quick-overlap: var(--klevby-home-actions-gap-after-hero);

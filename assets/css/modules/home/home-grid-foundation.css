@@ -13,6 +13,7 @@
     --kg-home-grid-lower-fill-y: var(--klevby-home-lower-fill-y, 0px);
     --kg-home-grid-weather-clearance-y: var(--klevby-home-weather-clearance-y, 12px);
     --kg-home-grid-hero-row-max-h: var(--klevby-home-hero-row-max-h, 213px);
+    --kg-home-grid-hero-to-quick-gap: var(--klevby-home-hero-to-quick-grid-gap, var(--kg-home-grid-gap));
     --kg-home-grid-feed-card-visual-min-h: var(--klevby-home-feed-card-visual-min-h, 184px);
     --kg-home-grid-feed-header-h: var(--klevby-home-feed-header-h, 34px);
     --kg-home-grid-feed-card-target-h: var(--klevby-home-feed-card-target-h, 224px);
@@ -40,12 +41,15 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows:
       minmax(0, var(--kg-home-grid-hero-row-max-h))
+      var(--kg-home-grid-hero-to-quick-gap)
       auto
-      auto
+      var(--kg-home-grid-gap)
+      minmax(var(--kg-home-grid-feed-row-min-h), 1fr)
+      var(--kg-home-grid-gap)
       auto;
     align-items: stretch;
     align-content: stretch;
-    row-gap: var(--kg-home-grid-gap);
+    row-gap: 0;
     padding-bottom: var(--kg-home-grid-weather-clearance-y);
     box-sizing: border-box;
     container-type: size;
@@ -79,6 +83,11 @@
     pointer-events: auto;
   }
 
+  /*
+   * Bounded legacy hero-copy nudge. Keep this capped; the current alignment
+   * redistributes the hero row and hero-to-quick grid gap tokens instead of
+   * increasing this transform offset.
+   */
   #homeSection.kg-screen[data-home-layout="grid"] {
     --klevby-home-hero-copy-nudge-y: 42px;
   }
@@ -99,7 +108,7 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions {
-    grid-row: 2;
+    grid-row: 3;
     position: relative;
     inset: auto;
     z-index: 2;
@@ -119,35 +128,33 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-feed-preview {
-    grid-row: 3;
+    grid-row: 5;
     position: relative;
     inset: auto;
     z-index: 2;
     display: grid;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     width: calc(100% - (2 * var(--kg-home-grid-inline)));
     margin: 0 auto;
     min-width: 0;
-    min-height: 0;
-    height: auto;
-    max-height: calc(
-      var(--kg-home-grid-feed-header-h) + var(--kg-home-grid-feed-card-max-h)
-    );
+    min-height: var(--kg-home-grid-feed-row-min-h);
+    height: 100%;
+    max-height: none;
     box-sizing: border-box;
-    align-self: start;
+    align-self: stretch;
     transform: none;
     overflow: hidden;
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-weather-card {
-    grid-row: 4;
+    grid-row: 7;
     position: relative;
     inset: auto;
     z-index: 2;
     width: calc(100% - (2 * var(--kg-home-grid-inline)));
     margin-left: auto;
     margin-right: auto;
-    margin-top: auto;
+    margin-top: 0;
     margin-bottom: 0;
     min-width: 0;
     box-sizing: border-box;
@@ -161,8 +168,8 @@
   #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-slide,
   #homeSection.kg-screen[data-home-layout="grid"] .home-feed-preview-card {
     min-height: 0;
-    height: var(--kg-home-grid-feed-card-target-h);
-    max-height: var(--kg-home-grid-feed-card-max-h);
+    height: 100%;
+    max-height: 100%;
     box-sizing: border-box;
     overflow: hidden;
   }
