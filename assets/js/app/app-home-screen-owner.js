@@ -1169,13 +1169,19 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const viewportWidth = getPositiveHeight(window.innerWidth) || root.clientWidth || 0;
     const expectedRailLeft = contentInset;
     const expectedRailWidth = Math.max(0, viewportWidth - contentInset * 2);
+    const hero = homeSection.querySelector(".hero");
+    const heroCopy = homeSection.querySelector(".hero-copy");
     const quickActions = homeSection.querySelector(".home-quick-actions");
     const feedPreview = homeSection.querySelector(".home-feed-preview");
+    const feedHeader = homeSection.querySelector(".home-feed-preview-head");
     const weatherCard = homeSection.querySelector(".home-weather-card");
     const feedSlot = feedPreview;
     const touchBarRect = touchBar?.getBoundingClientRect() || null;
+    const heroRect = hero?.getBoundingClientRect() || null;
+    const heroCopyRect = heroCopy?.getBoundingClientRect() || null;
     const quickRect = quickActions?.getBoundingClientRect() || null;
     const feedRect = feedPreview?.getBoundingClientRect() || null;
+    const feedHeaderRect = feedHeader?.getBoundingClientRect() || null;
     const weatherRect = weatherCard?.getBoundingClientRect() || null;
     const railQ = measureSlotRailRect(quickActions, expectedRailLeft, expectedRailWidth);
     const railF = measureSlotRailRect(feedPreview, expectedRailLeft, expectedRailWidth);
@@ -1203,6 +1209,30 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
         : null;
     const activeFeedCard = findActiveHomeFeedCard();
     const activeFeedCardRect = activeFeedCard?.getBoundingClientRect() || null;
+    const heroCopyToQuickActions = heroCopyRect && quickRect ? quickRect.top - heroCopyRect.bottom : null;
+    const heroToQuickGap = heroRect && quickRect ? quickRect.top - heroRect.bottom : null;
+    const heroTailAfterCopy = heroRect && heroCopyRect ? heroRect.bottom - heroCopyRect.bottom : null;
+    const quickToFeedGap = quickRect && feedRect ? feedRect.top - quickRect.bottom : null;
+    const feedTitleToFeedAdCard = feedHeaderRect && activeFeedCardRect
+      ? activeFeedCardRect.top - feedHeaderRect.bottom
+      : null;
+    const feedAdCardToWeather = activeFeedCardRect && weatherRect
+      ? weatherRect.top - activeFeedCardRect.bottom
+      : null;
+    const topBudgetUsed = quickRect && homeSectionRect ? quickRect.top - homeSectionRect.top : null;
+    const bottomBudgetUsed = homeSectionRect && weatherRect ? homeSectionRect.bottom - weatherRect.top : null;
+    const feedVisualPass = activeFeedCardRect ? activeFeedCardRect.height >= 200 : false;
+    const upperWhitespacePass = heroCopyToQuickActions != null ? heroCopyToQuickActions <= 95 : false;
+    const computedBudgetTokens = {
+      "--klevby-home-hero-row-max-h": getCssPixelValue(root, "--klevby-home-hero-row-max-h"),
+      "--klevby-home-feed-card-visual-min-h": getCssPixelValue(root, "--klevby-home-feed-card-visual-min-h"),
+      "--klevby-home-feed-row-min-h": getCssPixelValue(root, "--klevby-home-feed-row-min-h"),
+      "--klevby-home-section-gap": getCssPixelValue(root, "--klevby-home-section-gap"),
+      "--klevby-home-weather-clearance-y": getCssPixelValue(root, "--klevby-home-weather-clearance-y"),
+      "--klevby-home-hero-pad-top": getCssPixelValue(root, "--klevby-home-hero-pad-top"),
+      "--klevby-home-hero-copy-min-h": getCssPixelValue(root, "--klevby-home-hero-copy-min-h"),
+      "--klevby-home-quick-min-h": getCssPixelValue(root, "--klevby-home-quick-min-h")
+    };
     const feedHeightDeltaPx =
       feedSlot && activeFeedCardRect
         ? getAbsoluteDelta(feedSlot.height, activeFeedCardRect.height)
@@ -1220,6 +1250,47 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       homeHeightDeltaPx,
       expectedRailLeft,
       expectedRailWidth,
+      heroTop: heroRect?.top ?? null,
+      heroBottom: heroRect?.bottom ?? null,
+      heroHeight: heroRect?.height ?? null,
+      heroCopyTop: heroCopyRect?.top ?? null,
+      heroCopyBottom: heroCopyRect?.bottom ?? null,
+      heroCopyHeight: heroCopyRect?.height ?? null,
+      heroTailAfterCopy,
+      quickTop: quickRect?.top ?? null,
+      quickBottom: quickRect?.bottom ?? null,
+      quickHeight: quickRect?.height ?? null,
+      feedPreviewTop: feedRect?.top ?? null,
+      feedPreviewBottom: feedRect?.bottom ?? null,
+      feedPreviewHeight: feedRect?.height ?? null,
+      feedHeaderTop: feedHeaderRect?.top ?? null,
+      feedHeaderBottom: feedHeaderRect?.bottom ?? null,
+      feedHeaderHeight: feedHeaderRect?.height ?? null,
+      feedAdCardTop: activeFeedCardRect?.top ?? null,
+      feedAdCardBottom: activeFeedCardRect?.bottom ?? null,
+      feedAdCardHeight: activeFeedCardRect?.height ?? null,
+      weatherTop: weatherRect?.top ?? null,
+      weatherBottom: weatherRect?.bottom ?? null,
+      weatherHeight: weatherRect?.height ?? null,
+      heroCopyToQuickActions,
+      heroToQuickGap,
+      quickToFeedGap,
+      feedTitleToFeedAdCard,
+      feedAdCardToWeather,
+      weatherToTouchBar: weatherToTouchBarPx,
+      topBudgetUsed,
+      bottomBudgetUsed,
+      feedVisualPass,
+      upperWhitespacePass,
+      computedBudgetTokens,
+      "--klevby-home-hero-row-max-h": computedBudgetTokens["--klevby-home-hero-row-max-h"],
+      "--klevby-home-feed-card-visual-min-h": computedBudgetTokens["--klevby-home-feed-card-visual-min-h"],
+      "--klevby-home-feed-row-min-h": computedBudgetTokens["--klevby-home-feed-row-min-h"],
+      "--klevby-home-section-gap": computedBudgetTokens["--klevby-home-section-gap"],
+      "--klevby-home-weather-clearance-y": computedBudgetTokens["--klevby-home-weather-clearance-y"],
+      "--klevby-home-hero-pad-top": computedBudgetTokens["--klevby-home-hero-pad-top"],
+      "--klevby-home-hero-copy-min-h": computedBudgetTokens["--klevby-home-hero-copy-min-h"],
+      "--klevby-home-quick-min-h": computedBudgetTokens["--klevby-home-quick-min-h"],
       railQ: `${Math.round(railQ.left ?? 0)},${Math.round(railQ.width ?? 0)}`,
       railF: `${Math.round(railF.left ?? 0)},${Math.round(railF.width ?? 0)}`,
       railW: `${Math.round(railW.left ?? 0)},${Math.round(railW.width ?? 0)}`,
@@ -1491,6 +1562,14 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       gapWeatherToTouchBar: rhythm.lowerGap,
       bottomRhythmDelta: rhythm.bottomRhythmDelta,
       bottomRhythmPass: rhythm.bottomRhythmDelta != null && rhythm.bottomRhythmDelta <= 6,
+      homeVisualBudgetPass: Boolean(
+        lastHomeFitContract?.feedVisualPass &&
+        lastHomeFitContract?.upperWhitespacePass &&
+        rhythm.bottomRhythmDelta != null &&
+        rhythm.bottomRhythmDelta <= 6 &&
+        lastHomeFitContract?.fitPass &&
+        lastHomeFitContract?.weatherFitPass
+      ),
       rhythmBefore: rhythm.bottomRhythmDelta,
       rhythmAfter: rhythm.bottomRhythmDelta,
       weatherOverflowPx: rhythm.weatherOverflowPx,
@@ -1634,6 +1713,9 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       homeBottom: homeSectionRect.bottom,
       homeHeight: homeSectionRect.height,
       homeOv: homeGridGeometry.homeOverflowPx ?? homeSkeletonGeometry.homeOverflowPx,
+      fitPass: (homeGridGeometry.homeOverflowPx ?? homeSkeletonGeometry.homeOverflowPx) === 0,
+      weatherFitPass: (homeGridGeometry.weatherOverflowPx ?? homeSkeletonGeometry.weatherOverflowPx) === 0,
+      homeVisualBudgetPass: false,
       overlap: homeGridGeometry.slotsOverlap ?? homeSkeletonGeometry.slotsOverlap,
       toTouch: homeGridGeometry.weatherToTouchBarPx ?? homeSkeletonGeometry.weatherToTouchBarPx,
       solverMode: "retired-pending",

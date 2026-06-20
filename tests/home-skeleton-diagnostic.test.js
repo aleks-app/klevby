@@ -55,6 +55,26 @@ test("Home diagnostics report real-mode order and skeleton inline cleanup", () =
   assert.match(owner, /feedHeight:\s*feedRect\?\.height \?\? null/);
   assert.match(owner, /weatherBottom:\s*weatherRect\?\.bottom \?\? null/);
   assert.match(owner, /weatherHeight:\s*weatherRect\?\.height \?\? null/);
+
+  assert.match(owner, /feedPreviewTop:\s*feedRect\?\.top \?\? null/);
+  assert.match(owner, /feedHeaderTop:\s*feedHeaderRect\?\.top \?\? null/);
+  assert.match(owner, /feedAdCardHeight:\s*activeFeedCardRect\?\.height \?\? null/);
+  assert.match(owner, /feedTitleToFeedAdCard/);
+  assert.match(owner, /feedAdCardToWeather/);
+  assert.match(owner, /topBudgetUsed/);
+  assert.match(owner, /bottomBudgetUsed/);
+  assert.match(owner, /feedVisualPass/);
+  assert.match(owner, /upperWhitespacePass/);
+  assert.match(owner, /homeVisualBudgetPass/);
+  assert.match(owner, /computedBudgetTokens/);
+  assert.match(owner, /"--klevby-home-hero-row-max-h"/);
+  assert.match(owner, /"--klevby-home-feed-card-visual-min-h"/);
+  assert.match(owner, /"--klevby-home-feed-row-min-h"/);
+  assert.match(owner, /"--klevby-home-section-gap"/);
+  assert.match(owner, /"--klevby-home-weather-clearance-y"/);
+  assert.match(owner, /"--klevby-home-hero-pad-top"/);
+  assert.match(owner, /"--klevby-home-hero-copy-min-h"/);
+  assert.match(owner, /"--klevby-home-quick-min-h"/);
   assert.match(owner, /weatherToTouchBar:\s*weatherToTouchBarPx/);
   assert.match(owner, /homeOv:\s*homeOverflowPx/);
   assert.match(owner, /weatherOv:\s*weatherOverflowPx/);
