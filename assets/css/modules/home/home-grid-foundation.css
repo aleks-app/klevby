@@ -84,22 +84,18 @@
   }
 
   /*
-   * Bounded legacy hero-copy nudge. Keep this capped; the current alignment
-   * redistributes the hero row and hero-to-quick grid gap tokens instead of
-   * increasing this transform offset.
+   * Real Home grid: hero-copy vertical offset is driven only by the shared
+   * --klevby-home-hero-copy-nudge-y token from :root (no section-level override).
    */
-  #homeSection.kg-screen[data-home-layout="grid"] {
-    --klevby-home-hero-copy-nudge-y: 42px;
-  }
-
   #homeSection.kg-screen[data-home-layout="grid"] .hero-copy {
-    transform: translate(
+    transform: translate3d(
       0,
       calc(
         var(--klevby-home-hero-copy-shift-y)
         + 23px
-        + var(--klevby-home-hero-copy-nudge-y, 42px)
-      )
+        + var(--klevby-home-hero-copy-nudge-y)
+      ),
+      0
     ) !important;
   }
 
