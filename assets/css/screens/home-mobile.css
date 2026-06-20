@@ -142,6 +142,7 @@
     --klevby-home-weather-strip-min-h: 58px;
     --klevby-home-bottom-reserve: 0px;
     --klevby-home-header-nudge-y: 0px;
+    --klevby-home-quick-row-nudge-y: -24px;
     --klevby-home-weather-nudge-y: 0px;
     --klevby-home-weather-clearance-y: 12px;
   }
@@ -2064,7 +2065,6 @@
  * Loaded before home-grid-foundation.css; foundation owns root geometry and slot rails.
  */
 @media (max-width: 767px) {
-  #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions,
   #homeSection.kg-screen[data-home-layout="grid"] > .home-feed-preview,
   #homeSection.kg-screen[data-home-layout="grid"] > .home-weather-card {
     margin-top: 0;
@@ -2073,6 +2073,7 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions {
+    margin-bottom: 0;
     margin-left: auto;
     margin-right: auto;
   }
