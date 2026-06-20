@@ -15,12 +15,12 @@ function read(filePath) {
 test("index.html loads main.css with home hero slogan onest cache bust", () => {
   const index = read(indexPath);
 
-  assert.match(index, /assets\/css\/main\.css\?v=20260610-home-hero-slogan-onest/);
+  assert.match(index, /assets\/css\/main\.css\?v=20260620-home-hero-slogan-onest-1/);
 });
 
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
-  const legacyImport = './screens/home-mobile.css?v=20260610-home-hero-slogan-onest';
+  const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-slogan-onest-1';
   const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-copy-nudge-48';
 
   assert.ok(mainCss.includes(legacyImport));
@@ -65,6 +65,19 @@ test("home grid foundation uses measured shell geometry and stretch feed row", (
   assert.match(css, /> \.home-weather-card\s*\{[^}]*margin-top:\s*0/s);
   assert.doesNotMatch(css, /> \.home-weather-card\s*\{[^}]*margin-top:\s*auto/s);
   assert.doesNotMatch(css, /margin-top:\s*-/);
+});
+
+test("home feed preview title uses Onest display font", () => {
+  const homeMobileCss = read(path.join(root, "assets/css/screens/home-mobile.css"));
+
+  assert.match(
+    homeMobileCss,
+    /#homeSection \.home-feed-preview-head \.home-feed-preview-title\s*\{[^}]*font-family:\s*var\(--klevgo-font-display\)/s
+  );
+  assert.doesNotMatch(
+    homeMobileCss,
+    /#homeSection \.home-feed-preview-link[^{]*\{[^}]*font-family:\s*var\(--klevgo-font-display\)/s
+  );
 });
 
 test("home hero slogan uses Onest display font", () => {

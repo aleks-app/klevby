@@ -531,6 +531,7 @@
   #homeSection .home-feed-preview-head .home-feed-preview-title {
     margin: 0;
     color: #ffffff !important;
+    font-family: var(--klevgo-font-display) !important;
     font-size: 19px !important;
     font-weight: 475 !important;
     line-height: 1.15 !important;
