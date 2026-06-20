@@ -101,6 +101,22 @@
     }
   }
 
+  function collectHomeDimmingLayersFromOwner(ownerFitContract) {
+    const owner = window.KlevbyHomeScreenOwner;
+
+    if (owner && typeof owner.collectHomeDimmingDiagnostics === "function") {
+      return owner.collectHomeDimmingDiagnostics();
+    }
+
+    if (owner && typeof owner.getHomeDimmingDiagnostics === "function") {
+      return owner.getHomeDimmingDiagnostics();
+    }
+
+    return Array.isArray(ownerFitContract?.homeDimmingLayers)
+      ? ownerFitContract.homeDimmingLayers
+      : [];
+  }
+
   function collectSkeletonDiagnostics(ownerFitContract) {
     const owner = window.KlevbyHomeScreenOwner;
     const body = document.body;
@@ -488,6 +504,7 @@
           ? Math.abs(gapActiveFeedCardToWeather - gapWeatherToTouchBar)
           : null;
       const ownerFitContract = window.KlevbyHomeScreenOwner?.getHomeFitContract?.() || null;
+      const homeDimmingLayers = collectHomeDimmingLayersFromOwner(ownerFitContract);
       const skeletonDiagnostics = collectSkeletonDiagnostics(ownerFitContract);
       const homeAvailableTop = ownerFitContract?.availableTop ?? null;
       const homeAvailableBottom = ownerFitContract?.availableBottom ?? null;
@@ -548,7 +565,8 @@
         feedVisualPass: ownerFitContract?.feedVisualPass ?? null,
         upperWhitespacePass: ownerFitContract?.upperWhitespacePass ?? null,
         homeVisualBudgetPass: ownerFitContract?.homeVisualBudgetPass ?? null,
-        computedBudgetTokens: ownerFitContract?.computedBudgetTokens ?? null
+        computedBudgetTokens: ownerFitContract?.computedBudgetTokens ?? null,
+        homeDimmingLayers
       };
 
       return {
@@ -607,6 +625,7 @@
         homeUsesAppShellContract,
         homeAppShellDeltaTop,
         homeAppShellDeltaBottom,
+        homeDimmingLayers,
         homeSectionTopNegative:
           homeRects.homeSection?.top != null ? homeRects.homeSection.top < -1 : null,
         homeFitContract,

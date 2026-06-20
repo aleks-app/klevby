@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v20-home-hero-copy-nudge-48-20260620";
-const SW_BUILD_VERSION = "20260620-home-hero-copy-nudge-48";
+const CACHE_NAME = "klevby-cache-v21-home-dimming-diagnostics-20260620";
+const SW_BUILD_VERSION = "20260620-home-dimming-diagnostics";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
