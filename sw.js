@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v18-trips-create-hard-disable-20260618-1";
-const SW_BUILD_VERSION = "20260618-trips-create-hard-disable-1";
+const CACHE_NAME = "klevby-cache-v19-home-hero-copy-nudge-wiring-20260620";
+const SW_BUILD_VERSION = "20260620-home-hero-copy-nudge-wiring";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
