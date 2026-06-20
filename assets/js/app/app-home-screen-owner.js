@@ -98,6 +98,39 @@
     "authSection",
     "profileSection"
   ];
+  const HOME_DIMMING_DIAGNOSTIC_TARGETS = Object.freeze([
+    { selector: "#homeSection" },
+    { selector: "#homeSection::before", baseSelector: "#homeSection", pseudo: "::before" },
+    { selector: "#homeSection::after", baseSelector: "#homeSection", pseudo: "::after" },
+    { selector: "#homeSection .hero" },
+    { selector: "#homeSection .hero::before", baseSelector: "#homeSection .hero", pseudo: "::before" },
+    { selector: "#homeSection .hero::after", baseSelector: "#homeSection .hero", pseudo: "::after" },
+    { selector: "#homeSection .quick-action-card" },
+    { selector: "#homeSection .quick-action-card::before", baseSelector: "#homeSection .quick-action-card", pseudo: "::before" },
+    { selector: "#homeSection .quick-action-card::after", baseSelector: "#homeSection .quick-action-card", pseudo: "::after" },
+    { selector: "#homeSection .home-feed-preview-card" },
+    { selector: "#homeSection .weather-card" }
+  ]);
+  const HOME_DIMMING_DIAGNOSTIC_STYLE_PROPS = Object.freeze([
+    "position",
+    "zIndex",
+    "opacity",
+    "background",
+    "backgroundColor",
+    "backgroundImage",
+    "filter",
+    "backdropFilter",
+    "webkitBackdropFilter",
+    "mixBlendMode",
+    "pointerEvents",
+    "inset",
+    "top",
+    "right",
+    "bottom",
+    "left",
+    "transform",
+    "isolation"
+  ]);
 
   let initialized = false;
   let homeScreenLocked = false;
@@ -1388,6 +1421,53 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     };
   }
 
+  function readComputedStyleValue(computedStyle, property) {
+    if (!computedStyle) return null;
+
+    if (property === "webkitBackdropFilter") {
+      return computedStyle.webkitBackdropFilter || computedStyle.getPropertyValue("-webkit-backdrop-filter") || "";
+    }
+
+    const value = computedStyle[property];
+    if (typeof value === "string") return value;
+
+    return computedStyle.getPropertyValue(property.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`));
+  }
+
+  function collectHomeDimmingDiagnostics() {
+    if (typeof window === "undefined" || typeof document === "undefined") return [];
+
+    return HOME_DIMMING_DIAGNOSTIC_TARGETS.map((target) => {
+      const baseSelector = target.baseSelector || target.selector;
+      const element = document.querySelector(baseSelector);
+      const diagnostic = {
+        selector: target.selector,
+        exists: Boolean(element),
+        elementExists: Boolean(element),
+        pseudoElement: target.pseudo || null
+      };
+
+      if (!element || typeof window.getComputedStyle !== "function") {
+        return HOME_DIMMING_DIAGNOSTIC_STYLE_PROPS.reduce((result, property) => {
+          result[property] = null;
+          return result;
+        }, diagnostic);
+      }
+
+      let computedStyle = null;
+      try {
+        computedStyle = window.getComputedStyle(element, target.pseudo || null);
+      } catch (_) {
+        computedStyle = null;
+      }
+
+      return HOME_DIMMING_DIAGNOSTIC_STYLE_PROPS.reduce((result, property) => {
+        result[property] = readComputedStyleValue(computedStyle, property);
+        return result;
+      }, diagnostic);
+    });
+  }
+
   function measureHomeBottomRhythm(touchBar) {
     const activeFeedCard = findActiveHomeFeedCard();
     const weatherCard = document.querySelector("#homeSection .home-weather-card");
@@ -1805,6 +1885,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       legacySolverWouldApply: false,
       solverApplied: false,
       solverCapped: false,
+      homeDimmingLayers: collectHomeDimmingDiagnostics(),
       timestamp: new Date().toISOString()
     };
 
@@ -2053,6 +2134,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     resolveHomeHeaderFrameContract,
     resolveHomeTouchBarFrameContract,
     getHomeFitContract,
+    collectHomeDimmingDiagnostics,
+    getHomeDimmingDiagnostics: collectHomeDimmingDiagnostics,
     isHomeScreenActive,
     isHomeSkeletonMode,
     shouldEnableHomeSkeletonMode,
@@ -2071,7 +2154,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       resolveHomeRetiredSolverState,
       resolveHomeScreenContractIntegration,
       resolveHomeHeaderFrameContract,
-      resolveHomeTouchBarFrameContract
+      resolveHomeTouchBarFrameContract,
+      collectHomeDimmingDiagnostics
     };
   }
 
