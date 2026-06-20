@@ -132,6 +132,9 @@
     let updateFrame = 0;
     let observer = null;
     let lastMeasurement = null;
+    let lastGoodShellContract = null;
+    let resumeRemeasureFrame = 0;
+    let appShellResumeRemeasureCount = 0;
 
     function getChromeMode() {
       const body = documentObject.body;
@@ -205,6 +208,54 @@
       });
     }
 
+    function isGoodHomeShellContract(measurement) {
+      return (
+        measurement?.chromeMode === "home" &&
+        measurement.headerVisible === true &&
+        measurement.tabbarVisible === true &&
+        measurement.headerBottom > 0 &&
+        measurement.touchbarTop > measurement.headerBottom &&
+        measurement.availableHeight > 0
+      );
+    }
+
+    function isZeroChromeHomeMeasurement(measurement) {
+      return (
+        measurement?.chromeMode === "home" &&
+        measurement.headerVisible === false &&
+        measurement.tabbarVisible === false &&
+        measurement.headerBottom === 0 &&
+        measurement.touchbarTop === measurement.viewportHeight &&
+        measurement.touchbarHeight === 0 &&
+        measurement.availableTop === 0 &&
+        measurement.availableBottom === measurement.viewportHeight
+      );
+    }
+
+    function withShellDiagnostics(measurement, diagnostics = {}) {
+      return {
+        ...measurement,
+        appShellLastGoodTop: lastGoodShellContract?.availableTop ?? null,
+        appShellLastGoodBottom: lastGoodShellContract?.availableBottom ?? null,
+        appShellLastGoodHeight: lastGoodShellContract?.availableHeight ?? null,
+        appShellUsedLastGoodAfterResume: Boolean(diagnostics.usedLastGoodAfterResume),
+        appShellZeroChromeRejected: Boolean(diagnostics.zeroChromeRejected),
+        appShellResumeRemeasureCount
+      };
+    }
+
+    function scheduleResumeRemeasure() {
+      if (resumeRemeasureFrame) return;
+
+      resumeRemeasureFrame = windowObject.requestAnimationFrame(() => {
+        resumeRemeasureFrame = windowObject.requestAnimationFrame(() => {
+          resumeRemeasureFrame = 0;
+          appShellResumeRemeasureCount += 1;
+          update();
+        });
+      });
+    }
+
     function publish(measurement) {
       const style = documentObject.documentElement.style;
 
@@ -224,6 +275,11 @@
         style.setProperty(variable, `${measurement[property]}px`);
       });
 
+      if (isGoodHomeShellContract(measurement) && !measurement.appShellUsedLastGoodAfterResume) {
+        lastGoodShellContract = Object.freeze({ ...measurement });
+        measurement = withShellDiagnostics(measurement);
+      }
+
       lastMeasurement = Object.freeze({ ...measurement });
       windowObject.dispatchEvent(
         new windowObject.CustomEvent("klevby-app-shell-updated", {
@@ -235,7 +291,26 @@
     }
 
     function update() {
-      return publish(measure());
+      const measurement = measure();
+
+      if (lastGoodShellContract && isZeroChromeHomeMeasurement(measurement)) {
+        scheduleResumeRemeasure();
+        return publish(
+          withShellDiagnostics(
+            {
+              ...lastGoodShellContract,
+              viewportWidth: measurement.viewportWidth,
+              viewportHeight: measurement.viewportHeight
+            },
+            {
+              usedLastGoodAfterResume: true,
+              zeroChromeRejected: true
+            }
+          )
+        );
+      }
+
+      return publish(withShellDiagnostics(measurement));
     }
 
     function scheduleUpdate() {
@@ -262,6 +337,9 @@
       windowObject.addEventListener("resize", scheduleUpdate, { passive: true });
       windowObject.addEventListener("orientationchange", scheduleUpdate, { passive: true });
       windowObject.addEventListener("klevby-app-resumed", scheduleUpdate, { passive: true });
+      windowObject.addEventListener("focus", scheduleUpdate, { passive: true });
+      windowObject.addEventListener("pageshow", scheduleUpdate, { passive: true });
+      documentObject.addEventListener("visibilitychange", scheduleUpdate, { passive: true });
 
       if (windowObject.visualViewport) {
         windowObject.visualViewport.addEventListener("resize", scheduleUpdate, { passive: true });
