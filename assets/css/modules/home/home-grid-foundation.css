@@ -13,6 +13,7 @@
     --kg-home-grid-lower-fill-y: var(--klevby-home-lower-fill-y, 0px);
     --kg-home-grid-weather-clearance-y: var(--klevby-home-weather-clearance-y, 12px);
     --kg-home-grid-hero-row-max-h: var(--klevby-home-hero-row-max-h, 213px);
+    --kg-home-grid-hero-to-quick-gap: var(--klevby-home-hero-to-quick-grid-gap, var(--kg-home-grid-gap));
     --kg-home-grid-feed-card-visual-min-h: var(--klevby-home-feed-card-visual-min-h, 184px);
     --kg-home-grid-feed-header-h: var(--klevby-home-feed-header-h, 34px);
     --kg-home-grid-feed-card-target-h: var(--klevby-home-feed-card-target-h, 224px);
@@ -40,12 +41,15 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows:
       minmax(0, var(--kg-home-grid-hero-row-max-h))
+      var(--kg-home-grid-hero-to-quick-gap)
       auto
+      var(--kg-home-grid-gap)
       minmax(var(--kg-home-grid-feed-row-min-h), 1fr)
+      var(--kg-home-grid-gap)
       auto;
     align-items: stretch;
     align-content: stretch;
-    row-gap: var(--kg-home-grid-gap);
+    row-gap: 0;
     padding-bottom: var(--kg-home-grid-weather-clearance-y);
     box-sizing: border-box;
     container-type: size;
@@ -79,6 +83,11 @@
     pointer-events: auto;
   }
 
+  /*
+   * Bounded legacy hero-copy nudge. Keep this capped; the current alignment
+   * redistributes the hero row and hero-to-quick grid gap tokens instead of
+   * increasing this transform offset.
+   */
   #homeSection.kg-screen[data-home-layout="grid"] {
     --klevby-home-hero-copy-nudge-y: 42px;
   }
@@ -99,7 +108,7 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-quick-actions {
-    grid-row: 2;
+    grid-row: 3;
     position: relative;
     inset: auto;
     z-index: 2;
@@ -119,7 +128,7 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-feed-preview {
-    grid-row: 3;
+    grid-row: 5;
     position: relative;
     inset: auto;
     z-index: 2;
@@ -138,7 +147,7 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] > .home-weather-card {
-    grid-row: 4;
+    grid-row: 7;
     position: relative;
     inset: auto;
     z-index: 2;
