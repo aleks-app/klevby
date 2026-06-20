@@ -365,6 +365,44 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     };
   }
 
+
+  function readHomeHeroCopyComputedDiagnostics(heroCopy, homeSection = document.querySelector("#homeSection")) {
+    if (!heroCopy) return null;
+
+    const heroCopyStyle = window.getComputedStyle(heroCopy);
+    const root = document.documentElement;
+    return {
+      heroCopyClassName: heroCopy.className || null,
+      heroCopyTransform: heroCopyStyle.transform || null,
+      heroCopyTranslate: heroCopyStyle.translate || null,
+      heroCopyPosition: heroCopyStyle.position || null,
+      heroCopyPaddingTop: heroCopyStyle.paddingTop || null,
+      heroCopyPaddingBottom: heroCopyStyle.paddingBottom || null,
+      heroCopyMarginTop: heroCopyStyle.marginTop || null,
+      heroCopyMarginBottom: heroCopyStyle.marginBottom || null,
+      heroCopyDisplay: heroCopyStyle.display || null,
+      heroCopyJustifyContent: heroCopyStyle.justifyContent || null,
+      heroCopyMinHeight: heroCopyStyle.minHeight || null,
+      heroCopyHeight: heroCopyStyle.height || null,
+      homeSectionClassName: homeSection?.className || null,
+      homeSectionLayout: homeSection?.getAttribute(HOME_LAYOUT_ATTRIBUTE) ?? null,
+      rootHomeGridContract: root?.getAttribute(HOME_GRID_CONTRACT_ATTRIBUTE) ?? null,
+      rootHomeDensity: root?.getAttribute(HOME_DENSITY_ATTRIBUTE) ?? null
+    };
+  }
+
+  function readHomeCssDeliveryDiagnostics() {
+    const targetNames = ["main.css", "home-mobile.css", "home-grid-foundation.css"];
+    const stylesheetHrefs = Array.from(document.styleSheets || [])
+      .map((sheet) => sheet?.href || null)
+      .filter((href) => href && targetNames.some((name) => href.includes(name)));
+
+    return {
+      stylesheetHrefs,
+      serviceWorkerControllerScriptURL: navigator.serviceWorker?.controller?.scriptURL ?? null
+    };
+  }
+
   function resolveHomeSkeletonGeometryDiagnostics({
     header,
     touchBar,
@@ -382,7 +420,9 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const homeRect = readRectDiagnostics(homeSection);
     const homeComputedStyle = homeSection ? window.getComputedStyle(homeSection) : null;
     const heroRect = readRectDiagnostics(hero);
-    const heroCopyRect = readRectDiagnostics(document.querySelector("#homeSection .hero-copy"));
+    const heroCopy = document.querySelector("#homeSection .hero-copy");
+    const heroCopyRect = readRectDiagnostics(heroCopy);
+    const heroCopyComputed = readHomeHeroCopyComputedDiagnostics(heroCopy, homeSection);
     const quickRect = readRectDiagnostics(quick);
     const feedRect = readRectDiagnostics(feed);
     const weatherRect = readRectDiagnostics(weather);
@@ -469,6 +509,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       heroBottom: heroRect?.bottom ?? null,
       heroHeight: heroRect?.height ?? null,
       heroCopyRect,
+      heroCopyComputed,
+      cssDelivery: readHomeCssDeliveryDiagnostics(),
       heroCopyTop: heroCopyRect?.top ?? null,
       heroCopyBottom: heroCopyRect?.bottom ?? null,
       heroCopyHeight: heroCopyRect?.height ?? null,
@@ -1181,6 +1223,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const touchBarRect = touchBar?.getBoundingClientRect() || null;
     const heroRect = hero?.getBoundingClientRect() || null;
     const heroCopyRect = heroCopy?.getBoundingClientRect() || null;
+    const heroCopyComputed = readHomeHeroCopyComputedDiagnostics(heroCopy, homeSection);
     const quickRect = quickActions?.getBoundingClientRect() || null;
     const feedRect = feedPreview?.getBoundingClientRect() || null;
     const feedHeaderRect = feedHeader?.getBoundingClientRect() || null;
@@ -1272,6 +1315,8 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       heroTop: heroRect?.top ?? null,
       heroBottom: heroRect?.bottom ?? null,
       heroHeight: heroRect?.height ?? null,
+      heroCopyComputed,
+      cssDelivery: readHomeCssDeliveryDiagnostics(),
       heroCopyTop: heroCopyRect?.top ?? null,
       heroCopyBottom: heroCopyRect?.bottom ?? null,
       heroCopyHeight: heroCopyRect?.height ?? null,
