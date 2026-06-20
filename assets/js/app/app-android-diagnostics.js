@@ -494,7 +494,19 @@
           gapWeatherToTouchBar != null &&
           weatherOverflowPx <= 1 &&
           gapWeatherToTouchBar >= 10 &&
-          availableHeight > 0
+          availableHeight > 0,
+        heroTailAfterCopy: ownerFitContract?.heroTailAfterCopy ?? null,
+        feedPreviewTop: ownerFitContract?.feedPreviewTop ?? homeRects.feedPreview?.top ?? null,
+        feedPreviewHeight: ownerFitContract?.feedPreviewHeight ?? homeRects.feedPreview?.height ?? null,
+        feedAdCardHeight: ownerFitContract?.feedAdCardHeight ?? homeRects.activeFeedCard?.height ?? null,
+        feedAdCardClientHeight: ownerFitContract?.feedAdCardClientHeight ?? null,
+        feedAdCardScrollHeight: ownerFitContract?.feedAdCardScrollHeight ?? null,
+        feedAdCardOverflowY: ownerFitContract?.feedAdCardOverflowY ?? null,
+        feedContentFits: ownerFitContract?.feedContentFits ?? null,
+        feedVisualPass: ownerFitContract?.feedVisualPass ?? null,
+        upperWhitespacePass: ownerFitContract?.upperWhitespacePass ?? null,
+        homeVisualBudgetPass: ownerFitContract?.homeVisualBudgetPass ?? null,
+        computedBudgetTokens: ownerFitContract?.computedBudgetTokens ?? null
       };
 
       return {
@@ -604,6 +616,15 @@
               .trim(),
             "--klevby-home-quick-min-h": htmlStyles
               .getPropertyValue("--klevby-home-quick-min-h")
+              .trim(),
+            "--klevby-home-hero-row-max-h": htmlStyles
+              .getPropertyValue("--klevby-home-hero-row-max-h")
+              .trim(),
+            "--klevby-home-feed-card-visual-min-h": htmlStyles
+              .getPropertyValue("--klevby-home-feed-card-visual-min-h")
+              .trim(),
+            "--klevby-home-feed-row-min-h": htmlStyles
+              .getPropertyValue("--klevby-home-feed-row-min-h")
               .trim(),
             "--klevby-home-feed-image-min-h": htmlStyles
               .getPropertyValue("--klevby-home-feed-image-min-h")

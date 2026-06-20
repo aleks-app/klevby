@@ -120,7 +120,7 @@
     --klevby-home-lower-fill-y: 0px;
     --klevby-home-header-pull: 86px;
     --klevby-home-hero-min-h: 118px;
-    --klevby-home-hero-row-max-h: 260px;
+    --klevby-home-hero-row-max-h: 225px;
     --klevby-home-hero-pad-top: 80px;
     --klevby-home-hero-pad-inline: 26px;
     --klevby-home-hero-pad-bottom: 0px;
@@ -1802,7 +1802,7 @@
    */
   :root[data-home-density="compact"] {
     --klevby-home-hero-min-h: 116px;
-    --klevby-home-hero-row-max-h: 238px;
+    --klevby-home-hero-row-max-h: 218px;
     --klevby-home-hero-pad-top: 78px;
     --klevby-home-hero-copy-min-h: 120px;
     --klevby-home-hero-copy-shift-y: -108px;
