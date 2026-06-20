@@ -80,7 +80,7 @@
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] {
-    --klevby-home-hero-copy-nudge-y: 48px;
+    --klevby-home-hero-copy-nudge-y: 42px;
   }
 
   #homeSection.kg-screen[data-home-layout="grid"] .hero-copy {
@@ -89,7 +89,7 @@
       calc(
         var(--klevby-home-hero-copy-shift-y)
         + 23px
-        + var(--klevby-home-hero-copy-nudge-y, 48px)
+        + var(--klevby-home-hero-copy-nudge-y, 42px)
       )
     ) !important;
   }
