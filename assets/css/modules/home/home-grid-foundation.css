@@ -79,6 +79,21 @@
     pointer-events: auto;
   }
 
+  #homeSection.kg-screen[data-home-layout="grid"] {
+    --klevby-home-hero-copy-nudge-y: 48px;
+  }
+
+  #homeSection.kg-screen[data-home-layout="grid"] .hero-copy {
+    transform: translate(
+      0,
+      calc(
+        var(--klevby-home-hero-copy-shift-y)
+        + 23px
+        + var(--klevby-home-hero-copy-nudge-y, 48px)
+      )
+    ) !important;
+  }
+
   #homeSection.kg-screen[data-home-layout="grid"] > #forecastPanel {
     display: none;
   }
