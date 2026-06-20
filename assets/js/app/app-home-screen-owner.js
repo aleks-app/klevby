@@ -407,6 +407,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       : null;
     const heroToQuickGap = heroRect && quickRect ? quickRect.top - heroRect.bottom : null;
     const heroCopyToQuickActions = heroCopyRect && quickRect ? quickRect.top - heroCopyRect.bottom : null;
+    const heroCopyTopFromHome = heroCopyRect && homeRect ? heroCopyRect.top - homeRect.top : null;
     const heroTailAfterCopy = heroRect && heroCopyRect ? heroRect.bottom - heroCopyRect.bottom : null;
     const quickToFeedGap = quickRect && feedRect ? feedRect.top - quickRect.bottom : null;
     const orderPass = Boolean(
@@ -471,6 +472,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       heroCopyTop: heroCopyRect?.top ?? null,
       heroCopyBottom: heroCopyRect?.bottom ?? null,
       heroCopyHeight: heroCopyRect?.height ?? null,
+      heroCopyTopFromHome,
       quickTop: quickRect?.top ?? null,
       quickBottom: quickRect?.bottom ?? null,
       quickHeight: quickRect?.height ?? null,
@@ -1210,6 +1212,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const activeFeedCard = findActiveHomeFeedCard();
     const activeFeedCardRect = activeFeedCard?.getBoundingClientRect() || null;
     const heroCopyToQuickActions = heroCopyRect && quickRect ? quickRect.top - heroCopyRect.bottom : null;
+    const heroCopyTopFromHome = heroCopyRect && homeSectionRect ? heroCopyRect.top - homeSectionRect.top : null;
     const heroToQuickGap = heroRect && quickRect ? quickRect.top - heroRect.bottom : null;
     const heroTailAfterCopy = heroRect && heroCopyRect ? heroRect.bottom - heroCopyRect.bottom : null;
     const quickToFeedGap = quickRect && feedRect ? feedRect.top - quickRect.bottom : null;
@@ -1246,6 +1249,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       "--klevby-home-weather-clearance-y": getCssPixelValue(root, "--klevby-home-weather-clearance-y"),
       "--klevby-home-hero-pad-top": getCssPixelValue(root, "--klevby-home-hero-pad-top"),
       "--klevby-home-hero-copy-min-h": getCssPixelValue(root, "--klevby-home-hero-copy-min-h"),
+      "--klevby-home-hero-copy-nudge-y": getCssPixelValue(root, "--klevby-home-hero-copy-nudge-y"),
       "--klevby-home-quick-min-h": getCssPixelValue(root, "--klevby-home-quick-min-h")
     };
     const feedHeightDeltaPx =
@@ -1271,6 +1275,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       heroCopyTop: heroCopyRect?.top ?? null,
       heroCopyBottom: heroCopyRect?.bottom ?? null,
       heroCopyHeight: heroCopyRect?.height ?? null,
+      heroCopyTopFromHome,
       heroTailAfterCopy,
       quickTop: quickRect?.top ?? null,
       quickBottom: quickRect?.bottom ?? null,
@@ -1309,6 +1314,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       "--klevby-home-weather-clearance-y": computedBudgetTokens["--klevby-home-weather-clearance-y"],
       "--klevby-home-hero-pad-top": computedBudgetTokens["--klevby-home-hero-pad-top"],
       "--klevby-home-hero-copy-min-h": computedBudgetTokens["--klevby-home-hero-copy-min-h"],
+      "--klevby-home-hero-copy-nudge-y": computedBudgetTokens["--klevby-home-hero-copy-nudge-y"],
       "--klevby-home-quick-min-h": computedBudgetTokens["--klevby-home-quick-min-h"],
       railQ: `${Math.round(railQ.left ?? 0)},${Math.round(railQ.width ?? 0)}`,
       railF: `${Math.round(railF.left ?? 0)},${Math.round(railF.width ?? 0)}`,
