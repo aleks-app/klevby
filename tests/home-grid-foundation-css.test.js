@@ -14,8 +14,8 @@ function read(filePath) {
 
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
-  const legacyImport = './screens/home-mobile.css?v=20260619-home-contract-clean-1';
-  const foundationImport = './modules/home/home-grid-foundation.css?v=20260610-home-internal-grid-contract';
+  const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-row-budget-1';
+  const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-row-budget-1';
 
   assert.ok(mainCss.includes(legacyImport));
   assert.ok(mainCss.includes(foundationImport));
@@ -45,16 +45,17 @@ test("home grid foundation uses measured shell geometry and stretch feed row", (
 
   assert.match(css, /--klevby-home-available-top/);
   assert.match(css, /--klevby-home-available-height/);
-  assert.match(css, /grid-template-rows:[\s\S]*minmax\(0,\s*var\(--kg-home-grid-hero-row-max-h\)\)[\s\S]*auto[\s\S]*minmax\(var\(--kg-home-grid-feed-row-min-h\),\s*1fr\)[\s\S]*auto/);
+  assert.match(css, /grid-template-rows:[\s\S]*minmax\(0,\s*var\(--kg-home-grid-hero-row-max-h\)\)[\s\S]*var\(--kg-home-grid-hero-to-quick-gap\)[\s\S]*auto[\s\S]*var\(--kg-home-grid-gap\)[\s\S]*minmax\(var\(--kg-home-grid-feed-row-min-h\),\s*1fr\)[\s\S]*var\(--kg-home-grid-gap\)[\s\S]*auto/);
   assert.match(css, /--kg-home-grid-feed-card-target-h:\s*var\(--klevby-home-feed-card-target-h,\s*224px\)/);
   assert.match(css, /--kg-home-grid-feed-card-max-h:\s*var\(--klevby-home-feed-card-max-h,\s*230px\)/);
   assert.match(css, /--kg-home-grid-quick-to-feed-gap:\s*var\(--klevby-home-quick-to-feed-gap,\s*22px\)/);
-  assert.match(css, /row-gap:\s*var\(--kg-home-grid-gap\)/);
+  assert.match(css, /--kg-home-grid-hero-to-quick-gap:\s*var\(--klevby-home-hero-to-quick-grid-gap,\s*var\(--kg-home-grid-gap\)\)/);
+  assert.match(css, /row-gap:\s*0/);
   assert.match(css, /padding-bottom:\s*var\(--kg-home-grid-weather-clearance-y\)/);
   assert.match(css, /> \.hero\s*\{[^}]*grid-row:\s*1/s);
-  assert.match(css, /> \.home-quick-actions\s*\{[^}]*grid-row:\s*2/s);
-  assert.match(css, /> \.home-feed-preview\s*\{[^}]*grid-row:\s*3/s);
-  assert.match(css, /> \.home-weather-card\s*\{[^}]*grid-row:\s*4/s);
+  assert.match(css, /> \.home-quick-actions\s*\{[^}]*grid-row:\s*3/s);
+  assert.match(css, /> \.home-feed-preview\s*\{[^}]*grid-row:\s*5/s);
+  assert.match(css, /> \.home-weather-card\s*\{[^}]*grid-row:\s*7/s);
   assert.match(css, /> \.home-weather-card\s*\{[^}]*margin-top:\s*0/s);
   assert.doesNotMatch(css, /> \.home-weather-card\s*\{[^}]*margin-top:\s*auto/s);
   assert.doesNotMatch(css, /margin-top:\s*-/);
