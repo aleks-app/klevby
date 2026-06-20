@@ -137,6 +137,108 @@ test("viewport owner publishes legacy and kg runtime tokens with the same values
   assert.equal(published.get(TOUCHBAR_FRAME_CSS_VARIABLES.touchbarBottomOffset), "16px");
 });
 
+test("viewport owner rejects transient zero-chrome home measurements after a good contract", () => {
+  const published = new Map();
+  const rafQueue = [];
+  let headerRect = { top: 0, left: 0, right: 390, bottom: 111, width: 390, height: 111 };
+  let tabbarRect = { top: 856, left: 16, right: 374, bottom: 922, width: 358, height: 66 };
+  const events = [];
+  const documentObject = {
+    body: {
+      getAttribute() {
+        return "home";
+      }
+    },
+    documentElement: {
+      clientWidth: 390,
+      clientHeight: 956,
+      style: {
+        setProperty(name, value) {
+          published.set(name, value);
+        }
+      }
+    },
+    getElementById(id) {
+      if (id !== "header") return null;
+
+      return {
+        getBoundingClientRect() {
+          return headerRect;
+        }
+      };
+    },
+    querySelector(selector) {
+      if (selector === ".mobile-tabbar") {
+        return {
+          getBoundingClientRect() {
+            return tabbarRect;
+          }
+        };
+      }
+
+      return null;
+    }
+  };
+
+  const windowObject = {
+    innerWidth: 390,
+    innerHeight: 956,
+    requestAnimationFrame(callback) {
+      rafQueue.push(callback);
+      return rafQueue.length;
+    },
+    getComputedStyle() {
+      return { display: "block", visibility: "visible", opacity: "1" };
+    },
+    dispatchEvent(event) {
+      events.push(event);
+    },
+    CustomEvent: class CustomEvent {
+      constructor(type, options) {
+        this.type = type;
+        this.detail = options?.detail;
+      }
+    }
+  };
+
+  const owner = createAppShellViewportOwner(windowObject, documentObject);
+  owner.update();
+
+  assert.equal(published.get(CSS_VARIABLES.availableTop), "111px");
+  assert.equal(published.get(CSS_VARIABLES.availableBottom), "856px");
+  assert.equal(published.get(CSS_VARIABLES.availableHeight), "745px");
+
+  headerRect = { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 };
+  tabbarRect = { top: 956, left: 0, right: 0, bottom: 956, width: 0, height: 0 };
+  const rejected = owner.update();
+
+  assert.equal(published.get(CSS_VARIABLES.availableTop), "111px");
+  assert.equal(published.get(CSS_VARIABLES.availableBottom), "856px");
+  assert.equal(published.get(CSS_VARIABLES.availableHeight), "745px");
+  assert.equal(published.get(HEADER_FRAME_CSS_VARIABLES.headerBottom), "111px");
+  assert.equal(published.get(TOUCHBAR_FRAME_CSS_VARIABLES.touchbarTop), "856px");
+  assert.equal(rejected.appShellLastGoodTop, 111);
+  assert.equal(rejected.appShellLastGoodBottom, 856);
+  assert.equal(rejected.appShellLastGoodHeight, 745);
+  assert.equal(rejected.appShellUsedLastGoodAfterResume, true);
+  assert.equal(rejected.appShellZeroChromeRejected, true);
+  assert.equal(rafQueue.length, 1);
+
+  headerRect = { top: 0, left: 0, right: 390, bottom: 112, width: 390, height: 112 };
+  tabbarRect = { top: 855, left: 16, right: 374, bottom: 921, width: 358, height: 66 };
+  rafQueue.shift()();
+  assert.equal(rafQueue.length, 1);
+  rafQueue.shift()();
+
+  const recovered = owner.getLastMeasurement();
+  assert.equal(published.get(CSS_VARIABLES.availableTop), "112px");
+  assert.equal(published.get(CSS_VARIABLES.availableBottom), "855px");
+  assert.equal(published.get(CSS_VARIABLES.availableHeight), "743px");
+  assert.equal(recovered.appShellZeroChromeRejected, false);
+  assert.equal(recovered.appShellResumeRemeasureCount, 1);
+  assert.equal(events.at(-1).detail.appShellLastGoodTop, 112);
+});
+
 test("normal mode uses the visible header and tabbar boundaries", () => {
   const result = calculateAppShellViewport({
     chromeMode: "home",
