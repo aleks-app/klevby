@@ -278,12 +278,6 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   pointer-events: auto;
 }
 
-#tripsSection .trips-fullscreen-filter-item.is-active {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-}
-
 #tripsSection .trips-fullscreen-filter-item.is-active span {
   color: #e06b00;
 }
@@ -292,7 +286,8 @@ body[data-app-chrome-mode="trips"] #tripsSection:not(.hidden) {
   opacity: 0.78;
 }
 
-#tripsSection .trips-fullscreen-filter-item-accent:not(.is-active) {
+#tripsSection .trips-fullscreen-filter-item-accent:not(.is-active),
+#tripsSection .trips-fullscreen-filter-item-accent:not(.is-active) span {
   color: rgba(245, 248, 252, 0.88);
 }
 
