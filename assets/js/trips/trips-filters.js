@@ -14,8 +14,8 @@
 
   function updateFilterRow(state) {
     document.querySelectorAll("#tripsSection .trips-fullscreen-filter-item").forEach((button) => {
-      const key = button.getAttribute("data-trips-filter");
-      const isActive = Boolean(key) && state.activeFilterKey === key;
+      const key = button.getAttribute("data-trips-lower-filter");
+      const isActive = Boolean(key) && state.activeLowerFilter === key;
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
@@ -30,11 +30,11 @@
   function bindFilterRow(stateApi) {
     document.querySelectorAll("#tripsSection .trips-fullscreen-filter-item").forEach((button) => {
       button.addEventListener("click", () => {
-        const key = button.getAttribute("data-trips-filter");
-        if (!key || typeof stateApi.setActiveFilterKey !== "function") return;
+        const key = button.getAttribute("data-trips-lower-filter");
+        if (!key || typeof stateApi.setActiveLowerFilter !== "function") return;
 
-        const current = stateApi.getState().activeFilterKey;
-        stateApi.setActiveFilterKey(current === key ? null : key);
+        const current = stateApi.getState().activeLowerFilter;
+        stateApi.setActiveLowerFilter(current === key ? null : key);
       });
     });
   }
