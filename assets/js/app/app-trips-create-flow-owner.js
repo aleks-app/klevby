@@ -172,6 +172,9 @@
     close,
     back,
     next,
+    isOpen() {
+      return isOpen;
+    },
     getDebug: () => ({ isOpen, step, totalSteps: TOTAL_STEPS, draft: { ...tripDraft } })
   };
 
