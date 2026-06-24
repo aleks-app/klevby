@@ -61,7 +61,21 @@
         </p>
       </div>
       <div class="trips-create-flow__place-options" aria-label="Выбор места выезда">
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-label="Выбрать водоём"></button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-label="Выбрать водоём">
+          <span class="trips-create-flow__place-icon-shell" aria-hidden="true">
+            <span class="trips-create-flow__place-icon trips-create-flow__place-icon--water">
+              <svg viewBox="0 0 40 40" focusable="false">
+                <path d="M7 14c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2" />
+                <path d="M7 20c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2" />
+                <path d="M7 26c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2" />
+              </svg>
+            </span>
+          </span>
+          <span class="trips-create-flow__place-copy">
+            <span class="trips-create-flow__place-title">Выбрать водоём</span>
+            <span class="trips-create-flow__place-subtitle">Из базы водоёмов</span>
+          </span>
+        </button>
         <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-label="Указать на карте"></button>
       </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
