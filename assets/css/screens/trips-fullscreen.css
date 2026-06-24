@@ -373,7 +373,7 @@ header[data-chrome-mode="trips"] .mobile-actions {
 header[data-chrome-mode="trips"] .app-header-back-btn {
   display: inline-flex;
   position: fixed;
-  top: min(88px, 19.955vw);
+  top: calc(min(88px, 19.955vw) - 14.5px);
   left: var(--klevby-app-inline-inset, 16px);
   z-index: 1201;
   pointer-events: auto;
