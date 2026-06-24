@@ -61,8 +61,8 @@
         </p>
       </div>
       <div class="trips-create-flow__place-options" aria-label="Выбор места выезда">
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-label="Выбрать водоём"></button>
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-label="Указать на карте"></button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-pressed="false" aria-label="Выбрать водоём"></button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-pressed="false" aria-label="Указать на карте"></button>
       </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
@@ -110,14 +110,21 @@
       if (action === "next") next();
     });
 
-    const setTripsCreatePlaceChoice = (choice) => {
-      root.dataset.tripsCreatePlaceChoice = choice;
+    const resetTripsCreatePlaceCards = () => {
+      root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
+        card.classList.remove("is-active");
+        card.setAttribute("aria-pressed", "false");
+      });
+    };
 
+    const flashTripsCreatePlaceCard = (choice) => {
       root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
         const isActive = card.dataset.tripsCreatePlaceChoice === choice;
         card.classList.toggle("is-active", isActive);
         card.setAttribute("aria-pressed", String(isActive));
       });
+
+      window.setTimeout(resetTripsCreatePlaceCards, 160);
     };
 
     root.addEventListener("click", (event) => {
@@ -127,10 +134,16 @@
         return;
       }
 
-      setTripsCreatePlaceChoice(placeCard.dataset.tripsCreatePlaceChoice);
+      const choice = placeCard.dataset.tripsCreatePlaceChoice;
+      flashTripsCreatePlaceCard(choice);
+
+      root.dispatchEvent(new CustomEvent("klevby:trips-create-place-action", {
+        bubbles: true,
+        detail: { choice }
+      }));
     });
 
-    setTripsCreatePlaceChoice("water");
+    resetTripsCreatePlaceCards();
 
     return root;
   }

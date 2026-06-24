@@ -237,6 +237,7 @@
   border-radius: 16px;
   border: 0.9px solid rgba(188, 187, 186, 0.22);
   background: rgba(22, 28, 32, 0.78);
+  color: #BCBBBA;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -329,3 +330,14 @@
   stroke-linejoin: round;
 }
 
+#tripsSection .trips-create-flow__place-card:active,
+#tripsSection .trips-create-flow__place-card.is-active {
+  border-width: 1px;
+  border-color: rgba(255, 141, 40, 0.76);
+  color: #ff8d28;
+}
+
+#tripsSection .trips-create-flow__place-card svg {
+  color: currentColor;
+  stroke: currentColor;
+}
