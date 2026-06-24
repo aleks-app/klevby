@@ -713,10 +713,15 @@ function showSection(section) {
   if (headerBackButton) {
     const returnsToMap = safeSection === "water-body-detail";
     headerBackButton.onclick = function () {
+      if (typeof window.KlevbyTripsCreateFlowOwner?.handleHeaderBack === "function" && window.KlevbyTripsCreateFlowOwner.handleHeaderBack()) {
+        return;
+      }
+
       if (typeof window.KlevbyTripsCreateFlowOwner?.isOpen === "function" && window.KlevbyTripsCreateFlowOwner.isOpen()) {
         window.KlevbyTripsCreateFlowOwner.close();
         return;
       }
+
       showSection(returnsToMap ? "map" : "home");
     };
     headerBackButton.setAttribute("aria-label", returnsToMap ? "Вернуться к карте" : "На главную");

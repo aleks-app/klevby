@@ -23,6 +23,7 @@
   let isOpen = false;
   let step = 1;
   let tripDraft = { ...DEFAULT_DRAFT };
+  let stepOneSubscreen = null;
   let overlay = null;
   let track = null;
   let titleNode = null;
@@ -34,6 +35,7 @@
     window.__KLEVBY_TRIPS_CREATE_FLOW_DEBUG__ = {
       isOpen,
       step,
+      stepOneSubscreen,
       totalSteps: TOTAL_STEPS,
       draft: { ...tripDraft }
     };
@@ -48,6 +50,7 @@
     root.className = "trips-create-flow";
     root.setAttribute("data-trips-create-flow", "closed");
     root.setAttribute("data-trips-create-step", "1");
+    root.setAttribute("data-trips-create-step-one-subscreen", "none");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
       <div class="trips-create-flow__step-one-progress" aria-label="Прогресс создания выезда">
@@ -195,6 +198,14 @@
       event.preventDefault();
       event.stopImmediatePropagation();
 
+      const placeChoice = placeCard.getAttribute("data-trips-create-place-choice");
+
+      if (placeChoice === "water") {
+        stepOneSubscreen = "water-picker";
+        render();
+        return;
+      }
+
       tripsCreatePlaceFlashOnly(placeCard);
     }, true);
 
@@ -213,6 +224,10 @@
     ensureOverlay();
     overlay.setAttribute("data-trips-create-flow", isOpen ? "open" : "closed");
     overlay.setAttribute("data-trips-create-step", String(step));
+    overlay.setAttribute(
+      "data-trips-create-step-one-subscreen",
+      isOpen && step === 1 && stepOneSubscreen === "water-picker" ? "water-picker" : "none"
+    );
     overlay.setAttribute("aria-hidden", isOpen ? "false" : "true");
     titleNode.textContent = STEPS[step - 1];
     counterNode.textContent = `${step} / ${TOTAL_STEPS}`;
@@ -232,16 +247,23 @@
     isOpen = true;
     step = 1;
     tripDraft = { ...DEFAULT_DRAFT };
-    tripDraft.destination = "";
+    stepOneSubscreen = null;
     render();
   }
 
   function close() {
     isOpen = false;
+    stepOneSubscreen = null;
     render();
   }
 
   function back() {
+    if (step === 1 && stepOneSubscreen === "water-picker") {
+      stepOneSubscreen = null;
+      render();
+      return;
+    }
+
     if (step <= 1) {
       close();
       return;
@@ -251,12 +273,29 @@
   }
 
   function next() {
+    stepOneSubscreen = null;
+
     if (step >= TOTAL_STEPS) {
       console.info("[TripsCreateFlow] Publishing is intentionally not implemented yet", { draft: { ...tripDraft } });
       return;
     }
     step += 1;
     render();
+  }
+
+  function handleHeaderBack() {
+    if (!isOpen) {
+      return false;
+    }
+
+    if (step === 1 && stepOneSubscreen === "water-picker") {
+      stepOneSubscreen = null;
+      render();
+      return true;
+    }
+
+    close();
+    return true;
   }
 
   function init() {
@@ -282,10 +321,11 @@
     close,
     back,
     next,
+    handleHeaderBack,
     isOpen() {
       return isOpen;
     },
-    getDebug: () => ({ isOpen, step, totalSteps: TOTAL_STEPS, draft: { ...tripDraft } })
+    getDebug: () => ({ isOpen, step, stepOneSubscreen, totalSteps: TOTAL_STEPS, draft: { ...tripDraft } })
   };
 
   document.addEventListener("DOMContentLoaded", init);

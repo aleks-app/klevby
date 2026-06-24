@@ -32,6 +32,27 @@
   background-repeat: no-repeat;
 }
 
+/* Trips create flow step 1 water picker state */
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"] {
+  background: #000;
+  background-color: #000;
+  background-image: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"]::before {
+  content: none;
+  display: none;
+  background-image: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"] .trips-create-flow__step-one-progress,
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"] .trips-create-flow__copy,
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"] .trips-create-flow__place-options,
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"] .trips-create-flow__step-one-next,
+#tripsSection .trips-create-flow[data-trips-create-step="1"][data-trips-create-step-one-subscreen="water-picker"] .trips-create-flow__panel {
+  display: none;
+}
+
 
 #tripsSection .trips-create-flow[data-trips-create-flow="open"] {
   display: flex;
