@@ -310,11 +310,11 @@
 
 /* Trips create flow step 1 Figma next button */
 #tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__footer {
-  position: absolute;
+  position: fixed;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + min(64px, 14.5455vw));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + min(42px, 9.5455vw));
   left: 0;
-  z-index: 4;
+  z-index: 9999;
   display: flex;
   justify-content: center;
   padding: 0;
