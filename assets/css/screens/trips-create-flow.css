@@ -341,3 +341,43 @@
   color: currentColor;
   stroke: currentColor;
 }
+
+/* Trips create flow place card content */
+#tripsSection .trips-create-flow__place-card {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 24px;
+  text-align: left;
+}
+
+#tripsSection .trips-create-flow__place-icon-shell {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px sollay: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+#tripsSection .trips-create-flow__place-title {
+  display: block;
+  font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: min(17px, 3.85vw);
+  font-weight: 600;
+  line-height: min(21px, 4.76vw);
+  color: #fefdfe;
+  white-space: nowrap;
+}
+
+#tripsSection .trips-create-flow__place-note {
+  display: block;
+  font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: min(13px, 2.95vw);
+  font-weight: 400;
+  line-height: min(17px, 3.85vw);
+  color: #BCBBBA;
+  white-space: nowrap;
+}

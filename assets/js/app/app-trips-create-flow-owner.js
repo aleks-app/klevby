@@ -61,8 +61,20 @@
         </p>
       </div>
       <div class="trips-create-flow__place-options" aria-label="Выбор места выезда">
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-pressed="false" aria-label="Выбрать водоём"></button>
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-pressed="false" aria-label="Указать на карте"></button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-pressed="false" aria-label="Выбрать водоём">
+          <span class="trips-create-flow__place-icon-shell" aria-hidden="true"></span>
+          <span class="trips-create-flow__place-copy">
+            <span class="trips-create-flow__place-title">Выбрать водоём</span>
+            <span class="trips-create-flow__place-note">Из базы водоёмов</span>
+          </span>
+        </button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-pressed="false" aria-label="Указать на карте">
+          <span class="trips-create-flow__place-icon-shell" aria-hidden="true"></span>
+          <span class="trips-create-flow__place-copy">
+            <span class="trips-create-flow__place-title">Указать на карте</span>
+            <span class="trips-create-flow__place-note">Свободная точка</span>
+          </span>
+        </button>
       </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
