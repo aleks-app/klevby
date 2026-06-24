@@ -28,7 +28,6 @@
   let titleNode = null;
   let counterNode = null;
   let nextButton = null;
-  let footerNode = null;
   let initialized = false;
 
   function publishDebug() {
@@ -100,15 +99,18 @@
         <div class="trips-create-flow__viewport">
           <div class="trips-create-flow__track"></div>
         </div>
-        <footer class="trips-create-flow__footer" data-trips-create-footer></footer>
+        <footer class="trips-create-flow__footer">
+          <button class="trips-create-flow__nav trips-create-flow__nav--back" type="button" data-trips-create-action="back">Назад</button>
+          <span class="trips-create-flow__counter" aria-live="polite"></span>
+          <button class="trips-create-flow__nav trips-create-flow__nav--next" type="button" data-trips-create-action="next">Далее</button>
+        </footer>
       </div>
     `;
 
     track = root.querySelector(".trips-create-flow__track");
     titleNode = root.querySelector(".trips-create-flow__title");
-    footerNode = root.querySelector("[data-trips-create-footer]");
-    counterNode = null;
-    nextButton = null;
+    counterNode = root.querySelector(".trips-create-flow__counter");
+    nextButton = root.querySelector('[data-trips-create-action="next"]');
 
     STEPS.forEach((label, index) => {
       const slide = document.createElement("section");
@@ -188,56 +190,16 @@
     return overlay;
   }
 
-
-  function renderStepOneFooter() {
-    return `
-      <button class="trips-create-flow__step-one-next" type="button" data-trips-create-action="next" aria-label="Далее">
-        <span class="trips-create-flow__step-one-next-circle" aria-hidden="true">
-          <svg class="trips-create-flow__step-one-next-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
-            <path d="M29.3125 21.0578H8.4375C7.6325 21.0578 7 20.4223 7 19.6134C7 18.8045 7.6325 18.1689 8.4375 18.1689H29.3125C30.1175 18.1689 30.75 18.8045 30.75 19.6134C30.75 20.4223 30.1175 21.0578 29.3125 21.0578Z" fill="currentColor"/>
-            <path d="M23.125 30.1689C22.9365 30.1712 22.7495 30.1338 22.5762 30.0592C22.4029 29.9846 22.2471 29.8743 22.1187 29.7356C21.5437 29.1578 21.5437 28.2622 22.1187 27.6844L30.175 19.5844L22.1187 11.4844C21.5437 10.9067 21.5437 10.0111 22.1187 9.43333C22.6937 8.85556 23.585 8.85556 24.16 9.43333L33.2225 18.5444C33.7975 19.1222 33.7975 20.0178 33.2225 20.5956L24.16 29.7067C23.8725 29.9956 23.4988 30.14 23.1538 30.14L23.125 30.1689Z" fill="currentColor"/>
-          </svg>
-        </span>
-        <span class="trips-create-flow__step-one-next-label">Далее</span>
-      </button>
-    `;
-  }
-
-  function renderTemporaryFooter(nextText) {
-    return `
-      <button class="trips-create-flow__nav trips-create-flow__nav--back" type="button" data-trips-create-action="back">Назад</button>
-      <span class="trips-create-flow__counter" aria-live="polite"></span>
-      <button class="trips-create-flow__nav trips-create-flow__nav--next" type="button" data-trips-create-action="next">${nextText}</button>
-    `;
-  }
-
-  function renderFooter() {
-    if (!footerNode) return;
-
-    const nextText = step === TOTAL_STEPS ? "Публикация позже" : "Далее";
-    footerNode.innerHTML = step === 1 ? renderStepOneFooter() : renderTemporaryFooter(nextText);
-
-    counterNode = footerNode.querySelector(".trips-create-flow__counter");
-    nextButton = footerNode.querySelector('[data-trips-create-action="next"]');
-
-    if (counterNode) {
-      counterNode.textContent = `${step} / ${TOTAL_STEPS}`;
-    }
-
-    if (nextButton) {
-      nextButton.setAttribute("aria-label", nextText);
-      nextButton.disabled = step === TOTAL_STEPS;
-    }
-  }
-
   function render() {
     ensureOverlay();
     overlay.setAttribute("data-trips-create-flow", isOpen ? "open" : "closed");
     overlay.setAttribute("data-trips-create-step", String(step));
     overlay.setAttribute("aria-hidden", isOpen ? "false" : "true");
     titleNode.textContent = STEPS[step - 1];
+    counterNode.textContent = `${step} / ${TOTAL_STEPS}`;
     track.style.transform = `translateX(-${(step - 1) * 100}%)`;
-    renderFooter();
+    nextButton.textContent = step === TOTAL_STEPS ? "Публикация позже" : "Далее";
+    nextButton.disabled = step === TOTAL_STEPS;
     if (step === 1 && overlay) {
       overlay.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
         card.classList.remove("is-pressing");
