@@ -50,6 +50,10 @@
     root.setAttribute("data-trips-create-step", "1");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
+      <div class="trips-create-flow__copy" aria-labelledby="tripsCreateStep1Title">
+        <h3 id="tripsCreateStep1Title" class="trips-create-flow__copy-title">Куда планируете<br>выезд?</h3>
+        <p class="trips-create-flow__copy-subtitle">Выберите водоём или укажите место<br>на карте, где планируете рыбачить.</p>
+      </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
           <div>
@@ -78,11 +82,15 @@
       const slide = document.createElement("section");
       slide.className = "trips-create-flow__step";
       slide.setAttribute("data-trips-create-slide", String(index + 1));
-      slide.innerHTML = `
-        <p class="trips-create-flow__step-kicker">Шаг ${index + 1} из ${TOTAL_STEPS}</p>
-        <h3 class="trips-create-flow__step-title">${label}</h3>
-        <p class="trips-create-flow__step-note">Поля появятся в следующих PR. Сейчас сохраняем единый draft-state и навигацию flow.</p>
-      `;
+      if (index === 0) {
+        slide.classList.add("trips-create-flow__step--destination");
+      } else {
+        slide.innerHTML = `
+          <p class="trips-create-flow__step-kicker">Шаг ${index + 1} из ${TOTAL_STEPS}</p>
+          <h3 class="trips-create-flow__step-title">${label}</h3>
+          <p class="trips-create-flow__step-note">Поля появятся в следующих PR. Сейчас сохраняем единый draft-state и навигацию flow.</p>
+        `;
+      }
       track.appendChild(slide);
     });
 

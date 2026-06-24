@@ -46,6 +46,42 @@
   display: flex;
 }
 
+#tripsSection .trips-create-flow__copy {
+  display: none;
+  position: absolute;
+  left: 20px;
+  top: 380px;
+  width: 298px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__copy {
+  display: block;
+}
+
+#tripsSection .trips-create-flow__copy-title {
+  margin: 0;
+  font-family: var(--klevgo-font-display);
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 40px;
+  letter-spacing: 0;
+  color: #fefdfe;
+}
+
+#tripsSection .trips-create-flow__copy-subtitle {
+  margin: 12px 0 0 1px;
+  width: 253px;
+  max-width: 100%;
+  font-family: var(--klevgo-font-display);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  letter-spacing: 0;
+  color: #bcbbba;
+}
+
 #tripsSection .trips-create-flow__panel {
   position: relative;
   z-index: 2;
@@ -117,6 +153,11 @@
   justify-content: center;
   min-width: 100%;
   padding: 28px 2px;
+}
+
+#tripsSection .trips-create-flow__step--destination {
+  justify-content: flex-start;
+  padding: 0;
 }
 
 #tripsSection .trips-create-flow__step-kicker,
