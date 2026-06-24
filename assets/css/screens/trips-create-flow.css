@@ -249,6 +249,11 @@
 }
 
 #tripsSection .trips-create-flow__place-card.is-active {
+  border-color: rgba(188, 187, 186, 0.22);
+}
+
+#tripsSection .trips-create-flow__place-card.is-pressing {
+  border-width: 1px;
   border-color: rgba(255, 141, 40, 0.76);
 }
 

@@ -62,7 +62,7 @@
         </p>
       </div>
       <div class="trips-create-flow__place-options" aria-label="Выбор места выезда">
-        <button type="button" class="trips-create-flow__place-card is-active" data-trips-create-place-choice="water" aria-pressed="true" aria-label="Выбрать водоём">
+        <button type="button" class="trips-create-flow__place-card" data-trips-create-place-choice="water" aria-pressed="false" aria-label="Выбрать водоём">
           <span class="trips-create-flow__place-icon-shell" aria-hidden="true">
             <span class="trips-create-flow__place-icon trips-create-flow__place-icon--water">
               <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
@@ -158,6 +158,39 @@
     });
 
     syncPlaceCards();
+
+    const tripsCreatePlaceFlashOnly = (pressedCard) => {
+      root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
+        card.classList.remove("is-active", "is-pressing");
+        card.setAttribute("aria-pressed", "false");
+      });
+
+      pressedCard.classList.add("is-pressing");
+      pressedCard.setAttribute("aria-pressed", "true");
+
+      window.setTimeout(() => {
+        pressedCard.classList.remove("is-active", "is-pressing");
+        pressedCard.setAttribute("aria-pressed", "false");
+      }, 180);
+    };
+
+    root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
+      card.classList.remove("is-active", "is-pressing");
+      card.setAttribute("aria-pressed", "false");
+    });
+
+    root.addEventListener("click", (event) => {
+      const placeCard = event.target.closest("[data-trips-create-place-choice]");
+
+      if (!placeCard || !root.contains(placeCard)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      tripsCreatePlaceFlashOnly(placeCard);
+    }, true);
 
     return root;
   }
