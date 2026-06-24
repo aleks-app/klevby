@@ -64,16 +64,17 @@
   display: block;
 }
 
-#tripsSection .trips-create-flow__copy-title {
-  margin: 0;
-  width: 298px;
-  font-family: "Onest", var(--klevgo-font-display);
-  font-size: 36px;
-  font-weight: 400;
-  line-height: 40px;
-  letter-spacing: 0;
-  color: #fefdfe;
-  font-synthesis: none;
+#tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__copy-title {
+  margin: 0 !important;
+  width: 298px !important;
+  font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 36px !important;
+  font-weight: 500 !important;
+  line-height: 40px !important;
+  letter-spacing: 0 !important;
+  color: #fefdfe !important;
+  font-synthesis: none !important;
+  font-variation-settings: "wght" 500 !important;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
