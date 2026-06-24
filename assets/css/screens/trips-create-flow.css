@@ -31,16 +31,6 @@
   background-repeat: no-repeat;
 }
 
-#tripsSection .trips-create-flow[data-trips-create-step="1"]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(255, 143, 31, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(6, 16, 22, 0.28) 0%, rgba(3, 8, 12, 0.62) 48%, rgba(3, 8, 12, 0.94) 100%);
-}
 
 #tripsSection .trips-create-flow[data-trips-create-flow="open"] {
   display: flex;
