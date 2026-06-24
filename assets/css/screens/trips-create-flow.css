@@ -342,6 +342,7 @@
   height: min(80px, 18.1818vw);
   border: 0.8px solid #DC7422;
   border-radius: 999px;
+  box-shadow: 0 0 36px 1px rgba(255, 141, 40, 0.98);
 }
 
 #tripsSection .trips-create-flow__step-one-next-icon {
