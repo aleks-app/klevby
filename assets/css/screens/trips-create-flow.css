@@ -67,12 +67,15 @@
 #tripsSection .trips-create-flow__copy-title {
   margin: 0;
   width: 298px;
-  font-family: "Onest", system-ui, sans-serif;
+  font-family: "Onest", var(--klevgo-font-display);
   font-size: 36px;
   font-weight: 500;
   line-height: 40px;
   letter-spacing: 0;
   color: #fefdfe;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
 #tripsSection .trips-create-flow__copy-title > span {
