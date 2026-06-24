@@ -53,7 +53,7 @@
 #tripsSection .trips-create-flow__close,
 #tripsSection .trips-create-flow__nav {
   border: 0;
-  border-radius: 14px;
+  border-radius: 999px;
   font: inherit;
   font-weight: 850;
   cursor: pointer;
