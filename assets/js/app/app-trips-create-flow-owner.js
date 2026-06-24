@@ -110,6 +110,28 @@
       if (action === "next") next();
     });
 
+    const setTripsCreatePlaceChoice = (choice) => {
+      root.dataset.tripsCreatePlaceChoice = choice;
+
+      root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
+        const isActive = card.dataset.tripsCreatePlaceChoice === choice;
+        card.classList.toggle("is-active", isActive);
+        card.setAttribute("aria-pressed", String(isActive));
+      });
+    };
+
+    root.addEventListener("click", (event) => {
+      const placeCard = event.target.closest("[data-trips-create-place-choice]");
+
+      if (!placeCard || !root.contains(placeCard)) {
+        return;
+      }
+
+      setTripsCreatePlaceChoice(placeCard.dataset.tripsCreatePlaceChoice);
+    });
+
+    setTripsCreatePlaceChoice("water");
+
     return root;
   }
 
