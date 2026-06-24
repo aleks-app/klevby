@@ -405,13 +405,17 @@
 
 #tripsSection .trips-create-flow__step-one-progress-label {
   margin-top: min(14px, 3.1746vw);
-  color: rgba(217, 217, 217, 0.78);
+  color: #A3A6A9;
   font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: min(14px, 3.1746vw);
-  font-weight: 400;
+  font-weight: 500;
   line-height: min(21px, 4.7619vw);
   letter-spacing: 0;
   text-align: center;
   white-space: nowrap;
+  font-synthesis: none;
+  font-variation-settings: "wght" 500;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
