@@ -50,6 +50,16 @@
     root.setAttribute("data-trips-create-step", "1");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
+      <div class="trips-create-flow__step-one-progress" aria-label="Прогресс создания выезда">
+        <div class="trips-create-flow__step-one-progress-bars" aria-hidden="true">
+          <span class="trips-create-flow__step-one-progress-bar is-active"></span>
+          <span class="trips-create-flow__step-one-progress-bar"></span>
+          <span class="trips-create-flow__step-one-progress-bar"></span>
+          <span class="trips-create-flow__step-one-progress-bar"></span>
+          <span class="trips-create-flow__step-one-progress-bar"></span>
+        </div>
+        <div class="trips-create-flow__step-one-progress-label">Создание выезда</div>
+      </div>
       <div class="trips-create-flow__copy" aria-labelledby="tripsCreateStep1Title">
         <h1 id="tripsCreateStep1Title" class="trips-create-flow__copy-title">
           <span>Куда планируете</span>
