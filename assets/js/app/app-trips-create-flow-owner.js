@@ -60,6 +60,10 @@
           <span>на карте, где планируете рыбачить.</span>
         </p>
       </div>
+      <div class="trips-create-flow__place-options" aria-label="Выбор места выезда">
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-label="Выбрать водоём"></button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-label="Указать на карте"></button>
+      </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
           <div>

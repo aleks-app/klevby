@@ -212,3 +212,37 @@
   background: rgba(255, 255, 255, 0.14);
   cursor: default;
 }
+
+#tripsSection .trips-create-flow__place-options {
+  display: none;
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 62.72dvh;
+  z-index: 2;
+  gap: 20px;
+  pointer-events: auto;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__place-options {
+  display: grid;
+}
+
+#tripsSection .trips-create-flow__place-card {
+  display: block;
+  width: 100%;
+  height: min(97px, 11.16dvh);
+  min-height: 84px;
+  padding: 0;
+  border-radius: 16px;
+  border: 0.9px solid rgba(188, 187, 186, 0.22);
+  background: rgba(22, 28, 32, 0.78);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#tripsSection .trips-create-flow__place-card--primary {
+  border-width: 1px;
+  border-color: rgba(255, 141, 40, 0.76);
+}
+
