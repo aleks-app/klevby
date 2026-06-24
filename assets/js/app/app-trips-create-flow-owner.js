@@ -18,16 +18,16 @@
     "Какой формат выезда?",
     "Сколько мест свободно?",
     "Скидываетесь на бензин?"
-  );
+  ];
 
   let isOpen = false;
   let step = 1;
   let tripDraft = { ...DEFAULT_DRAFT };
   let overlay = null;
-  let placeLayout = null;
   let track = null;
   let titleNode = null;
   let counterNode = null;
+  let progressNode = null;
   let nextButton = null;
   let initialized = false;
 
@@ -44,66 +44,6 @@
     return document.getElementById("tripsSection");
   }
 
-  function buildProgressBarsMarkup(activeStep) {
-    return Array.from({ length: TOTAL_STEPS }, (_, index) => {
-      const stepNumber = index + 1;
-      const stateClass = stepNumber < activeStep
-        ? "is-complete"
-        : stepNumber === activeStep
-          ? "is-active"
-          : "";
-      return `<span class="trips-create-flow-step--place__progress-bar ${stateClass}"></span>`;
-    }).join("");
-  }
-
-  function buildPlaceStepLayout() {
-    return `
-      <section class="trips-create-flow-step--place" aria-labelledby="tripsCreateStep1Title">
-        <header class="trips-create-flow-step--place__top">
-          <button class="trips-create-flow-step--place__back" type="button" data-trips-create-action="back" aria-label="Назад">
-            <span class="trips-create-flow-step--place__back-icon" aria-hidden="true">
-              <img src="assets/icons/ui/chevron-left.svg" alt="" decoding="async" />
-            </span>
-          </button>
-          <div class="trips-create-flow-step--place__progress" role="progressbar" aria-valuemin="1" aria-valuemax="${TOTAL_STEPS}" aria-valuenow="1" aria-label="Прогресс создания выезда">
-            ${buildProgressBarsMarkup(1)}
-          </div>
-        </header>
-
-        <div class="trips-create-flow-step--place__copy">
-          <h1 id="tripsCreateStep1Title" class="trips-create-flow-step--place__title">
-            <span>Куда планируете</span>
-            <span>выезд?</span>
-          </h1>
-          <p class="trips-create-flow-step--place__subtitle">
-            <span>Выберите водоём или укажите место</span>
-            <span>на карте, где планируете рыбачить.</span>
-          </p>
-        </div>
-
-        <div class="trips-create-flow-step--place__choices" role="list" aria-label="Способ выбора места выезда">
-          <button class="trips-create-flow-step--place__choice" type="button" role="listitem" data-trips-create-destination="water-body">
-            <span class="trips-create-flow-step--place__choice-title">Водоём</span>
-            <span class="trips-create-flow-step--place__choice-note">Выбрать из каталога</span>
-          </button>
-          <button class="trips-create-flow-step--place__choice" type="button" role="listitem" data-trips-create-destination="map-point">
-            <span class="trips-create-flow-step--place__choice-title">Точка на карте</span>
-            <span class="trips-create-flow-step--place__choice-note">Указать место вручную</span>
-          </button>
-        </div>
-
-        <div class="trips-create-flow-step--place__next-wrap">
-          <button class="trips-create-flow-step--place__next" type="button" data-trips-create-action="next" aria-label="Далее">
-            <span class="trips-create-flow-step--place__next-icon" aria-hidden="true">
-              <img src="assets/icons/weather/chevron-right-orange.svg" alt="" decoding="async" />
-            </span>
-            <span class="trips-create-flow-step--place__next-label">Далее</span>
-          </button>
-        </div>
-      </section>
-    `;
-  }
-
   function buildOverlay() {
     const root = document.createElement("div");
     root.className = "trips-create-flow";
@@ -111,12 +51,30 @@
     root.setAttribute("data-trips-create-step", "1");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
-      ${buildPlaceStepLayout()}
+      <div class="trips-create-flow__copy" aria-labelledby="tripsCreateStep1Title">
+        <h3 id="tripsCreateStep1Title" class="trips-create-flow__copy-title">
+          <span class="trips-create-flow__copy-title-line">Куда планируете</span>
+          <span class="trips-create-flow__copy-title-line">выезд?</span>
+        </h3>
+        <p class="trips-create-flow__copy-subtitle">
+          <span class="trips-create-flow__copy-subtitle-line">Выберите водоём или укажите место</span>
+          <span class="trips-create-flow__copy-subtitle-line">на карте, где планируете рыбачить.</span>
+        </p>
+      </div>
+      <div class="trips-create-flow__choices" role="list" aria-label="Способ выбора места выезда"></div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
           <div class="trips-create-flow__header-skeleton">
             <p class="trips-create-flow__eyebrow">Новый выезд</p>
             <h2 id="tripsCreateFlowTitle" class="trips-create-flow__title"></h2>
+          </div>
+          <div class="trips-create-flow__header-destination">
+            <button class="trips-create-flow__back" type="button" data-trips-create-action="back" aria-label="Назад">
+              <span class="trips-create-flow__back-icon" aria-hidden="true">
+                <img src="assets/icons/ui/chevron-left.svg" alt="" decoding="async" />
+              </span>
+            </button>
+            <span class="trips-create-flow__progress" aria-live="polite"></span>
           </div>
           <button class="trips-create-flow__close" type="button" data-trips-create-action="close" aria-label="Закрыть создание выезда">Закрыть</button>
         </header>
@@ -131,23 +89,25 @@
       </div>
     `;
 
-    placeLayout = root.querySelector(".trips-create-flow-step--place");
     track = root.querySelector(".trips-create-flow__track");
     titleNode = root.querySelector(".trips-create-flow__title");
     counterNode = root.querySelector(".trips-create-flow__counter");
-    nextButton = root.querySelector(".trips-create-flow__panel .trips-create-flow__nav--next");
+    progressNode = root.querySelector(".trips-create-flow__progress");
+    nextButton = root.querySelector('[data-trips-create-action="next"]');
 
     STEPS.forEach((label, index) => {
-      if (index === 0) return;
-
       const slide = document.createElement("section");
       slide.className = "trips-create-flow__step";
       slide.setAttribute("data-trips-create-slide", String(index + 1));
-      slide.innerHTML = `
-        <p class="trips-create-flow__step-kicker">Шаг ${index + 1} из ${TOTAL_STEPS}</p>
-        <h3 class="trips-create-flow__step-title">${label}</h3>
-        <p class="trips-create-flow__step-note">Поля появятся в следующих PR. Сейчас сохраняем единый draft-state и навигацию flow.</p>
-      `;
+      if (index === 0) {
+        slide.classList.add("trips-create-flow__step--destination");
+      } else {
+        slide.innerHTML = `
+          <p class="trips-create-flow__step-kicker">Шаг ${index + 1} из ${TOTAL_STEPS}</p>
+          <h3 class="trips-create-flow__step-title">${label}</h3>
+          <p class="trips-create-flow__step-note">Поля появятся в следующих PR. Сейчас сохраняем единый draft-state и навигацию flow.</p>
+        `;
+      }
       track.appendChild(slide);
     });
 
@@ -170,34 +130,22 @@
     return overlay;
   }
 
-  function renderPlaceProgress(activeStep) {
-    if (!placeLayout) return;
-    const progress = placeLayout.querySelector(".trips-create-flow-step--place__progress");
-    if (!progress) return;
-    progress.setAttribute("aria-valuenow", String(activeStep));
-    progress.innerHTML = buildProgressBarsMarkup(activeStep);
-  }
-
   function render() {
     ensureOverlay();
-    const isPlaceStep = step === 1;
-
     overlay.setAttribute("data-trips-create-flow", isOpen ? "open" : "closed");
     overlay.setAttribute("data-trips-create-step", String(step));
     overlay.setAttribute("aria-hidden", isOpen ? "false" : "true");
-    overlay.classList.toggle("trips-create-flow--place-step", isPlaceStep);
-
-    if (isPlaceStep) {
-      renderPlaceProgress(step);
-    } else {
-      titleNode.textContent = STEPS[step - 1];
-      counterNode.textContent = `${step} / ${TOTAL_STEPS}`;
-      track.style.transform = `translateX(-${(step - 2) * 100}%)`;
-      nextButton.textContent = step === TOTAL_STEPS ? "Публикация позже" : "Далее";
-      nextButton.disabled = step === TOTAL_STEPS;
-      overlay.querySelector(".trips-create-flow__panel")?.setAttribute("aria-labelledby", "tripsCreateFlowTitle");
-    }
-
+    overlay.querySelector(".trips-create-flow__panel")?.setAttribute(
+      "aria-labelledby",
+      step === 1 ? "tripsCreateStep1Title" : "tripsCreateFlowTitle"
+    );
+    titleNode.textContent = STEPS[step - 1];
+    const progressText = `${step} / ${TOTAL_STEPS}`;
+    counterNode.textContent = progressText;
+    if (progressNode) progressNode.textContent = progressText;
+    track.style.transform = `translateX(-${(step - 1) * 100}%)`;
+    nextButton.textContent = step === TOTAL_STEPS ? "Публикация позже" : "Далее";
+    nextButton.disabled = step === TOTAL_STEPS;
     publishDebug();
   }
 
