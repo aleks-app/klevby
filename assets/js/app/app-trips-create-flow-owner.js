@@ -27,7 +27,6 @@
   let track = null;
   let titleNode = null;
   let counterNode = null;
-  let progressNode = null;
   let nextButton = null;
   let initialized = false;
 
@@ -51,30 +50,16 @@
     root.setAttribute("data-trips-create-step", "1");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
-      <div class="trips-create-flow__copy" aria-labelledby="tripsCreateStep1Title">
-        <h3 id="tripsCreateStep1Title" class="trips-create-flow__copy-title">
-          <span class="trips-create-flow__copy-title-line">Куда планируете</span>
-          <span class="trips-create-flow__copy-title-line">выезд?</span>
-        </h3>
-        <p class="trips-create-flow__copy-subtitle">
-          <span class="trips-create-flow__copy-subtitle-line">Выберите водоём или укажите место</span>
-          <span class="trips-create-flow__copy-subtitle-line">на карте, где планируете рыбачить.</span>
-        </p>
-      </div>
-      <div class="trips-create-flow__choices" role="list" aria-label="Способ выбора места выезда"></div>
+      <button class="trips-create-flow__step1-back" type="button" data-trips-create-action="back" aria-label="Назад">
+        <span class="trips-create-flow__back-icon" aria-hidden="true">
+          <img src="assets/icons/ui/chevron-left.svg" alt="" decoding="async" />
+        </span>
+      </button>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
-          <div class="trips-create-flow__header-skeleton">
+          <div>
             <p class="trips-create-flow__eyebrow">Новый выезд</p>
             <h2 id="tripsCreateFlowTitle" class="trips-create-flow__title"></h2>
-          </div>
-          <div class="trips-create-flow__header-destination">
-            <button class="trips-create-flow__back" type="button" data-trips-create-action="back" aria-label="Назад">
-              <span class="trips-create-flow__back-icon" aria-hidden="true">
-                <img src="assets/icons/ui/chevron-left.svg" alt="" decoding="async" />
-              </span>
-            </button>
-            <span class="trips-create-flow__progress" aria-live="polite"></span>
           </div>
           <button class="trips-create-flow__close" type="button" data-trips-create-action="close" aria-label="Закрыть создание выезда">Закрыть</button>
         </header>
@@ -92,16 +77,13 @@
     track = root.querySelector(".trips-create-flow__track");
     titleNode = root.querySelector(".trips-create-flow__title");
     counterNode = root.querySelector(".trips-create-flow__counter");
-    progressNode = root.querySelector(".trips-create-flow__progress");
     nextButton = root.querySelector('[data-trips-create-action="next"]');
 
     STEPS.forEach((label, index) => {
       const slide = document.createElement("section");
       slide.className = "trips-create-flow__step";
       slide.setAttribute("data-trips-create-slide", String(index + 1));
-      if (index === 0) {
-        slide.classList.add("trips-create-flow__step--destination");
-      } else {
+      if (index !== 0) {
         slide.innerHTML = `
           <p class="trips-create-flow__step-kicker">Шаг ${index + 1} из ${TOTAL_STEPS}</p>
           <h3 class="trips-create-flow__step-title">${label}</h3>
@@ -135,14 +117,8 @@
     overlay.setAttribute("data-trips-create-flow", isOpen ? "open" : "closed");
     overlay.setAttribute("data-trips-create-step", String(step));
     overlay.setAttribute("aria-hidden", isOpen ? "false" : "true");
-    overlay.querySelector(".trips-create-flow__panel")?.setAttribute(
-      "aria-labelledby",
-      step === 1 ? "tripsCreateStep1Title" : "tripsCreateFlowTitle"
-    );
     titleNode.textContent = STEPS[step - 1];
-    const progressText = `${step} / ${TOTAL_STEPS}`;
-    counterNode.textContent = progressText;
-    if (progressNode) progressNode.textContent = progressText;
+    counterNode.textContent = `${step} / ${TOTAL_STEPS}`;
     track.style.transform = `translateX(-${(step - 1) * 100}%)`;
     nextButton.textContent = step === TOTAL_STEPS ? "Публикация позже" : "Далее";
     nextButton.disabled = step === TOTAL_STEPS;
