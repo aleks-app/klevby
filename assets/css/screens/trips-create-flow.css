@@ -7,9 +7,39 @@
   min-height: 100dvh;
   padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
   color: #fff;
+  isolation: isolate;
   background:
     radial-gradient(circle at 20% 0%, rgba(255, 143, 31, 0.26), transparent 34%),
     linear-gradient(180deg, rgba(12, 19, 25, 0.98), rgba(3, 8, 12, 0.98));
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"] {
+  background-color: #03080c;
+  background-image: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #061016;
+  background-image: url("../../images/trips/trip-create-bg-water-place.png");
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 143, 31, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(6, 16, 22, 0.28) 0%, rgba(3, 8, 12, 0.62) 48%, rgba(3, 8, 12, 0.94) 100%);
 }
 
 #tripsSection .trips-create-flow[data-trips-create-flow="open"] {
@@ -17,6 +47,8 @@
 }
 
 #tripsSection .trips-create-flow__panel {
+  position: relative;
+  z-index: 2;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: 100%;
