@@ -218,9 +218,9 @@
   position: absolute;
   left: 22px;
   right: 22px;
-  top: 62.72dvh;
+  top: min(545px, 123.58vw);
   z-index: 2;
-  gap: 20px;
+  gap: min(20px, 4.54vw);
   pointer-events: auto;
 }
 
@@ -231,7 +231,7 @@
 #tripsSection .trips-create-flow__place-card {
   display: block;
   width: 100%;
-  height: min(97px, 11.16dvh);
+  height: min(97px, 21.99vw);
   min-height: 84px;
   padding: 0;
   border-radius: 16px;
@@ -241,8 +241,9 @@
   -webkit-appearance: none;
 }
 
-#tripsSection .trips-create-flow__place-card--primary {
+#tripsSection .trips-create-flow__place-card.is-active {
   border-width: 1px;
   border-color: rgba(255, 141, 40, 0.76);
 }
+
 
