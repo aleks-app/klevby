@@ -246,4 +246,78 @@
   border-color: rgba(255, 141, 40, 0.76);
 }
 
+#tripsSection .trips-create-flow__place-icon-shell {
+  position: absolute;
+  left: min(21px, 4.76vw);
+  top: min(17px, 3.85vw);
+  width: min(64px, 14.51vw);
+  height: min(64px, 14.51vw);
+  border-radius: 999px;
+  border: 1px solid #424041;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+#tripsSection .trips-create-flow__place-icon {
+  position: absolute;
+  left: min(12px, 2.72vw);
+  top: min(12px, 2.72vw);
+  width: min(40px, 9.07vw);
+  height: min(40px, 9.07vw);
+  display: block;
+  pointer-events: none;
+}
+
+#tripsSection .trips-create-flow__place-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+#tripsSection .trips-create-flow__place-icon--water path {
+  fill: none;
+  stroke: #ff8d28;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#tripsSection .trips-create-flow__place-copy {
+  position: absolute;
+  left: min(115px, 26.08vw);
+  top: 0;
+  width: min(158px, 35.83vw);
+  pointer-events: none;
+  text-align: left;
+}
+
+#tripsSection .trips-create-flow__place-title,
+#tripsSection .trips-create-flow__place-subtitle {
+  position: absolute;
+  left: 0;
+  width: min(158px, 35.83vw);
+  font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-align: left;
+}
+
+#tripsSection .trips-create-flow__place-title {
+  top: min(28px, 6.35vw);
+  height: min(21px, 4.76vw);
+  font-size: min(17px, 3.85vw);
+  line-height: min(21px, 4.76vw);
+  color: #fefdfe;
+}
+
+#tripsSection .trips-create-flow__place-subtitle {
+  top: min(52px, 11.79vw);
+  height: min(21px, 4.76vw);
+  font-size: min(14px, 3.17vw);
+  line-height: min(21px, 4.76vw);
+  color: #bcbbba;
+}
 
