@@ -248,8 +248,9 @@
   -webkit-appearance: none;
 }
 
-#tripsSection .trips-create-flow__place-card.is-active {
-  border-color: rgba(188, 187, 186, 0.22);
+
+#tripsSection .trips-create-flow__place-card.is-pressing .trips-create-flow__place-icon {
+  color: #FF8D28;
 }
 
 #tripsSection .trips-create-flow__place-card.is-pressing {
@@ -267,9 +268,11 @@
 }
 
 #tripsSection .trips-create-flow__place-icon {
+  color: #84919F;
   display: block;
-  width: min(40px, 9.07vw);
-  height: min(40px, 9.07vw);
+  width: min(40px, 9.0909vw);
+  height: min(40px, 9.0909vw);
+  transition: color 160ms ease;
 }
 
 #tripsSection .trips-create-flow__place-icon svg {
@@ -279,21 +282,7 @@
   overflow: visible;
 }
 
-#tripsSection .trips-create-flow__place-icon--water path {
-  fill: none;
-  stroke: #ff8d28;
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 
-#tripsSection .trips-create-flow__place-icon--map path {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 
 #tripsSection .trips-create-flow__place-copy {
   display: grid;
