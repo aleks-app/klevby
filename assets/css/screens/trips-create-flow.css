@@ -61,7 +61,7 @@
   font-size: min(36px, 8.16vw) !important;
   font-weight: 500 !important;
   line-height: min(40px, 9.07vw) !important;
-  letter-spacing: 0 !important;
+  letter-spacing: -0.02em !important;
   color: #fefdfe !important;
   font-synthesis: none !important;
   font-variation-settings: "wght" 500 !important;
