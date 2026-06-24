@@ -76,7 +76,21 @@
             <span class="trips-create-flow__place-subtitle">Из базы водоёмов</span>
           </span>
         </button>
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-label="Указать на карте"></button>
+        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-label="Указать на карте">
+          <span class="trips-create-flow__place-icon-shell" aria-hidden="true">
+            <span class="trips-create-flow__place-icon trips-create-flow__place-icon--map">
+              <svg viewBox="0 0 40 40" focusable="false">
+                <path d="M9 10.5L17 7.5L24 10.5L31 7.5V29.5L24 32.5L17 29.5L9 32.5V10.5Z" />
+                <path d="M17 7.5V29.5" />
+                <path d="M24 10.5V32.5" />
+              </svg>
+            </span>
+          </span>
+          <span class="trips-create-flow__place-copy">
+            <span class="trips-create-flow__place-title">Указать на карте</span>
+            <span class="trips-create-flow__place-subtitle">Свободная точка</span>
+          </span>
+        </button>
       </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
