@@ -216,8 +216,8 @@
 #tripsSection .trips-create-flow__place-options {
   display: none;
   position: absolute;
-  left: 22px;
-  right: 22px;
+  left: min(22px, 4.99vw);
+  right: min(22px, 4.99vw);
   top: min(545px, 123.58vw);
   z-index: 2;
   gap: min(20px, 4.54vw);
@@ -229,51 +229,48 @@
 }
 
 #tripsSection .trips-create-flow__place-card {
-  display: block;
+  display: grid;
+  grid-template-columns: min(64px, 14.51vw) minmax(0, 1fr);
+  align-items: center;
+  column-gap: min(24px, 5.44vw);
   width: 100%;
   height: min(97px, 21.99vw);
   min-height: 84px;
-  padding: 0;
+  padding: 0 min(21px, 4.76vw);
+  border: 1px solid rgba(188, 187, 186, 0.22);
   border-radius: 16px;
-  border: 0.9px solid rgba(188, 187, 186, 0.22);
   background: rgba(22, 28, 32, 0.78);
-  color: #BCBBBA;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
 }
 
 #tripsSection .trips-create-flow__place-card.is-active {
-  border-width: 1px;
   border-color: rgba(255, 141, 40, 0.76);
 }
 
 #tripsSection .trips-create-flow__place-icon-shell {
-  position: absolute;
-  left: min(21px, 4.76vw);
-  top: min(17px, 3.85vw);
-  width: min(64px, 14.51vw);
-  height: min(64px, 14.51vw);
-  border-radius: 999px;
-  border: 1px solid #424041;
   display: grid;
   place-items: center;
-  pointer-events: none;
+  width: min(64px, 14.51vw);
+  height: min(64px, 14.51vw);
+  border: 1px solid #424041;
+  border-radius: 999px;
 }
 
 #tripsSection .trips-create-flow__place-icon {
-  position: absolute;
-  left: min(12px, 2.72vw);
-  top: min(12px, 2.72vw);
+  display: block;
   width: min(40px, 9.07vw);
   height: min(40px, 9.07vw);
-  display: block;
-  pointer-events: none;
 }
 
 #tripsSection .trips-create-flow__place-icon svg {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
   overflow: visible;
 }
 
@@ -285,43 +282,6 @@
   stroke-linejoin: round;
 }
 
-#tripsSection .trips-create-flow__place-copy {
-  position: absolute;
-  left: min(115px, 26.08vw);
-  top: 0;
-  width: min(158px, 35.83vw);
-  pointer-events: none;
-  text-align: left;
-}
-
-#tripsSection .trips-create-flow__place-title,
-#tripsSection .trips-create-flow__place-subtitle {
-  position: absolute;
-  left: 0;
-  width: min(158px, 35.83vw);
-  font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-weight: 400;
-  letter-spacing: 0;
-  white-space: nowrap;
-  text-align: left;
-}
-
-#tripsSection .trips-create-flow__place-title {
-  top: min(28px, 6.35vw);
-  height: min(21px, 4.76vw);
-  font-size: min(17px, 3.85vw);
-  line-height: min(21px, 4.76vw);
-  color: #fefdfe;
-}
-
-#tripsSection .trips-create-flow__place-subtitle {
-  top: min(52px, 11.79vw);
-  height: min(21px, 4.76vw);
-  font-size: min(14px, 3.17vw);
-  line-height: min(21px, 4.76vw);
-  color: #bcbbba;
-}
-
 #tripsSection .trips-create-flow__place-icon--map path {
   fill: none;
   stroke: #ffffff;
@@ -330,34 +290,8 @@
   stroke-linejoin: round;
 }
 
-#tripsSection .trips-create-flow__place-card:active,
-#tripsSection .trips-create-flow__place-card.is-active {
-  border-width: 1px;
-  border-color: rgba(255, 141, 40, 0.76);
-  color: #ff8d28;
-}
-
-#tripsSection .trips-create-flow__place-card svg {
-  color: currentColor;
-  stroke: currentColor;
-}
-
-/* Trips create flow place card content */
-#tripsSection .trips-create-flow__place-card {
+#tripsSection .trips-create-flow__place-copy {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 24px;
-  text-align: left;
-}
-
-#tripsSection .trips-create-flow__place-icon-shell {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 1px sollay: grid;
   gap: 4px;
   min-width: 0;
 }
@@ -375,9 +309,9 @@
 #tripsSection .trips-create-flow__place-note {
   display: block;
   font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: min(13px, 2.95vw);
+  font-size: min(14px, 3.17vw);
   font-weight: 400;
-  line-height: min(17px, 3.85vw);
-  color: #BCBBBA;
+  line-height: min(21px, 4.76vw);
+  color: #bcbbba;
   white-space: nowrap;
 }
