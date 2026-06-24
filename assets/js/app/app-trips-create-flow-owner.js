@@ -29,6 +29,7 @@
   let counterNode = null;
   let nextButton = null;
   let initialized = false;
+  let selectedPlaceChoice = "water";
 
   function publishDebug() {
     window.__KLEVBY_TRIPS_CREATE_FLOW_DEBUG__ = {
@@ -61,15 +62,31 @@
         </p>
       </div>
       <div class="trips-create-flow__place-options" aria-label="Выбор места выезда">
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--primary" data-trips-create-place-choice="water" aria-pressed="false" aria-label="Выбрать водоём">
-          <span class="trips-create-flow__place-icon-shell" aria-hidden="true"></span>
+        <button type="button" class="trips-create-flow__place-card is-active" data-trips-create-place-choice="water" aria-pressed="true" aria-label="Выбрать водоём">
+          <span class="trips-create-flow__place-icon-shell" aria-hidden="true">
+            <span class="trips-create-flow__place-icon trips-create-flow__place-icon--water">
+              <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+                <path d="M6 18c3.2-3.6 6.4-3.6 9.6 0s6.4 3.6 9.6 0 6.4-3.6 9.6 0" />
+                <path d="M6 24c3.2-3.6 6.4-3.6 9.6 0s6.4 3.6 9.6 0 6.4-3.6 9.6 0" />
+                <path d="M6 30c3.2-3.6 6.4-3.6 9.6 0s6.4 3.6 9.6 0 6.4-3.6 9.6 0" />
+              </svg>
+            </span>
+          </span>
           <span class="trips-create-flow__place-copy">
             <span class="trips-create-flow__place-title">Выбрать водоём</span>
             <span class="trips-create-flow__place-note">Из базы водоёмов</span>
           </span>
         </button>
-        <button type="button" class="trips-create-flow__place-card trips-create-flow__place-card--secondary" data-trips-create-place-choice="map" aria-pressed="false" aria-label="Указать на карте">
-          <span class="trips-create-flow__place-icon-shell" aria-hidden="true"></span>
+        <button type="button" class="trips-create-flow__place-card" data-trips-create-place-choice="map" aria-pressed="false" aria-label="Указать на карте">
+          <span class="trips-create-flow__place-icon-shell" aria-hidden="true">
+            <span class="trips-create-flow__place-icon trips-create-flow__place-icon--map">
+              <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+                <path d="M8 10h18l6 6v18H8z" />
+                <path d="M26 10v6h6" />
+                <circle cx="17" cy="23" r="3.5" />
+              </svg>
+            </span>
+          </span>
           <span class="trips-create-flow__place-copy">
             <span class="trips-create-flow__place-title">Указать на карте</span>
             <span class="trips-create-flow__place-note">Свободная точка</span>
@@ -122,40 +139,25 @@
       if (action === "next") next();
     });
 
-    const resetTripsCreatePlaceCards = () => {
+    const syncPlaceCards = () => {
       root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
-        card.classList.remove("is-active");
-        card.setAttribute("aria-pressed", "false");
-      });
-    };
-
-    const flashTripsCreatePlaceCard = (choice) => {
-      root.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
-        const isActive = card.dataset.tripsCreatePlaceChoice === choice;
+        const isActive = card.dataset.tripsCreatePlaceChoice === selectedPlaceChoice;
         card.classList.toggle("is-active", isActive);
         card.setAttribute("aria-pressed", String(isActive));
       });
-
-      window.setTimeout(resetTripsCreatePlaceCards, 160);
     };
 
     root.addEventListener("click", (event) => {
       const placeCard = event.target.closest("[data-trips-create-place-choice]");
+      if (!placeCard || !root.contains(placeCard)) return;
 
-      if (!placeCard || !root.contains(placeCard)) {
-        return;
-      }
-
-      const choice = placeCard.dataset.tripsCreatePlaceChoice;
-      flashTripsCreatePlaceCard(choice);
-
-      root.dispatchEvent(new CustomEvent("klevby:trips-create-place-action", {
-        bubbles: true,
-        detail: { choice }
-      }));
+      selectedPlaceChoice = placeCard.dataset.tripsCreatePlaceChoice;
+      tripDraft.destination = selectedPlaceChoice;
+      syncPlaceCards();
+      publishDebug();
     });
 
-    resetTripsCreatePlaceCards();
+    syncPlaceCards();
 
     return root;
   }
@@ -178,6 +180,13 @@
     track.style.transform = `translateX(-${(step - 1) * 100}%)`;
     nextButton.textContent = step === TOTAL_STEPS ? "Публикация позже" : "Далее";
     nextButton.disabled = step === TOTAL_STEPS;
+    if (step === 1 && overlay) {
+      overlay.querySelectorAll("[data-trips-create-place-choice]").forEach((card) => {
+        const isActive = card.dataset.tripsCreatePlaceChoice === selectedPlaceChoice;
+        card.classList.toggle("is-active", isActive);
+        card.setAttribute("aria-pressed", String(isActive));
+      });
+    }
     publishDebug();
   }
 
@@ -186,6 +195,8 @@
     isOpen = true;
     step = 1;
     tripDraft = { ...DEFAULT_DRAFT };
+    selectedPlaceChoice = "water";
+    tripDraft.destination = "water";
     render();
   }
 
