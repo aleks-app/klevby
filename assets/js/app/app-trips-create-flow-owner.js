@@ -50,11 +50,6 @@
     root.setAttribute("data-trips-create-step", "1");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
-      <button class="trips-create-flow__step1-back" type="button" data-trips-create-action="back" aria-label="Назад">
-        <span class="trips-create-flow__back-icon" aria-hidden="true">
-          <img src="assets/icons/ui/chevron-left.svg" alt="" decoding="async" />
-        </span>
-      </button>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
           <div>
