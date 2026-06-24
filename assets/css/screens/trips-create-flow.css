@@ -56,11 +56,11 @@
 
 #tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__copy-title {
   margin: 0 !important;
-  width: 298px !important;
+  width: min(298px, 67.57vw) !important;
   font-family: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-  font-size: 36px !important;
+  font-size: min(36px, 8.16vw) !important;
   font-weight: 500 !important;
-  line-height: 40px !important;
+  line-height: min(40px, 9.07vw) !important;
   letter-spacing: 0 !important;
   color: #fefdfe !important;
   font-synthesis: none !important;
