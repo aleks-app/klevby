@@ -88,6 +88,15 @@
           </span>
         </button>
       </div>
+        <button class="trips-create-flow__step-one-next" type="button" data-trips-create-action="next" aria-label="Далее">
+          <span class="trips-create-flow__step-one-next-circle" aria-hidden="true">
+            <svg class="trips-create-flow__step-one-next-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+              <path d="M29.3125 21.0578H8.4375C7.6325 21.0578 7 20.4223 7 19.6134C7 18.8045 7.6325 18.1689 8.4375 18.1689H29.3125C30.1175 18.1689 30.75 18.8045 30.75 19.6134C30.75 20.4223 30.1175 21.0578 29.3125 21.0578Z" fill="currentColor"/>
+              <path d="M23.125 30.1689C22.9365 30.1712 22.7495 30.1338 22.5762 30.0592C22.4029 29.9846 22.2471 29.8743 22.1187 29.7356C21.5437 29.1578 21.5437 28.2622 22.1187 27.6844L30.175 19.5844L22.1187 11.4844C21.5437 10.9067 21.5437 10.0111 22.1187 9.43333C22.6937 8.85556 23.585 8.85556 24.16 9.43333L33.2225 18.5444C33.7975 19.1222 33.7975 20.0178 33.2225 20.5956L24.16 29.7067C23.8725 29.9956 23.4988 30.14 23.1538 30.14L23.125 30.1689Z" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="trips-create-flow__step-one-next-label">Далее</span>
+        </button>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
           <div>
@@ -110,7 +119,7 @@
     track = root.querySelector(".trips-create-flow__track");
     titleNode = root.querySelector(".trips-create-flow__title");
     counterNode = root.querySelector(".trips-create-flow__counter");
-    nextButton = root.querySelector('[data-trips-create-action="next"]');
+    nextButton = root.querySelector(".trips-create-flow__nav--next");
 
     STEPS.forEach((label, index) => {
       const slide = document.createElement("section");

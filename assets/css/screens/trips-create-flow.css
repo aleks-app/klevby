@@ -307,3 +307,59 @@
   line-height: min(21px, 4.7727vw);
   letter-spacing: 0;
 }
+
+/* Trips create flow step 1 next button */
+#tripsSection .trips-create-flow__step-one-next {
+  display: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__footer {
+  display: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__step-one-next {
+  position: absolute;
+  left: 50%;
+  top: min(789px, 179.3182vw);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(80px, 18.1818vw);
+  padding: 0;
+  color: #FFFFFF;
+  background: transparent;
+  border: 0;
+  transform: translateX(-50%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#tripsSection .trips-create-flow__step-one-next-circle {
+  display: grid;
+  place-items: center;
+  width: min(80px, 18.1818vw);
+  height: min(80px, 18.1818vw);
+  border: 0.8px solid #DC7422;
+  border-radius: 999px;
+}
+
+#tripsSection .trips-create-flow__step-one-next-icon {
+  display: block;
+  width: min(40px, 9.0909vw);
+  height: min(40px, 9.0909vw);
+}
+
+#tripsSection .trips-create-flow__step-one-next-label {
+  margin-top: min(7px, 1.5909vw);
+  color: #BCBBBA;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: min(12px, 2.7273vw);
+  font-weight: 400;
+  line-height: min(15px, 3.4091vw);
+  letter-spacing: 0;
+}
+
+#tripsSection .trips-create-flow__step-one-next:active {
+  transform: translateX(-50%) scale(0.98);
+}
+
