@@ -50,6 +50,51 @@
   display: none;
 }
 
+#tripsSection .trips-create-flow__copy {
+  display: none;
+  position: absolute;
+  left: 20px;
+  top: 380px;
+  width: 298px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__copy {
+  display: block;
+}
+
+#tripsSection .trips-create-flow__copy-title {
+  margin: 0;
+  width: 298px;
+  font-family: "Onest", system-ui, sans-serif;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 40px;
+  letter-spacing: 0;
+  color: #fefdfe;
+}
+
+#tripsSection .trips-create-flow__copy-title > span {
+  display: block;
+  white-space: nowrap;
+}
+
+#tripsSection .trips-create-flow__copy-subtitle {
+  margin: 12px 0 0;
+  width: 253px;
+  font-family: "Onest", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  letter-spacing: 0;
+  color: #929597;
+}
+
+#tripsSection .trips-create-flow__copy-subtitle > span {
+  display: block;
+}
+
 #tripsSection .trips-create-flow__panel {
   position: relative;
   z-index: 2;

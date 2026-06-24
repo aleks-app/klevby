@@ -50,6 +50,16 @@
     root.setAttribute("data-trips-create-step", "1");
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
+      <div class="trips-create-flow__copy" aria-labelledby="tripsCreateStep1Title">
+        <h1 id="tripsCreateStep1Title" class="trips-create-flow__copy-title">
+          <span>Куда планируете</span>
+          <span>выезд?</span>
+        </h1>
+        <p class="trips-create-flow__copy-subtitle">
+          <span>Выберите водоём или укажите место</span>
+          <span>на карте, где планируете рыбачить.</span>
+        </p>
+      </div>
       <div class="trips-create-flow__panel" role="dialog" aria-modal="true" aria-labelledby="tripsCreateFlowTitle">
         <header class="trips-create-flow__header">
           <div>
