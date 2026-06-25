@@ -285,3 +285,40 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 /* HOME FIGMA ACTION CARDS POSITION FIX END */
 
+/* HOME FIGMA HERO TEXT EXACT POSITION START */
+/* Figma: X=22 Y=175 W=200 H=40, Onest Medium 33/40, letter 0, color #FEFDFE */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
+  position: absolute !important;
+  left: calc(22 / 440 * 100vw) !important;
+  top: calc(175 / 440 * 100vw) !important;
+  z-index: 4 !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
+  margin: 0 !important;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  color: #FEFDFE !important;
+  width: max-content !important;
+  max-width: calc(200 / 440 * 100vw) !important;
+  white-space: nowrap !important;
+  font-size: calc(33 / 440 * 100vw) !important;
+  line-height: calc(40 / 440 * 100vw) !important;
+  font-weight: 500 !important;
+  font-variation-settings: "wght" 500 !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 transparent !important;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none !important;
+  font-rendering: geometricPrecision;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
+  display: block !important;
+  white-space: nowrap !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
+  transform: none !important;
+}
+/* HOME FIGMA HERO TEXT EXACT POSITION END */
