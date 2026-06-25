@@ -3,6 +3,7 @@
   const FEED_TITLE_ID = "klevgo-home-figma-feed-title";
   const FEED_VIEW_ALL_ID = "klevgo-home-figma-feed-view-all";
   const STYLE_ID = "klevgo-home-figma-empty-ad-shell-style";
+  const STARTED_AT = performance.now();
 
   function leftFromFigma(x) {
     return `max(${x}px, calc((100vw - 440px) / 2 + ${x}px))`;
@@ -86,8 +87,35 @@
   }
 
   function isHomeVisible() {
-    const text = document.body?.innerText || "";
-    return text.includes("Соцсеть") && text.includes("рыбаков") && text.includes("Лента");
+    // Splash/startup screen must stay clean. Figma mirror elements appear only after real Home is visible.
+    if (performance.now() - STARTED_AT < 2800) return false;
+
+    const visibleTextNodes = Array.from(document.querySelectorAll("body *")).filter((el) => {
+      const text = (el.textContent || "").trim();
+      if (!text) return false;
+
+      const style = window.getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+        return false;
+      }
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 10 || rect.height < 8) return false;
+
+      return rect.top > 100 && rect.top < window.innerHeight - 80;
+    });
+
+    const hasHero = visibleTextNodes.some((el) => {
+      const text = (el.textContent || "").trim();
+      return text.includes("Соцсеть") || text.includes("рыбаков");
+    });
+
+    const hasHomeFeed = visibleTextNodes.some((el) => {
+      const text = (el.textContent || "").trim();
+      return text.includes("Лента");
+    });
+
+    return hasHero && hasHomeFeed;
   }
 
   function ensureHomeFigmaElements() {
@@ -135,6 +163,8 @@
   }
 
   sync();
+  window.setTimeout(sync, 3000);
+  window.setTimeout(sync, 3800);
 
   const observer = new MutationObserver(sync);
   observer.observe(document.documentElement, {
