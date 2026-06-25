@@ -152,20 +152,20 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
   position: absolute;
   left: 5vw;
-  top: 41.14vw;
+  top: 39.77vw;
   z-index: 2;
-  width: 80vw;
+  width: 45.45vw;
   pointer-events: none;
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
   margin: 0;
-  font-family: "Onest", system-ui, sans-serif;
-  color: #f5f7f4;
-  font-size: 7.27vw;
+  font-family: "Onest", "Montserrat", system-ui, sans-serif !important;
+  color: #FEFDFE;
+  font-size: 7.5vw;
   line-height: 9.09vw;
-  font-weight: 750;
-  letter-spacing: -0.035em;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
