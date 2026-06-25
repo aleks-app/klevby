@@ -159,6 +159,9 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
+  word-spacing: -0.06em;
+  transform-origin: left top;
+  transform: scaleX(0.94);
   margin: 0;
   font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   color: #FEFDFE;
@@ -168,7 +171,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   font-size: 7.5vw;
   line-height: 9.09vw;
   font-weight: 500;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
   text-shadow: none;
   -webkit-text-stroke: 0 transparent;
   -webkit-font-smoothing: antialiased;
