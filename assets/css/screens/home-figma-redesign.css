@@ -254,3 +254,31 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   white-space: nowrap;
 }
 
+
+/* HOME FIGMA ACTION CARDS POSITION FIX START */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions {
+  position: absolute !important;
+  left: calc(23 / 440 * 100vw) !important;
+  top: calc(328 / 440 * 100vw) !important;
+  z-index: 4 !important;
+
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: calc(10 / 440 * 100vw) !important;
+
+  width: calc(395 / 440 * 100vw) !important;
+  height: calc(118 / 440 * 100vw) !important;
+  pointer-events: auto !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-card {
+  flex: 0 0 calc(125 / 440 * 100vw) !important;
+  width: calc(125 / 440 * 100vw) !important;
+  height: calc(118 / 440 * 100vw) !important;
+  border-radius: calc(16 / 440 * 100vw) !important;
+  box-sizing: border-box !important;
+}
+/* HOME FIGMA ACTION CARDS POSITION FIX END */
+
