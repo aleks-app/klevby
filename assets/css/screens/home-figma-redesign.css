@@ -152,7 +152,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
   position: absolute;
   left: calc(22 / 440 * 100vw) !important;
-  top: calc(175 / 440 * 100vw) !important;
+  top: calc(164 / 440 * 100vw) !important;
   z-index: 4;
 }
 
@@ -182,17 +182,20 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
-  transform: translateY(calc(-11 / 440 * 100vw));
+  transform: none;
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
-  margin: 3.95vw 0 0;
-  font-family: "Onest", system-ui, sans-serif;
-  color: rgba(245, 247, 244, 0.72);
-  font-size: 3.41vw;
-  line-height: 4.77vw;
+  margin: calc(23 / 440 * 100vw) 0 0;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #BCBBBA;
+  font-size: calc(15 / 440 * 100vw);
+  line-height: calc(21 / 440 * 100vw);
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions {
