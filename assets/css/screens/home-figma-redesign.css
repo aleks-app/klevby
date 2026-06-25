@@ -352,18 +352,3 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 /* HOME FIGMA HEADER LOGO KLEVGO POSITION FIX END */
-
-/* HOME FIGMA FISH POSITION FIX START */
-/* fish/logo mark: Figma X=22 Y=80 W=36 H=40 */
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-logo-mark,
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-mark,
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-header-logo,
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-logo-icon {
-  position: absolute !important;
-  left: calc(22 / 440 * 100vw) !important;
-  top: calc(80 / 440 * 100vw) !important;
-  width: calc(36 / 440 * 100vw) !important;
-  height: calc(40 / 440 * 100vw) !important;
-  display: block !important;
-}
-/* HOME FIGMA FISH POSITION FIX END */
