@@ -1,6 +1,6 @@
 * {
   box-sizing: border-box;
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -38,7 +38,7 @@
   --kg-touchbar-frame-total: var(--klevby-bottom-chrome-total);
   --kg-screen-touchbar-clearance: 8px;
   --kg-screen-bottom-frame-offset: var(--kg-shell-bottom-offset, var(--klevby-app-available-bottom-offset));
-  --klevgo-font-display: "Onest", "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --klevgo-font-display: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   --bg: #040807;
   --bg-soft: #0b1210;
