@@ -23,7 +23,7 @@ test("global css exposes kg TouchBar frame aliases without replacing legacy toke
   assert.match(css, /--kg-touchbar-frame-total:\s*var\(--klevby-bottom-chrome-total\);/);
   assert.match(css, /--kg-screen-bottom-frame-offset:\s*var\(--kg-shell-bottom-offset/);
 
-  assert.match(css, /--klevby-touchbar-height:\s*66px;/);
+  assert.match(css, /--klevby-touchbar-height:\s*70px;/);
   assert.match(css, /--klevby-touchbar-bottom-offset:/);
 });
 
@@ -38,18 +38,20 @@ test("screen contract bottom is framed through the shared TouchBar boundary toke
 test("mobile tabbar consumes kg aliases with legacy fallbacks", () => {
   const css = read(tabbarCssPath);
 
-  assert.match(css, /left:\s*var\(--kg-screen-inline,\s*var\(--klevby-app-inline-inset\)\);/);
-  assert.match(css, /right:\s*var\(--kg-screen-inline,\s*var\(--klevby-app-inline-inset\)\);/);
+  assert.match(css, /left:\s*var\(--klevby-home-content-inset,\s*22px\);/);
+  assert.match(css, /right:\s*var\(--klevby-home-content-inset,\s*22px\);/);
   assert.match(css, /bottom:\s*var\(--kg-touchbar-bottom-offset,\s*var\(--klevby-touchbar-bottom-offset\)\);/);
   assert.match(css, /height:\s*var\(--kg-touchbar-height,\s*var\(--klevby-touchbar-height\)\);/);
+  assert.match(css, /display:\s*none;/);
+  assert.match(css, /body\[data-app-chrome-mode="home"\]:has\(#homeSection:not\(\.hidden\)\) \.mobile-tabbar \{[\s\S]*display:\s*grid;/);
 });
 
 test("main css imports the PR-11 cache-busted contract files", () => {
   const css = read(mainCssPath);
 
-  assert.match(css, /\.\/base\/global\.css\?v=20260619-header-screen-contract-1/);
+  assert.match(css, /\.\/base\/global\.css\?v=20260625-touchbar-home-only-1/);
   assert.match(css, /\.\/core\/screen-contract\.css\?v=20260619-header-screen-contract-1/);
-  assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260619-header-screen-contract-1/);
+  assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260625-touchbar-home-only-1/);
 });
 
 test("home owner publishes TouchBar frame diagnostics without disabling solver fallback", () => {

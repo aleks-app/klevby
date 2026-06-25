@@ -142,7 +142,7 @@
   --glow: 0 0 34px rgba(244,178,74,0.24);
 
   /* Shared mobile bottom chrome — single contract for TouchBar occupancy (foundation). */
-  --klevby-touchbar-height: 66px;
+  --klevby-touchbar-height: 70px;
   --klevby-touchbar-bottom-gap: 16px;
   --klevby-bottom-safe-area: env(safe-area-inset-bottom, 0px);
   --klevby-touchbar-bottom-offset: max(var(--klevby-touchbar-bottom-gap), var(--klevby-bottom-safe-area));
@@ -172,7 +172,6 @@
 @media (max-width: 380px) {
   :root {
     --klevby-app-inline-inset: 12px;
-    --klevby-touchbar-height: 64px;
     --klevby-touchbar-bottom-gap: 14px;
   }
 }

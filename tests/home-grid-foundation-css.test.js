@@ -15,12 +15,12 @@ function read(filePath) {
 test("index.html loads main.css with home hero slogan onest cache bust", () => {
   const index = read(indexPath);
 
-  assert.match(index, /assets\/css\/main\.css\?v=20260620-home-hero-slogan-onest-1/);
+  assert.match(index, /assets\/css\/main\.css\?v=20260625-touchbar-home-only-1/);
 });
 
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
   const mainCss = read(mainCssPath);
-  const legacyImport = './screens/home-mobile.css?v=20260620-home-hero-slogan-onest-1';
+  const legacyImport = './screens/home-mobile.css?v=20260625-touchbar-home-only-1';
   const foundationImport = './modules/home/home-grid-foundation.css?v=20260620-home-hero-copy-nudge-48';
 
   assert.ok(mainCss.includes(legacyImport));
