@@ -380,3 +380,33 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   text-rendering: geometricPrecision;
 }
 /* HOME FIGMA HERO SUBTITLE EXACT POSITION END */
+
+/* HOME FIGMA DEPTH CARD ICON START */
+/*
+Figma depth icon:
+global X=336 Y=346 W=34 H=34
+card 3 X=293 Y=328
+inside card: left=43 top=18 W=34 H=34
+color #FF8D28
+*/
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(3) {
+  position: relative !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(3) .home-figma-action-icon {
+  p(43 / 440 * 100vw) !important;
+  top: calc(18 / 440 * 100vw) !important;
+  width: calc(34 / 440 * 100vw) !important;
+  height: calc(34 / 440 * 100vw) !important;
+  margin: 0 !important;
+  color: #FF8D28 !important;
+  background-image: url("../../icons/home-map-depth-figma.svg") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(3) .home-figma-action-icon > * {
+  opacity: 0 !important;
+}
+/* HOME FIGMA DEPTH CARD ICON END */
