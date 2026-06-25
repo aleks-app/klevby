@@ -286,7 +286,12 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 /* HOME FIGMA ACTION CARDS POSITION FIX END */
 
 /* HOME FIGMA HERO TEXT EXACT POSITION START */
-/* Figma: X=22 Y=175 W=200 H=40, Onest Medium 33/40, letter 0, color #FEFDFE */
+/*
+Figma hero title:
+Соцсеть для: X=22 Y=175 W=200 H=40
+рыбаков:     X=22 Y=213 W=137 H=40
+Typography: Onest Medium 33 / line-height 40 / letter 0 / #FEFDFE
+*/
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
   position: absolute !important;
   left: calc(22 / 440 * 100vw) !important;
@@ -310,7 +315,8 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   -webkit-text-stroke: 0 transparent !important;
   -webkit-font-smoothing: antialiased;
   font-synthesis: none !important;
-  font-rendering: geometricPrecision;
+  font-synthesis-weight: none !important;
+  text-rendering: geometricPrecision;
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
@@ -319,6 +325,18 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
-  transform: none !important;
+  width: calc(137 / 440 * 100vw) !important;
+  max-width: calc(137 / 440 * 100vw) !important;
+  height: calc(40 / 440 * 100vw) !important;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  color: #FEFDFE !important;
+  font-size: calc(33 / 440 * 100vw) !important;
+  line-height: calc(40 / 440 * 100vw) !important;
+  font-weight: 500 !important;
+  font-variation-settings: "wght" 500 !important;
+  letter-spacing: 0 !important;
+  transform: translateY(calc(-2 / 440 * 100vw)) !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 /* HOME FIGMA HERO TEXT EXACT POSITION END */
