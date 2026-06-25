@@ -145,17 +145,17 @@
 
 /* Market premium typography: Montserrat */
 #marketSection {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
 }
 
 #marketSection .market-hero h2 {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
   font-weight: 800 !important;
   letter-spacing: -0.04em !important;
 }
 
 #marketSection .market-hero p {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
   font-weight: 500 !important;
   letter-spacing: -0.01em !important;
 }
@@ -163,21 +163,21 @@
 #marketSection .market-view-btn,
 #marketSection .market-action-btn,
 #marketSection button {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
   font-weight: 700 !important;
   letter-spacing: -0.015em !important;
 }
 
 #marketSection .market-card h3,
 #marketSection .market-card-title {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
   font-weight: 800 !important;
   letter-spacing: -0.025em !important;
 }
 
 #marketSection .market-price,
 #marketSection .market-details-price {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
 }
@@ -185,7 +185,7 @@
 #marketSection .market-card p,
 #marketSection .market-card-meta,
 #marketSection .market-location {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: sans-serif !important;
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
 }
