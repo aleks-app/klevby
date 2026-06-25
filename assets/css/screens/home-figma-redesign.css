@@ -53,7 +53,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   width: 100vw;
   height: auto;
   max-width: none;
-  opacity: 0.5;
+  opacity: 0.35;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -154,7 +154,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   left: 5vw;
   top: 39.77vw;
   z-index: 2;
-  width: 45.45vw;
+  width: 80vw;
   pointer-events: none;
 }
 
@@ -162,10 +162,16 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   margin: 0;
   font-family: "Onest", "Montserrat", system-ui, sans-serif !important;
   color: #FEFDFE;
-  font-size: 7.5vw;
-  line-height: 9.09vw;
-  font-weight: 500;
+  width: max-content;
+  max-width: 80vw;
+  white-space: nowrap;
+  font-size: 7.35vw;
+  line-height: 8.85vw;
+  font-weight: 400;
   letter-spacing: 0;
+  text-shadow: none;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
