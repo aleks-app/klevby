@@ -4,29 +4,25 @@
 */
 
 @media (max-width: 900px) {
-  body[data-app-chrome-mode="map"] .mobile-tabbar,
-  body[data-app-chrome-mode="trips"] .mobile-tabbar {
-    display: none;
-  }
-
   .mobile-tabbar {
     position: fixed;
-    left: var(--kg-screen-inline, var(--klevby-app-inline-inset));
-    right: var(--kg-screen-inline, var(--klevby-app-inline-inset));
+    left: var(--klevby-home-content-inset, 22px);
+    right: var(--klevby-home-content-inset, 22px);
     bottom: var(--kg-touchbar-bottom-offset, var(--klevby-touchbar-bottom-offset));
     z-index: 1100;
 
     height: var(--kg-touchbar-height, var(--klevby-touchbar-height));
-    display: grid;
+    display: none;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: stretch;
     gap: 2px;
 
     padding: 6px 10px;
 
-    background: rgba(21, 21, 21, 0.76);
-    border: 1px solid rgba(255, 255, 255, 0.085);
-    border-radius: 28px;
+    background: #161c20;
+    border: 0.9px solid rgba(88, 108, 124, 0.24);
+    border-radius: 16px;
+    box-sizing: border-box;
 
     box-shadow:
       0 14px 34px rgba(0, 0, 0, 0.38),
@@ -35,6 +31,10 @@
 
     backdrop-filter: blur(18px) saturate(1.08);
     -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  }
+
+  body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) .mobile-tabbar {
+    display: grid;
   }
 
   .mobile-tabbar .mobile-tab-btn {
@@ -306,7 +306,6 @@
 @media (max-width: 380px) {
   .mobile-tabbar {
     padding: 6px 8px;
-    border-radius: 26px;
   }
 
   .mobile-tabbar .mobile-tab-btn {

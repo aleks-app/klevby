@@ -90,7 +90,7 @@
     const headerHeight = headerVisible ? Math.max(0, headerBottom - headerTop) : 0;
     const headerTopOffset = headerVisible ? headerTop : 0;
     const usesTabbarBoundary =
-      cleanChromeMode !== "map" && tabbarVisible && tabbarRect != null;
+      cleanChromeMode === "home" && tabbarVisible && tabbarRect != null;
     const availableBottom = usesTabbarBoundary
       ? clamp(measuredTabbarTop, availableTop, viewportHeight)
       : viewportHeight;
@@ -123,7 +123,7 @@
       touchbarHeight,
       touchbarBottomOffset,
       headerVisible: Boolean(headerVisible),
-      tabbarVisible: cleanChromeMode === "map" ? false : Boolean(tabbarVisible)
+      tabbarVisible: cleanChromeMode === "home" ? Boolean(tabbarVisible) : false
     };
   }
 
@@ -203,7 +203,7 @@
         tabbarRect,
         headerVisible: isElementVisible(header, headerRect, viewportWidth, viewportHeight),
         tabbarVisible:
-          String(chromeMode).trim().toLowerCase() !== "map" &&
+          String(chromeMode).trim().toLowerCase() === "home" &&
           isElementVisible(tabbar, tabbarRect, viewportWidth, viewportHeight)
       });
     }
