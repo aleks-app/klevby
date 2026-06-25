@@ -1,6 +1,7 @@
 /* Trips create flow skeleton. Scoped to #tripsSection only. */
 #tripsSection .trips-create-flow {
   --klevby-trips-create-step1-rail-x: min(22px, 4.99vw);
+  --klevby-trips-create-step1-copy-top: clamp(338px, calc(82vw + 19.2px), 380px);
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -66,7 +67,7 @@
   display: none;
   position: absolute;
   left: var(--klevby-trips-create-step1-rail-x);
-  top: 380px;
+  top: var(--klevby-trips-create-step1-copy-top);
   width: 298px;
   z-index: 2;
   pointer-events: none;
