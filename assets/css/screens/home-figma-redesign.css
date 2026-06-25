@@ -472,3 +472,89 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   opacity: 0 !important;
 }
 /* HOME FIGMA FEED CARD ICON END */
+
+/* HOME FIGMA ACTION CARDS INNER LAYOUT FIX START */
+/*
+Card size: 125x118
+Icon area: top 18, centered
+Title: below icon
+Subtitle: below title
+Fixes text overlapping icons after SVG icon overrides.
+*/
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card {
+  position: relative !important;
+  display: block !important;
+  overflow: hidden !important;
+}
+
+/* Common icon position for all 3 cards */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card .home-figma-action-icon {
+  position: absolute !important;
+  left: 50% !important;
+  top: calc(18 / 440 * 100vw) !important;
+  width: calc(32 / 440 * 100vw) !important;
+  height: calc(32 / 440 * 100vw) !important;
+  margin: 0 !important;
+  transform: translateX(-50%) !important;
+  color: #FF8D28 !important;
+  z-index: 2 !important;
+}
+
+/* Third card map icon is 34x34 in Figma */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(3) .home-figma-action-icon {
+  top: calc(18 / 440 * 100vw) !important;
+  width: calc(34 / 440 * 100vw) !important;
+  height: calc(34 / 440 * 100vw) !important;
+}
+
+/* Hide old inline SVG when background-image is used */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card .home-figma-action-icon > * {
+  opacity: 0 !important;
+}
+
+/* Title text */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card .home-figma-action-title,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card .home-figma-action-card-title {
+  position: absolute !important;
+  left: 0 !important;
+  top: calc(69 / 440 * 100vw) !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 calc(8 / 440 * 100vw) !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: calc(16 / 440 * 100vw) !important;
+  line-height: calc(20 / 440 * 100vw) !important;
+  font-weight: 500 !important;
+  font-variation-settings: "wght" 500 !important;
+  letter-spacing: 0 !important;
+  color: #FEFDFE !important;
+  white-space: nowrap !important;
+  z-index: 3 !important;
+}
+
+/* Subtitle text */
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card .home-figma-action-subtitle,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card .home-figma-action-card-subtitle {
+  position: absolute !important;
+  left: 0 !important;
+  top: calc(94 / 440 * 100vw) !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 calc(8 / 440 * 100vw) !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: calc(13 / 440 * 100vw) !important;
+  line-height: calc(16 / 440 * 100vw) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 400 !important;
+  letter-spacing: 0 !important;
+  color: #BCBBBA !important;
+  white-space: nowrap !important;
+  z-index: 3 !important;
+}
+
+/* HOME FIGMA ACTION CARDS INNER LAYOUT FIX END */
