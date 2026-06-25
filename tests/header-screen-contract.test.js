@@ -53,7 +53,7 @@ test("main css imports the PR-11 cache-busted header contract files", () => {
   assert.match(css, /\.\/base\/global\.css\?v=20260625-touchbar-home-only-1/);
   assert.match(css, /\.\/core\/screen-contract\.css\?v=20260619-header-screen-contract-1/);
   assert.match(css, /\.\/layout\/header\.css\?v=20260619-header-screen-contract-1/);
-  assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260625-touchbar-home-only-1/);
+  assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260626-touchbar-y847-1/);
 });
 
 test("home owner publishes Header frame diagnostics without disabling solver fallback", () => {

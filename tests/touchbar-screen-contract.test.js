@@ -43,7 +43,7 @@ test("mobile tabbar consumes kg aliases with legacy fallbacks", () => {
   assert.match(css, /bottom:\s*var\(--kg-touchbar-bottom-offset,\s*var\(--klevby-touchbar-bottom-offset\)\);/);
   assert.match(css, /height:\s*var\(--kg-touchbar-height,\s*var\(--klevby-touchbar-height\)\);/);
   assert.match(css, /display:\s*none;/);
-  assert.match(css, /body\[data-app-chrome-mode="home"\]:has\(#homeSection:not\(\.hidden\)\) \.mobile-tabbar \{[\s\S]*display:\s*grid;/);
+  assert.match(css, /body\[data-app-chrome-mode="home"\]:has\(#homeSection:not\(\.hidden\)\) \.mobile-tabbar \{[\s\S]*top:\s*847px;[\s\S]*bottom:\s*auto;[\s\S]*height:\s*70px;[\s\S]*display:\s*grid;/);
 });
 
 test("main css imports the PR-11 cache-busted contract files", () => {
@@ -51,7 +51,7 @@ test("main css imports the PR-11 cache-busted contract files", () => {
 
   assert.match(css, /\.\/base\/global\.css\?v=20260625-touchbar-home-only-1/);
   assert.match(css, /\.\/core\/screen-contract\.css\?v=20260619-header-screen-contract-1/);
-  assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260625-touchbar-home-only-1/);
+  assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260626-touchbar-y847-1/);
 });
 
 test("home owner publishes TouchBar frame diagnostics without disabling solver fallback", () => {
