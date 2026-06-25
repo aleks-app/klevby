@@ -340,3 +340,43 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   text-rendering: geometricPrecision;
 }
 /* HOME FIGMA HERO TEXT EXACT POSITION END */
+
+/* HOME FIGMA HERO SUBTITLE EXACT POSITION START */
+/*
+Figma subtitle global:
+X=23 Y=265 W=239 H=42
+Hero parent:
+X=22 Y=175
+So inside parent:
+left=1 top=90
+Typography:
+Onest Regular 14 / line-height 21 / letter 0 / #BCBBBA
+*/
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
+  position: absolute !important;
+  left: calc(22 / 440 * 100vw) !important;
+  top: calc(175 / 440 * 100vw) !important;
+  z-index: 4 !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
+  position: absolute !important;
+  left: calc(1 / 440 * 100vw) !important;
+  top: calc(90 / 440 * 100vw) !important;
+  width: calc(239 / 440 * 100vw) !important;
+  height: calc(42 / 440 * 100vw) !important;
+  margin: 0 !important;
+  font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  color: #BCBBBA !important;
+  font-size: calc(14 / 440 * 100vw) !important;
+  line-height: calc(21 / 440 * 100vw) !important;
+  font-weight: 400 !important;
+  font-variation-settings: "wght" 400 !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 transparent !important;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none !important;
+  text-rendering: geometricPrecision;
+}
+/* HOME FIGMA HERO SUBTITLE EXACT POSITION END */
