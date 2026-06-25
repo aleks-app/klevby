@@ -3,6 +3,7 @@
 
   const STORAGE_KEY = "klevbyAndroidDiagnosticsEnabled";
   const PWA_STORAGE_KEY = "klevbyPwaHomeDiagnosticsEnabled";
+  const LAYOUT_STORAGE_KEY = "klevbyLayoutDiagnostics";
   const BUTTON_CONTAINER_ID = "klevbyAndroidDiagnosticsControls";
   const LOGO_TAP_TARGET = 7;
   const LOGO_TAP_RESET_MS = 4000;
@@ -35,6 +36,7 @@
       } else {
         window.localStorage.removeItem(STORAGE_KEY);
         window.localStorage.removeItem(PWA_STORAGE_KEY);
+        window.localStorage.removeItem(LAYOUT_STORAGE_KEY);
       }
     } catch (_) {}
   }
@@ -54,6 +56,7 @@
     return (
       hasExplicitDebugFlag ||
       readStorageKeyEnabled(STORAGE_KEY) ||
+      readStorageKeyEnabled(LAYOUT_STORAGE_KEY) ||
       (isStandaloneMode() && readStorageKeyEnabled(PWA_STORAGE_KEY))
     );
   }
@@ -409,6 +412,211 @@
     return copied;
   }
 
+
+  function rectsOverlap(a, b) {
+    if (!a || !b) return null;
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function isElementVisible(element, styles) {
+    if (!element || !styles) return false;
+    const rect = element.getBoundingClientRect();
+    return styles.display !== "none" && styles.visibility !== "hidden" && Number(styles.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+  }
+
+  function getDetailedElementDiagnostics(selector, element) {
+    const target = element || document.querySelector(selector);
+    if (!target) return { selector, exists: false, visible: false };
+
+    const styles = getComputedStyle(target);
+    const rect = target.getBoundingClientRect();
+    const rectPayload = {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      x: rect.x,
+      y: rect.y
+    };
+
+    return {
+      selector,
+      exists: true,
+      visible: isElementVisible(target, styles),
+      display: styles.display,
+      visibility: styles.visibility,
+      opacity: styles.opacity,
+      rect: rectPayload,
+      computed: {
+        position: styles.position,
+        zIndex: styles.zIndex,
+        top: styles.top,
+        right: styles.right,
+        bottom: styles.bottom,
+        left: styles.left,
+        width: styles.width,
+        height: styles.height,
+        margin: styles.margin,
+        padding: styles.padding,
+        fontSize: styles.fontSize,
+        lineHeight: styles.lineHeight,
+        transform: styles.transform,
+        overflow: styles.overflow,
+        overflowX: styles.overflowX,
+        overflowY: styles.overflowY,
+        pointerEvents: styles.pointerEvents,
+        backgroundImage: styles.backgroundImage && styles.backgroundImage !== "none" ? styles.backgroundImage : null,
+        boxShadow: styles.boxShadow && styles.boxShadow !== "none" ? styles.boxShadow : null
+      }
+    };
+  }
+
+  function collectSelectorMap(selectors) {
+    return Object.fromEntries(
+      selectors.map((entry) => {
+        const name = Array.isArray(entry) ? entry[0] : entry;
+        const selector = Array.isArray(entry) ? entry[1] : entry;
+        return [name, getDetailedElementDiagnostics(selector)];
+      })
+    );
+  }
+
+  function getRectFromMap(map, key) {
+    return map?.[key]?.exists ? map[key].rect : null;
+  }
+
+  function getCssVariables(names) {
+    const styles = getComputedStyle(document.documentElement);
+    return Object.fromEntries(names.map((name) => [name, styles.getPropertyValue(name).trim() || null]));
+  }
+
+  function collectRootAttributes() {
+    const html = document.documentElement;
+    const body = document.body;
+    const pick = (element) => ({
+      class: element?.getAttribute("class") || "",
+      style: element?.getAttribute("style") || "",
+      "data-app-chrome-mode": element?.getAttribute("data-app-chrome-mode") || null,
+      "data-device-class": element?.getAttribute("data-device-class") || null,
+      "data-phone-orientation": element?.getAttribute("data-phone-orientation") || null,
+      "data-home-density": element?.getAttribute("data-home-density") || null
+    });
+    return { html: pick(html), body: pick(body) };
+  }
+
+  function collectLayoutMatrix() {
+    const sizes = [[360,760],[360,800],[375,812],[390,844],[393,852],[402,874],[412,915],[430,932],[440,956]];
+    return {
+      mode: "calculation-only-not-domrect",
+      source: "CSS variables are read from current runtime; viewport rows are reference sizes only.",
+      rows: sizes.map(([width, height]) => ({ width, height, aspect: Number((height / width).toFixed(4)) }))
+    };
+  }
+
+  function collectUnifiedLayoutDiagnostics() {
+    const html = document.documentElement;
+    const body = document.body;
+    const capacitorState = getCapacitorNativeState();
+    const cssVariables = getCssVariables([
+      "--klevby-app-viewport-width", "--klevby-app-viewport-height", "--klevby-app-available-top",
+      "--klevby-app-available-bottom", "--klevby-app-available-height", "--klevby-app-available-bottom-offset",
+      "--klevby-bottom-safe-area", "--kg-viewport-width", "--kg-viewport-height", "--kg-shell-top",
+      "--kg-shell-bottom", "--kg-shell-height", "--kg-header-top", "--kg-header-bottom",
+      "--kg-header-height-measured", "--kg-touchbar-top", "--kg-touchbar-bottom",
+      "--kg-touchbar-height-measured", "--klevby-trips-create-step1-copy-top"
+    ]);
+    const home = collectSelectorMap([
+      ["homeSection", "#homeSection"], ["header", "#header, header"], ["logoTitleArea", ".app-header-logo, .logo.app-header-logo, .header-inner"],
+      ["hero", "#homeSection .hero"], ["heroCopy", "#homeSection .hero-copy"], ["heroTitle", "#homeSection .hero-title, #homeSection .hero h1, #homeSection .hero-copy h1"],
+      ["heroSlogan", "#homeSection .hero-slogan, #homeSection .hero-copy p"], ["quickActions", "#homeSection .home-quick-actions"], ["quickActionsGrid", "#homeSection .home-quick-actions-grid"],
+      ["quickActionCard", "#homeSection .home-quick-action-card"], ["feedTitleRow", "#homeSection .home-feed-preview-head"], ["feedAdCard", "#homeSection .home-feed-preview-slide.is-active, #homeSection .home-feed-preview-card"],
+      ["weatherCard", "#homeSection .home-weather-card"], ["touchBar", ".mobile-tabbar"]
+    ]);
+    const trips = collectSelectorMap([
+      ["tripsSection", "#tripsSection"], ["backButton", "#appHeaderBackBtn, .app-header-back-btn"], ["shell", "#tripsSection .trips-fullscreen-shell"],
+      ["container", "#tripsSection .trips-fullscreen-content"], ["hero", "#tripsSection .trips-fullscreen-hero"], ["title", "#tripsSection .trips-fullscreen-hero-title"],
+      ["subtitle", "#tripsSection .trips-fullscreen-hero-description"], ["cta", "#tripsSection .trips-fullscreen-hero-cta"], ["upperTabs", "#tripsSection .trips-fullscreen-type-tabs"],
+      ["lowerFilters", "#tripsSection .trips-fullscreen-filter-row"], ["listTitleRow", "#tripsSection .trips-fullscreen-list-header"]
+    ]);
+    const create = collectSelectorMap([
+      ["flow", ".trips-create-flow"], ["progress", ".trips-create-flow__step-one-progress"], ["progressLabel", ".trips-create-flow__step-one-progress-label"],
+      ["copy", ".trips-create-flow__copy"], ["copyTitle", ".trips-create-flow__copy-title"], ["copySubtitle", ".trips-create-flow__copy-subtitle"],
+      ["placeOptions", ".trips-create-flow__place-options"], ["firstCard", ".trips-create-flow__place-card:nth-of-type(1)"], ["secondCard", ".trips-create-flow__place-card:nth-of-type(2)"],
+      ["next", ".trips-create-flow__step-one-next"], ["nextCircle", ".trips-create-flow__step-one-next-circle"], ["nextLabel", ".trips-create-flow__step-one-next-label"],
+      ["backButton", "#appHeaderBackBtn, .app-header-back-btn"]
+    ]);
+    const h = (key) => getRectFromMap(home, key);
+    const t = (key) => getRectFromMap(trips, key);
+    const c = (key) => getRectFromMap(create, key);
+    const payload = {
+      timestamp: new Date().toISOString(),
+      locationHref: window.location.href,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform || null,
+      capacitorPlatform: capacitorState.isNativePlatform && typeof capacitorState.capacitor.getPlatform === "function" ? capacitorState.capacitor.getPlatform() : "browser",
+      isNativePlatform: capacitorState.isNativePlatform,
+      standalone: isStandaloneMode(),
+      pwa: { navigatorStandalone: window.navigator.standalone === true, displayModeStandalone: window.matchMedia("(display-mode: standalone)").matches },
+      devicePixelRatio: window.devicePixelRatio,
+      window: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, outerWidth: window.outerWidth, outerHeight: window.outerHeight },
+      visualViewport: window.visualViewport ? { width: window.visualViewport.width, height: window.visualViewport.height, offsetTop: window.visualViewport.offsetTop, offsetLeft: window.visualViewport.offsetLeft, scale: window.visualViewport.scale } : null,
+      documentElement: { clientWidth: html.clientWidth, clientHeight: html.clientHeight, scrollWidth: html.scrollWidth, scrollHeight: html.scrollHeight },
+      body: body ? { clientWidth: body.clientWidth, clientHeight: body.clientHeight, scrollWidth: body.scrollWidth, scrollHeight: body.scrollHeight } : null,
+      rootAttributes: collectRootAttributes(),
+      cssVariables,
+      home: { active: !document.querySelector("#homeSection")?.classList.contains("hidden"), selectors: home, derived: {
+        headerLogoBottomToHeroCopyTop: getVerticalGap(h("logoTitleArea") || h("header"), h("heroCopy") || h("heroTitle")),
+        heroTitleOverlapsHeaderLogo: rectsOverlap(h("heroTitle") || h("heroCopy"), h("logoTitleArea") || h("header")),
+        heroCopyBottomToQuickActionsTop: getVerticalGap(h("heroCopy"), h("quickActions")),
+        quickActionsBottomToFeedTitleTop: getVerticalGap(h("quickActions"), h("feedTitleRow")),
+        feedAdBottomToWeatherTop: getVerticalGap(h("feedAdCard"), h("weatherCard")),
+        weatherBottomToTouchBarTop: getVerticalGap(h("weatherCard"), h("touchBar")),
+        anyOverlapFlags: { heroHeader: rectsOverlap(h("heroCopy") || h("heroTitle"), h("header")), weatherTouchBar: rectsOverlap(h("weatherCard"), h("touchBar")) }
+      }},
+      tripsList: { active: !document.querySelector("#tripsSection")?.classList.contains("hidden") && !document.querySelector(".trips-create-flow[data-trips-create-flow='open']"), selectors: trips, derived: {
+        viewportTopToBackButtonTop: t("backButton") ? t("backButton").top : null,
+        backButtonOverlapsTitle: rectsOverlap(t("backButton"), t("title")), titleTop: t("title")?.top ?? null, titleBottom: t("title")?.bottom ?? null,
+        titleBottomToSubtitleTop: getVerticalGap(t("title"), t("subtitle")), ctaBottomToTabsTop: getVerticalGap(t("cta"), t("upperTabs")),
+        lowerFiltersBottomToListTitleTop: getVerticalGap(t("lowerFilters"), t("listTitleRow")),
+        horizontalOverflow: { upperTabs: t("upperTabs") ? t("upperTabs").right > html.clientWidth || t("upperTabs").left < 0 : null, lowerFilters: t("lowerFilters") ? t("lowerFilters").right > html.clientWidth || t("lowerFilters").left < 0 : null },
+        topClipping: { backButton: t("backButton") ? t("backButton").top < 0 : null, title: t("title") ? t("title").top < 0 : null }
+      }},
+      tripsCreateStep1: { active: document.querySelector(".trips-create-flow[data-trips-create-flow='open'][data-trips-create-step='1']") != null, selectors: create, derived: {
+        progressBottomToCopyTitleTop: getVerticalGap(c("progress"), c("copyTitle")), titleBottomToSubtitleTop: getVerticalGap(c("copyTitle"), c("copySubtitle")),
+        subtitleBottomToFirstCardTop: getVerticalGap(c("copySubtitle"), c("firstCard")), firstCardBottomToSecondCardTop: getVerticalGap(c("firstCard"), c("secondCard")),
+        secondCardBottomToNextCircleTop: getVerticalGap(c("secondCard"), c("nextCircle")), secondCardBottomToNextVisualGlowTopApprox: getVerticalGap(c("secondCard"), c("nextCircle")) != null ? getVerticalGap(c("secondCard"), c("nextCircle")) - 18 : null,
+        nextLabelBottomToViewportBottom: c("nextLabel") ? window.innerHeight - c("nextLabel").bottom : null, nextLabelBottomToDocumentClientHeight: c("nextLabel") ? html.clientHeight - c("nextLabel").bottom : null,
+        nextLabelClippedByViewportNavArea: c("nextLabel") ? c("nextLabel").bottom > Math.min(window.innerHeight, html.clientHeight) : null,
+        subtitleOverlapsFirstCard: rectsOverlap(c("copySubtitle"), c("firstCard")), secondCardOverlapsNextCircle: rectsOverlap(c("secondCard"), c("nextCircle")),
+        secondCardIntersectsNextGlowZone: c("secondCard") && c("nextCircle") ? c("secondCard").bottom > c("nextCircle").top - 18 : null,
+        backOverlapsProgressOrTitle: rectsOverlap(c("backButton"), c("progress")) || rectsOverlap(c("backButton"), c("copyTitle"))
+      }},
+      matrix: collectLayoutMatrix()
+    };
+    window.__KLEVBY_LAYOUT_DIAGNOSTICS__ = payload;
+    return payload;
+  }
+
+  function showManualCopyDialog(text) {
+    const existing = document.getElementById("klevbyLayoutDiagnosticsManualCopy");
+    if (existing) existing.remove();
+    const wrap = document.createElement("div");
+    wrap.id = "klevbyLayoutDiagnosticsManualCopy";
+    wrap.style.cssText = "position:fixed;inset:12px;z-index:2147483647;background:rgba(8,12,10,.96);padding:12px;border-radius:12px;color:#fff;display:flex;flex-direction:column;gap:8px;";
+    const label = document.createElement("div");
+    label.textContent = "Clipboard unavailable. Select and copy JSON manually.";
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.cssText = "flex:1;width:100%;font:12px/1.35 monospace;";
+    const close = createDiagnosticsButton("Close", () => wrap.remove(), { background: "#356A48" });
+    wrap.append(label, textarea, close);
+    document.body.appendChild(wrap);
+    textarea.focus();
+    textarea.select();
+  }
+
   function initDiagnosticsModule() {
     const { capacitor, isNativePlatform } = getCapacitorNativeState();
 
@@ -521,6 +729,7 @@
       const lowerFillY = Number.parseFloat(
         htmlStyles.getPropertyValue("--klevby-home-lower-fill-y")
       ) || 0;
+      const unifiedLayoutDiagnostics = collectUnifiedLayoutDiagnostics();
       const homeFitContract = {
         clearancePx: 8,
         headerBottom: homeRects.header?.bottom ?? null,
@@ -570,6 +779,7 @@
       };
 
       return {
+        unifiedLayoutDiagnostics,
         timestamp: new Date().toISOString(),
         homeInternalGeometry: collectHomeInternalGeometry(),
         cssDelivery: getCssDeliveryDiagnostics(),
@@ -592,7 +802,8 @@
           klevbyAndroidDebug: hasAndroidDebugFlag,
           klevbyViewportDebug: hasViewportDebugFlag,
           klevbyAndroidDiagnosticsEnabled: readStorageKeyEnabled(STORAGE_KEY),
-          klevbyPwaHomeDiagnosticsEnabled: readStorageKeyEnabled(PWA_STORAGE_KEY)
+          klevbyPwaHomeDiagnosticsEnabled: readStorageKeyEnabled(PWA_STORAGE_KEY),
+          klevbyLayoutDiagnostics: readStorageKeyEnabled(LAYOUT_STORAGE_KEY)
         },
         userAgent: navigator.userAgent,
         dpr: window.devicePixelRatio,
@@ -809,7 +1020,9 @@
         }
       } catch (_) {}
 
-      return copyWithTextarea(json);
+      const copied = copyWithTextarea(json);
+      if (!copied) showManualCopyDialog(json);
+      return copied;
     };
 
     diag.shareJSON = async function () {
@@ -898,6 +1111,11 @@
     container.style.gap = "6px";
     container.style.maxWidth = "220px";
 
+    const title = document.createElement("div");
+    title.textContent = "Layout diagnostics";
+    title.style.cssText = "padding:6px 8px;border-radius:6px;background:rgba(8,12,10,0.92);color:#fff;font:700 12px/1.2 system-ui,sans-serif;";
+    container.appendChild(title);
+
     const downloadButton = createDiagnosticsButton(`Save ${getDiagnosticsName()}`, () => {
       window.klevbyAndroidDiagnostics.saveJSON();
     });
@@ -935,6 +1153,20 @@
       flashButtonLabel(copyButton, "JSON copied", "Copy failed", copied);
     });
     container.appendChild(copyButton);
+
+    const refreshButton = createDiagnosticsButton("Refresh", () => {
+      window.klevbyAndroidDiagnostics.collect();
+      flashButtonLabel(refreshButton, "Refreshed", "Refresh failed", true);
+    }, { background: "#356A48" });
+    container.appendChild(refreshButton);
+
+    const closeButton = createDiagnosticsButton("Close", removeDiagnosticsControls, {
+      background: "rgba(8,12,10,0.92)",
+      color: "#fff",
+      fontSize: "11px",
+      padding: "6px 10px"
+    });
+    container.appendChild(closeButton);
 
     if (navigator.share && typeof navigator.share === "function") {
       const shareButton = createDiagnosticsButton("Share JSON", async () => {
