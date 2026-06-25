@@ -165,13 +165,22 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   width: max-content;
   max-width: 80vw;
   white-space: nowrap;
-  font-size: 7.35vw;
+  font-size: 7.25vw;
   line-height: 8.85vw;
-  font-weight: 400;
+  font-weight: 360;
   letter-spacing: 0;
   text-shadow: none;
   -webkit-font-smoothing: antialiased;
   font-synthesis: none;
+}
+
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
+  display: block;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
+  transform: translateY(0.42vw);
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
