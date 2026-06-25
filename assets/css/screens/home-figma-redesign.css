@@ -410,3 +410,34 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   opacity: 0 !important;
 }
 /* HOME FIGMA DEPTH CARD ICON END */
+
+/* HOME FIGMA PARTNER CARD ICON START */
+/*
+Figma partner icon:
+card 2 X=158 Y=328 W=125 H=118
+icon W=32 H=32
+inside card approx: left=46.5 top=18
+color #FF8D28
+*/
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(2) {
+  position: relative !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(2) .home-figma-action-icon {
+  position: absolute !important;
+  left: calc(46.5 / 440 * 100vw) !important;
+  top: calc(18 / 440 * 100vw) !important;
+  width: calc(32 / 440 * 100vw) !important;
+  height: calc(32 / 440 * 100vw) !important;
+  margin: 0 !important;
+  color: #FF8D28 !important;
+  background-image: url("../../icons/home-partner-figma.svg") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions .home-figma-action-card:nth-child(2) .home-figma-action-icon > * {
+  opacity: 0 !important;
+}
+/* HOME FIGMA PARTNER CARD ICON END */
