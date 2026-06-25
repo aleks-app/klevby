@@ -1,7 +1,12 @@
 (() => {
   const SLOT_ID = "klevgo-home-figma-empty-ad-shell";
   const FEED_TITLE_ID = "klevgo-home-figma-feed-title";
+  const FEED_VIEW_ALL_ID = "klevgo-home-figma-feed-view-all";
   const STYLE_ID = "klevgo-home-figma-empty-ad-shell-style";
+
+  function leftFromFigma(x) {
+    return `max(${x}px, calc((100vw - 440px) / 2 + ${x}px))`;
+  }
 
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -11,7 +16,7 @@
     style.textContent = `
       #${SLOT_ID} {
         position: fixed;
-        left: max(23px, calc((100vw - 440px) / 2 + 23px));
+        left: ${leftFromFigma(23)};
         top: 505px;
         width: 396px;
         height: 243px;
@@ -33,7 +38,7 @@
 
       #${FEED_TITLE_ID} {
         position: fixed;
-        left: max(23px, calc((100vw - 440px) / 2 + 23px));
+        left: ${leftFromFigma(23)};
         top: 469px;
         width: 55px;
         height: 24px;
@@ -48,10 +53,33 @@
         pointer-events: none;
       }
 
-      #${FEED_TITLE_ID}::before,
-      #${FEED_TITLE_ID}::after {
-        content: none !important;
-        display: none !important;
+      #${FEED_VIEW_ALL_ID} {
+        position: fixed;
+        left: ${leftFromFigma(309)};
+        top: 469px;
+        width: 110px;
+        height: 23px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 21px;
+        letter-spacing: 0;
+        color: #FFFFFF;
+        white-space: nowrap;
+        z-index: 2147480001;
+        pointer-events: none;
+      }
+
+      #${FEED_VIEW_ALL_ID} img {
+        width: 8px;
+        height: 14px;
+        display: block;
+        flex: 0 0 8px;
       }
     `;
     document.head.appendChild(style);
@@ -62,7 +90,7 @@
     return text.includes("Соцсеть") && text.includes("рыбаков") && text.includes("Лента");
   }
 
-  function ensureSlot() {
+  function ensureHomeFigmaElements() {
     ensureStyle();
 
     let slot = document.getElementById(SLOT_ID);
@@ -81,21 +109,28 @@
       feedTitle.textContent = "Лента";
       document.body.appendChild(feedTitle);
     }
+
+    let feedViewAll = document.getElementById(FEED_VIEW_ALL_ID);
+    if (!feedViewAll) {
+      feedViewAll = document.createElement("div");
+      feedViewAll.id = FEED_VIEW_ALL_ID;
+      feedViewAll.setAttribute("aria-hidden", "true");
+      feedViewAll.innerHTML = '<span>Смотреть всё</span><img src="/assets/icons/figma/home-feed-view-all-chevron.svg" alt="" aria-hidden="true" />';
+      document.body.appendChild(feedViewAll);
+    }
   }
 
-  function removeSlot() {
-    const slot = document.getElementById(SLOT_ID);
-    if (slot) slot.remove();
-
-    const feedTitle = document.getElementById(FEED_TITLE_ID);
-    if (feedTitle) feedTitle.remove();
+  function removeHomeFigmaElements() {
+    document.getElementById(SLOT_ID)?.remove();
+    document.getElementById(FEED_TITLE_ID)?.remove();
+    document.getElementById(FEED_VIEW_ALL_ID)?.remove();
   }
 
   function sync() {
     if (isHomeVisible()) {
-      ensureSlot();
+      ensureHomeFigmaElements();
     } else {
-      removeSlot();
+      removeHomeFigmaElements();
     }
   }
 
