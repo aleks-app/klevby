@@ -2,6 +2,7 @@
   const SLOT_ID = "klevgo-home-figma-empty-ad-shell";
   const FEED_TITLE_ID = "klevgo-home-figma-feed-title";
   const FEED_VIEW_ALL_ID = "klevgo-home-figma-feed-view-all";
+  const WEATHER_SHELL_ID = "klevgo-home-figma-empty-weather-shell";
   const STYLE_ID = "klevgo-home-figma-empty-ad-shell-style";
   const STARTED_AT = performance.now();
 
@@ -82,6 +83,29 @@
         display: block;
         flex: 0 0 8px;
       }
+
+      #${WEATHER_SHELL_ID} {
+        position: fixed;
+        left: ${leftFromFigma(22)};
+        top: 760px;
+        width: 396px;
+        height: 75px;
+        box-sizing: border-box;
+        border-radius: 16px;
+        background: #161C20;
+        border: 0.9px solid rgba(255, 255, 255, 0.14);
+        box-shadow: none;
+        overflow: hidden;
+        z-index: 2147480000;
+        pointer-events: none;
+      }
+
+      #${WEATHER_SHELL_ID}::before,
+      #${WEATHER_SHELL_ID}::after {
+        content: none !important;
+        display: none !important;
+      }
+
     `;
     document.head.appendChild(style);
   }
@@ -153,12 +177,22 @@
       feedViewAll.innerHTML = '<span>Смотреть всё</span><img src="/assets/icons/figma/home-feed-view-all-chevron.svg" alt="" aria-hidden="true" />';
       document.body.appendChild(feedViewAll);
     }
+
+    let weatherShell = document.getElementById(WEATHER_SHELL_ID);
+    if (!weatherShell) {
+      weatherShell = document.createElement("div");
+      weatherShell.id = WEATHER_SHELL_ID;
+      weatherShell.setAttribute("aria-hidden", "true");
+      document.body.appendChild(weatherShell);
+    }
+
   }
 
   function removeHomeFigmaElements() {
     document.getElementById(SLOT_ID)?.remove();
     document.getElementById(FEED_TITLE_ID)?.remove();
     document.getElementById(FEED_VIEW_ALL_ID)?.remove();
+    document.getElementById(WEATHER_SHELL_ID)?.remove();
   }
 
   function sync() {
