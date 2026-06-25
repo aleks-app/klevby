@@ -186,7 +186,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
-  margin: 2.1vw 0 0;
+  margin: 3.25vw 0 0;
   font-family: "Onest", system-ui, sans-serif;
   color: rgba(245, 247, 244, 0.72);
   font-size: 3.4vw;
