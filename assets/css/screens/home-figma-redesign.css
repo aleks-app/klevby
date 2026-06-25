@@ -167,12 +167,13 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   white-space: nowrap;
   font-size: 6.96vw;
   line-height: 8.68vw;
-  font-weight: 300;
+  font-weight: 200;
   letter-spacing: 0;
   text-shadow: none;
   -webkit-text-stroke: 0 transparent;
   -webkit-font-smoothing: antialiased;
   font-synthesis: none;
+  font-synthesis-weight: none;
 }
 
 
