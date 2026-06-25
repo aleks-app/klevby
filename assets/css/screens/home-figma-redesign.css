@@ -1,0 +1,60 @@
+/* Home Figma trace base. Active only when body[data-home-figma-trace="true"]. */
+#homeSection .home-figma-stage {
+  display: none;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"]::before,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"]::after {
+  display: none;
+  content: none;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] header {
+  display: none;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] {
+  overflow-x: hidden;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  background: #000;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .hero,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-quick-actions,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-feed-preview,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection #forecastPanel,
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-weather-card {
+  display: none;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-stage {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-trace-layer {
+  display: block;
+  width: 100vw;
+  height: auto;
+  max-width: none;
+  opacity: 0.62;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
