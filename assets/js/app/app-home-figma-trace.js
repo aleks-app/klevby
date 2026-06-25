@@ -3,10 +3,14 @@
 
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("homeFigmaTrace") === "1") {
-      document.body.setAttribute("data-home-figma-trace", "true");
+    const homeFigmaTrace = params.get("homeFigmaTrace");
+
+    if (homeFigmaTrace === "0") {
+      return;
     }
+
+    document.body.setAttribute("data-home-figma-trace", "true");
   } catch (_) {
-    /* URL flag is optional; default Home must stay unchanged. */
+    document.body.setAttribute("data-home-figma-trace", "true");
   }
 }());
