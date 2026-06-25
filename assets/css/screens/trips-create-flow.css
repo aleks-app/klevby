@@ -1,6 +1,33 @@
 /* Trips create flow skeleton. Scoped to #tripsSection only. */
 #tripsSection .trips-create-flow {
   --klevby-trips-create-step1-rail-x: min(22px, 4.99vw);
+  --klevby-trips-create-step1-copy-top: min(380px, 43.5dvh);
+  --klevby-trips-create-step1-copy-block-y: calc(min(80px, 18.14vw) + 54px);
+  --klevby-trips-create-step1-copy-to-cards-gap: clamp(14px, 2dvh, 31px);
+  --klevby-trips-create-step1-cards-top-base: min(545px, 123.58vw);
+  --klevby-trips-create-step1-cards-top: max(
+    var(--klevby-trips-create-step1-cards-top-base),
+    calc(
+      var(--klevby-trips-create-step1-copy-top) +
+      var(--klevby-trips-create-step1-copy-block-y) +
+      var(--klevby-trips-create-step1-copy-to-cards-gap)
+    )
+  );
+  --klevby-trips-create-step1-card-gap: clamp(14px, 1.9dvh, 20px);
+  --klevby-trips-create-step1-cards-to-next-gap: clamp(12px, 1.5dvh, 24px);
+  --klevby-trips-create-step1-next-bottom: clamp(32px, calc((100dvh - 812px) * 0.305 + 32px), 65px);
+  --klevby-trips-create-step1-next-block-y: calc(min(80px, 18.1818vw) + min(7px, 1.5909vw) + min(15px, 3.4091vw));
+  --klevby-trips-create-step1-card-height-fit: calc(
+    (
+      100dvh -
+      var(--klevby-trips-create-step1-next-bottom) -
+      var(--klevby-trips-create-step1-next-block-y) -
+      var(--klevby-trips-create-step1-cards-top) -
+      var(--klevby-trips-create-step1-card-gap) -
+      var(--klevby-trips-create-step1-cards-to-next-gap)
+    ) / 2
+  );
+  --klevby-trips-create-step1-card-height: min(clamp(82px, 10.2dvh, 97px), var(--klevby-trips-create-step1-card-height-fit));
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -66,7 +93,7 @@
   display: none;
   position: absolute;
   left: var(--klevby-trips-create-step1-rail-x);
-  top: 380px;
+  top: var(--klevby-trips-create-step1-copy-top);
   width: 298px;
   z-index: 2;
   pointer-events: none;
@@ -240,9 +267,9 @@
   position: absolute;
   left: var(--klevby-trips-create-step1-rail-x);
   right: var(--klevby-trips-create-step1-rail-x);
-  top: min(545px, 123.58vw);
+  top: var(--klevby-trips-create-step1-cards-top);
   z-index: 2;
-  gap: min(20px, 4.54vw);
+  gap: var(--klevby-trips-create-step1-card-gap);
   pointer-events: auto;
 }
 
@@ -256,8 +283,8 @@
   align-items: center;
   column-gap: min(24px, 5.44vw);
   width: 100%;
-  height: min(97px, 21.99vw);
-  min-height: 84px;
+  height: min(var(--klevby-trips-create-step1-card-height), 21.99vw);
+  min-height: 0;
   padding: 0 min(21px, 4.76vw);
   border: 1px solid rgba(188, 187, 186, 0.22);
   border-radius: 16px;
@@ -342,7 +369,7 @@
 #tripsSection .trips-create-flow[data-trips-create-step="1"] .trips-create-flow__step-one-next {
   position: absolute;
   left: 50%;
-  top: min(789px, 179.3182vw);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--klevby-trips-create-step1-next-bottom));
   z-index: 3;
   display: flex;
   flex-direction: column;
