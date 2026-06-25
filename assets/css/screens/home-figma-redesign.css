@@ -169,7 +169,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   white-space: nowrap;
   font-size: 7.5vw;
   line-height: 9.09vw;
-h0 !important;
+font-weight: 500 !important;
   letter-spacing: -0.02em !important;
   text-shadow: none;
   -webkit-text-stroke: 0 transparent;
