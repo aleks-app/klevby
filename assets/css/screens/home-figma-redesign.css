@@ -186,11 +186,11 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
-  margin: 3.25vw 0 0;
+  margin: 3.95vw 0 0;
   font-family: "Onest", system-ui, sans-serif;
   color: rgba(245, 247, 244, 0.72);
-  font-size: 3.4vw;
-  line-height: 5vw;
-  font-weight: 500;
+  font-size: 3.41vw;
+  line-height: 4.77vw;
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
