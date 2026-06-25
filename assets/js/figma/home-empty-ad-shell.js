@@ -86,36 +86,43 @@
     document.head.appendChild(style);
   }
 
+  function isSplashActive() {
+    const splash = document.getElementById("appSplash");
+    if (!splash) return false;
+
+    const style = window.getComputedStyle(splash);
+    const rect = splash.getBoundingClientRect();
+
+    return (
+      !splash.classList.contains("hidden") &&
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      Number(style.opacity) !== 0 &&
+      rect.width > 0 &&
+      rect.height > 0
+    );
+  }
+
   function isHomeVisible() {
-    // Splash/startup screen must stay clean. Figma mirror elements appear only after real Home is visible.
-    if (performance.now() - STARTED_AT < 2800) return false;
+    /*
+      Figma mirror elements are temporary Home-only overlays.
+      They must never render during splash/startup.
+    */
+    if (isSplashActive()) return false;
 
-    const visibleTextNodes = Array.from(document.querySelectorAll("body *")).filter((el) => {
-      const text = (el.textContent || "").trim();
-      if (!text) return false;
+    const bodyMode = document.body?.getAttribute("data-app-chrome-mode");
+    if (bodyMode !== "home") return false;
 
-      const style = window.getComputedStyle(el);
-      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
-        return false;
-      }
+    const home = document.getElementById("homeSection");
+    if (!home || home.classList.contains("hidden")) return false;
 
-      const rect = el.getBoundingClientRect();
-      if (rect.width < 10 || rect.height < 8) return false;
+    const style = window.getComputedStyle(home);
+    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+      return false;
+    }
 
-      return rect.top > 100 && rect.top < window.innerHeight - 80;
-    });
-
-    const hasHero = visibleTextNodes.some((el) => {
-      const text = (el.textContent || "").trim();
-      return text.includes("Соцсеть") || text.includes("рыбаков");
-    });
-
-    const hasHomeFeed = visibleTextNodes.some((el) => {
-      const text = (el.textContent || "").trim();
-      return text.includes("Лента");
-    });
-
-    return hasHero && hasHomeFeed;
+    const rect = home.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
   function ensureHomeFigmaElements() {
