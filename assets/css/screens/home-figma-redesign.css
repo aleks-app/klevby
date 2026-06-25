@@ -182,7 +182,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
-  transform: translateY(0.42vw);
+  transform: translateY(calc(-11 / 440 * 100vw));
 }
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
