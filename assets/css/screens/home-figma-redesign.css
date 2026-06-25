@@ -380,3 +380,31 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   text-rendering: geometricPrecision;
 }
 /* HOME FIGMA HERO SUBTITLE EXACT POSITION END */
+
+/* HOME FIGMA MIRROR: AD RECTANGLE 12 START */
+/*
+  Figma Rectangle 12:
+  absolute Home position: X 23 / Y 505
+  local position inside ad frame: X 0 / Y -1
+  size: 396 x 243
+  radius: 16
+  fill: #161C20
+  stroke: Cards stroke line, inside, 0.9px
+*/
+.home-feed-ad-card,
+.home-feed-card,
+.home-feed-preview,
+.klevby-home-feed-card,
+.klevby-home__feed-card,
+[data-home-feed-ad-card],
+[data-feed-ad-card] {
+  width: 396px !important;
+  height: 243px !important;
+  border-radius: 16px !important;
+  background: #161C20 !important;
+  border: 0.9px solid rgba(255, 255, 255, 0.14) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+/* HOME FIGMA MIRROR: AD RECTANGLE 12 END */
