@@ -160,16 +160,17 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
   margin: 0;
-  font-family: "Onest", "Montserrat", system-ui, sans-serif !important;
+  font-family: "Onest", -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
   color: #FEFDFE;
   width: max-content;
   max-width: 80vw;
   white-space: nowrap;
-  font-size: 7.12vw;
-  line-height: 8.85vw;
-  font-weight: 320;
+  font-size: 6.96vw;
+  line-height: 8.68vw;
+  font-weight: 280;
   letter-spacing: 0;
   text-shadow: none;
+  -webkit-text-stroke: 0 transparent;
   -webkit-font-smoothing: antialiased;
   font-synthesis: none;
 }
