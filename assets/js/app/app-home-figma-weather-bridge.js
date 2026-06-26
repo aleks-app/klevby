@@ -15,7 +15,7 @@
   };
 
   let weatherMode = "weather";
-  let activeSource = "dom-fallback";
+  let activeSource = "missing-state";
 
   function getWeatherState() {
     const state = window.KlevGoWeatherState;
@@ -260,64 +260,32 @@
     document.head.appendChild(style);
   }
 
-  function getText(selector, fallback) {
-    const value = document.querySelector(selector)?.textContent?.trim();
-    return value || fallback;
-  }
-
   function getWeatherValuesFromState(state) {
     return {
-      iconSrc: state.iconSrc || "assets/icons/weather/cloud-sun.svg",
-      temp: state.tempText || FALLBACKS.temp,
-      condition: state.conditionText || FALLBACKS.condition,
-      wind: state.windText || FALLBACKS.wind,
-      pressure: state.pressureText || FALLBACKS.pressure,
-    };
-  }
-
-  function getWeatherValuesFromDom() {
-    return {
-      iconSrc: document.getElementById("homeWeatherModeIcon")?.getAttribute("src") || "assets/icons/weather/cloud-sun.svg",
-      temp: getText("#homeWeatherTempChip .home-weather-chip-value", FALLBACKS.temp),
-      condition: getText("#homeWeatherCondition", FALLBACKS.condition),
-      wind: getText("#homeWeatherWindChip .home-weather-chip-value", FALLBACKS.wind),
-      pressure: getText("#homeWeatherPressure", FALLBACKS.pressure),
+      iconSrc: state?.iconSrc || "assets/icons/weather/cloud-sun.svg",
+      temp: state?.tempText || FALLBACKS.temp,
+      condition: state?.conditionText || FALLBACKS.condition,
+      wind: state?.windText || FALLBACKS.wind,
+      pressure: state?.pressureText || FALLBACKS.pressure,
     };
   }
 
   function getBiteValuesFromState(state) {
     return {
-      iconSrc: state.biteIconSrc || "assets/icons/weather/fish-light.svg",
-      value: state.biteTitle || FALLBACKS.biteValue,
-      description: state.biteDescription || FALLBACKS.biteDescription,
-    };
-  }
-
-  function getBiteValuesFromDom() {
-    return {
-      iconSrc: document.querySelector("#homeWeatherBiteChip .home-weather-icon-img")?.getAttribute("src") || "assets/icons/weather/fish-light.svg",
-      value: getText("#homeWeatherBiteChip .home-weather-chip-value", FALLBACKS.biteValue),
-      description: getText("#biteForecast", FALLBACKS.biteDescription),
+      iconSrc: state?.biteIconSrc || "assets/icons/weather/fish-light.svg",
+      value: state?.biteTitle || FALLBACKS.biteValue,
+      description: state?.biteDescription || FALLBACKS.biteDescription,
     };
   }
 
   function getBridgeDataSource() {
     const state = getWeatherState();
 
-    if (state) {
-      return {
-        source: "state",
-        state,
-        weather: getWeatherValuesFromState(state),
-        bite: getBiteValuesFromState(state),
-      };
-    }
-
     return {
-      source: "dom-fallback",
-      state: null,
-      weather: getWeatherValuesFromDom(),
-      bite: getBiteValuesFromDom(),
+      source: state ? "state" : "missing-state",
+      state,
+      weather: getWeatherValuesFromState(state),
+      bite: getBiteValuesFromState(state),
     };
   }
 
