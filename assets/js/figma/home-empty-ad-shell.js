@@ -4,6 +4,7 @@
   const FEED_VIEW_ALL_ID = "klevgo-home-figma-feed-view-all";
   const WEATHER_SHELL_ID = "klevgo-home-figma-empty-weather-shell";
   const STYLE_ID = "klevgo-home-figma-empty-ad-shell-style";
+  const AD_IMAGE_SRC = "/assets/img/home/home-ad-placeholder-card.png?v=20260626-home-ad-1";
   const STARTED_AT = performance.now();
 
   const HOME_REDESIGN_ATTRIBUTE = "data-home-redesign";
@@ -30,11 +31,19 @@
         height: 243px;
         box-sizing: border-box;
         border-radius: 16px;
-        background: #161C20;
-        border: 0.9px solid rgba(255, 255, 255, 0.14);
+        background: transparent;
+        border: none;
         box-shadow: none;
         overflow: hidden;
         z-index: 2147480000;
+        pointer-events: none;
+      }
+
+      #${SLOT_ID} img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
         pointer-events: none;
       }
 
@@ -157,6 +166,23 @@
     return rect.width > 0 && rect.height > 0;
   }
 
+  function ensureAdShellImage(slot) {
+    if (!slot) return;
+
+    let image = slot.querySelector("img");
+    if (!image) {
+      image = document.createElement("img");
+      image.alt = "";
+      image.setAttribute("aria-hidden", "true");
+      image.decoding = "async";
+      slot.appendChild(image);
+    }
+
+    if (image.getAttribute("src") !== AD_IMAGE_SRC) {
+      image.setAttribute("src", AD_IMAGE_SRC);
+    }
+  }
+
   function ensureHomeFigmaElements() {
     ensureStyle();
 
@@ -167,6 +193,7 @@
       slot.setAttribute("aria-hidden", "true");
       document.body.appendChild(slot);
     }
+    ensureAdShellImage(slot);
 
     let feedTitle = document.getElementById(FEED_TITLE_ID);
     if (!feedTitle) {
