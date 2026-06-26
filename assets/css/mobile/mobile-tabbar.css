@@ -34,9 +34,9 @@
   }
 
   body[data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) .mobile-tabbar {
-    top: 847px;
+    top: var(--klevby-home-touchbar-top, 847px);
     bottom: auto;
-    height: 70px;
+    height: var(--klevby-home-touchbar-height, 70px);
     display: grid;
   }
 

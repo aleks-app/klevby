@@ -13,7 +13,11 @@
   }
 
   function leftFromFigma(x) {
-    return `max(${x}px, calc((100vw - 440px) / 2 + ${x}px))`;
+    return `calc(var(--klevby-home-content-inset, max(${x}px, calc((100vw - 440px) / 2 + ${x}px))) + ((${x} - 22) * var(--klevby-home-scale, 1)))`;
+  }
+
+  function scalePx(value) {
+    return `calc(${value}px * var(--klevby-home-scale, 1))`;
   }
 
   function ensureStyle() {
@@ -24,10 +28,16 @@
     style.textContent = `
       #${SLOT_ID} {
         position: fixed;
-        left: ${leftFromFigma(23)};
-        top: 505px;
-        width: 396px;
-        height: 243px;
+        left: var(--klevby-home-content-inset, ${leftFromFigma(23)});
+        top: calc(
+          var(--klevby-home-touchbar-top, 847px)
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(75)}
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(243)}
+        );
+        width: var(--klevby-home-rail-width, min(396px, calc(100vw - (2 * var(--klevby-home-content-inset, 22px)))));
+        height: ${scalePx(243)};
         box-sizing: border-box;
         border-radius: 16px;
         background: #161C20;
@@ -46,8 +56,15 @@
 
       #${FEED_TITLE_ID} {
         position: fixed;
-        left: ${leftFromFigma(23)};
-        top: 469px;
+        left: var(--klevby-home-content-inset, ${leftFromFigma(23)});
+        top: calc(
+          var(--klevby-home-touchbar-top, 847px)
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(75)}
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(243)}
+          - ${scalePx(36)}
+        );
         width: 55px;
         height: 24px;
         font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -63,8 +80,15 @@
 
       #${FEED_VIEW_ALL_ID} {
         position: fixed;
-        left: ${leftFromFigma(309)};
-        top: 469px;
+        left: calc(var(--klevby-home-content-inset, 22px) + var(--klevby-home-rail-width, min(396px, calc(100vw - 44px))) - 110px);
+        top: calc(
+          var(--klevby-home-touchbar-top, 847px)
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(75)}
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(243)}
+          - ${scalePx(36)}
+        );
         width: 110px;
         height: 23px;
         box-sizing: border-box;
@@ -92,10 +116,14 @@
 
       #${WEATHER_SHELL_ID} {
         position: fixed;
-        left: ${leftFromFigma(22)};
-        top: 760px;
-        width: 396px;
-        height: 75px;
+        left: var(--klevby-home-content-inset, ${leftFromFigma(22)});
+        top: calc(
+          var(--klevby-home-touchbar-top, 847px)
+          - var(--klevby-home-scaled-gap, ${scalePx(12)})
+          - ${scalePx(75)}
+        );
+        width: var(--klevby-home-rail-width, min(396px, calc(100vw - (2 * var(--klevby-home-content-inset, 22px)))));
+        height: ${scalePx(75)};
         box-sizing: border-box;
         border-radius: 16px;
         background: #161C20;

@@ -82,6 +82,12 @@
   const HOME_COMPACT_AVAILABLE_HEIGHT_MIN = 670;
   const HOME_MIN_LOWER_GAP_PX = 10;
   const HOME_RHYTHM_TARGET_DELTA_PX = 2;
+  const HOME_DESIGN_BASE_WIDTH = 440;
+  const HOME_DESIGN_BASE_TOUCHBAR_TOP = 847;
+  const HOME_DESIGN_BASE_RAIL_WIDTH = 396;
+  const HOME_DESIGN_BASE_RAIL_LEFT = 22;
+  const HOME_DESIGN_BASE_GAP = 12;
+  const HOME_DESIGN_BASE_TOUCHBAR_HEIGHT = 70;
   const HOME_LOWER_FILL_CAPS = Object.freeze({
     standard: 12,
     compact: 40,
@@ -1141,6 +1147,70 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     return visualViewportHeight || innerHeight || clientHeight;
   }
 
+
+  function resolveHomeCompositionScale(root) {
+    const viewportWidth =
+      getPositiveHeight(window.visualViewport?.width) ||
+      getPositiveHeight(window.innerWidth) ||
+      getPositiveHeight(root?.clientWidth);
+    const viewportHeight =
+      getPositiveHeight(window.visualViewport?.height) ||
+      getPositiveHeight(window.innerHeight) ||
+      getPositiveHeight(root?.clientHeight);
+    const touchbarHeight =
+      getCssPixelValue(root, "--kg-touchbar-height") ||
+      getCssPixelValue(root, "--klevby-touchbar-height") ||
+      HOME_DESIGN_BASE_TOUCHBAR_HEIGHT;
+    const bottomSafeSpace = Math.max(
+      0,
+      getCssPixelValue(root, "--klevby-bottom-safe-area") || 0
+    );
+    const targetTouchbarTop = Math.min(
+      HOME_DESIGN_BASE_TOUCHBAR_TOP,
+      Math.max(0, viewportHeight - bottomSafeSpace - touchbarHeight)
+    );
+    const horizontalScale = viewportWidth
+      ? Math.min(1, viewportWidth / HOME_DESIGN_BASE_WIDTH)
+      : 1;
+    const verticalScale = targetTouchbarTop
+      ? Math.min(1, targetTouchbarTop / HOME_DESIGN_BASE_TOUCHBAR_TOP)
+      : 1;
+    const homeScale = Math.min(horizontalScale, verticalScale);
+    const scaledGap = HOME_DESIGN_BASE_GAP * homeScale;
+    const railWidth = Math.max(
+      0,
+      Math.min(HOME_DESIGN_BASE_RAIL_WIDTH, viewportWidth - (2 * HOME_DESIGN_BASE_RAIL_LEFT))
+    );
+    const railLeft = Math.max(0, (viewportWidth - railWidth) / 2);
+
+    return {
+      viewportWidth,
+      viewportHeight,
+      horizontalScale,
+      verticalScale,
+      homeScale,
+      targetTouchbarTop,
+      touchbarHeight,
+      bottomSafeSpace,
+      scaledGap,
+      railLeft,
+      railWidth
+    };
+  }
+
+  function publishHomeCompositionScale(root) {
+    if (!root) return null;
+
+    const scale = resolveHomeCompositionScale(root);
+    root.style.setProperty("--klevby-home-scale", String(scale.homeScale));
+    root.style.setProperty("--klevby-home-scaled-gap", `${scale.scaledGap}px`);
+    root.style.setProperty("--klevby-home-content-inset", `${scale.railLeft}px`);
+    root.style.setProperty("--klevby-home-rail-width", `${scale.railWidth}px`);
+    root.style.setProperty("--klevby-home-touchbar-top", `${scale.targetTouchbarTop}px`);
+    root.style.setProperty("--klevby-home-touchbar-height", `${scale.touchbarHeight}px`);
+    return scale;
+  }
+
   function updateAppHeight() {
     const root = document.documentElement;
     if (!root) return 0;
@@ -1764,6 +1834,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
       ? appShell.availableHeight
       : Math.max(0, availableBottom - availableTop);
     const appHeight = resolveAppHeight(root);
+    const compositionScale = publishHomeCompositionScale(root) || resolveHomeCompositionScale(root);
     const density = resolveMeasuredHomeDensity(availableHeight);
     const homeScreenContract = resolveHomeScreenContractIntegration({
       contractActive: homeSection.classList.contains(HOME_SCREEN_CONTRACT_CLASS),
@@ -1849,6 +1920,13 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
         : null,
       appHeight,
       currentDensity: density,
+      homeScale: compositionScale.homeScale,
+      homeHorizontalScale: compositionScale.horizontalScale,
+      homeVerticalScale: compositionScale.verticalScale,
+      homeScaledGap: compositionScale.scaledGap,
+      homeRailLeft: compositionScale.railLeft,
+      homeRailWidth: compositionScale.railWidth,
+      homeTargetTouchbarTop: compositionScale.targetTouchbarTop,
       homeLayoutMode: homeSection.getAttribute(HOME_LAYOUT_ATTRIBUTE) || HOME_LAYOUT_LEGACY_VALUE,
       homeGridContractActive: isHomeGridContractActive(),
       homeGridReadOnlyPass: null,
@@ -2024,6 +2102,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     }
 
     updateAppHeight();
+    publishHomeCompositionScale(root);
     root.setAttribute(LOCK_ATTRIBUTE, "true");
     body.setAttribute(LOCK_ATTRIBUTE, "true");
 
