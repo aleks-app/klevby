@@ -105,8 +105,43 @@ const HOME_WEATHER_MODE_ICONS = {
   rainy: "assets/icons/weather/cloud-rain-wind.svg"
 };
 
+function getSafeWeatherMode(mode) {
+  return HOME_WEATHER_MODE_LABELS[mode] ? mode : "cloudy";
+}
+
+function publishKlevGoWeatherState({
+  mode = "weather",
+  weatherMode = "cloudy",
+  tempText,
+  conditionText,
+  windText,
+  pressureText,
+  biteIconSrc = "assets/icons/weather/fish-light.svg",
+  biteTitle,
+  biteDescription
+}) {
+  const safeWeatherMode = getSafeWeatherMode(weatherMode);
+  const nextState = {
+    mode,
+    iconSrc: HOME_WEATHER_MODE_ICONS[safeWeatherMode],
+    tempText,
+    conditionText: conditionText || HOME_WEATHER_MODE_LABELS[safeWeatherMode].card,
+    windText,
+    pressureText,
+    biteIconSrc,
+    biteTitle,
+    biteDescription,
+    updatedAt: new Date().toISOString()
+  };
+
+  window.KlevGoWeatherState = nextState;
+  window.dispatchEvent(new CustomEvent("klevgo:weather-updated", {
+    detail: nextState
+  }));
+}
+
 function applyWeatherMode(mode) {
-  const safeMode = HOME_WEATHER_MODE_LABELS[mode] ? mode : "cloudy";
+  const safeMode = getSafeWeatherMode(mode);
   const panel = document.getElementById("forecastPanel");
   const mobileCondition = document.getElementById("mobileWeatherCondition");
   const homeCard = document.querySelector("#homeSection .home-weather-card");
@@ -218,6 +253,7 @@ async function fetchWeather() {
     const windText = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
     const pressureText = `${pressureMm} мм`;
     const biteResult = getBiteForecastByPressure(pressureMm);
+    const weatherMode = getWeatherMode(main, description);
 
     tempEl.textContent = tempText;
     windEl.textContent = windText;
@@ -234,6 +270,15 @@ async function fetchWeather() {
     });
 
     setWeatherAnimation(main, description);
+    publishKlevGoWeatherState({
+      weatherMode,
+      tempText,
+      conditionText: HOME_WEATHER_MODE_LABELS[getSafeWeatherMode(weatherMode)].card,
+      windText,
+      pressureText: formatHomeWeatherPressureText(pressureMm),
+      biteTitle: biteResult.shortText,
+      biteDescription: biteResult.text
+    });
   } catch (error) {
     console.error(error);
 
@@ -258,5 +303,14 @@ async function fetchWeather() {
     });
 
     setWeatherAnimation("Clouds", "облачно");
+    publishKlevGoWeatherState({
+      weatherMode: getWeatherMode("Clouds", "облачно"),
+      tempText: fallbackTempText,
+      conditionText: HOME_WEATHER_MODE_LABELS.cloudy.card,
+      windText: fallbackWindText,
+      pressureText: formatHomeWeatherPressureText(fallbackPressureMm),
+      biteTitle: fallbackBiteResult.shortText,
+      biteDescription: fallbackBiteResult.text
+    });
   }
 }
