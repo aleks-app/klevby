@@ -163,8 +163,9 @@
         width: 8px;
         height: 14px;
         display: block;
-        object-fit: contain;
-        opacity: 1;
+        background: #FF8D28;
+        -webkit-mask: url("/assets/icons/figma/home-feed-view-all-chevron.svg") center / contain no-repeat;
+        mask: url("/assets/icons/figma/home-feed-view-all-chevron.svg") center / contain no-repeat;
         pointer-events: none;
       }
     `;
@@ -217,7 +218,7 @@
         </div>
         <div class="klevgo-home-figma-weather-pressure"></div>
       </div>
-      <img class="klevgo-home-figma-weather-chevron" src="assets/icons/figma/home-feed-view-all-chevron.svg" alt="" decoding="async" aria-hidden="true" />
+      <div class="klevgo-home-figma-weather-chevron" aria-hidden="true"></div>
     `;
     shell.appendChild(content);
     return content;
