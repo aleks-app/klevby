@@ -137,6 +137,47 @@ body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-
   color: rgba(255, 255, 255, 0.86);
 }
 
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2.05vw;
+  flex: 0 0 auto;
+  pointer-events: auto;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-profile-button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: stretch;
+  flex: 0 0 auto;
+  width: 9.55vw;
+  height: 9.55vw;
+  padding: 0;
+  border: 1px solid rgba(244, 178, 74, 0.16);
+  border-radius: 3vw;
+  background: rgba(17, 24, 27, 0.92);
+  color: #fff8ea;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-profile-avatar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-size: 4.2vw;
+  font-weight: 900;
+  line-height: 1;
+}
+
 body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-menu-button {
   pointer-events: auto;
   display: inline-flex;

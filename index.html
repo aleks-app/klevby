@@ -95,7 +95,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
-<link rel="stylesheet" href="assets/css/main.css?v=20260626-home-clean-bg-3">
+<link rel="stylesheet" href="assets/css/main.css?v=20260626-home-figma-avatar-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -113,6 +113,7 @@
 
 <body data-app-chrome-mode="home">
 <script src="assets/js/app/app-home-figma-trace.js?v=20260626-home-figma-split-1"></script>
+  <script src="assets/js/app/app-home-figma-header.js?v=20260626-home-figma-avatar-2" defer></script>
   <section id="desktopBlockedScreen" aria-labelledby="desktopBlockedTitle">
     <div class="desktop-blocked-card">
       <img class="desktop-blocked-logo" src="assets/brand/klevby-fish-logo.png" alt="KlevGo" />
@@ -222,15 +223,25 @@
               <span class="home-figma-brand-tagline">Рыбалка в Беларуси</span>
             </span>
           </div>
-          <button
-            class="home-figma-menu-button"
-            type="button"
-            aria-label="Открыть меню"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
+          <div class="home-figma-header-actions">
+            <button
+              class="home-figma-profile-button"
+              type="button"
+              aria-label="Открыть профиль рыбака"
+            >
+              <span class="mobile-profile-avatar-icon home-figma-profile-avatar-icon">👤</span>
+            </button>
+            <button
+              class="home-figma-menu-button"
+              type="button"
+              aria-label="Открыть меню"
+              aria-expanded="false"
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
         </div>
         <div class="home-figma-hero-copy">
           <h1 class="home-figma-hero-title">
