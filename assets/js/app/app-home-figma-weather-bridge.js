@@ -94,6 +94,7 @@
         display: block;
         flex: 0 0 34px;
         object-fit: contain;
+        transform: translateY(-1px);
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-copy {
@@ -101,6 +102,7 @@
         display: flex;
         flex-direction: column;
         gap: 3px;
+        transform: translateY(2px);
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-temp {
