@@ -62,14 +62,18 @@ function formatHomeWeatherPressureText(pressureMm) {
   return `${pressure} мм рт. ст.`;
 }
 
+function updateOptionalText(node, value) {
+  if (node) {
+    node.textContent = value;
+  }
+}
+
 function updateMobileWeatherStrip({ tempText, windText, biteText, pressureMm }) {
   updateMobileWeatherChips({ tempText, windText, biteText });
 
   const pressureEl = document.getElementById("homeWeatherPressure");
 
-  if (pressureEl) {
-    pressureEl.textContent = formatHomeWeatherPressureText(pressureMm);
-  }
+  updateOptionalText(pressureEl, formatHomeWeatherPressureText(pressureMm));
 }
 
 function getWeatherMode(main, description) {
@@ -222,11 +226,9 @@ async function fetchWeather() {
   const pressureEl = document.getElementById("weatherPressure");
   const moonEl = document.getElementById("weatherMoon");
 
-  if (!status || !tempEl || !windEl || !pressureEl || !moonEl) return;
-
   try {
-    status.textContent = "Обновляем погоду для Минска...";
-    moonEl.textContent = getMoonPhaseName();
+    updateOptionalText(status, "Обновляем погоду для Минска...");
+    updateOptionalText(moonEl, getMoonPhaseName());
 
     if (!weatherApiKey) {
       throw new Error("weather_key_missing");
@@ -255,11 +257,11 @@ async function fetchWeather() {
     const biteResult = getBiteForecastByPressure(pressureMm);
     const weatherMode = getWeatherMode(main, description);
 
-    tempEl.textContent = tempText;
-    windEl.textContent = windText;
-    pressureEl.textContent = pressureText;
-    moonEl.textContent = getMoonPhaseName();
-    status.textContent = `Минск: ${description}. Данные обновляются автоматически.`;
+    updateOptionalText(tempEl, tempText);
+    updateOptionalText(windEl, windText);
+    updateOptionalText(pressureEl, pressureText);
+    updateOptionalText(moonEl, getMoonPhaseName());
+    updateOptionalText(status, `Минск: ${description}. Данные обновляются автоматически.`);
 
     updateBiteForecast(pressureMm);
     updateMobileWeatherStrip({
@@ -288,11 +290,11 @@ async function fetchWeather() {
     const fallbackPressureText = `${fallbackPressureMm} мм`;
     const fallbackBiteResult = getBiteForecastByPressure(fallbackPressureMm);
 
-    status.textContent = "Погоду не удалось загрузить. Показываем ориентировочные значения.";
-    tempEl.textContent = fallbackTempText;
-    windEl.textContent = fallbackWindText;
-    pressureEl.textContent = fallbackPressureText;
-    moonEl.textContent = getMoonPhaseName();
+    updateOptionalText(status, "Погоду не удалось загрузить. Показываем ориентировочные значения.");
+    updateOptionalText(tempEl, fallbackTempText);
+    updateOptionalText(windEl, fallbackWindText);
+    updateOptionalText(pressureEl, fallbackPressureText);
+    updateOptionalText(moonEl, getMoonPhaseName());
 
     updateBiteForecast(fallbackPressureMm);
     updateMobileWeatherStrip({
