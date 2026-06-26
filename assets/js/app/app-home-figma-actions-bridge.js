@@ -1,15 +1,29 @@
 (() => {
-  const ACTION_NAVIGATORS = {
-    feed: () => {
-      if (typeof window.goMobileFeed === "function") {
-        window.goMobileFeed();
-        return;
-      }
+  const FEED_VIEW_ALL_ID = "klevgo-home-figma-feed-view-all";
 
-      if (typeof window.showSection === "function") {
-        window.showSection("feed");
-      }
-    },
+  function isHomeRedesignActive() {
+    const home = document.getElementById("homeSection");
+    return (
+      document.body?.getAttribute("data-home-redesign") === "true" &&
+      document.body?.getAttribute("data-app-chrome-mode") === "home" &&
+      home &&
+      !home.classList.contains("hidden")
+    );
+  }
+
+  function navigateToFeed() {
+    if (typeof window.goMobileFeed === "function") {
+      window.goMobileFeed();
+      return;
+    }
+
+    if (typeof window.showSection === "function") {
+      window.showSection("feed");
+    }
+  }
+
+  const ACTION_NAVIGATORS = {
+    feed: navigateToFeed,
     trips: () => {
       if (typeof window.goMobileTrips === "function") {
         window.goMobileTrips();
@@ -32,14 +46,33 @@
     },
   };
 
-  function isHomeRedesignActive() {
-    const home = document.getElementById("homeSection");
-    return (
-      document.body?.getAttribute("data-home-redesign") === "true" &&
-      document.body?.getAttribute("data-app-chrome-mode") === "home" &&
-      home &&
-      !home.classList.contains("hidden")
-    );
+  function bindFeedViewAll() {
+    const control = document.getElementById(FEED_VIEW_ALL_ID);
+    if (!control || control.dataset.homeFigmaViewAllBound === "true") return;
+
+    control.dataset.homeFigmaViewAllBound = "true";
+    control.style.pointerEvents = "auto";
+    control.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!isHomeRedesignActive()) return;
+      navigateToFeed();
+    });
+  }
+
+  function observeFeedViewAll() {
+    if (document.body.dataset.homeFigmaViewAllObserved === "true") return;
+
+    document.body.dataset.homeFigmaViewAllObserved = "true";
+    bindFeedViewAll();
+
+    const observer = new MutationObserver(() => {
+      bindFeedViewAll();
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
   }
 
   function bindActionCards() {
@@ -64,6 +97,7 @@
 
   function init() {
     bindActionCards();
+    observeFeedViewAll();
   }
 
   if (document.readyState === "loading") {
