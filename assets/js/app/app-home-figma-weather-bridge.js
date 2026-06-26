@@ -10,7 +10,11 @@
     condition: "Облачно",
     wind: "—",
     pressure: "—",
+    biteValue: "Средний",
+    biteDescription: "Прогноз средний, нужно пробовать.",
   };
+
+  let weatherMode = "weather";
 
   function isSplashActive() {
     const splash = document.getElementById("appSplash");
@@ -163,10 +167,60 @@
         width: 8px;
         height: 14px;
         display: block;
+        border: 0;
+        padding: 0;
+        appearance: none;
+        -webkit-appearance: none;
         background: #FF8D28;
         -webkit-mask: url("/assets/icons/figma/home-feed-view-all-chevron.svg") center / contain no-repeat;
         mask: url("/assets/icons/figma/home-feed-view-all-chevron.svg") center / contain no-repeat;
-        pointer-events: none;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS}[data-weather-mode="bite"] .klevgo-home-figma-weather-chevron {
+        transform: translateY(-50%) scaleX(-1);
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-bite {
+        display: none;
+        grid-column: 1 / -1;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+        padding-right: 20px;
+        box-sizing: border-box;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS}[data-weather-mode="bite"] .klevgo-home-figma-weather-left,
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS}[data-weather-mode="bite"] .klevgo-home-figma-weather-divider,
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS}[data-weather-mode="bite"] .klevgo-home-figma-weather-right {
+        display: none !important;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS}[data-weather-mode="bite"] .klevgo-home-figma-weather-bite {
+        display: flex;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-bite-icon {
+        width: 34px;
+        height: 34px;
+        display: block;
+        flex: 0 0 34px;
+        object-fit: contain;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-bite-text {
+        min-width: 0;
+        overflow: hidden;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
       }
     `;
     document.head.appendChild(style);
@@ -185,6 +239,18 @@
       wind: getText("#homeWeatherWindChip .home-weather-chip-value", FALLBACKS.wind),
       pressure: getText("#homeWeatherPressure", FALLBACKS.pressure),
     };
+  }
+
+  function getBiteValues() {
+    return {
+      iconSrc: document.querySelector("#homeWeatherBiteChip .home-weather-icon-img")?.getAttribute("src") || "assets/icons/weather/fish-light.svg",
+      value: getText("#homeWeatherBiteChip .home-weather-chip-value", FALLBACKS.biteValue),
+      description: getText("#biteForecast", FALLBACKS.biteDescription),
+    };
+  }
+
+  function formatBiteText(bite) {
+    return `Клёв: ${bite.value} ${bite.description}`;
   }
 
   function setTextIfChanged(element, value) {
@@ -218,13 +284,82 @@
         </div>
         <div class="klevgo-home-figma-weather-pressure"></div>
       </div>
-      <div class="klevgo-home-figma-weather-chevron" aria-hidden="true"></div>
+      <div class="klevgo-home-figma-weather-bite">
+        <img class="klevgo-home-figma-weather-bite-icon" src="assets/icons/weather/fish-light.svg" alt="" decoding="async" />
+        <div class="klevgo-home-figma-weather-bite-text"></div>
+      </div>
+      <button type="button" class="klevgo-home-figma-weather-chevron" aria-label="Показать прогноз клёва"></button>
     `;
     shell.appendChild(content);
     return content;
   }
 
+  function applyMode(content) {
+    content.setAttribute("data-weather-mode", weatherMode);
+
+    const chevron = content.querySelector(".klevgo-home-figma-weather-chevron");
+    if (chevron) {
+      chevron.setAttribute(
+        "aria-label",
+        weatherMode === "weather" ? "Показать прогноз клёва" : "Вернуться к погоде",
+      );
+    }
+  }
+
+  function ensureBiteStructure(content) {
+    if (!content.querySelector(".klevgo-home-figma-weather-bite")) {
+      const bite = document.createElement("div");
+      bite.className = "klevgo-home-figma-weather-bite";
+      bite.innerHTML = `
+        <img class="klevgo-home-figma-weather-bite-icon" src="assets/icons/weather/fish-light.svg" alt="" decoding="async" />
+        <div class="klevgo-home-figma-weather-bite-text"></div>
+      `;
+
+      const chevron = content.querySelector(".klevgo-home-figma-weather-chevron");
+      if (chevron) {
+        content.insertBefore(bite, chevron);
+      } else {
+        content.appendChild(bite);
+      }
+    }
+
+    let chevron = content.querySelector(".klevgo-home-figma-weather-chevron");
+    if (chevron && chevron.tagName !== "BUTTON") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "klevgo-home-figma-weather-chevron";
+      button.setAttribute("aria-label", "Показать прогноз клёва");
+      chevron.replaceWith(button);
+      chevron = button;
+    }
+
+    if (chevron && content.dataset.chevronBound !== "true") {
+      chevron.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        weatherMode = weatherMode === "weather" ? "bite" : "weather";
+        applyMode(content);
+        updateContent(content);
+      });
+      content.dataset.chevronBound = "true";
+    }
+
+    applyMode(content);
+  }
+
   function updateContent(content) {
+    if (weatherMode === "bite") {
+      const bite = getBiteValues();
+      const biteIcon = content.querySelector(".klevgo-home-figma-weather-bite-icon");
+
+      if (biteIcon && biteIcon.getAttribute("src") !== bite.iconSrc) {
+        biteIcon.setAttribute("src", bite.iconSrc);
+      }
+
+      setTextIfChanged(content.querySelector(".klevgo-home-figma-weather-bite-text"), formatBiteText(bite));
+      return;
+    }
+
     const values = getWeatherValues();
     const icon = content.querySelector(".klevgo-home-figma-weather-icon");
 
@@ -251,6 +386,7 @@
 
     ensureStyle();
     const ensuredContent = ensureContent(shell);
+    ensureBiteStructure(ensuredContent);
     ensuredContent.hidden = false;
     updateContent(ensuredContent);
   }
