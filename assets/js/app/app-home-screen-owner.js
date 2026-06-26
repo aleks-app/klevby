@@ -88,6 +88,17 @@
   const HOME_DESIGN_BASE_RAIL_LEFT = 22;
   const HOME_DESIGN_BASE_GAP = 12;
   const HOME_DESIGN_BASE_TOUCHBAR_HEIGHT = 70;
+  const HOME_FIGMA_GEOMETRY_SOURCE = "figma-shells";
+  const HOME_FIGMA_SELECTORS = Object.freeze({
+    root: "#homeSection .home-figma-live",
+    header: "#homeSection .home-figma-header",
+    heroCopy: "#homeSection .home-figma-hero-copy",
+    actions: "#homeSection .home-figma-actions",
+    feedShell: "#klevgo-home-figma-empty-ad-shell",
+    feedCard: "#klevgo-home-figma-empty-ad-shell",
+    feedHeader: "#klevgo-home-figma-feed-title",
+    weatherShell: "#klevgo-home-figma-empty-weather-shell"
+  });
   const HOME_LOWER_FILL_CAPS = Object.freeze({
     standard: 12,
     compact: 40,
@@ -404,6 +415,38 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     };
   }
 
+  function isVisibleGeometryElement(element) {
+    if (!element || typeof element.getBoundingClientRect !== "function") return false;
+
+    const rect = element.getBoundingClientRect();
+    const style = typeof window.getComputedStyle === "function" ? window.getComputedStyle(element) : null;
+    return Boolean(
+      rect.width > 0 &&
+      rect.height > 0 &&
+      style &&
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      style.opacity !== "0"
+    );
+  }
+
+  function queryVisibleGeometryElement(selector) {
+    return Array.from(document.querySelectorAll(selector)).find(isVisibleGeometryElement) || null;
+  }
+
+  function resolveHomeFigmaGeometryElements(homeSection = document.getElementById(HOME_SECTION_ID)) {
+    return {
+      geometrySource: HOME_FIGMA_GEOMETRY_SOURCE,
+      root: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.root) || homeSection,
+      header: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.header),
+      heroCopy: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.heroCopy),
+      actions: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.actions),
+      feedShell: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.feedShell),
+      feedCard: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.feedCard),
+      feedHeader: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.feedHeader),
+      weatherShell: queryVisibleGeometryElement(HOME_FIGMA_SELECTORS.weatherShell)
+    };
+  }
 
   function readHomeHeroCopyComputedDiagnostics(heroCopy, homeSection = document.querySelector("#homeSection")) {
     if (!heroCopy) return null;
@@ -1236,12 +1279,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
   }
 
   function findActiveHomeFeedCard() {
-    return (
-      document.querySelector("#homeSection .home-feed-preview-slide.is-active") ||
-      document.querySelector(
-        "#homeSection .home-feed-preview-slide, #homeSection .home-feed-preview-card"
-      )
-    );
+    return resolveHomeFigmaGeometryElements().feedCard;
   }
 
   function measureSlotRailRect(element, expectedRailLeft, expectedRailWidth) {
@@ -1316,12 +1354,13 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const viewportWidth = getPositiveHeight(window.innerWidth) || root.clientWidth || 0;
     const expectedRailLeft = contentInset;
     const expectedRailWidth = Math.max(0, viewportWidth - contentInset * 2);
-    const hero = homeSection.querySelector(".hero");
-    const heroCopy = homeSection.querySelector(".hero-copy");
-    const quickActions = homeSection.querySelector(".home-quick-actions");
-    const feedPreview = homeSection.querySelector(".home-feed-preview");
-    const feedHeader = homeSection.querySelector(".home-feed-preview-head");
-    const weatherCard = homeSection.querySelector(".home-weather-card");
+    const figmaGeometry = resolveHomeFigmaGeometryElements(homeSection);
+    const hero = figmaGeometry.header;
+    const heroCopy = figmaGeometry.heroCopy;
+    const quickActions = figmaGeometry.actions;
+    const feedPreview = figmaGeometry.feedShell;
+    const feedHeader = figmaGeometry.feedHeader;
+    const weatherCard = figmaGeometry.weatherShell;
     const feedSlot = feedPreview;
     const touchBarRect = touchBar?.getBoundingClientRect() || null;
     const heroRect = hero?.getBoundingClientRect() || null;
@@ -1400,12 +1439,14 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     };
     const feedHeightDeltaPx =
       feedSlot && activeFeedCardRect
-        ? getAbsoluteDelta(feedSlot.height, activeFeedCardRect.height)
+        ? getAbsoluteDelta(feedRect?.height, activeFeedCardRect.height)
         : null;
     const weatherTopDeltaPx =
       feedRect && weatherRect ? getAbsoluteDelta(weatherRect.top, feedRect.bottom) : null;
 
     return {
+      geometrySource: figmaGeometry.geometrySource,
+      geometrySelectors: HOME_FIGMA_SELECTORS,
       realModeRootTop,
       realModeRootBottom,
       expectedTop: availableTop ?? null,
@@ -1539,10 +1580,12 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
   }
 
   function measureHomeBottomRhythm(touchBar) {
-    const activeFeedCard = findActiveHomeFeedCard();
-    const weatherCard = document.querySelector("#homeSection .home-weather-card");
+    const figmaGeometry = resolveHomeFigmaGeometryElements();
+    const activeFeedCard = figmaGeometry.feedCard;
+    const weatherCard = figmaGeometry.weatherShell;
     if (!activeFeedCard || !weatherCard || !touchBar) {
       return {
+        geometrySource: HOME_FIGMA_GEOMETRY_SOURCE,
         activeFeedCardMeasured: false,
         upperGap: null,
         lowerGap: null,
@@ -1558,6 +1601,7 @@ body[data-home-skeleton="true"] #homeSection .home-weather-card {
     const lowerGap = touchBarRect.top - weatherCardRect.bottom;
 
     return {
+      geometrySource: HOME_FIGMA_GEOMETRY_SOURCE,
       activeFeedCardMeasured: true,
       upperGap,
       lowerGap,

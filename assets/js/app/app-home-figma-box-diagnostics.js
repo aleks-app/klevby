@@ -241,6 +241,7 @@
 
     return {
       timestamp: new Date().toISOString(),
+      geometrySource: "figma-shells",
       locationHref: window.location.href,
       viewport: {
         innerWidth: window.innerWidth,
