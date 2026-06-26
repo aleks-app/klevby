@@ -78,7 +78,7 @@
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-left {
-        gap: 10px;
+        gap: 8px;
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-right {
@@ -89,10 +89,10 @@
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-icon {
-        width: 38px;
-        height: 38px;
+        width: 34px;
+        height: 34px;
         display: block;
-        flex: 0 0 38px;
+        flex: 0 0 34px;
         object-fit: contain;
       }
 
@@ -104,8 +104,8 @@
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-temp {
-        font-size: 22px;
-        font-weight: 700;
+        font-size: 20px;
+        font-weight: 600;
         line-height: 1;
         letter-spacing: -0.02em;
         white-space: nowrap;
