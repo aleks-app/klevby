@@ -15,6 +15,20 @@
   };
 
   let weatherMode = "weather";
+  let activeSource = "dom-fallback";
+
+  function getWeatherState() {
+    const state = window.KlevGoWeatherState;
+    return state && typeof state === "object" ? state : null;
+  }
+
+  function updateDebug({ source, state }) {
+    window.KLEVGO_FIGMA_WEATHER_BRIDGE_DEBUG = {
+      source,
+      lastState: state ? { ...state } : null,
+      lastRenderAt: new Date().toISOString(),
+    };
+  }
 
   function isSplashActive() {
     const splash = document.getElementById("appSplash");
@@ -251,7 +265,17 @@
     return value || fallback;
   }
 
-  function getWeatherValues() {
+  function getWeatherValuesFromState(state) {
+    return {
+      iconSrc: state.iconSrc || "assets/icons/weather/cloud-sun.svg",
+      temp: state.tempText || FALLBACKS.temp,
+      condition: state.conditionText || FALLBACKS.condition,
+      wind: state.windText || FALLBACKS.wind,
+      pressure: state.pressureText || FALLBACKS.pressure,
+    };
+  }
+
+  function getWeatherValuesFromDom() {
     return {
       iconSrc: document.getElementById("homeWeatherModeIcon")?.getAttribute("src") || "assets/icons/weather/cloud-sun.svg",
       temp: getText("#homeWeatherTempChip .home-weather-chip-value", FALLBACKS.temp),
@@ -261,11 +285,39 @@
     };
   }
 
-  function getBiteValues() {
+  function getBiteValuesFromState(state) {
+    return {
+      iconSrc: state.biteIconSrc || "assets/icons/weather/fish-light.svg",
+      value: state.biteTitle || FALLBACKS.biteValue,
+      description: state.biteDescription || FALLBACKS.biteDescription,
+    };
+  }
+
+  function getBiteValuesFromDom() {
     return {
       iconSrc: document.querySelector("#homeWeatherBiteChip .home-weather-icon-img")?.getAttribute("src") || "assets/icons/weather/fish-light.svg",
       value: getText("#homeWeatherBiteChip .home-weather-chip-value", FALLBACKS.biteValue),
       description: getText("#biteForecast", FALLBACKS.biteDescription),
+    };
+  }
+
+  function getBridgeDataSource() {
+    const state = getWeatherState();
+
+    if (state) {
+      return {
+        source: "state",
+        state,
+        weather: getWeatherValuesFromState(state),
+        bite: getBiteValuesFromState(state),
+      };
+    }
+
+    return {
+      source: "dom-fallback",
+      state: null,
+      weather: getWeatherValuesFromDom(),
+      bite: getBiteValuesFromDom(),
     };
   }
 
@@ -394,8 +446,11 @@
   }
 
   function updateContent(content) {
+    const dataSource = getBridgeDataSource();
+    activeSource = dataSource.source;
+
     if (weatherMode === "bite") {
-      const bite = getBiteValues();
+      const bite = dataSource.bite;
       const biteIcon = content.querySelector(".klevgo-home-figma-weather-bite-icon");
 
       if (biteIcon && biteIcon.getAttribute("src") !== bite.iconSrc) {
@@ -404,10 +459,11 @@
 
       setTextIfChanged(content.querySelector(".klevgo-home-figma-bite-title"), formatBiteTitle(bite.value));
       setTextIfChanged(content.querySelector(".klevgo-home-figma-bite-description"), formatBiteDescription(bite.description));
+      updateDebug({ source: activeSource, state: dataSource.state });
       return;
     }
 
-    const values = getWeatherValues();
+    const values = dataSource.weather;
     const icon = content.querySelector(".klevgo-home-figma-weather-icon");
 
     if (icon && icon.getAttribute("src") !== values.iconSrc) {
@@ -418,6 +474,7 @@
     setTextIfChanged(content.querySelector(".klevgo-home-figma-weather-condition"), values.condition);
     setTextIfChanged(content.querySelector(".klevgo-home-figma-weather-wind"), values.wind);
     setTextIfChanged(content.querySelector(".klevgo-home-figma-weather-pressure"), values.pressure);
+    updateDebug({ source: activeSource, state: dataSource.state });
   }
 
   function sync() {
@@ -469,4 +526,5 @@
 
   window.addEventListener("pageshow", sync);
   window.addEventListener("resize", sync);
+  window.addEventListener("klevgo:weather-updated", sync);
 })();
