@@ -24,34 +24,6 @@ function getBiteForecastByPressure(pressureMm) {
   };
 }
 
-function updateWeatherChip(chipId, value) {
-  const chip = document.getElementById(chipId);
-  if (!chip) return;
-
-  const valueEl = chip.querySelector(".home-weather-chip-value");
-
-  if (valueEl) {
-    valueEl.textContent = value;
-    return;
-  }
-
-  chip.textContent = value;
-}
-
-function updateMobileWeatherChips({ tempText, windText, biteText }) {
-  if (tempText) {
-    updateWeatherChip("homeWeatherTempChip", tempText);
-  }
-
-  if (windText) {
-    updateWeatherChip("homeWeatherWindChip", windText);
-  }
-
-  if (biteText) {
-    updateWeatherChip("homeWeatherBiteChip", biteText);
-  }
-}
-
 function formatHomeWeatherPressureText(pressureMm) {
   const pressure = Number(pressureMm);
 
@@ -60,20 +32,6 @@ function formatHomeWeatherPressureText(pressureMm) {
   }
 
   return `${pressure} мм рт. ст.`;
-}
-
-function updateOptionalText(node, value) {
-  if (node) {
-    node.textContent = value;
-  }
-}
-
-function updateMobileWeatherStrip({ tempText, windText, biteText, pressureMm }) {
-  updateMobileWeatherChips({ tempText, windText, biteText });
-
-  const pressureEl = document.getElementById("homeWeatherPressure");
-
-  updateOptionalText(pressureEl, formatHomeWeatherPressureText(pressureMm));
 }
 
 function getWeatherMode(main, description) {
@@ -144,71 +102,6 @@ function publishKlevGoWeatherState({
   }));
 }
 
-function applyWeatherMode(mode) {
-  const safeMode = getSafeWeatherMode(mode);
-  const panel = document.getElementById("forecastPanel");
-  const mobileCondition = document.getElementById("mobileWeatherCondition");
-  const homeCard = document.querySelector("#homeSection .home-weather-card");
-  const conditionEl = document.getElementById("homeWeatherCondition");
-  const modeIcon = document.getElementById("homeWeatherModeIcon");
-  const labels = HOME_WEATHER_MODE_LABELS[safeMode];
-
-  if (panel) {
-    panel.classList.remove("weather-sunny", "weather-cloudy", "weather-rainy");
-    panel.classList.add(`weather-${safeMode}`);
-  }
-
-  if (mobileCondition) {
-    mobileCondition.textContent = labels.panel;
-  }
-
-  if (homeCard) {
-    homeCard.dataset.weatherMode = safeMode;
-  }
-
-  if (conditionEl) {
-    conditionEl.textContent = labels.card;
-  }
-
-  if (modeIcon && HOME_WEATHER_MODE_ICONS[safeMode]) {
-    modeIcon.src = HOME_WEATHER_MODE_ICONS[safeMode];
-  }
-}
-
-function setWeatherAnimation(main, description) {
-  applyWeatherMode(getWeatherMode(main, description));
-}
-
-function updateBiteForecast(pressureMm) {
-  const el = document.getElementById("biteForecast");
-  const result = getBiteForecastByPressure(pressureMm);
-
-  if (el) {
-    el.className = `bite-line ${result.lineClass}`;
-    el.textContent = result.text;
-  }
-
-  updateWeatherChip("homeWeatherBiteChip", result.shortText);
-}
-
-function getMoonPhaseName() {
-  const now = new Date();
-  const knownNewMoon = new Date("2000-01-06T18:14:00Z");
-  const lunarCycle = 29.53058867;
-  const days = (now - knownNewMoon) / 86400000;
-  const phase = ((days % lunarCycle) + lunarCycle) % lunarCycle;
-
-  if (phase < 1.85) return "Новолуние";
-  if (phase < 5.54) return "Растущий серп";
-  if (phase < 9.23) return "Первая четверть";
-  if (phase < 12.92) return "Растущая луна";
-  if (phase < 16.61) return "Полнолуние";
-  if (phase < 20.30) return "Убывающая луна";
-  if (phase < 23.99) return "Последняя четверть";
-  if (phase < 27.68) return "Убывающий серп";
-  return "Новолуние";
-}
-
 function windDirection(deg) {
   if (deg === undefined || deg === null) return "";
 
@@ -220,16 +113,7 @@ async function fetchWeather() {
   const config = window.KLEVB_CONFIG || {};
   const weatherApiKey = config.WEATHER_API_KEY || window.WEATHER_API_KEY || "";
 
-  const status = document.getElementById("weatherStatus");
-  const tempEl = document.getElementById("weatherTemp");
-  const windEl = document.getElementById("weatherWind");
-  const pressureEl = document.getElementById("weatherPressure");
-  const moonEl = document.getElementById("weatherMoon");
-
   try {
-    updateOptionalText(status, "Обновляем погоду для Минска...");
-    updateOptionalText(moonEl, getMoonPhaseName());
-
     if (!weatherApiKey) {
       throw new Error("weather_key_missing");
     }
@@ -253,25 +137,9 @@ async function fetchWeather() {
 
     const tempText = `${temp > 0 ? "+" : ""}${temp}°C`;
     const windText = `${Math.round(wind)} м/с ${windDirection(windDeg)}`;
-    const pressureText = `${pressureMm} мм`;
     const biteResult = getBiteForecastByPressure(pressureMm);
     const weatherMode = getWeatherMode(main, description);
 
-    updateOptionalText(tempEl, tempText);
-    updateOptionalText(windEl, windText);
-    updateOptionalText(pressureEl, pressureText);
-    updateOptionalText(moonEl, getMoonPhaseName());
-    updateOptionalText(status, `Минск: ${description}. Данные обновляются автоматически.`);
-
-    updateBiteForecast(pressureMm);
-    updateMobileWeatherStrip({
-      tempText,
-      windText,
-      biteText: biteResult.shortText,
-      pressureMm
-    });
-
-    setWeatherAnimation(main, description);
     publishKlevGoWeatherState({
       weatherMode,
       tempText,
@@ -287,24 +155,8 @@ async function fetchWeather() {
     const fallbackTempText = "+14°C";
     const fallbackWindText = "3 м/с СЗ";
     const fallbackPressureMm = 752;
-    const fallbackPressureText = `${fallbackPressureMm} мм`;
     const fallbackBiteResult = getBiteForecastByPressure(fallbackPressureMm);
 
-    updateOptionalText(status, "Погоду не удалось загрузить. Показываем ориентировочные значения.");
-    updateOptionalText(tempEl, fallbackTempText);
-    updateOptionalText(windEl, fallbackWindText);
-    updateOptionalText(pressureEl, fallbackPressureText);
-    updateOptionalText(moonEl, getMoonPhaseName());
-
-    updateBiteForecast(fallbackPressureMm);
-    updateMobileWeatherStrip({
-      tempText: fallbackTempText,
-      windText: fallbackWindText,
-      biteText: fallbackBiteResult.shortText,
-      pressureMm: fallbackPressureMm
-    });
-
-    setWeatherAnimation("Clouds", "облачно");
     publishKlevGoWeatherState({
       weatherMode: getWeatherMode("Clouds", "облачно"),
       tempText: fallbackTempText,
