@@ -1,16 +1,21 @@
 (function () {
   "use strict";
 
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const homeFigmaTrace = params.get("homeFigmaTrace");
+  const TRACE_FLAG = "homeFigmaTrace";
+  const TRACE_ENABLED_VALUE = "1";
 
-    if (homeFigmaTrace === "0") {
-      return;
+  function isHomeFigmaTraceEnabled() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(TRACE_FLAG) === TRACE_ENABLED_VALUE;
+    } catch (_) {
+      return false;
     }
+  }
 
+  if (isHomeFigmaTraceEnabled()) {
     document.body.setAttribute("data-home-figma-trace", "true");
-  } catch (_) {
-    document.body.setAttribute("data-home-figma-trace", "true");
+  } else {
+    document.body.removeAttribute("data-home-figma-trace");
   }
 }());

@@ -6,6 +6,18 @@
   const STYLE_ID = "klevgo-home-figma-empty-ad-shell-style";
   const STARTED_AT = performance.now();
 
+  const TRACE_FLAG = "homeFigmaTrace";
+  const TRACE_ENABLED_VALUE = "1";
+
+  function isHomeFigmaTraceEnabled() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(TRACE_FLAG) === TRACE_ENABLED_VALUE;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function leftFromFigma(x) {
     return `max(${x}px, calc((100vw - 440px) / 2 + ${x}px))`;
   }
@@ -132,6 +144,7 @@
       Figma mirror elements are temporary Home-only overlays.
       They must never render during splash/startup.
     */
+    if (!isHomeFigmaTraceEnabled()) return false;
     if (isSplashActive()) return false;
 
     const bodyMode = document.body?.getAttribute("data-app-chrome-mode");
