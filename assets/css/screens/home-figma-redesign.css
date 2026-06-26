@@ -17,6 +17,20 @@ body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.h
   background: #000;
 }
 
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+  background-image: url("../../img/home/home-figma-clean-bg.png?v=20260626-home-clean-bg-2");
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+
 body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden))::before,
 body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden))::after {
   display: none;
