@@ -6,16 +6,10 @@
   const STYLE_ID = "klevgo-home-figma-empty-ad-shell-style";
   const STARTED_AT = performance.now();
 
-  const TRACE_FLAG = "homeFigmaTrace";
-  const TRACE_ENABLED_VALUE = "1";
+  const HOME_REDESIGN_ATTRIBUTE = "data-home-redesign";
 
-  function isHomeFigmaTraceEnabled() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get(TRACE_FLAG) === TRACE_ENABLED_VALUE;
-    } catch (_) {
-      return false;
-    }
+  function isHomeRedesignEnabled() {
+    return document.body?.getAttribute(HOME_REDESIGN_ATTRIBUTE) === "true";
   }
 
   function leftFromFigma(x) {
@@ -141,10 +135,11 @@
 
   function isHomeVisible() {
     /*
-      Figma mirror elements are temporary Home-only overlays.
-      They must never render during splash/startup.
+      Figma-aligned live elements are temporary Home-only overlays.
+      They must never render during splash/startup and are independent
+      from the PNG debug mirror flag.
     */
-    if (!isHomeFigmaTraceEnabled()) return false;
+    if (!isHomeRedesignEnabled()) return false;
     if (isSplashActive()) return false;
 
     const bodyMode = document.body?.getAttribute("data-app-chrome-mode");

@@ -1,4 +1,4 @@
-/* Home Figma trace base. Active only when body[data-home-figma-trace="true"]. */
+/* Home Figma split: trace flag controls only the PNG mirror; redesign flag controls live Home UI. */
 #homeSection .home-figma-stage {
   display: none;
 }
@@ -37,7 +37,16 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   display: none;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-header {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) .home-figma-live {
+  display: block;
+}
+
+body:has(#appSplash:not(.hidden)) #homeSection .home-figma-stage,
+body:has(#appSplash:not(.hidden)) #homeSection .home-figma-live {
+  display: none;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-header {
   position: absolute;
   left: 5vw;
   right: 5vw;
@@ -48,27 +57,27 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   justify-content: space-between;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand {
   display: flex;
   align-items: center;
   gap: 2.5vw;
   min-width: 0;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-copy {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-icon {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-icon {
   flex: 0 0 auto;
   width: 10vw;
   height: 10vw;
   object-fit: contain;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-name {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-name {
   font-family: "Onest", system-ui, sans-serif;
   font-size: 5.25vw;
   font-weight: 800;
@@ -76,11 +85,11 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   color: #fff;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-accent {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-accent {
   color: #f47a2b;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-tagline {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-tagline {
   margin-top: 1.1vw;
   font-family: "Onest", system-ui, sans-serif;
   font-size: 2.65vw;
@@ -89,7 +98,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   color: rgba(255, 255, 255, 0.86);
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-menu-button {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-menu-button {
   pointer-events: auto;
   display: inline-flex;
   flex-direction: column;
@@ -107,7 +116,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   cursor: pointer;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-menu-button span {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-menu-button span {
   display: block;
   width: 4.2vw;
   height: 0.45vw;
@@ -115,14 +124,14 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   background: currentColor;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
   position: absolute;
   left: calc(22 / 440 * 100vw) !important;
   top: calc(164 / 440 * 100vw) !important;
   z-index: 4;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
   margin: 0;
   font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   color: #FEFDFE !important;
@@ -143,15 +152,15 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 }
 
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
   display: block;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
   transform: none;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
   margin: calc(23 / 440 * 100vw) 0 0;
   font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #BCBBBA;
@@ -164,13 +173,13 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   text-rendering: geometricPrecision;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions {
   dth: 89.77vw;
   height: 26.82vw;
   pointer-events: auto;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-card {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-card {
   width: 28.41vw;
   height: 26.82vw;
   border: 1px solid rgba(105, 118, 122, 0.48);
@@ -187,14 +196,14 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   box-shadow: none;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-icon {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-icon {
   width: 7.73vw;
   height: 7.73vw;
   margin-top: 4.77vw;
   color: #ff7a1a;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-icon svg {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-icon svg {
   width: 100%;
   height: 100%;
   stroke: currentColor;
@@ -203,7 +212,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   stroke-linejoin: round;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-title {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-title {
   margin-top: 3.18vw;
   font-family: "Onest", system-ui, sans-serif;
   font-size: 3.18vw;
@@ -213,7 +222,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   white-space: nowrap;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-subtitle {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-subtitle {
   margin-top: 1.14vw;
   font-family: "Onest", system-ui, sans-serif;
   font-size: 2.5vw;
@@ -225,7 +234,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 
 
 /* HOME FIGMA ACTION CARDS POSITION FIX START */
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-actions {
   position: absolute !important;
   left: calc(23 / 440 * 100vw) !important;
   top: calc(328 / 440 * 100vw) !important;
@@ -242,7 +251,7 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   pointer-events: auto !important;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-card {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-action-card {
   flex: 0 0 calc(125 / 440 * 100vw) !important;
   width: calc(125 / 440 * 100vw) !important;
   height: calc(118 / 440 * 100vw) !important;
@@ -258,14 +267,14 @@ Figma hero title:
 рыбаков:     X=22 Y=213 W=137 H=40
 Typography: Onest Medium 33 / line-height 40 / letter 0 / #FEFDFE
 */
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
   position: absolute !important;
   left: calc(22 / 440 * 100vw) !important;
   top: calc(175 / 440 * 100vw) !important;
   z-index: 4 !important;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title {
   margin: 0 !important;
   font-family: "Onest", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   color: #FEFDFE !important;
@@ -285,12 +294,12 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
   text-rendering: geometricPrecision;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line {
   display: block !important;
   white-space: nowrap !important;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-title-line--second {
   width: calc(137 / 440 * 100vw) !important;
   max-width: calc(137 / 440 * 100vw) !important;
   height: calc(40 / 440 * 100vw) !important;
@@ -318,14 +327,14 @@ left=1 top=90
 Typography:
 Onest Regular 14 / line-height 21 / letter 0 / #BCBBBA
 */
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-copy {
   position: absolute !important;
   left: calc(22 / 440 * 100vw) !important;
   top: calc(175 / 440 * 100vw) !important;
   z-index: 4 !important;
 }
 
-body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-hero-subtitle {
   position: absolute !important;
   left: calc(1 / 440 * 100vw) !important;
   top: calc(90 / 440 * 100vw) !important;
