@@ -135,6 +135,22 @@
         line-height: 1.1;
         white-space: nowrap;
       }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-wind-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-wind-icon {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+        display: block;
+        object-fit: contain;
+        opacity: 0.9;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -179,7 +195,10 @@
       </div>
       <div class="klevgo-home-figma-weather-divider" aria-hidden="true"></div>
       <div class="klevgo-home-figma-weather-right">
-        <div class="klevgo-home-figma-weather-wind"></div>
+        <div class="klevgo-home-figma-weather-wind-row">
+          <img class="klevgo-home-figma-weather-wind-icon" src="assets/icons/weather/wind-light.svg" alt="" decoding="async" />
+          <div class="klevgo-home-figma-weather-wind"></div>
+        </div>
         <div class="klevgo-home-figma-weather-pressure"></div>
       </div>
     `;
