@@ -186,9 +186,6 @@
         display: none;
         grid-column: 1 / -1;
         min-width: 0;
-        align-items: center;
-        gap: 8px;
-        padding-right: 20px;
         box-sizing: border-box;
       }
 
@@ -199,28 +196,51 @@
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS}[data-weather-mode="bite"] .klevgo-home-figma-weather-bite {
+        display: block;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-bite-content {
         display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        width: 100%;
+        padding-right: 20px;
+        box-sizing: border-box;
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-bite-icon {
-        width: 34px;
-        height: 34px;
+        width: 30px;
+        height: 30px;
         display: block;
-        flex: 0 0 34px;
+        flex: 0 0 30px;
         object-fit: contain;
+        opacity: 0.9;
       }
 
-      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-bite-text {
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-bite-copy {
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-bite-title {
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 20px;
+        color: #FFFFFF;
+        white-space: nowrap;
+      }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-bite-description {
+        margin-top: 2px;
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 17px;
+        color: rgba(255, 255, 255, 0.72);
+        white-space: nowrap;
         overflow: hidden;
-        color: rgba(255, 255, 255, 0.88);
-        font-size: 12px;
-        font-weight: 500;
-        line-height: 1.25;
         text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
       }
     `;
     document.head.appendChild(style);
@@ -249,8 +269,20 @@
     };
   }
 
-  function formatBiteText(bite) {
-    return `Клёв: ${bite.value} ${bite.description}`;
+  function sanitizeBiteText(text) {
+    return String(text || "")
+      .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function formatBiteTitle(value) {
+    const cleanValue = sanitizeBiteText(value) || FALLBACKS.biteValue;
+    return `Клёв: ${cleanValue}`;
+  }
+
+  function formatBiteDescription(description) {
+    return sanitizeBiteText(description) || FALLBACKS.biteDescription;
   }
 
   function setTextIfChanged(element, value) {
@@ -285,8 +317,13 @@
         <div class="klevgo-home-figma-weather-pressure"></div>
       </div>
       <div class="klevgo-home-figma-weather-bite">
-        <img class="klevgo-home-figma-weather-bite-icon" src="assets/icons/weather/fish-light.svg" alt="" decoding="async" />
-        <div class="klevgo-home-figma-weather-bite-text"></div>
+        <div class="klevgo-home-figma-bite-content">
+          <img class="klevgo-home-figma-weather-bite-icon" src="assets/icons/weather/fish-light.svg" alt="" decoding="async" />
+          <div class="klevgo-home-figma-bite-copy">
+            <div class="klevgo-home-figma-bite-title"></div>
+            <div class="klevgo-home-figma-bite-description"></div>
+          </div>
+        </div>
       </div>
       <button type="button" class="klevgo-home-figma-weather-chevron" aria-label="Показать прогноз клёва"></button>
     `;
@@ -307,20 +344,29 @@
   }
 
   function ensureBiteStructure(content) {
-    if (!content.querySelector(".klevgo-home-figma-weather-bite")) {
-      const bite = document.createElement("div");
-      bite.className = "klevgo-home-figma-weather-bite";
-      bite.innerHTML = `
-        <img class="klevgo-home-figma-weather-bite-icon" src="assets/icons/weather/fish-light.svg" alt="" decoding="async" />
-        <div class="klevgo-home-figma-weather-bite-text"></div>
-      `;
+    let biteRoot = content.querySelector(".klevgo-home-figma-weather-bite");
+    if (!biteRoot) {
+      biteRoot = document.createElement("div");
+      biteRoot.className = "klevgo-home-figma-weather-bite";
 
       const chevron = content.querySelector(".klevgo-home-figma-weather-chevron");
       if (chevron) {
-        content.insertBefore(bite, chevron);
+        content.insertBefore(biteRoot, chevron);
       } else {
-        content.appendChild(bite);
+        content.appendChild(biteRoot);
       }
+    }
+
+    if (!biteRoot.querySelector(".klevgo-home-figma-bite-content")) {
+      biteRoot.innerHTML = `
+        <div class="klevgo-home-figma-bite-content">
+          <img class="klevgo-home-figma-weather-bite-icon" src="assets/icons/weather/fish-light.svg" alt="" decoding="async" />
+          <div class="klevgo-home-figma-bite-copy">
+            <div class="klevgo-home-figma-bite-title"></div>
+            <div class="klevgo-home-figma-bite-description"></div>
+          </div>
+        </div>
+      `;
     }
 
     let chevron = content.querySelector(".klevgo-home-figma-weather-chevron");
@@ -356,7 +402,8 @@
         biteIcon.setAttribute("src", bite.iconSrc);
       }
 
-      setTextIfChanged(content.querySelector(".klevgo-home-figma-weather-bite-text"), formatBiteText(bite));
+      setTextIfChanged(content.querySelector(".klevgo-home-figma-bite-title"), formatBiteTitle(bite.value));
+      setTextIfChanged(content.querySelector(".klevgo-home-figma-bite-description"), formatBiteDescription(bite.description));
       return;
     }
 
