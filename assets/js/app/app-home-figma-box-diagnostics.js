@@ -43,6 +43,14 @@
     }
   }
 
+  function queryAll(selector) {
+    try {
+      return Array.from(document.querySelectorAll(selector));
+    } catch (_) {
+      return [];
+    }
+  }
+
   function rectOf(element) {
     if (!element || typeof element.getBoundingClientRect !== "function") return null;
     const rect = element.getBoundingClientRect();
@@ -80,8 +88,60 @@
     };
   }
 
+  function classNameOf(element) {
+    if (!element) return null;
+    if (typeof element.className === "string") return element.className;
+    if (element.className && typeof element.className.baseVal === "string") return element.className.baseVal;
+    return String(element.className || "");
+  }
+
+  function isVisibleCandidate(rect, style) {
+    return Boolean(
+      rect &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      style &&
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      style.opacity !== "0"
+    );
+  }
+
+  function candidateSummary(name, selector, element, index) {
+    const rect = rectOf(element);
+    const style = typeof getComputedStyle === "function" ? getComputedStyle(element) : null;
+    const visible = isVisibleCandidate(rect, style);
+    return {
+      name,
+      selector,
+      index,
+      tagName: element?.tagName || null,
+      id: element?.id || "",
+      className: classNameOf(element),
+      rect,
+      display: style?.display ?? null,
+      visibility: style?.visibility ?? null,
+      opacity: style?.opacity ?? null,
+      position: style?.position ?? null,
+      zIndex: style?.zIndex ?? null,
+      visible
+    };
+  }
+
+  function collectCandidates(name, selector) {
+    const candidates = queryAll(selector).map((element, index) => candidateSummary(name, selector, element, index));
+    const selectedVisibleCandidate = candidates.find((candidate) => candidate.visible) || null;
+    return {
+      selector,
+      candidates,
+      selectedVisibleCandidate
+    };
+  }
+
   function markElement(name, selector) {
-    const element = query(selector);
+    const candidateGroup = collectCandidates(name, selector);
+    const selectedIndex = candidateGroup.selectedVisibleCandidate?.index ?? 0;
+    const element = queryAll(selector)[selectedIndex] || null;
     if (element) element.__klevgoSelector = selector;
     return [name, element];
   }
@@ -131,7 +191,20 @@
   }
 
   function measure() {
+    const measuredCandidateNames = ["feedShell", "weatherShell", "background", "touchBar"];
+    const candidateGroups = Object.fromEntries(
+      measuredCandidateNames.map((name) => [name, collectCandidates(name, SELECTORS[name])])
+    );
     const elements = Object.fromEntries(Object.entries(SELECTORS).map(([name, selector]) => markElement(name, selector)));
+    measuredCandidateNames.forEach((name) => {
+      const selectedIndex = candidateGroups[name].selectedVisibleCandidate?.index;
+      if (selectedIndex == null) return;
+      const selectedElement = queryAll(SELECTORS[name])[selectedIndex] || null;
+      if (selectedElement) {
+        selectedElement.__klevgoSelector = SELECTORS[name];
+        elements[name] = selectedElement;
+      }
+    });
     const rects = {
       html: rectOf(document.documentElement),
       body: rectOf(document.body)
@@ -172,6 +245,48 @@
         touchBar: getCssVariables(elements.touchBar)
       },
       selectors: SELECTORS,
+      candidates: candidateGroups,
+      selectedVisibleSelectors: {
+        feedShell: candidateGroups.feedShell.selectedVisibleCandidate?.selector ?? null,
+        weatherShell: candidateGroups.weatherShell.selectedVisibleCandidate?.selector ?? null,
+        background: candidateGroups.background.selectedVisibleCandidate?.selector ?? null,
+        touchBar: candidateGroups.touchBar.selectedVisibleCandidate?.selector ?? null
+      },
+      visibleBlocks: {
+        feedAdShell: rects.feedShell ? {
+          top: rects.feedShell.top,
+          bottom: rects.feedShell.bottom,
+          height: rects.feedShell.height,
+          gapToWeather: gap(rects.feedShell, weatherRect)
+        } : null,
+        weatherShell: weatherRect ? {
+          top: weatherRect.top,
+          bottom: weatherRect.bottom,
+          height: weatherRect.height,
+          gapToTouchBarTop: gap(weatherRect, touchRect)
+        } : null,
+        touchBar: touchRect ? {
+          top: touchRect.top,
+          bottom: touchRect.bottom,
+          height: touchRect.height,
+          bottomSpaceToViewport: viewportBottom - touchRect.bottom
+        } : null,
+        background: backgroundRect ? {
+          top: backgroundRect.top,
+          bottom: backgroundRect.bottom,
+          height: backgroundRect.height,
+          viewportBottom,
+          bottomSpaceToViewport: viewportBottom - backgroundRect.bottom,
+          reachesViewportBottom: backgroundRect.bottom >= viewportBottom
+        } : null,
+        rail: rects.homeRoot ? {
+          left: rects.homeRoot.left,
+          right: rects.homeRoot.right,
+          width: rects.homeRoot.width,
+          horizontalOverflowPx: Math.max(0, (document.body?.scrollWidth || 0) - window.innerWidth),
+          exceedsViewport: isOutsideViewport(rects.homeRoot)
+        } : null
+      },
       rects,
       gaps: {
         heroToActionCards: gap(rects.hero, rects.actionCards),
