@@ -3,6 +3,7 @@
 
   const TRACE_FLAG = "homeFigmaTrace";
   const TRACE_ENABLED_VALUE = "1";
+  const HOME_REDESIGN_ATTRIBUTE = "data-home-redesign";
 
   function isHomeFigmaTraceEnabled() {
     try {
@@ -12,6 +13,8 @@
       return false;
     }
   }
+
+  document.body.setAttribute(HOME_REDESIGN_ATTRIBUTE, "true");
 
   if (isHomeFigmaTraceEnabled()) {
     document.body.setAttribute("data-home-figma-trace", "true");
