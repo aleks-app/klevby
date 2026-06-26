@@ -3,6 +3,38 @@
   display: none;
 }
 
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #000;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden))::before,
+body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden))::after {
+  display: none;
+  content: none;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) header {
+  display: none !important;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) .hero,
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) .home-quick-actions,
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) .home-feed-preview,
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) #forecastPanel,
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) .home-weather-card {
+  display: none !important;
+}
+
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"]::before,
 body[data-home-figma-trace="true"][data-app-chrome-mode="home"]::after {
   display: none;
@@ -39,6 +71,10 @@ body[data-home-figma-trace="true"][data-app-chrome-mode="home"] #homeSection .ho
 
 body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection:not(.hidden) .home-figma-live {
   display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 1001;
+  pointer-events: none;
 }
 
 body:has(#appSplash:not(.hidden)) #homeSection .home-figma-stage,
