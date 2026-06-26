@@ -118,14 +118,18 @@ body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-
 
 body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-name {
   font-family: "Onest", system-ui, sans-serif;
-  font-size: 5.25vw;
-  font-weight: 800;
-  line-height: 1;
-  color: #fff;
+  font-size: 5vw;
+  font-weight: 600;
+  line-height: 9.09vw;
+  letter-spacing: 0;
+}
+
+body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-main {
+  color: #FEFDFE;
 }
 
 body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-accent {
-  color: #f47a2b;
+  color: #F57A04;
 }
 
 body[data-home-redesign="true"][data-app-chrome-mode="home"] #homeSection .home-figma-brand-tagline {
