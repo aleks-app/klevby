@@ -15,10 +15,10 @@
     fishLogo: "#homeSection .home-figma-brand, #homeSection .home-figma-brand-icon",
     hero: "#homeSection .home-figma-hero-copy",
     actionCards: "#homeSection .home-figma-actions",
-    feedShell: "#klevgo-home-figma-empty-ad-shell, #homeSection .home-feed-preview",
+    feedShell: "#klevgo-home-figma-empty-ad-shell",
     feedTitle: "#klevgo-home-figma-feed-title",
     feedViewAll: "#klevgo-home-figma-feed-view-all",
-    weatherShell: "#klevgo-home-figma-empty-weather-shell, #homeSection .home-weather-card, #forecastPanel",
+    weatherShell: "#klevgo-home-figma-empty-weather-shell",
     touchBar: ".mobile-tabbar",
     bottomChrome: "#klevgo-home-figma-empty-weather-shell ~ .mobile-tabbar, .bottom-nav, .bottom-chrome, .app-bottom-chrome, [data-bottom-chrome]",
     topChrome: "#header, header, .app-header, [data-safe-area-top]"
