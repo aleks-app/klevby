@@ -61,7 +61,7 @@
         height: 100%;
         box-sizing: border-box;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 1px minmax(0, 0.86fr);
+        grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
         align-items: center;
         column-gap: 14px;
         padding: 12px 18px;
