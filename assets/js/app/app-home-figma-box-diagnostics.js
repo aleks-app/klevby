@@ -163,6 +163,25 @@
     return values;
   }
 
+  function getWeatherBridgeDiagnostics() {
+    const bridgeDebug = window.KLEVGO_FIGMA_WEATHER_BRIDGE_DEBUG || {};
+    const weatherState = window.KlevGoWeatherState || {};
+    return {
+      source: bridgeDebug.source || null,
+      lastRenderAt: bridgeDebug.lastRenderAt || null,
+      hasState: Boolean(window.KlevGoWeatherState),
+      stateUpdatedAt: weatherState.updatedAt || null,
+      stateKeys: Object.keys(weatherState),
+      mode: weatherState.mode || null,
+      tempText: weatherState.tempText || null,
+      conditionText: weatherState.conditionText || null,
+      windText: weatherState.windText || null,
+      pressureText: weatherState.pressureText || null,
+      biteTitle: weatherState.biteTitle || null,
+      biteDescription: weatherState.biteDescription || null
+    };
+  }
+
   function detectFixedValues() {
     const matches = [];
     const targets = [
@@ -325,12 +344,43 @@
         touchBar: styleSummary(elements.touchBar),
         bottomChrome: styleSummary(elements.bottomChrome)
       },
-      fixedValueHints: detectFixedValues()
+      fixedValueHints: detectFixedValues(),
+      weatherBridge: getWeatherBridgeDiagnostics()
     };
   }
 
   function hideOverlay() {
     document.getElementById(OVERLAY_ID)?.remove();
+  }
+
+  function copyTextFallback(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch (_) {
+      copied = false;
+    }
+    textarea.remove();
+    return copied;
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        return copyTextFallback(text);
+      }
+    }
+    return copyTextFallback(text);
   }
 
   function showOverlay() {
@@ -340,11 +390,16 @@
     const overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "KlevGo Home box diagnostics");
-    overlay.style.cssText = "position:fixed;inset:calc(10px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:rgba(6,8,10,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;";
-    overlay.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 13px/1.2 system-ui,sans-serif;"><span>Home box diagnostics</span><button type="button" data-klevgo-home-box-close style="min-height:34px;padding:6px 10px;border:0;border-radius:10px;background:#f47a2b;color:#111;font-weight:800;">Close</button></div><textarea readonly style="flex:1;min-height:0;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;padding:8px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:none;"></textarea>';
-    overlay.querySelector("textarea").value = json;
+    overlay.setAttribute("aria-label", "Home diagnostics");
+    overlay.style.cssText = "position:fixed;inset:calc(10px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:rgba(6,8,10,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;box-shadow:0 18px 48px rgba(0,0,0,.45);";
+    overlay.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 15px/1.2 system-ui,sans-serif;"><span>Home diagnostics</span><div style="display:flex;align-items:center;gap:8px;"><span data-klevgo-home-box-copy-status style="min-width:64px;color:#b7f7cf;font:600 12px/1.2 system-ui,sans-serif;"></span><button type="button" data-klevgo-home-box-copy style="min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#ffffff;color:#111;font-weight:800;">Copy JSON</button><button type="button" data-klevgo-home-box-close style="min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#f47a2b;color:#111;font-weight:800;">Close</button></div></div><pre data-klevgo-home-box-preview style="flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:auto;white-space:pre-wrap;word-break:break-word;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;margin:0;padding:8px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></pre>';
+    overlay.querySelector("[data-klevgo-home-box-preview]").textContent = json;
     overlay.querySelector("[data-klevgo-home-box-close]").addEventListener("click", hideOverlay);
+    overlay.querySelector("[data-klevgo-home-box-copy]").addEventListener("click", async () => {
+      const status = overlay.querySelector("[data-klevgo-home-box-copy-status]");
+      const copied = await copyText(json);
+      status.textContent = copied ? "Copied" : "Copy failed";
+    });
     document.body.appendChild(overlay);
     return data;
   }
@@ -355,10 +410,22 @@
     return data;
   }
 
+  function isRedesignedHomeActive() {
+    return document.body?.dataset.homeRedesign === "true" && document.body?.dataset.appChromeMode === "home";
+  }
+
+  function isInteractiveTarget(target) {
+    return Boolean(target?.closest?.("button,a,input,select,textarea,[role='button'],[data-route],[data-tab],.home-figma-actions,.home-figma-action,.home-figma-profile,.home-figma-burger"));
+  }
+
+  function isDiagnosticsTapTarget(target) {
+    if (!isRedesignedHomeActive() || !target?.closest) return false;
+    if (isInteractiveTarget(target)) return false;
+    return Boolean(target.closest("#homeSection .home-figma-header, #homeSection .home-figma-live, #homeSection"));
+  }
+
   function bindFishSevenTap() {
     if (window[GLOBAL_BOUND_KEY]) return;
-    const brand = query("#homeSection .home-figma-brand");
-    if (!brand) return;
 
     let count = 0;
     let startedAt = 0;
@@ -366,7 +433,9 @@
     let lastPointerType = "";
 
     function handleTap(event) {
-      if (event.type === "click" && lastPointerType && Date.now() - lastAcceptedAt < TAP_DEDUPE_MS) return;
+      if (event.type === "touchend" && window.PointerEvent) return;
+      if (event.type === "click" && (window.PointerEvent || lastPointerType === "touchend") && Date.now() - lastAcceptedAt < TAP_DEDUPE_MS) return;
+      if (!isDiagnosticsTapTarget(event.target)) return;
       const now = Date.now();
       if (!startedAt || now - startedAt > TAP_WINDOW_MS) {
         startedAt = now;
@@ -381,10 +450,9 @@
       showOverlay();
     }
 
-    brand.style.pointerEvents = "auto";
-    brand.addEventListener("pointerup", handleTap, { passive: true });
-    brand.addEventListener("touchend", handleTap, { passive: true });
-    brand.addEventListener("click", handleTap, { passive: true });
+    document.addEventListener("pointerup", handleTap, { passive: true });
+    document.addEventListener("touchend", handleTap, { passive: true });
+    document.addEventListener("click", handleTap, { passive: true });
     window[GLOBAL_BOUND_KEY] = true;
   }
 
