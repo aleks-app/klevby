@@ -57,6 +57,7 @@
       }
 
       body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .${CONTENT_CLASS} {
+        position: relative;
         width: 100%;
         height: 100%;
         box-sizing: border-box;
@@ -153,6 +154,18 @@
         object-fit: contain;
         opacity: 0.9;
       }
+
+      body[data-home-redesign="true"][data-app-chrome-mode="home"]:has(#homeSection:not(.hidden)) #${WEATHER_SHELL_ID} .klevgo-home-figma-weather-chevron {
+        position: absolute;
+        right: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 14px;
+        display: block;
+        object-fit: contain;
+        pointer-events: none;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -203,6 +216,7 @@
         </div>
         <div class="klevgo-home-figma-weather-pressure"></div>
       </div>
+      <img class="klevgo-home-figma-weather-chevron" src="assets/icons/weather/chevron-right-orange.svg" alt="" decoding="async" aria-hidden="true" />
     `;
     shell.appendChild(content);
     return content;
