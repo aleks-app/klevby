@@ -1,0 +1,290 @@
+(function () {
+  "use strict";
+
+  const OVERLAY_ID = "klevgoHomeBoxDiagnosticsOverlay";
+  const TAP_TARGET_COUNT = 7;
+  const TAP_WINDOW_MS = 2200;
+  const TAP_DEDUPE_MS = 450;
+  const GLOBAL_BOUND_KEY = "__KLEVGO_HOME_BOX_DIAGNOSTICS_BOUND__";
+
+  const SELECTORS = {
+    appRoot: "#app, #appRoot, .app, .wrap",
+    background: "#homeSection",
+    homeRoot: "#homeSection .home-figma-live",
+    homeHeader: "#homeSection .home-figma-header",
+    fishLogo: "#homeSection .home-figma-brand, #homeSection .home-figma-brand-icon",
+    hero: "#homeSection .home-figma-hero-copy",
+    actionCards: "#homeSection .home-figma-actions",
+    feedShell: "#klevgo-home-figma-empty-ad-shell, #homeSection .home-feed-preview",
+    feedTitle: "#klevgo-home-figma-feed-title",
+    feedViewAll: "#klevgo-home-figma-feed-view-all",
+    weatherShell: "#klevgo-home-figma-empty-weather-shell, #homeSection .home-weather-card, #forecastPanel",
+    touchBar: ".mobile-tabbar",
+    bottomChrome: "#klevgo-home-figma-empty-weather-shell ~ .mobile-tabbar, .bottom-nav, .bottom-chrome, .app-bottom-chrome, [data-bottom-chrome]",
+    topChrome: "#header, header, .app-header, [data-safe-area-top]"
+  };
+
+  const CSS_VARIABLE_PATTERNS = [
+    /^--klev/i,
+    /^--kg-/i,
+    /^--home/i,
+    /^--safe/i,
+    /^--sat/i,
+    /^--sab/i,
+    /^--touch/i,
+    /^--mobile-tabbar/i
+  ];
+
+  function query(selector) {
+    try {
+      return document.querySelector(selector);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rectOf(element) {
+    if (!element || typeof element.getBoundingClientRect !== "function") return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  function styleSummary(element) {
+    if (!element || typeof getComputedStyle !== "function") return null;
+    const style = getComputedStyle(element);
+    return {
+      selector: element.__klevgoSelector || null,
+      position: style.position,
+      zIndex: style.zIndex,
+      display: style.display,
+      visibility: style.visibility,
+      opacity: style.opacity,
+      top: style.top,
+      right: style.right,
+      bottom: style.bottom,
+      left: style.left,
+      width: style.width,
+      height: style.height,
+      paddingTop: style.paddingTop,
+      paddingBottom: style.paddingBottom,
+      marginTop: style.marginTop,
+      marginBottom: style.marginBottom,
+      transform: style.transform
+    };
+  }
+
+  function markElement(name, selector) {
+    const element = query(selector);
+    if (element) element.__klevgoSelector = selector;
+    return [name, element];
+  }
+
+  function gap(a, b) {
+    if (!a || !b) return null;
+    return b.top - a.bottom;
+  }
+
+  function getCssVariables(element) {
+    if (!element || typeof getComputedStyle !== "function") return {};
+    const style = getComputedStyle(element);
+    const values = {};
+    for (let index = 0; index < style.length; index += 1) {
+      const name = style[index];
+      if (!CSS_VARIABLE_PATTERNS.some((pattern) => pattern.test(name))) continue;
+      values[name] = style.getPropertyValue(name).trim();
+    }
+    return values;
+  }
+
+  function detectFixedValues() {
+    const matches = [];
+    const targets = [
+      ["home-empty-ad-shell", "#klevgo-home-figma-empty-ad-shell-style"],
+      ["home-figma-redesign", "style"]
+    ];
+    targets.forEach(([name, selector]) => {
+      document.querySelectorAll(selector).forEach((node) => {
+        const text = node.textContent || "";
+        ["505px", "760px", "396px", "440px", "956px"].forEach((value) => {
+          if (text.includes(value)) matches.push({ source: name, value });
+        });
+      });
+    });
+    return matches;
+  }
+
+  function isOutsideViewport(rect) {
+    if (!rect) return null;
+    return rect.left < 0 || rect.right > window.innerWidth;
+  }
+
+  function overlaps(a, b) {
+    if (!a || !b) return null;
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function measure() {
+    const elements = Object.fromEntries(Object.entries(SELECTORS).map(([name, selector]) => markElement(name, selector)));
+    const rects = {
+      html: rectOf(document.documentElement),
+      body: rectOf(document.body)
+    };
+    Object.entries(elements).forEach(([name, element]) => {
+      rects[name] = rectOf(element);
+    });
+
+    const vv = window.visualViewport;
+    const viewportBottom = window.innerHeight;
+    const weatherRect = rects.weatherShell;
+    const touchRect = rects.touchBar;
+    const backgroundRect = rects.background;
+    const bottomChromeRect = rects.bottomChrome;
+
+    return {
+      timestamp: new Date().toISOString(),
+      locationHref: window.location.href,
+      viewport: {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        documentElementClientWidth: document.documentElement.clientWidth,
+        documentElementClientHeight: document.documentElement.clientHeight,
+        bodyScrollWidth: document.body?.scrollWidth ?? null,
+        bodyScrollHeight: document.body?.scrollHeight ?? null,
+        visualViewport: vv ? {
+          width: vv.width,
+          height: vv.height,
+          offsetTop: vv.offsetTop,
+          offsetLeft: vv.offsetLeft,
+          scale: vv.scale
+        } : null
+      },
+      cssVariables: {
+        root: getCssVariables(document.documentElement),
+        body: getCssVariables(document.body),
+        homeSection: getCssVariables(elements.background),
+        touchBar: getCssVariables(elements.touchBar)
+      },
+      selectors: SELECTORS,
+      rects,
+      gaps: {
+        heroToActionCards: gap(rects.hero, rects.actionCards),
+        actionCardsToFeedAd: gap(rects.actionCards, rects.feedShell),
+        feedAdToWeather: gap(rects.feedShell, weatherRect),
+        weatherToTouchBar: gap(weatherRect, touchRect),
+        touchBarBottomToViewportBottom: touchRect ? viewportBottom - touchRect.bottom : null,
+        blackBottomBase: bottomChromeRect ? {
+          top: bottomChromeRect.top,
+          bottom: bottomChromeRect.bottom,
+          height: bottomChromeRect.height
+        } : null,
+        backgroundTopOffsetFromViewport: backgroundRect ? backgroundRect.top : null,
+        backgroundBottomOffsetFromViewport: backgroundRect ? viewportBottom - backgroundRect.bottom : null
+      },
+      overflow: {
+        horizontalOverflowPx: Math.max(0, (document.body?.scrollWidth || 0) - window.innerWidth),
+        verticalOverflowPx: Math.max(0, (document.body?.scrollHeight || 0) - window.innerHeight),
+        homeRail: rects.homeRoot ? { left: rects.homeRoot.left, right: rects.homeRoot.right, width: rects.homeRoot.width } : null,
+        exceedsViewport: {
+          homeHeader: isOutsideViewport(rects.homeHeader),
+          hero: isOutsideViewport(rects.hero),
+          actionCards: isOutsideViewport(rects.actionCards),
+          feedShell: isOutsideViewport(rects.feedShell),
+          weatherShell: isOutsideViewport(weatherRect),
+          touchBar: isOutsideViewport(touchRect)
+        },
+        weatherOverlapsTouchBar: overlaps(weatherRect, touchRect),
+        homeContentOverlapsBottomChrome: overlaps(rects.homeRoot, bottomChromeRect)
+      },
+      layering: {
+        background: styleSummary(elements.background),
+        homeRoot: styleSummary(elements.homeRoot),
+        feedShell: styleSummary(elements.feedShell),
+        weatherShell: styleSummary(elements.weatherShell),
+        touchBar: styleSummary(elements.touchBar),
+        bottomChrome: styleSummary(elements.bottomChrome)
+      },
+      fixedValueHints: detectFixedValues()
+    };
+  }
+
+  function hideOverlay() {
+    document.getElementById(OVERLAY_ID)?.remove();
+  }
+
+  function showOverlay() {
+    hideOverlay();
+    const data = measure();
+    const json = JSON.stringify(data, null, 2);
+    const overlay = document.createElement("div");
+    overlay.id = OVERLAY_ID;
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "KlevGo Home box diagnostics");
+    overlay.style.cssText = "position:fixed;inset:calc(10px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:rgba(6,8,10,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;";
+    overlay.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 13px/1.2 system-ui,sans-serif;"><span>Home box diagnostics</span><button type="button" data-klevgo-home-box-close style="min-height:34px;padding:6px 10px;border:0;border-radius:10px;background:#f47a2b;color:#111;font-weight:800;">Close</button></div><textarea readonly style="flex:1;min-height:0;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;padding:8px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:none;"></textarea>';
+    overlay.querySelector("textarea").value = json;
+    overlay.querySelector("[data-klevgo-home-box-close]").addEventListener("click", hideOverlay);
+    document.body.appendChild(overlay);
+    return data;
+  }
+
+  function printMeasure() {
+    const data = measure();
+    console.log(JSON.stringify(data, null, 2));
+    return data;
+  }
+
+  function bindFishSevenTap() {
+    if (window[GLOBAL_BOUND_KEY]) return;
+    const brand = query("#homeSection .home-figma-brand");
+    if (!brand) return;
+
+    let count = 0;
+    let startedAt = 0;
+    let lastAcceptedAt = 0;
+    let lastPointerType = "";
+
+    function handleTap(event) {
+      if (event.type === "click" && lastPointerType && Date.now() - lastAcceptedAt < TAP_DEDUPE_MS) return;
+      const now = Date.now();
+      if (!startedAt || now - startedAt > TAP_WINDOW_MS) {
+        startedAt = now;
+        count = 0;
+      }
+      count += 1;
+      lastAcceptedAt = now;
+      lastPointerType = event.type;
+      if (count < TAP_TARGET_COUNT) return;
+      count = 0;
+      startedAt = 0;
+      showOverlay();
+    }
+
+    brand.style.pointerEvents = "auto";
+    brand.addEventListener("pointerup", handleTap, { passive: true });
+    brand.addEventListener("touchend", handleTap, { passive: true });
+    brand.addEventListener("click", handleTap, { passive: true });
+    window[GLOBAL_BOUND_KEY] = true;
+  }
+
+  window.KLEVGO_HOME_BOX_MEASURE = measure;
+  window.KLEVGO_HOME_BOX_PRINT = printMeasure;
+  window.KLEVGO_HOME_BOX_SHOW = showOverlay;
+  window.KLEVGO_HOME_BOX_HIDE = hideOverlay;
+
+  function init() {
+    bindFishSevenTap();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+}());
