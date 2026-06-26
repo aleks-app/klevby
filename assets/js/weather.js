@@ -72,6 +72,11 @@ function updateMobileWeatherStrip({ tempText, windText, biteText, pressureMm }) 
   }
 }
 
+
+function notifyHomeWeatherUpdated() {
+  window.dispatchEvent(new CustomEvent("klevgo-home-weather-updated"));
+}
+
 function getWeatherMode(main, description) {
   const text = `${main || ""} ${description || ""}`.toLowerCase();
 
@@ -234,6 +239,7 @@ async function fetchWeather() {
     });
 
     setWeatherAnimation(main, description);
+    notifyHomeWeatherUpdated();
   } catch (error) {
     console.error(error);
 
@@ -258,5 +264,6 @@ async function fetchWeather() {
     });
 
     setWeatherAnimation("Clouds", "облачно");
+    notifyHomeWeatherUpdated();
   }
 }
