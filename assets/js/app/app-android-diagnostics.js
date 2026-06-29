@@ -87,7 +87,26 @@
   }
 
   function getDiagnosticsJson() {
+    try {
+      window.KlevbyGlobalDiagnostics?.collectAndPublish?.();
+    } catch (_) {}
     return JSON.stringify(window.klevbyAndroidDiagnostics.collect(), null, 2);
+  }
+
+  function getGlobalDiagnosticsJson() {
+    try {
+      const snapshot =
+        window.KlevbyGlobalDiagnostics?.collectSync?.() ||
+        window.__KLEVBY_GLOBAL_DIAGNOSTICS__ ||
+        null;
+      return JSON.stringify(snapshot, null, 2);
+    } catch (error) {
+      return JSON.stringify({
+        auditVersion: window.KlevbyGlobalDiagnostics?.AUDIT_VERSION || "unknown",
+        timestamp: new Date().toISOString(),
+        error: error?.message || String(error),
+      }, null, 2);
+    }
   }
 
   function getDiagnosticsName() {
@@ -779,6 +798,9 @@
       };
 
       return {
+        globalDiagnostics: window.KlevbyGlobalDiagnostics?.collectAndPublish?.() ||
+          window.__KLEVBY_GLOBAL_DIAGNOSTICS__ ||
+          null,
         bootDiagnostics: window.KlevbyBootStore?.getSnapshotSync
           ? window.KlevbyBootStore.getSnapshotSync()
           : null,
@@ -1115,9 +1137,33 @@
     container.style.maxWidth = "220px";
 
     const title = document.createElement("div");
-    title.textContent = "Layout diagnostics";
+    title.textContent = "KlevGo diagnostics";
     title.style.cssText = "padding:6px 8px;border-radius:6px;background:rgba(8,12,10,0.92);color:#fff;font:700 12px/1.2 system-ui,sans-serif;";
     container.appendChild(title);
+
+    const globalSummary = document.createElement("div");
+    globalSummary.id = "klevbyGlobalDiagnosticsSummary";
+    globalSummary.style.cssText = "padding:6px 8px;border-radius:6px;background:rgba(18,28,22,0.94);color:#d9f5e5;font:11px/1.35 monospace;max-height:96px;overflow:auto;";
+    container.appendChild(globalSummary);
+
+    function refreshGlobalSummary() {
+      try {
+        const snapshot = window.KlevbyGlobalDiagnostics?.collectSync?.() || window.__KLEVBY_GLOBAL_DIAGNOSTICS__;
+        if (!snapshot || !globalSummary) return;
+        const lines = [
+          `screen: ${snapshot.currentScreen?.screenId || "?"} (${snapshot.currentScreen?.screenType || "?"})`,
+          `net: ${snapshot.network?.detectedStatus || "?"} online=${snapshot.network?.navigatorOnLine}`,
+          `boot: ${snapshot.boot?.bootDurationMs ?? "?"}ms splash=${snapshot.boot?.splash?.isActive ? "active" : "hidden"}`,
+          `auth: ${snapshot.auth?.authMode || "?"} sw=${snapshot.serviceWorker?.controlled ? "yes" : "no"}`,
+          `warnings: ${snapshot.warnings?.length || 0}`,
+        ];
+        globalSummary.textContent = lines.join("\n");
+      } catch (error) {
+        globalSummary.textContent = `Global diagnostics error: ${error?.message || error}`;
+      }
+    }
+
+    refreshGlobalSummary();
 
     const downloadButton = createDiagnosticsButton(`Save ${getDiagnosticsName()}`, () => {
       window.klevbyAndroidDiagnostics.saveJSON();
@@ -1154,8 +1200,25 @@
     const copyButton = createDiagnosticsButton("Copy JSON", async () => {
       const copied = await window.klevbyAndroidDiagnostics.copyJSON();
       flashButtonLabel(copyButton, "JSON copied", "Copy failed", copied);
+      refreshGlobalSummary();
     });
     container.appendChild(copyButton);
+
+    const copyGlobalButton = createDiagnosticsButton("Copy global JSON", async () => {
+      const json = getGlobalDiagnosticsJson();
+      let copied = false;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(json);
+          copied = true;
+        }
+      } catch (_) {}
+      if (!copied) copied = copyWithTextarea(json);
+      if (!copied) showManualCopyDialog(json);
+      flashButtonLabel(copyGlobalButton, "Global copied", "Copy failed", copied);
+      refreshGlobalSummary();
+    });
+    container.appendChild(copyGlobalButton);
 
     if (window.KlevbyBootStore?.clearDiagnostics) {
       const clearBootButton = createDiagnosticsButton("Clear diagnostics", () => {
@@ -1193,6 +1256,7 @@
 
     const refreshButton = createDiagnosticsButton("Refresh", () => {
       window.klevbyAndroidDiagnostics.collect();
+      refreshGlobalSummary();
       flashButtonLabel(refreshButton, "Refreshed", "Refresh failed", true);
     }, { background: "#356A48" });
     container.appendChild(refreshButton);
