@@ -242,7 +242,7 @@ a {
 .app-splash {
   position: fixed;
   inset: 0;
-  z-index: 2147483645;
+  z-index: 99999;
   background:
     radial-gradient(circle at 50% 35%, rgba(244,178,74,0.18), transparent 34%),
     #000000;
@@ -251,27 +251,6 @@ a {
   justify-content: center;
   overflow: hidden;
   transition: opacity 0.7s ease, visibility 0.7s ease;
-}
-
-body.klevby-splash-active .mobile-tabbar,
-body.klevby-splash-active header,
-body.klevby-splash-active #homeSection,
-body.klevby-splash-active #klevgo-home-figma-empty-ad-shell,
-body.klevby-splash-active #klevgo-home-figma-feed-title,
-body.klevby-splash-active #klevgo-home-figma-feed-view-all,
-body.klevby-splash-active #klevgo-home-figma-empty-weather-shell,
-body.klevby-splash-active #klevby-network-banner {
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
-html.klevby-splash-reduced-motion .splash-k,
-html.klevby-splash-reduced-motion .splash-rest .letter,
-html.klevby-splash-reduced-motion .splash-logo::after {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
-  filter: none !important;
 }
 
 .app-splash.hide {

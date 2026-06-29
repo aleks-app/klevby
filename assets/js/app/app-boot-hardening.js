@@ -122,6 +122,12 @@
 
     window.KlevbyBootStore?.markShellPresented?.("boot-hardening");
     hideEmergencyScreen();
+
+    if (window.KlevbyAppSplash?.hideAppSplashWhenShellReady) {
+      window.KlevbyAppSplash.hideAppSplashWhenShellReady();
+    } else if (typeof window.hideAppSplash === "function") {
+      window.hideAppSplash();
+    }
   }
 
   function bindGlobalErrorHandlers() {

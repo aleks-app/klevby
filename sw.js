@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v27-splash-intro-timing-20260629";
-const SW_BUILD_VERSION = "20260629-splash-intro-timing-1";
+const CACHE_NAME = "klevby-cache-v26-offline-map-waterbody-20260629";
+const SW_BUILD_VERSION = "20260629-offline-map-waterbody-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
