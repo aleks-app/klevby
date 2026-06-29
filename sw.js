@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v24-offline-boot-hardening-20260626";
-const SW_BUILD_VERSION = "20260626-offline-boot-hardening-1";
+const CACHE_NAME = "klevby-cache-v23-home-hero-slogan-onest-20260620";
+const SW_BUILD_VERSION = "20260620-home-hero-slogan-onest-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
@@ -11,14 +11,6 @@ const APP_FILES = [
   "/assets/js/config.js",
   "/assets/js/pwa-manifest.js",
   "/assets/js/pwa.js",
-  "/assets/js/app/app-surface-gate.js",
-  "/assets/js/app/app-boot-store.js",
-  "/assets/js/app/app-network-state.js",
-  "/assets/js/app/app-boot-hardening.js",
-  "/assets/js/app/app-splash.js",
-  "/assets/js/app/app-shell-viewport-owner.js",
-  "/assets/js/ui/ui-shell.js",
-  "/assets/js/ui/ui-tabbar.js",
   "/assets/js/auth.js",
   "/assets/js/posts.js",
   "/assets/js/ui.js",

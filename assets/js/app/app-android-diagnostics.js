@@ -779,9 +779,6 @@
       };
 
       return {
-        bootDiagnostics: window.KlevbyBootStore?.getSnapshotSync
-          ? window.KlevbyBootStore.getSnapshotSync()
-          : null,
         unifiedLayoutDiagnostics,
         timestamp: new Date().toISOString(),
         homeInternalGeometry: collectHomeInternalGeometry(),
@@ -1156,24 +1153,6 @@
       flashButtonLabel(copyButton, "JSON copied", "Copy failed", copied);
     });
     container.appendChild(copyButton);
-
-    if (window.KlevbyBootStore?.clearDiagnostics) {
-      const clearBootButton = createDiagnosticsButton("Clear diagnostics", () => {
-        window.KlevbyBootStore.clearDiagnostics();
-        flashButtonLabel(clearBootButton, "Cleared", "Failed", true);
-      }, { background: "#5A4A2E" });
-      container.appendChild(clearBootButton);
-    }
-
-    if (window.KlevbyNetworkState?.setSimulatedOffline) {
-      let simulatedOffline = false;
-      const simulateOfflineButton = createDiagnosticsButton("Simulate offline", () => {
-        simulatedOffline = !simulatedOffline;
-        window.KlevbyNetworkState.setSimulatedOffline(simulatedOffline);
-        simulateOfflineButton.textContent = simulatedOffline ? "Disable offline sim" : "Simulate offline";
-      }, { background: "#5A4A2E" });
-      container.appendChild(simulateOfflineButton);
-    }
 
     const refreshButton = createDiagnosticsButton("Refresh", () => {
       window.klevbyAndroidDiagnostics.collect();

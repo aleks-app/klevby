@@ -1252,18 +1252,9 @@
       return;
     }
 
-    const offlineLike = window.KlevbyNetworkState?.isOfflineOrWeak?.() === true;
-    const title = offlineLike ? "Карта недоступна без интернета" : "Карта временно недоступна";
-    const subtitle = offlineLike
-      ? "Последняя открытая область может быть показана, если она была сохранена"
-      : "Проверьте соединение и попробуйте снова";
-
-    window.KlevbyBootStore?.setMapInitStatus?.(offlineLike ? "offline" : "failed");
-
     mapSurface.innerHTML = `
       <div class="klevby-map-state">
-        <div>${title}</div>
-        <div style="margin-top:8px;font-size:13px;opacity:0.82;">${subtitle}</div>
+        <div>Карта временно недоступна</div>
         <button class="klevby-map-retry" type="button">Повторить</button>
       </div>
     `;
@@ -1979,7 +1970,6 @@
       map.once("load", function () {
         if (settled) return;
         console.info("Klevby Map: map load success", { provider: "maplibre" });
-        window.KlevbyBootStore?.setMapInitStatus?.("ready");
         settled = true;
         clearTimeout(timeoutId);
         localizeMapLibreLabels(map);
