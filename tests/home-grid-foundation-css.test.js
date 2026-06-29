@@ -15,7 +15,7 @@ function read(filePath) {
 test("index.html loads main.css with home hero slogan onest cache bust", () => {
   const index = read(indexPath);
 
-  assert.match(index, /assets\/css\/main\.css\?v=20260625-hotfix-splash-intro-restore-1/);
+  assert.match(index, /assets\/css\/main\.css\?v=20260629-splash-diagnostics-1/);
 });
 
 test("home grid foundation css is imported after legacy Home mobile CSS", () => {
