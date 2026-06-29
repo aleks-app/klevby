@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v28-diagnostics-freeze-fix-20260624";
-const SW_BUILD_VERSION = "20260624-diagnostics-freeze-fix-1";
+const CACHE_NAME = "klevby-cache-v27-splash-intro-timing-20260629";
+const SW_BUILD_VERSION = "20260624-global-diagnostics-overlay-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
@@ -13,7 +13,6 @@ const APP_FILES = [
   "/assets/js/pwa.js",
   "/assets/js/app/app-surface-gate.js",
   "/assets/js/app/app-boot-store.js",
-  "/assets/js/app/app-global-diagnostics.js",
   "/assets/js/app/app-last-known-cache.js",
   "/assets/js/app/app-last-known-map.js",
   "/assets/js/app/app-last-known-ui.js",
