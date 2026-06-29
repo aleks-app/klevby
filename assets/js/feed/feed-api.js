@@ -155,7 +155,17 @@
 
       return {
         source: "supabase",
-        items: rankedItems
+        items: rankedItems,
+        ok: true
+      };
+    }
+
+    if (!supabaseResult.ok && supabaseResult.error) {
+      return {
+        source: "network_error",
+        items: [],
+        ok: false,
+        error: supabaseResult.error
       };
     }
 
@@ -172,13 +182,15 @@
     if (Array.isArray(localItems) && localItems.length) {
       return {
         source: "local",
-        items: localItems
+        items: localItems,
+        ok: true
       };
     }
 
     return {
       source: supabaseResult.ok ? "supabase_empty" : "local_empty",
-      items: []
+      items: [],
+      ok: supabaseResult.ok
     };
   }
 
