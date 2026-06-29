@@ -1297,6 +1297,28 @@
   function activateDiagnosticsFromLogoGesture() {
     setStorageEnabled(true);
     initDiagnosticsModule();
+
+    const getHomeJson = () => {
+      if (typeof window.KLEVGO_HOME_BOX_MEASURE === "function") {
+        return JSON.stringify(window.KLEVGO_HOME_BOX_MEASURE(), null, 2);
+      }
+      try {
+        return getDiagnosticsJson();
+      } catch (error) {
+        return JSON.stringify(
+          { error: error?.message || "Home diagnostics unavailable", timestamp: new Date().toISOString() },
+          null,
+          2,
+        );
+      }
+    };
+
+    if (window.KlevbyDiagnosticsOverlay?.show) {
+      window.KlevbyDiagnosticsOverlay.show({ getHomeJson });
+      console.log(`[${getDiagnosticsName()}] Enabled via logo gesture (unified overlay).`);
+      return;
+    }
+
     showDiagnosticsControls();
     console.log(`[${getDiagnosticsName()}] Enabled via logo gesture.`);
   }
