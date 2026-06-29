@@ -95,16 +95,22 @@
 
   function getGlobalDiagnosticsJson() {
     try {
+      if (typeof window.__KLEVBY_GLOBAL_DIAGNOSTICS__?.getJson === "function") {
+        return window.__KLEVBY_GLOBAL_DIAGNOSTICS__.getJson({ compact: true });
+      }
+      if (typeof window.KlevbyGlobalDiagnostics?.getJson === "function") {
+        return window.KlevbyGlobalDiagnostics.getJson({ compact: true });
+      }
       const snapshot =
-        window.KlevbyGlobalDiagnostics?.collectSync?.() ||
-        window.__KLEVBY_GLOBAL_DIAGNOSTICS__ ||
+        window.KlevbyGlobalDiagnostics?.getSnapshot?.({ compact: true }) ||
+        window.KlevbyGlobalDiagnostics?.collectCompactSync?.() ||
         null;
       return JSON.stringify(snapshot, null, 2);
     } catch (error) {
       return JSON.stringify({
-        auditVersion: window.KlevbyGlobalDiagnostics?.AUDIT_VERSION || "unknown",
-        timestamp: new Date().toISOString(),
+        available: false,
         error: error?.message || String(error),
+        timestamp: new Date().toISOString(),
       }, null, 2);
     }
   }
@@ -798,8 +804,8 @@
       };
 
       return {
-        globalDiagnostics: window.KlevbyGlobalDiagnostics?.collectAndPublish?.() ||
-          window.__KLEVBY_GLOBAL_DIAGNOSTICS__ ||
+        globalDiagnostics: window.KlevbyGlobalDiagnostics?.getSnapshot?.({ compact: true }) ||
+          window.KlevbyGlobalDiagnostics?.lastSnapshot ||
           null,
         bootDiagnostics: window.KlevbyBootStore?.getSnapshotSync
           ? window.KlevbyBootStore.getSnapshotSync()
@@ -1148,12 +1154,14 @@
 
     function refreshGlobalSummary() {
       try {
-        const snapshot = window.KlevbyGlobalDiagnostics?.collectSync?.() || window.__KLEVBY_GLOBAL_DIAGNOSTICS__;
+        const snapshot = window.KlevbyGlobalDiagnostics?.lastSnapshot ||
+          window.KlevbyGlobalDiagnostics?.getSnapshot?.({ compact: true }) ||
+          null;
         if (!snapshot || !globalSummary) return;
         const lines = [
           `screen: ${snapshot.currentScreen?.screenId || "?"} (${snapshot.currentScreen?.screenType || "?"})`,
           `net: ${snapshot.network?.detectedStatus || "?"} online=${snapshot.network?.navigatorOnLine}`,
-          `boot: ${snapshot.boot?.bootDurationMs ?? "?"}ms splash=${snapshot.boot?.splash?.isActive ? "active" : "hidden"}`,
+          `boot: ${snapshot.boot?.bootDurationMs ?? "?"}ms splash=${snapshot.splash?.isActive ? "active" : "hidden"}`,
           `auth: ${snapshot.auth?.authMode || "?"} sw=${snapshot.serviceWorker?.controlled ? "yes" : "no"}`,
           `warnings: ${snapshot.warnings?.length || 0}`,
         ];
