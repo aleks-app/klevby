@@ -385,39 +385,24 @@
   }
 
   function showOverlay() {
-    const homeData = measure();
-    if (window.KlevbyDiagnosticsOverlay?.show) {
-      window.KlevbyDiagnosticsOverlay.show({
-        getHomeJson: () => JSON.stringify(homeData, null, 2),
-      });
-      return homeData;
-    }
-
-    if (window.KlevbyGlobalDiagnostics?.showOverlay) {
-      window.KlevbyGlobalDiagnostics.showOverlay({
-        getHomeJson: () => JSON.stringify(homeData, null, 2),
-      });
-      return homeData;
-    }
-
     hideOverlay();
-    const json = JSON.stringify(homeData, null, 2);
+    const data = measure();
+    const json = JSON.stringify(data, null, 2);
     const overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "KlevGo diagnostics");
+    overlay.setAttribute("aria-label", "Home diagnostics");
     overlay.style.cssText = "position:fixed;inset:calc(10px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:rgba(6,8,10,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;box-shadow:0 18px 48px rgba(0,0,0,.45);";
-    overlay.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 15px/1.2 system-ui,sans-serif;"><span>KlevGo diagnostics</span><div style="display:flex;align-items:center;gap:8px;"><span data-klevgo-home-box-copy-status style="min-width:64px;color:#ffb4a2;font:600 12px/1.2 system-ui,sans-serif;">Global diagnostics unavailable</span><button type="button" data-klevgo-home-box-copy style="min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#ffffff;color:#111;font-weight:800;">Copy Home JSON</button><button type="button" data-klevgo-home-box-close style="min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#f47a2b;color:#111;font-weight:800;">Close</button></div></div><pre data-klevgo-home-box-preview style="flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:auto;white-space:pre-wrap;word-break:break-word;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;margin:0;padding:8px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></pre>';
+    overlay.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 15px/1.2 system-ui,sans-serif;"><span>Home diagnostics</span><div style="display:flex;align-items:center;gap:8px;"><span data-klevgo-home-box-copy-status style="min-width:64px;color:#b7f7cf;font:600 12px/1.2 system-ui,sans-serif;"></span><button type="button" data-klevgo-home-box-copy style="min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#ffffff;color:#111;font-weight:800;">Copy JSON</button><button type="button" data-klevgo-home-box-close style="min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#f47a2b;color:#111;font-weight:800;">Close</button></div></div><pre data-klevgo-home-box-preview style="flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:auto;white-space:pre-wrap;word-break:break-word;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;margin:0;padding:8px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"></pre>';
     overlay.querySelector("[data-klevgo-home-box-preview]").textContent = json;
     overlay.querySelector("[data-klevgo-home-box-close]").addEventListener("click", hideOverlay);
     overlay.querySelector("[data-klevgo-home-box-copy]").addEventListener("click", async () => {
       const status = overlay.querySelector("[data-klevgo-home-box-copy-status]");
       const copied = await copyText(json);
-      status.textContent = copied ? "Home copied" : "Copy failed";
-      status.style.color = copied ? "#b7f7cf" : "#ffb4a2";
+      status.textContent = copied ? "Copied" : "Copy failed";
     });
     document.body.appendChild(overlay);
-    return homeData;
+    return data;
   }
 
   function printMeasure() {

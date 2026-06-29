@@ -12,7 +12,6 @@
   let shellReady = false;
   let shellReadyMarkedAt = null;
   let splashHiddenAt = null;
-  let hideReason = null;
   let hideCommitted = false;
   let evaluateTimer = null;
 
@@ -47,15 +46,13 @@
     if (!splash || !splash.parentNode) return;
     splash.remove();
     splashHiddenAt = performance.now();
-    if (!hideReason) hideReason = "splash-removed";
     setSplashActive(false);
     window.dispatchEvent(new CustomEvent("klevby-app-splash-hidden"));
   }
 
-  function commitHide(reason) {
+  function commitHide() {
     if (hideCommitted) return;
     hideCommitted = true;
-    hideReason = reason || hideReason || "unknown";
 
     if (evaluateTimer) {
       window.clearTimeout(evaluateTimer);
@@ -64,7 +61,6 @@
 
     const splash = getSplashNode();
     if (!splash) {
-      if (hideReason === "unknown") hideReason = "splash-node-missing";
       setSplashActive(false);
       return;
     }
@@ -94,12 +90,7 @@
       return;
     }
 
-    if (forceHide) {
-      commitHide(shellReady ? "force-safety-timeout" : "force-safety-timeout-shell-not-ready");
-      return;
-    }
-
-    commitHide("shell-and-visual-ready");
+    commitHide();
   }
 
   function scheduleEvaluate(delayMs) {
@@ -166,17 +157,7 @@
         introDurationMs: getIntroDurationMs(),
         requiredVisibleMs: getRequiredVisibleMs(),
         forceHideMs: KLEVB_SPLASH_FORCE_HIDE_MS,
-        maxSafetyTimeoutMs: KLEVB_SPLASH_FORCE_HIDE_MS,
-        hideReason,
         bodySplashActive: document.body?.classList.contains("klevby-splash-active") === true,
-        startedAt: splashStartedAt,
-        shellReadyAt: shellReadyMarkedAt,
-        hiddenAt: splashHiddenAt,
-        visibleDurationMs:
-          splashHiddenAt != null
-            ? Math.round(splashHiddenAt - splashStartedAt)
-            : elapsedMs,
-        minDurationMs: getRequiredVisibleMs(),
       };
     },
   };
