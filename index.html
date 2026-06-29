@@ -35,18 +35,18 @@
         #000000;
     }
 
-    #appSplash:not(.splash-state-animating):not(.splash-state-completed) .splash-k {
+    #appSplash:not(.splash-animate) .splash-k {
       opacity: 0;
       transform: scale(0.72);
     }
 
-    #appSplash:not(.splash-state-animating):not(.splash-state-completed) .splash-rest .letter {
+    #appSplash:not(.splash-animate) .splash-rest .letter {
       opacity: 0;
       transform: translateX(42px) translateY(18px) rotate(18deg) scale(0.84);
       filter: blur(8px);
     }
 
-    #appSplash:not(.splash-state-animating):not(.splash-state-completed) .splash-logo::after {
+    #appSplash:not(.splash-animate) .splash-logo::after {
       width: 0;
       opacity: 0;
     }
@@ -135,7 +135,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
-<link rel="stylesheet" href="assets/css/main.css?v=20260625-hotfix-splash-intro-restore-1">
+<link rel="stylesheet" href="assets/css/main.css?v=20260624-splash-intro-animation-fix-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -157,13 +157,12 @@
   <script src="assets/js/app/app-home-figma-box-diagnostics.js?v=20260624-diagnostics-freeze-fix-1" defer></script>
   <script src="assets/js/app/app-home-figma-actions-bridge.js" defer></script>
   <script src="assets/js/app/app-boot-store.js?v=20260626-offline-boot-1" defer></script>
-  <script src="assets/js/app/app-global-diagnostics.js?v=20260625-hotfix-splash-intro-restore-1" defer></script>
+  <script src="assets/js/app/app-global-diagnostics.js?v=20260624-diagnostics-freeze-fix-1" defer></script>
   <script src="assets/js/app/app-last-known-cache.js?v=20260629-last-known-cache-1" defer></script>
   <script src="assets/js/app/app-last-known-map.js?v=20260629-offline-map-1" defer></script>
   <script src="assets/js/app/app-last-known-ui.js?v=20260629-last-known-cache-1" defer></script>
   <script src="assets/js/app/app-network-state.js?v=20260626-offline-boot-1" defer></script>
   <script src="assets/js/app/app-boot-hardening.js?v=20260626-offline-boot-1" defer></script>
-  <script src="assets/js/app/app-splash.js?v=20260625-hotfix-splash-intro-restore-1" defer></script>
   <script src="assets/js/app/app-home-last-known-bridge.js?v=20260629-last-known-cache-1" defer></script>
   <section id="desktopBlockedScreen" aria-labelledby="desktopBlockedTitle">
     <div class="desktop-blocked-card">
@@ -182,7 +181,7 @@
   </section>
 
   <div id="klevbyAppRoot">
-  <div id="appSplash" class="app-splash splash-state-initial" data-splash-state="initial" aria-hidden="false">
+  <div id="appSplash" class="app-splash" aria-hidden="false">
     <div class="splash-logo">
       <span class="splash-k">K</span>
       <div class="splash-rest">
@@ -194,23 +193,6 @@
       </div>
     </div>
   </div>
-  <script>
-    (function () {
-      window.__KLEVBY_SPLASH_PAGE_START__ = performance.now();
-      var splash = document.getElementById("appSplash");
-      if (!splash) return;
-      splash.setAttribute("data-splash-state", "initial");
-      splash.classList.add("splash-state-initial");
-      splash.classList.remove(
-        "splash-state-animating",
-        "splash-state-completed",
-        "splash-state-fading-out",
-        "splash-animate",
-        "hide",
-      );
-      splash.setAttribute("aria-hidden", "false");
-    })();
-  </script>
 
   <header data-chrome-mode="home">
     <div class="wrap header-inner">
@@ -928,6 +910,7 @@
   <script src="assets/js/app/app-shell-viewport-owner.js?v=20260614-app-shell-viewport-pr1-1" defer></script>
   <script src="assets/js/app/app-home-screen-owner.js?v=20260620-home-dimming-diagnostics-1" defer></script>
   <script src="assets/js/app/app-navigation.js?v=20260607-map-app-screen-1" defer></script>
+  <script src="assets/js/app/app-splash.js?v=20260624-splash-intro-animation-fix-1" defer></script>
   <script src="assets/js/app/app-profile-patches.js?v=20260529-logout-profile-guest-1" defer></script>
   <script src="assets/js/app/app-mobile-actions.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/app/app-ui-helpers.js?v=20260513-app-ui-helpers-split-1" defer></script>

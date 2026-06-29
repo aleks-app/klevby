@@ -1,31 +1,16 @@
 (function () {
   "use strict";
 
-  const SPLASH_STATE = {
-    INITIAL: "initial",
-    ANIMATING: "animating",
-    COMPLETED: "completed",
-    FADING_OUT: "fading-out",
-    HIDDEN: "hidden",
-  };
-
-  const KLEVB_SPLASH_MIN_VISIBLE_MS = 2000;
-  const KLEVB_SPLASH_INTRO_ANIMATION_MS = 1800;
+  const KLEVB_SPLASH_MIN_VISIBLE_MS = 1800;
+  const KLEVB_SPLASH_INTRO_ANIMATION_MS = 1500;
   const KLEVB_SPLASH_REDUCED_MIN_VISIBLE_MS = 900;
-  const KLEVB_SPLASH_REDUCED_INTRO_MS = 700;
-  const KLEVB_SPLASH_FORCE_HIDE_MS = 4000;
-  const KLEVB_SPLASH_FADE_MS = 350;
+  const KLEVB_SPLASH_REDUCED_INTRO_MS = 650;
+  const KLEVB_SPLASH_FORCE_HIDE_MS = 3500;
+  const KLEVB_SPLASH_FADE_MS = 700;
 
-  const splashStartedAt =
-    typeof window.__KLEVBY_SPLASH_PAGE_START__ === "number"
-      ? window.__KLEVBY_SPLASH_PAGE_START__
-      : performance.now();
-
-  let currentState = SPLASH_STATE.INITIAL;
+  const splashStartedAt = performance.now();
   let initialStateAppliedAt = null;
-  let animationClassAddedAt = null;
   let animationStartedAt = null;
-  let animationCompletedAt = null;
   let shellReady = false;
   let shellReadyMarkedAt = null;
   let minDurationPassedAt = null;
@@ -35,7 +20,6 @@
   let hideCommitted = false;
   let evaluateTimer = null;
   let fadeRemoveScheduled = false;
-  let animationCompletionTimer = null;
 
   function prefersReducedMotion() {
     return (
@@ -60,37 +44,10 @@
     return document.getElementById("appSplash");
   }
 
-  function setSplashState(nextState) {
-    const splash = getSplashNode();
-    currentState = nextState;
-    if (!splash) return;
-
-    splash.setAttribute("data-splash-state", nextState);
-    splash.classList.remove(
-      "splash-state-initial",
-      "splash-state-animating",
-      "splash-state-completed",
-      "splash-state-fading-out",
-      "splash-animate",
-      "hide",
-    );
-
-    if (nextState === SPLASH_STATE.INITIAL) {
-      splash.classList.add("splash-state-initial");
-    } else if (nextState === SPLASH_STATE.ANIMATING) {
-      splash.classList.add("splash-state-animating");
-    } else if (nextState === SPLASH_STATE.COMPLETED) {
-      splash.classList.add("splash-state-completed");
-    } else if (nextState === SPLASH_STATE.FADING_OUT) {
-      splash.classList.add("splash-state-fading-out", "hide");
-    }
-  }
-
   function removeSplashNode(splash) {
     if (!splash || !splash.parentNode) return;
     splash.remove();
     splashHiddenAt = performance.now();
-    currentState = SPLASH_STATE.HIDDEN;
     if (!hideReason) hideReason = "splash-removed";
     setSplashActive(false);
     window.dispatchEvent(new CustomEvent("klevby-app-splash-hidden"));
@@ -100,64 +57,17 @@
     const splash = getSplashNode();
     if (!splash) return;
 
+    splash.classList.remove("splash-animate", "hide");
     splash.setAttribute("aria-hidden", "false");
-    setSplashState(SPLASH_STATE.INITIAL);
     initialStateAppliedAt = performance.now();
-  }
-
-  function clearAnimationCompletionTimer() {
-    if (animationCompletionTimer) {
-      window.clearTimeout(animationCompletionTimer);
-      animationCompletionTimer = null;
-    }
-  }
-
-  function markAnimationCompleted(source) {
-    if (animationCompletedAt != null) return;
-    animationCompletedAt = performance.now();
-    clearAnimationCompletionTimer();
-    setSplashState(SPLASH_STATE.COMPLETED);
-    hideReason = hideReason || `animation-complete:${source}`;
-    evaluateHide();
-  }
-
-  function bindAnimationCompletionWatch(splash) {
-    clearAnimationCompletionTimer();
-
-    const introMs = getIntroDurationMs();
-    animationCompletionTimer = window.setTimeout(() => {
-      markAnimationCompleted("intro-timeout");
-    }, introMs + 80);
-
-    const animatedNodes = splash.querySelectorAll(
-      ".splash-k, .splash-rest .letter, .splash-logo",
-    );
-    let pending = animatedNodes.length;
-
-    const onAnimationEnd = () => {
-      pending -= 1;
-      if (pending <= 0) {
-        markAnimationCompleted("animationend");
-      }
-    };
-
-    animatedNodes.forEach((node) => {
-      node.addEventListener("animationend", onAnimationEnd, { once: true });
-    });
   }
 
   function startSplashAnimation() {
     const splash = getSplashNode();
     if (!splash || animationStartedAt != null) return;
 
-    setSplashState(SPLASH_STATE.INITIAL);
-    void splash.offsetWidth;
-
-    animationClassAddedAt = performance.now();
-    animationStartedAt = animationClassAddedAt;
-    setSplashState(SPLASH_STATE.ANIMATING);
-    bindAnimationCompletionWatch(splash);
-    scheduleEvaluate(0);
+    animationStartedAt = performance.now();
+    splash.classList.add("splash-animate");
   }
 
   function bootstrapSplashPresentation() {
@@ -166,6 +76,7 @@
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         startSplashAnimation();
+        scheduleEvaluate(0);
       });
     });
   }
@@ -174,7 +85,6 @@
     if (hideCommitted) return;
     hideCommitted = true;
     hideReason = reason || hideReason || "unknown";
-    clearAnimationCompletionTimer();
 
     if (evaluateTimer) {
       window.clearTimeout(evaluateTimer);
@@ -189,7 +99,7 @@
     }
 
     fadeOutStartedAt = performance.now();
-    setSplashState(SPLASH_STATE.FADING_OUT);
+    splash.classList.add("hide");
     splash.setAttribute("aria-hidden", "true");
 
     const finalize = () => {
@@ -206,7 +116,7 @@
     };
 
     splash.addEventListener("transitionend", onTransitionEnd);
-    window.setTimeout(finalize, KLEVB_SPLASH_FADE_MS + 120);
+    window.setTimeout(finalize, KLEVB_SPLASH_FADE_MS + 100);
   }
 
   function evaluateHide() {
@@ -215,29 +125,26 @@
     const now = performance.now();
     const elapsed = now - splashStartedAt;
     const minVisibleMet = elapsed >= getMinVisibleMs();
-    const introComplete = animationCompletedAt != null;
+    const introElapsed = animationStartedAt != null ? now - animationStartedAt : 0;
+    const introComplete = animationStartedAt != null && introElapsed >= getIntroDurationMs();
     const forceHide = elapsed >= KLEVB_SPLASH_FORCE_HIDE_MS;
 
     if (minVisibleMet && minDurationPassedAt == null) {
       minDurationPassedAt = now;
     }
 
-    if (currentState === SPLASH_STATE.INITIAL && !forceHide) {
+    if (!animationStartedAt && !forceHide) {
       scheduleEvaluate(32);
       return;
     }
 
-    if (currentState === SPLASH_STATE.ANIMATING && !introComplete && !forceHide) {
+    if ((!minVisibleMet || !introComplete) && !forceHide) {
+      const waitForMin = Math.max(0, getMinVisibleMs() - elapsed);
       const waitForIntro =
         animationStartedAt != null
-          ? Math.max(0, getIntroDurationMs() - (now - animationStartedAt))
+          ? Math.max(0, getIntroDurationMs() - introElapsed)
           : getIntroDurationMs();
-      scheduleEvaluate(Math.max(waitForIntro, 32));
-      return;
-    }
-
-    if (!minVisibleMet && !forceHide) {
-      scheduleEvaluate(Math.max(0, getMinVisibleMs() - elapsed));
+      scheduleEvaluate(Math.max(waitForMin, waitForIntro, 32));
       return;
     }
 
@@ -295,9 +202,7 @@
       startedAt: splashStartedAt,
       splashStartedAtMs: splashStartedAt,
       initialStateAppliedAt,
-      animationClassAddedAt,
       animationStartedAt,
-      animationCompletedAt,
       shellReadyAt: shellReadyMarkedAt,
       shellReadyMarkedAtMs: shellReadyMarkedAt,
       minDurationPassedAt,
@@ -312,13 +217,12 @@
       forceHideMs: KLEVB_SPLASH_FORCE_HIDE_MS,
       hideReason,
       prefersReducedMotion: prefersReducedMotion(),
-      currentState,
       shellReady,
       hideCommitted,
       animationStarted: animationStartedAt != null,
       isActive: (() => {
         if (!splash || hideCommitted) return false;
-        return currentState !== SPLASH_STATE.HIDDEN && !splash.classList.contains("hide");
+        return !splash.classList.contains("hide");
       })(),
       bodySplashActive: document.body?.classList.contains("klevby-splash-active") === true,
       elapsedMs,
@@ -339,7 +243,6 @@
       return buildDiagnosticsSnapshot().isActive;
     },
     getDiagnosticsSnapshot: buildDiagnosticsSnapshot,
-    getState: () => currentState,
   };
 
   window.hideAppSplash = hideAppSplash;
@@ -351,9 +254,7 @@
     evaluateHide();
   }, KLEVB_SPLASH_FORCE_HIDE_MS);
 
-  if (document.getElementById("appSplash")) {
-    bootstrapSplashPresentation();
-  } else if (document.readyState === "loading") {
+  if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", bootstrapSplashPresentation, { once: true });
   } else {
     bootstrapSplashPresentation();

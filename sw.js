@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v30-hotfix-splash-intro-restore-20260625";
-const SW_BUILD_VERSION = "20260625-hotfix-splash-intro-restore-1";
+const CACHE_NAME = "klevby-cache-v29-splash-intro-animation-fix-20260624";
+const SW_BUILD_VERSION = "20260624-splash-intro-animation-fix-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [

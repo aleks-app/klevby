@@ -250,7 +250,7 @@ a {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  transition: opacity 0.35s ease, visibility 0.35s ease;
+  transition: opacity 0.7s ease, visibility 0.7s ease;
 }
 
 body.klevby-splash-active {
@@ -269,29 +269,19 @@ body.klevby-splash-active #klevby-network-banner {
   pointer-events: none !important;
 }
 
-html.klevby-splash-reduced-motion .app-splash.splash-state-initial .splash-logo,
-html.klevby-splash-reduced-motion .app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-logo {
+html.klevby-splash-reduced-motion .app-splash:not(.splash-animate) .splash-logo {
   opacity: 0;
   transform: scale(0.98);
 }
 
-html.klevby-splash-reduced-motion .app-splash.splash-state-animating .splash-logo {
+html.klevby-splash-reduced-motion .app-splash.splash-animate .splash-logo {
   animation: splashReducedReveal 0.65s ease forwards;
 }
 
-html.klevby-splash-reduced-motion .app-splash.splash-state-animating .splash-k,
-html.klevby-splash-reduced-motion .app-splash.splash-state-animating .splash-rest .letter,
-html.klevby-splash-reduced-motion .app-splash.splash-state-animating .splash-logo::after {
+html.klevby-splash-reduced-motion .app-splash.splash-animate .splash-k,
+html.klevby-splash-reduced-motion .app-splash.splash-animate .splash-rest .letter,
+html.klevby-splash-reduced-motion .app-splash.splash-animate .splash-logo::after {
   animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
-  filter: none !important;
-}
-
-html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-k,
-html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-rest .letter,
-html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-logo,
-html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-logo::after {
   opacity: 1 !important;
   transform: none !important;
   filter: none !important;
@@ -309,58 +299,32 @@ html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-log
   }
 }
 
-.app-splash.splash-state-fading-out,
 .app-splash.hide {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
 
-.app-splash.splash-state-initial .splash-k,
-.app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-k,
-.app-splash.splash-state-initial .splash-rest .letter,
-.app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-rest .letter,
-.app-splash.splash-state-initial .splash-logo::after,
-.app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-logo::after {
+.app-splash:not(.splash-animate) .splash-k,
+.app-splash:not(.splash-animate) .splash-rest .letter,
+.app-splash:not(.splash-animate) .splash-logo::after {
   animation: none !important;
 }
 
-.app-splash.splash-state-initial .splash-k,
-.app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-k {
+.app-splash:not(.splash-animate) .splash-k {
   opacity: 0;
   transform: scale(0.72);
 }
 
-.app-splash.splash-state-initial .splash-rest .letter,
-.app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-rest .letter {
+.app-splash:not(.splash-animate) .splash-rest .letter {
   opacity: 0;
   transform: translateX(42px) translateY(18px) rotate(18deg) scale(0.84);
   filter: blur(8px);
 }
 
-.app-splash.splash-state-initial .splash-logo::after,
-.app-splash:not(.splash-state-animating):not(.splash-state-completed) .splash-logo::after {
+.app-splash:not(.splash-animate) .splash-logo::after {
   width: 0;
   opacity: 0;
-}
-
-.app-splash.splash-state-completed .splash-k,
-.app-splash.splash-state-completed .splash-rest .letter,
-.app-splash.splash-state-completed .splash-logo::after {
-  animation: none !important;
-  opacity: 1;
-  transform: none;
-  filter: none;
-}
-
-.app-splash.splash-state-completed .splash-rest .letter:nth-child(4),
-.app-splash.splash-state-completed .splash-rest .letter:nth-child(5) {
-  color: #F47A2B;
-}
-
-.app-splash.splash-state-completed .splash-logo::after {
-  width: 168px;
-  opacity: 0.85;
 }
 
 .splash-logo {
@@ -381,15 +345,10 @@ html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-log
 .splash-k {
   font-weight: inherit;
   display: inline-block;
-  opacity: 0;
-  transform: scale(0.72);
-  transform-origin: center;
-}
-
-.app-splash.splash-state-animating .splash-k {
   animation:
-    splashKPulse 0.8s ease-in-out 0s 1,
-    splashKMove 0.4s cubic-bezier(.22,.9,.22,1) 0.75s forwards;
+    splashKPulse 0.65s ease-in-out 0s 1,
+    splashKMove 0.35s cubic-bezier(.22,.9,.22,1) 0.6s forwards;
+  transform-origin: center;
 }
 
 .splash-rest {
@@ -408,17 +367,14 @@ html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-log
   transform: translateX(42px) translateY(18px) rotate(18deg) scale(0.84);
   filter: blur(8px);
   transform-origin: center bottom;
+  animation: splashLetterWave 0.5s cubic-bezier(0.17, 0.89, 0.32, 1.28) forwards;
 }
 
-.app-splash.splash-state-animating .splash-rest .letter {
-  animation: splashLetterWave 0.55s cubic-bezier(0.17, 0.89, 0.32, 1.28) forwards;
-}
-
-.app-splash.splash-state-animating .splash-rest .letter:nth-child(1) { animation-delay: 0.9s; }
-.app-splash.splash-state-animating .splash-rest .letter:nth-child(2) { animation-delay: 1.0s; }
-.app-splash.splash-state-animating .splash-rest .letter:nth-child(3) { animation-delay: 1.1s; }
-.app-splash.splash-state-animating .splash-rest .letter:nth-child(4) { animation-delay: 1.2s; }
-.app-splash.splash-state-animating .splash-rest .letter:nth-child(5) { animation-delay: 1.3s; }
+.splash-rest .letter:nth-child(1) { animation-delay: 0.72s; }
+.splash-rest .letter:nth-child(2) { animation-delay: 0.79s; }
+.splash-rest .letter:nth-child(3) { animation-delay: 0.86s; }
+.splash-rest .letter:nth-child(4) { animation-delay: 0.93s; }
+.splash-rest .letter:nth-child(5) { animation-delay: 1.00s; }
 
 .splash-rest .letter:nth-child(4),
 .splash-rest .letter:nth-child(5) {
@@ -435,11 +391,7 @@ html.klevby-splash-reduced-motion .app-splash.splash-state-completed .splash-log
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, rgba(244, 122, 43, 0.95), transparent);
   transform: translateX(-50%);
-  opacity: 0;
-}
-
-.app-splash.splash-state-animating .splash-logo::after {
-  animation: splashLine 0.45s ease 1.4s forwards;
+  animation: splashLine 0.4s ease 1.05s forwards;
 }
 
 @keyframes splashKPulse {
