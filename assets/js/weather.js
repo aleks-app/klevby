@@ -80,8 +80,7 @@ function publishKlevGoWeatherState({
   pressureText,
   biteIconSrc = "assets/icons/weather/fish-light.svg",
   biteTitle,
-  biteDescription,
-  fromCache = false,
+  biteDescription
 }) {
   const safeWeatherMode = getSafeWeatherMode(weatherMode);
   const nextState = {
@@ -101,14 +100,6 @@ function publishKlevGoWeatherState({
   window.dispatchEvent(new CustomEvent("klevgo:weather-updated", {
     detail: nextState
   }));
-
-  if (!fromCache) {
-    window.KlevbyLastKnownCache?.saveLastKnown?.("weather", nextState, {
-      onlineSuccess: true,
-      count: 1,
-    });
-    window.KlevbyHomeLastKnownBridge?.saveHomeSnapshot?.();
-  }
 }
 
 function windDirection(deg) {
@@ -160,15 +151,6 @@ async function fetchWeather() {
     });
   } catch (error) {
     console.error(error);
-
-    const cached = window.KlevbyLastKnownCache?.readLastKnown?.("weather");
-    if (cached?.data && typeof window.publishKlevGoWeatherState === "function") {
-      window.publishKlevGoWeatherState({
-        ...cached.data,
-        fromCache: true,
-      });
-      return;
-    }
 
     const fallbackTempText = "+14°C";
     const fallbackWindText = "3 м/с СЗ";

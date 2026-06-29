@@ -1175,14 +1175,6 @@
       container.appendChild(simulateOfflineButton);
     }
 
-    if (window.KlevbyLastKnownCache?.clearAllLastKnown) {
-      const clearCacheButton = createDiagnosticsButton("Clear last-known cache", () => {
-        window.KlevbyLastKnownCache.clearAllLastKnown();
-        flashButtonLabel(clearCacheButton, "Cache cleared", "Failed", true);
-      }, { background: "#5A4A2E" });
-      container.appendChild(clearCacheButton);
-    }
-
     const refreshButton = createDiagnosticsButton("Refresh", () => {
       window.klevbyAndroidDiagnostics.collect();
       flashButtonLabel(refreshButton, "Refreshed", "Refresh failed", true);

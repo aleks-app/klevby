@@ -55,66 +55,6 @@
     window.klevbyPosts = safePosts;
   }
 
-  function readCachedTrips() {
-    const entry = window.KlevbyLastKnownCache?.readLastKnown?.("trips");
-    return Array.isArray(entry?.data) ? entry.data : [];
-  }
-
-  function saveCachedTrips(posts, meta = {}) {
-    if (!window.KlevbyLastKnownCache?.saveLastKnown) return;
-
-    const sanitized = Array.isArray(posts)
-      ? posts
-          .map((post) => window.KlevbyLastKnownCache.sanitizeTripPost?.(post) || post)
-          .filter(Boolean)
-      : [];
-
-    window.KlevbyLastKnownCache.saveLastKnown("trips", sanitized, {
-      onlineSuccess: true,
-      count: sanitized.length,
-      ...meta,
-    });
-  }
-
-  function presentCachedTripsIfAvailable(options = {}) {
-    const silent = Boolean(options.silent);
-    const existingPosts = getPostsArray();
-    if (existingPosts.length) return false;
-
-    const cachedTrips = readCachedTrips();
-    if (!cachedTrips.length) return false;
-
-    setPostsArray(cachedTrips);
-
-    if (typeof window.renderPosts === "function") {
-      window.renderPosts({
-        source: "cache",
-        offline: window.KlevbyLastKnownCache?.isNetworkDegraded?.() === true,
-      });
-    }
-
-    if (!silent) {
-      getUtils().showStatusSafe?.("Показаны последние сохранённые выезды");
-    }
-
-    return true;
-  }
-
-  function renderTripsLoadFailure(tripsFullscreenPostsSection, silent) {
-    if (presentCachedTripsIfAvailable({ silent })) {
-      return true;
-    }
-
-    if (!silent && tripsFullscreenPostsSection) {
-      const ui = window.KlevbyLastKnownUi;
-      tripsFullscreenPostsSection.innerHTML =
-        ui?.tripsOfflineEmptyHtml?.() ||
-        '<div class="info-line error-line">Не удалось загрузить объявления.</div>';
-    }
-
-    return false;
-  }
-
   function getPostsLoadPromise() {
     const state = getState();
 
@@ -817,15 +757,6 @@
         showStatusSafe("Загрузка объявлений...");
       }
 
-      if (
-        !existingPosts.length &&
-        window.KlevbyLastKnownCache?.isNetworkDegraded?.() &&
-        presentCachedTripsIfAvailable({ silent })
-      ) {
-        setPostsInitialLoadDone(true);
-        return;
-      }
-
       if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
         tripsFullscreenPostsSection.innerHTML = `
           <div class="skeleton"></div>
@@ -896,7 +827,11 @@
         }
 
         if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
-          renderTripsLoadFailure(tripsFullscreenPostsSection, silent);
+          tripsFullscreenPostsSection.innerHTML = `
+            <div class="info-line error-line">
+              Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+            </div>
+          `;
         }
         setPostsInitialLoadDone(true);
         return;
@@ -924,7 +859,11 @@
         }
 
         if (!silent && tripsFullscreenPostsSection && !existingPosts.length) {
-          renderTripsLoadFailure(tripsFullscreenPostsSection, silent);
+          tripsFullscreenPostsSection.innerHTML = `
+            <div class="info-line error-line">
+              Не удалось загрузить объявления. Открой Console и посмотри ошибку posts.
+            </div>
+          `;
         }
         setPostsInitialLoadDone(true);
         return;
@@ -946,12 +885,11 @@
       }
 
       setPostsArray(loadedPosts);
-      saveCachedTrips(loadedPosts, { source: result.source || "unknown" });
       ensureModalPostExists(loadedPosts);
       setPostsInitialLoadDone(true);
 
       if (typeof window.renderPosts === "function") {
-        window.renderPosts({ source: "fresh", offline: false });
+        window.renderPosts();
       }
     })();
 

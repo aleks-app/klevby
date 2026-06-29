@@ -292,37 +292,6 @@
     `;
   }
 
-  function offlineFeedEmptyHtml() {
-    const ui = window.KlevbyLastKnownUi;
-    if (ui?.offlineEmptyHtml) {
-      return ui.offlineEmptyHtml();
-    }
-
-    return `
-      <div class="home-empty-card">
-        <h3>Нет интернета</h3>
-        <p>Откройте приложение один раз с интернетом, чтобы сохранить данные для быстрого запуска</p>
-      </div>
-    `;
-  }
-
-  function prependFeedSavedNotice(list, source) {
-    if (!list || source !== "cache") return;
-
-    const ui = window.KlevbyLastKnownUi;
-    const notice = ui?.feedSavedNoticeHtml?.();
-    if (!notice) return;
-
-    const existing = list.querySelector(".klevby-last-known-notice");
-    if (existing) return;
-
-    list.insertAdjacentHTML("afterbegin", notice);
-  }
-
-  function isNetworkDegradedForFeed() {
-    return window.KlevbyLastKnownCache?.isNetworkDegraded?.() === true;
-  }
-
   async function renderProfileFeed() {
     const list = document.getElementById("profileFeedSection");
     const api = getApi();
@@ -348,18 +317,9 @@
       if (cachedItems.length) {
         renderedFallback = renderFeedItems(list, cachedItems, "cache");
         fallbackSource = "cache";
-        prependFeedSavedNotice(list, "cache");
-      } else if (isNetworkDegradedForFeed()) {
-        setStaticListHtml(list, offlineFeedEmptyHtml(), "offline-empty", "offline-empty");
-        scheduleMobileFeedWidthLock("offline_empty", 120);
-        return;
       } else {
         setStaticListHtml(list, loadingHtml(), "loading", "loading");
       }
-    }
-
-    if (renderedFallback && fallbackSource === "cache") {
-      prependFeedSavedNotice(list, "cache");
     }
 
     if (typeof api.getFeedItemsForRender !== "function") {
@@ -385,18 +345,8 @@
       console.warn("Klevby feed render: лента не загрузилась", error);
 
       if (!renderedFallback) {
-        const cachedItems = readFeedCache();
-        if (cachedItems.length) {
-          renderFeedItems(list, cachedItems, "cache");
-          prependFeedSavedNotice(list, "cache");
-        } else if (isNetworkDegradedForFeed()) {
-          setStaticListHtml(list, offlineFeedEmptyHtml(), "offline-empty", "offline-empty");
-        } else {
-          setStaticListHtml(list, loadingHtml(), "loading", "loading");
-          scheduleRenderRetry("fresh_load_failed");
-        }
-      } else if (fallbackSource === "cache") {
-        prependFeedSavedNotice(list, "cache");
+        setStaticListHtml(list, loadingHtml(), "loading", "loading");
+        scheduleRenderRetry("fresh_load_failed");
       }
 
       scheduleMobileFeedWidthLock("fresh_load_failed", 120);
@@ -410,7 +360,6 @@
 
     const items = getRenderableFeedItems(result?.items || []);
     const resultSource = String(result?.source || "").toLowerCase();
-    const isNetworkError = resultSource === "network_error";
     const isSupabaseAuthoritativeSource =
       resultSource === "supabase" || resultSource === "supabase_empty";
 
@@ -420,15 +369,6 @@
           fallback: fallbackSource,
           source: result?.source || "unknown"
         });
-
-        if (fallbackSource === "cache") {
-          prependFeedSavedNotice(list, "cache");
-        }
-
-        if (isNetworkError || isNetworkDegradedForFeed()) {
-          scheduleMobileFeedWidthLock("fresh_empty_with_fallback", 120);
-          return;
-        }
 
         scheduleRenderRetry("fresh_empty_with_fallback", 5000);
         scheduleMobileFeedWidthLock("fresh_empty_with_fallback", 120);
@@ -440,12 +380,6 @@
 
       if (isSupabaseAuthoritativeSource) {
         writeFeedCache([]);
-      }
-
-      if (isNetworkError || isNetworkDegradedForFeed()) {
-        setStaticListHtml(list, offlineFeedEmptyHtml(), "offline-empty", "offline-empty");
-        scheduleMobileFeedWidthLock("fresh_empty_offline", 120);
-        return;
       }
 
       setStaticListHtml(list, emptyHtml(), "empty", "empty");
