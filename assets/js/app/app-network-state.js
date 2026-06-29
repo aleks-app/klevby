@@ -10,6 +10,13 @@
   let lastCheckedAt = 0;
   let checkInFlight = false;
   let intervalId = null;
+  let lastProbe = {
+    ok: null,
+    elapsedMs: null,
+    status: null,
+    error: null,
+    at: null,
+  };
 
   function getEffectiveOnline() {
     if (window.KlevbyBootStore?.isSimulatedOffline?.()) {
@@ -133,17 +140,45 @@
       const elapsed = performance.now() - startedAt;
 
       if (!response.ok) {
+        lastProbe = {
+          ok: false,
+          elapsedMs: Math.round(elapsed),
+          status: "weak",
+          error: `HTTP ${response.status}`,
+          at: Date.now(),
+        };
         setStatus("weak");
         return;
       }
 
       if (elapsed > 2200) {
+        lastProbe = {
+          ok: true,
+          elapsedMs: Math.round(elapsed),
+          status: "weak",
+          error: null,
+          at: Date.now(),
+        };
         setStatus("weak");
         return;
       }
 
+      lastProbe = {
+        ok: true,
+        elapsedMs: Math.round(elapsed),
+        status: "online",
+        error: null,
+        at: Date.now(),
+      };
       setStatus("online");
     } catch (error) {
+      lastProbe = {
+        ok: false,
+        elapsedMs: null,
+        status: getEffectiveOnline() ? "weak" : "offline",
+        error: error?.message || String(error),
+        at: Date.now(),
+      };
       window.KlevbyBootStore?.recordError?.("network-probe", error, "network");
       setStatus(getEffectiveOnline() ? "weak" : "offline");
     } finally {
@@ -203,6 +238,14 @@
     setSimulatedOffline(enabled) {
       window.KlevbyBootStore?.setSimulatedOffline?.(enabled);
       scheduleProbe(true);
+    },
+    getDiagnosticsSnapshot() {
+      return {
+        lastCheckedAt,
+        lastCheckedAtIso: lastCheckedAt ? new Date(lastCheckedAt).toISOString() : null,
+        lastProbe: { ...lastProbe },
+        checkInFlight,
+      };
     },
   };
 
