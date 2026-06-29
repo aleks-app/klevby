@@ -364,6 +364,181 @@
     return warnings.slice(0, MAX_ISSUES);
   }
 
+  function summarizeLastKnownCache() {
+    const full = window.KlevbyLastKnownCache?.getLastKnownSnapshot?.();
+    if (!full) return null;
+    const entries = {};
+    Object.entries(full.entries || {}).forEach(([key, entry]) => {
+      entries[key] = {
+        present: Boolean(entry?.present),
+        count: entry?.count ?? null,
+        savedAtIso: entry?.savedAtIso ?? null,
+      };
+    });
+    return {
+      schemaVersion: full.schemaVersion || null,
+      keys: full.keys || [],
+      entries,
+      lastWriteStatus: full.lastWriteStatus || null,
+    };
+  }
+
+  function collectBootSummary() {
+    const bootSnapshot = window.KlevbyBootStore?.getSnapshotSync?.() || null;
+    if (!bootSnapshot) return { available: false };
+    return {
+      bootDurationMs: bootSnapshot.bootDurationMs ?? null,
+      supabaseInitStatus: bootSnapshot.supabaseInitStatus ?? null,
+      mapInitStatus: bootSnapshot.mapInitStatus ?? null,
+      networkStatus: bootSnapshot.networkStatus ?? null,
+      visibleSection: bootSnapshot.visibleSection ?? getVisibleSectionId(),
+      shellPresented: bootSnapshot.shellPresented ?? null,
+      firstRenderHappened: bootSnapshot.firstRenderHappened ?? null,
+      appBuildVersion: bootSnapshot.appBuildVersion ?? window.KLEVB_APP_BUILD_VERSION ?? null,
+      errorCount: bootSnapshot.lastBootErrors?.length ?? 0,
+      errors: (bootSnapshot.lastBootErrors || []).slice(-3).map((entry) => ({
+        scope: entry.scope,
+        message: shortError(entry),
+      })),
+    };
+  }
+
+  function collectCompactSync(overlayMeta) {
+    const html = document.documentElement;
+    const htmlStyles = html ? getComputedStyle(html) : null;
+    const appShell = window.KlevbyAppShellViewportOwner?.getLastMeasurement?.() || null;
+    const bootSnapshot = window.KlevbyBootStore?.getSnapshotSync?.() || null;
+    const visibleSection = getVisibleSectionId();
+    const createFlowOpen = window.KlevbyTripsCreateFlowOwner?.isOpen?.() === true;
+    const networkProbe = window.KlevbyNetworkState?.getDiagnosticsSnapshot?.() || null;
+
+    const snapshot = {
+      auditVersion: AUDIT_VERSION,
+      compact: true,
+      timestamp: new Date().toISOString(),
+      boot: collectBootSummary(),
+      splash: collectSplashDiagnostics(),
+      appShell: appShell
+        ? {
+            availableTop: appShell.availableTop ?? null,
+            availableBottom: appShell.availableBottom ?? null,
+            availableHeight: appShell.availableHeight ?? null,
+            chromeMode: appShell.chromeMode ?? (document.body?.getAttribute("data-app-chrome-mode") || null),
+            headerVisible: appShell.headerVisible ?? null,
+            tabbarVisible: appShell.tabbarVisible ?? null,
+          }
+        : { available: false },
+      currentScreen: {
+        screenId: visibleSection,
+        screenType: createFlowOpen ? "flow" : bootSnapshot?.currentScreenType || "unknown",
+        activeTab: getActiveTabIndex(),
+      },
+      viewport: {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+        visualViewport: window.visualViewport
+          ? {
+              width: window.visualViewport.width,
+              height: window.visualViewport.height,
+              offsetTop: window.visualViewport.offsetTop,
+            }
+          : null,
+      },
+      safeArea: readSafeArea(htmlStyles),
+      TouchBar: collectTouchBarDiagnostics(),
+      network: {
+        navigatorOnLine: navigator.onLine,
+        detectedStatus: window.KlevbyNetworkState?.getStatus?.() || bootSnapshot?.networkStatus || "unknown",
+        simulatedOffline: window.KlevbyBootStore?.isSimulatedOffline?.() === true,
+        lastCheckedAtIso: networkProbe?.lastCheckedAtIso ?? null,
+        lastProbe: networkProbe?.lastProbe
+          ? {
+              ok: networkProbe.lastProbe.ok,
+              elapsedMs: networkProbe.lastProbe.elapsedMs,
+              status: networkProbe.lastProbe.status,
+              error: networkProbe.lastProbe.error
+                ? shortError(networkProbe.lastProbe.error)
+                : null,
+            }
+          : null,
+      },
+      serviceWorker: {
+        supported: "serviceWorker" in navigator,
+        controlled: Boolean(navigator.serviceWorker?.controller),
+        buildVersion: bootSnapshot?.swBuildVersion || null,
+      },
+      caches: {
+        supported: "caches" in window,
+        note: "Use async collect for cache name list",
+      },
+      lastKnownCache: summarizeLastKnownCache(),
+      auth: collectAuthDiagnostics(),
+      supabase: {
+        initStatus: bootSnapshot?.supabaseInitStatus || "unknown",
+        lastError: (bootSnapshot?.lastBootErrors || [])
+          .filter((entry) => String(entry.scope || "").toLowerCase().includes("supabase"))
+          .slice(-1)
+          .map((entry) => shortError(entry))[0] || null,
+      },
+      Home: collectHomeDiagnostics(),
+      Feed: collectFeedDiagnostics(),
+      Trips: collectTripsDiagnostics(),
+      CreateFlow: {
+        open: window.KlevbyTripsCreateFlowOwner?.isOpen?.() === true,
+        step: window.KlevbyTripsCreateFlowOwner?.getDebug?.()?.step ?? null,
+      },
+      Map: {
+        initStatus: bootSnapshot?.mapInitStatus || "unknown",
+      },
+      errors: (bootSnapshot?.lastBootErrors || []).slice(-5).map((entry) => ({
+        scope: entry.scope,
+        message: shortError(entry),
+      })),
+      warnings: [],
+      diagnosticsOverlay: overlayMeta || null,
+    };
+
+    snapshot.warnings = collectWarnings(snapshot).slice(0, 5);
+    return snapshot;
+  }
+
+  function truncatePreview(text, maxLen) {
+    const safe = String(text || "");
+    if (safe.length <= maxLen) return safe;
+    return `${safe.slice(0, maxLen)}\n… [preview truncated]`;
+  }
+
+  function isRuntimeReady() {
+    return typeof window.KlevbyBootStore?.getSnapshotSync === "function";
+  }
+
+  function buildUnavailableJson(errorMessage) {
+    return JSON.stringify(
+      {
+        available: false,
+        error: shortError(errorMessage) || "Global diagnostics unavailable",
+        runtimeReady: isRuntimeReady(),
+        timestamp: new Date().toISOString(),
+      },
+      null,
+      2,
+    );
+  }
+
+  function buildCompactJson(overlayMeta) {
+    try {
+      if (!isRuntimeReady()) {
+        return buildUnavailableJson("KlevbyBootStore not ready");
+      }
+      const snapshot = collectCompactSync(overlayMeta);
+      publish(snapshot);
+      return JSON.stringify(snapshot, null, 2);
+    } catch (error) {
+      return buildUnavailableJson(error);
+    }
+  }
+
   function collectSync() {
     const html = document.documentElement;
     const htmlStyles = html ? getComputedStyle(html) : null;
@@ -491,67 +666,59 @@
   }
 
   function publish(snapshot) {
-    window.__KLEVBY_GLOBAL_DIAGNOSTICS__ = snapshot;
+    if (globalDiagnosticsApi) {
+      globalDiagnosticsApi.lastSnapshot = snapshot;
+    }
     return snapshot;
   }
 
   function collectAndPublish() {
-    return publish(collectSync());
+    return publish(collectCompactSync());
+  }
+
+  function scheduleBackgroundPublish() {
+    window.setTimeout(() => {
+      try {
+        if (isRuntimeReady()) collectAndPublish();
+      } catch (_) {}
+    }, 0);
   }
 
   const OVERLAY_ID = "klevgoHomeBoxDiagnosticsOverlay";
+  const PREVIEW_MAX_CHARS = 1600;
 
-  function getGlobalSnapshotSafe() {
-    try {
-      return publish(collectSync());
-    } catch (_) {
-      return window.__KLEVBY_GLOBAL_DIAGNOSTICS__ || null;
-    }
+  const overlayRuntime = {
+    openedAt: null,
+    buttonsCount: 0,
+    actionsBound: false,
+    lastAction: null,
+    lastError: null,
+    freezeSafeMode: true,
+    busy: false,
+    root: null,
+    statusNode: null,
+    previewNode: null,
+    getHomeJson: null,
+  };
+
+  function hideDiagnosticsOverlay() {
+    document.getElementById(OVERLAY_ID)?.remove();
+    overlayRuntime.root = null;
+    overlayRuntime.statusNode = null;
+    overlayRuntime.previewNode = null;
+    overlayRuntime.busy = false;
+    overlayRuntime.openedAt = null;
   }
 
-  function isGlobalAvailable(snapshot) {
-    const data = snapshot || getGlobalSnapshotSafe();
-    return Boolean(data && data.auditVersion && data.boot && data.splash);
+  function setOverlayStatus(message, ok) {
+    if (!overlayRuntime.statusNode) return;
+    overlayRuntime.statusNode.textContent = message;
+    overlayRuntime.statusNode.style.color = ok === false ? "#ffb4a2" : "#b7f7cf";
   }
 
-  function getGlobalJsonString() {
-    try {
-      const snapshot = getGlobalSnapshotSafe();
-      if (!isGlobalAvailable(snapshot)) {
-        return JSON.stringify(
-          {
-            available: false,
-            error: "Global diagnostics unavailable",
-            timestamp: new Date().toISOString(),
-          },
-          null,
-          2,
-        );
-      }
-      return JSON.stringify(snapshot, null, 2);
-    } catch (error) {
-      return JSON.stringify(
-        {
-          available: false,
-          error: shortError(error) || "Global diagnostics unavailable",
-          timestamp: new Date().toISOString(),
-        },
-        null,
-        2,
-      );
-    }
-  }
-
-  function formatGlobalSummary(snapshot) {
-    if (!isGlobalAvailable(snapshot)) return "Global diagnostics unavailable";
-    return [
-      `screen: ${snapshot.currentScreen?.screenId || "?"} (${snapshot.currentScreen?.screenType || "?"})`,
-      `net: ${snapshot.network?.detectedStatus || "?"} online=${snapshot.network?.navigatorOnLine}`,
-      `splash: ${snapshot.splash?.hideReason || (snapshot.splash?.isActive ? "active" : "hidden")} ${snapshot.splash?.visibleDurationMs ?? "?"}ms`,
-      `boot: ${snapshot.boot?.bootDurationMs ?? "?"}ms`,
-      `auth: ${snapshot.auth?.authMode || "?"}`,
-      `warnings: ${snapshot.warnings?.length || 0}`,
-    ].join("\n");
+  function setOverlayPreview(text) {
+    if (!overlayRuntime.previewNode) return;
+    overlayRuntime.previewNode.textContent = truncatePreview(text, PREVIEW_MAX_CHARS);
   }
 
   function copyTextFallback(text) {
@@ -582,186 +749,265 @@
     return copyTextFallback(text);
   }
 
-  function showManualCopyFallback(text) {
-    const existing = document.getElementById("klevbyGlobalDiagnosticsManualCopy");
-    if (existing) existing.remove();
-    const wrap = document.createElement("div");
-    wrap.id = "klevbyGlobalDiagnosticsManualCopy";
-    wrap.style.cssText =
-      "position:fixed;inset:12px;z-index:2147483647;background:rgba(8,12,10,.96);padding:12px;border-radius:12px;color:#fff;display:flex;flex-direction:column;gap:8px;";
-    const label = document.createElement("div");
-    label.textContent = "Clipboard unavailable. Select and copy JSON manually.";
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.cssText = "flex:1;width:100%;font:12px/1.35 monospace;";
-    const close = document.createElement("button");
-    close.type = "button";
-    close.textContent = "Close";
-    close.style.cssText =
-      "min-height:36px;padding:7px 11px;border:0;border-radius:10px;background:#356A48;color:#fff;font-weight:700;";
-    close.addEventListener("click", () => wrap.remove());
-    wrap.append(label, textarea, close);
-    document.body.appendChild(wrap);
-    textarea.focus();
-    textarea.select();
+  function runDeferred(task) {
+    window.setTimeout(() => {
+      try {
+        task();
+      } catch (error) {
+        overlayRuntime.lastError = shortError(error);
+        setOverlayStatus("Action failed", false);
+        overlayRuntime.busy = false;
+      }
+    }, 0);
   }
 
-  function hideDiagnosticsOverlay() {
-    document.getElementById(OVERLAY_ID)?.remove();
+  async function runCopyAction(label, buildJson) {
+    if (overlayRuntime.busy) return;
+    overlayRuntime.busy = true;
+    overlayRuntime.lastAction = label;
+    setOverlayStatus("Preparing…", true);
+
+    runDeferred(async () => {
+      let json = "";
+      try {
+        json = buildJson();
+      } catch (error) {
+        json = buildUnavailableJson(error);
+      }
+
+      const copied = await copyTextToClipboard(json);
+      setOverlayStatus(copied ? `${label} copied` : "Copy failed", copied);
+      setOverlayPreview(copied ? `${label} ready (${json.length} chars).` : "Copy failed — try again.");
+      overlayRuntime.busy = false;
+    });
   }
 
-  function createOverlayButton(label, background) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.style.cssText = `min-height:36px;padding:7px 10px;border:0;border-radius:10px;background:${background};color:#111;font-weight:800;font-size:12px;`;
-    return button;
+  function handleOverlayAction(event) {
+    const button = event.target?.closest?.("[data-action]");
+    if (!button || !overlayRuntime.root?.contains(button)) return;
+
+    const action = button.getAttribute("data-action");
+    if (!action) return;
+
+    if (action === "close") {
+      event.preventDefault();
+      event.stopPropagation();
+      hideDiagnosticsOverlay();
+      return;
+    }
+
+    if (overlayRuntime.busy) return;
+
+    if (action === "copy-global-json") {
+      event.preventDefault();
+      void runCopyAction("Global JSON", () =>
+        buildCompactJson({
+          openedAt: overlayRuntime.openedAt,
+          buttonsCount: overlayRuntime.buttonsCount,
+          actionsBound: overlayRuntime.actionsBound,
+          lastAction: "copy-global-json",
+          freezeSafeMode: true,
+        }),
+      );
+      return;
+    }
+
+    if (action === "copy-home-json") {
+      event.preventDefault();
+      void runCopyAction("Home JSON", () => {
+        if (typeof overlayRuntime.getHomeJson === "function") {
+          return overlayRuntime.getHomeJson();
+        }
+        if (typeof window.KLEVGO_HOME_BOX_MEASURE === "function") {
+          return JSON.stringify(window.KLEVGO_HOME_BOX_MEASURE(), null, 2);
+        }
+        return buildUnavailableJson("Home diagnostics unavailable");
+      });
+      return;
+    }
+
+    if (action === "clear-diagnostics") {
+      event.preventDefault();
+      overlayRuntime.lastAction = action;
+      try {
+        window.KlevbyBootStore?.clearDiagnostics?.();
+        setOverlayStatus("Cleared", true);
+        setOverlayPreview("Boot diagnostics cleared.");
+      } catch (error) {
+        overlayRuntime.lastError = shortError(error);
+        setOverlayStatus("Clear failed", false);
+      }
+      return;
+    }
+
+    if (action === "clear-last-known-cache") {
+      event.preventDefault();
+      overlayRuntime.lastAction = action;
+      try {
+        window.KlevbyLastKnownCache?.clearAllLastKnown?.();
+        setOverlayStatus("Cache cleared", true);
+      } catch (error) {
+        overlayRuntime.lastError = shortError(error);
+        setOverlayStatus("Cache clear failed", false);
+      }
+      return;
+    }
+
+    if (action === "clear-map-cache") {
+      event.preventDefault();
+      overlayRuntime.lastAction = action;
+      try {
+        window.KlevbyLastKnownMap?.clearMapCache?.();
+        setOverlayStatus("Map cache cleared", true);
+      } catch (error) {
+        overlayRuntime.lastError = shortError(error);
+        setOverlayStatus("Map cache clear failed", false);
+      }
+      return;
+    }
+
+    if (action === "refresh") {
+      event.preventDefault();
+      overlayRuntime.lastAction = action;
+      setOverlayStatus("Ready", true);
+      setOverlayPreview("Ready — tap Copy global JSON or Copy Home JSON.");
+    }
   }
 
-  function setOverlayStatus(node, message, ok) {
-    if (!node) return;
-    node.textContent = message;
-    node.style.color = ok ? "#b7f7cf" : "#ffb4a2";
+  function bindOverlayActions(overlay) {
+    if (overlayRuntime.actionsBound && overlay.dataset.diagnosticsActionsBound === "true") return;
+    overlay.dataset.diagnosticsActionsBound = "true";
+    overlayRuntime.actionsBound = true;
+
+    const onAction = (event) => {
+      handleOverlayAction(event);
+    };
+
+    overlay.addEventListener("click", onAction, true);
+    overlay.addEventListener("pointerup", onAction, true);
+    overlay.addEventListener(
+      "touchend",
+      (event) => {
+        if (event.target?.closest?.('[data-action="close"]')) {
+          event.preventDefault();
+        }
+        onAction(event);
+      },
+      { capture: true, passive: false },
+    );
   }
 
   function showDiagnosticsOverlay(options) {
     hideDiagnosticsOverlay();
 
-    const getHomeJson =
-      options && typeof options.getHomeJson === "function"
-        ? options.getHomeJson
-        : () =>
-            JSON.stringify(
-              { error: "Home diagnostics unavailable", timestamp: new Date().toISOString() },
-              null,
-              2,
-            );
-
-    let snapshot = null;
-    let globalAvailable = false;
-    try {
-      snapshot = getGlobalSnapshotSafe();
-      globalAvailable = isGlobalAvailable(snapshot);
-    } catch (_) {
-      globalAvailable = false;
-    }
+    overlayRuntime.getHomeJson =
+      options && typeof options.getHomeJson === "function" ? options.getHomeJson : null;
+    overlayRuntime.openedAt = new Date().toISOString();
+    overlayRuntime.lastAction = null;
+    overlayRuntime.lastError = null;
+    overlayRuntime.busy = false;
 
     const overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-label", "KlevGo diagnostics");
+    overlay.setAttribute("data-klevby-diagnostics-overlay", "true");
     overlay.style.cssText =
-      "position:fixed;inset:calc(10px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:rgba(6,8,10,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;box-shadow:0 18px 48px rgba(0,0,0,.45);";
+      "position:fixed;inset:calc(10px + env(safe-area-inset-top,0px)) 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:rgba(6,8,10,.96);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;touch-action:manipulation;pointer-events:auto;box-shadow:0 18px 48px rgba(0,0,0,.45);";
 
-    const header = document.createElement("div");
-    header.style.cssText =
-      "display:flex;flex-direction:column;gap:8px;font:700 15px/1.2 system-ui,sans-serif;";
+    const buttonStyle =
+      "min-height:40px;padding:8px 11px;border:0;border-radius:10px;font-weight:800;font-size:12px;touch-action:manipulation;cursor:pointer;";
 
-    const titleRow = document.createElement("div");
-    titleRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
-    const title = document.createElement("span");
-    title.textContent = "KlevGo diagnostics";
-    const status = document.createElement("span");
-    status.style.cssText = "min-width:72px;color:#b7f7cf;font:600 12px/1.2 system-ui,sans-serif;text-align:right;";
-    titleRow.append(title, status);
-    header.appendChild(titleRow);
+    const optionalButtons = [];
+    if (window.KlevbyLastKnownCache?.clearAllLastKnown) {
+      optionalButtons.push(
+        `<button type="button" data-action="clear-last-known-cache" style="${buttonStyle}background:#5A4A2E;color:#fff8ea;">Clear last-known cache</button>`,
+      );
+    }
+    if (window.KlevbyLastKnownMap?.clearMapCache) {
+      optionalButtons.push(
+        `<button type="button" data-action="clear-map-cache" style="${buttonStyle}background:#5A4A2E;color:#fff8ea;">Clear map cache</button>`,
+      );
+    }
 
-    const summary = document.createElement("div");
-    summary.style.cssText =
-      "padding:8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#d9f5e5;font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;";
-    summary.textContent = formatGlobalSummary(snapshot);
-    header.appendChild(summary);
+    overlay.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 15px/1.2 system-ui,sans-serif;">
+        <span>KlevGo diagnostics</span>
+        <span data-diag-status style="min-width:72px;color:#b7f7cf;font:600 12px/1.2 system-ui,sans-serif;text-align:right;">Ready</span>
+      </div>
+      <div data-diag-preview style="padding:8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#d9f5e5;font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-height:120px;overflow:auto;white-space:pre-wrap;">Ready — tap Copy global JSON or Copy Home JSON. No heavy preview on open.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <button type="button" data-action="copy-global-json" style="${buttonStyle}background:#ffffff;color:#111;">Copy global JSON</button>
+        <button type="button" data-action="copy-home-json" style="${buttonStyle}background:#e8eef0;color:#111;">Copy Home JSON</button>
+        <button type="button" data-action="clear-diagnostics" style="${buttonStyle}background:#5A4A2E;color:#fff8ea;">Clear diagnostics</button>
+        ${optionalButtons.join("")}
+        <button type="button" data-action="refresh" style="${buttonStyle}background:#356A48;color:#fff;">Refresh</button>
+        <button type="button" data-action="close" style="${buttonStyle}background:#f47a2b;color:#111;">Close</button>
+      </div>
+    `;
 
-    const buttons = document.createElement("div");
-    buttons.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;";
+    overlayRuntime.root = overlay;
+    overlayRuntime.statusNode = overlay.querySelector("[data-diag-status]");
+    overlayRuntime.previewNode = overlay.querySelector("[data-diag-preview]");
+    overlayRuntime.buttonsCount = overlay.querySelectorAll("[data-action]").length;
 
-    const copyGlobalButton = createOverlayButton("Copy global JSON", "#ffffff");
-    const copyHomeButton = createOverlayButton("Copy Home JSON", "#e8eef0");
-    const clearButton = createOverlayButton("Clear diagnostics", "#5A4A2E");
-    clearButton.style.color = "#fff8ea";
-    const closeButton = createOverlayButton("Close", "#f47a2b");
-
-    buttons.append(copyGlobalButton, copyHomeButton, clearButton, closeButton);
-    header.appendChild(buttons);
-    overlay.appendChild(header);
-
-    const preview = document.createElement("pre");
-    preview.style.cssText =
-      "flex:1;min-height:0;width:100%;box-sizing:border-box;overflow:auto;white-space:pre-wrap;word-break:break-word;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;margin:0;padding:8px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;";
-    preview.textContent = globalAvailable ? getGlobalJsonString() : getGlobalJsonString();
-    overlay.appendChild(preview);
-
-    copyGlobalButton.addEventListener("click", async () => {
-      const json = getGlobalJsonString();
-      const copied = await copyTextToClipboard(json);
-      if (!copied) showManualCopyFallback(json);
-      setOverlayStatus(status, copied ? "Global copied" : "Copy failed", copied);
-    });
-
-    copyHomeButton.addEventListener("click", async () => {
-      let json = "";
-      try {
-        json = getHomeJson();
-      } catch (error) {
-        json = JSON.stringify(
-          { error: shortError(error) || "Home diagnostics failed", timestamp: new Date().toISOString() },
-          null,
-          2,
-        );
-      }
-      const copied = await copyTextToClipboard(json);
-      if (!copied) showManualCopyFallback(json);
-      setOverlayStatus(status, copied ? "Home copied" : "Copy failed", copied);
-    });
-
-    clearButton.addEventListener("click", () => {
-      try {
-        window.KlevbyBootStore?.clearDiagnostics?.();
-      } catch (_) {}
-      setOverlayStatus(status, "Cleared", true);
-      try {
-        snapshot = getGlobalSnapshotSafe();
-        globalAvailable = isGlobalAvailable(snapshot);
-        summary.textContent = formatGlobalSummary(snapshot);
-        preview.textContent = getGlobalJsonString();
-      } catch (_) {
-        summary.textContent = "Global diagnostics unavailable";
-      }
-    });
-
-    closeButton.addEventListener("click", hideDiagnosticsOverlay);
-
+    bindOverlayActions(overlay);
     document.body.appendChild(overlay);
-    return snapshot;
+
+    scheduleBackgroundPublish();
+    return overlay;
   }
 
-  window.KlevbyGlobalDiagnostics = {
+  let globalDiagnosticsApi = null;
+
+  globalDiagnosticsApi = {
+    version: AUDIT_VERSION,
     AUDIT_VERSION,
+    lastSnapshot: null,
+    isRuntimeReady,
+    isAvailable: isRuntimeReady,
+    getSnapshot(options) {
+      const compact = !options || options.compact !== false;
+      const snapshot = compact ? collectCompactSync() : collectSync();
+      this.lastSnapshot = snapshot;
+      return snapshot;
+    },
+    getJson(options) {
+      return JSON.stringify(this.getSnapshot(options), null, 2);
+    },
     collectSync,
+    collectCompactSync,
     collectAsync,
     collectAndPublish,
-    getSnapshot: collectSync,
     publish,
-    isAvailable: isGlobalAvailable,
-    getGlobalJsonString,
+    getGlobalJsonString() {
+      return buildCompactJson({
+        openedAt: overlayRuntime.openedAt,
+        buttonsCount: overlayRuntime.buttonsCount,
+        actionsBound: overlayRuntime.actionsBound,
+        lastAction: overlayRuntime.lastAction,
+        freezeSafeMode: true,
+      });
+    },
     showOverlay: showDiagnosticsOverlay,
     hideOverlay: hideDiagnosticsOverlay,
   };
 
+  window.__KLEVBY_GLOBAL_DIAGNOSTICS__ = globalDiagnosticsApi;
+  window.KlevbyGlobalDiagnostics = globalDiagnosticsApi;
   window.KlevbyDiagnosticsOverlay = {
     show: showDiagnosticsOverlay,
     hide: hideDiagnosticsOverlay,
   };
+  window.__KLEVBY_GLOBAL_DIAGNOSTICS_GET_JSON__ = () => globalDiagnosticsApi.getGlobalJsonString();
 
-  window.__KLEVBY_GLOBAL_DIAGNOSTICS_GET_JSON__ = getGlobalJsonString;
-
-  window.addEventListener("klevby-app-shell-ready", collectAndPublish);
-  window.addEventListener("klevby-app-splash-hidden", collectAndPublish);
-  window.addEventListener("klevby-network-status", collectAndPublish);
+  window.addEventListener("klevby-app-shell-ready", scheduleBackgroundPublish);
+  window.addEventListener("klevby-app-splash-hidden", scheduleBackgroundPublish);
+  window.addEventListener("klevby-network-status", scheduleBackgroundPublish);
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", collectAndPublish, { once: true });
+    document.addEventListener("DOMContentLoaded", scheduleBackgroundPublish, { once: true });
   } else {
-    collectAndPublish();
+    scheduleBackgroundPublish();
   }
 })();
