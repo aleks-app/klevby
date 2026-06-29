@@ -35,6 +35,7 @@
   let activeMapProvider = null;
   let maplibreSpotMarkers = [];
   let lastWaterDepthControlDiagnostic = null;
+  let viewportSaveTimer = null;
 
   let currentMapUser = null;
   let userRefreshPromise = null;
@@ -978,6 +979,24 @@
         cursor: pointer;
       }
 
+      .klevby-map-open-waterbody {
+        min-height: 42px;
+        padding: 10px 18px;
+        border: 1px solid rgba(255, 141, 40, 0.35);
+        border-radius: 14px;
+        background: rgba(18, 24, 27, 0.92);
+        color: #fff8ea;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .klevby-map-state--cached .klevby-last-known-notice {
+        width: min(100%, 360px);
+        margin-bottom: 12px;
+        text-align: left;
+      }
+
       .klevby-map-modal {
         position: fixed;
         inset: 0;
@@ -1241,6 +1260,200 @@
     return mapSection.querySelector("#map");
   }
 
+  function isMapNetworkDegraded() {
+    return window.KlevbyLastKnownCache?.isNetworkDegraded?.() === true;
+  }
+
+  function getLastKnownMapApi() {
+    return window.KlevbyLastKnownMap || null;
+  }
+
+  function persistMapViewportFromInstance(map, label) {
+    const mapCache = getLastKnownMapApi();
+    if (!mapCache || !map) return;
+
+    let center = null;
+    let zoom = null;
+    let bounds = null;
+
+    if (typeof map.getCenter === "function") {
+      const mapCenter = map.getCenter();
+      if (mapCenter && Number.isFinite(mapCenter.lat) && Number.isFinite(mapCenter.lng)) {
+        center = [mapCenter.lat, mapCenter.lng];
+      }
+    } else if (typeof map.getCenter === "function" && Array.isArray(map.getCenter())) {
+      const coords = map.getCenter();
+      center = [coords[0], coords[1]];
+    }
+
+    if (typeof map.getZoom === "function") {
+      zoom = map.getZoom();
+    }
+
+    if (typeof map.getBounds === "function") {
+      const mapBounds = map.getBounds();
+      if (mapBounds && typeof mapBounds.getNorth === "function") {
+        bounds = {
+          north: mapBounds.getNorth(),
+          south: mapBounds.getSouth(),
+          east: mapBounds.getEast(),
+          west: mapBounds.getWest(),
+        };
+      }
+    }
+
+    if (!center) return;
+
+    const waterbody = mapCache.readWaterbody?.();
+    mapCache.saveViewport({
+      center,
+      zoom,
+      bounds,
+      provider: activeMapProvider,
+      label: label || mapCache.formatViewportLabel?.(mapCache.readViewport?.(), waterbody),
+    });
+  }
+
+  function schedulePersistMapViewport(map, label) {
+    if (!map) return;
+
+    if (viewportSaveTimer) {
+      window.clearTimeout(viewportSaveTimer);
+    }
+
+    viewportSaveTimer = window.setTimeout(function () {
+      viewportSaveTimer = null;
+      persistMapViewportFromInstance(map, label);
+    }, 500);
+  }
+
+  function bindMapViewportPersistence(map) {
+    if (!map) return;
+
+    if (typeof map.on === "function") {
+      map.on("moveend", function () {
+        schedulePersistMapViewport(map);
+      });
+      return;
+    }
+
+    if (map.events && typeof map.events.add === "function") {
+      map.events.add("boundschange", function () {
+        schedulePersistMapViewport(map);
+      });
+    }
+  }
+
+  function restoreMapViewportFromCache(map) {
+    const mapCache = getLastKnownMapApi();
+    const entry = mapCache?.readViewport?.();
+    const viewport = entry?.data;
+    if (!map || !viewport?.center) return false;
+
+    const zoom = Number.isFinite(viewport.zoom) ? viewport.zoom : DEFAULT_ZOOM;
+    const [lat, lng] = viewport.center;
+
+    if (typeof map.easeTo === "function") {
+      map.easeTo({ center: [lng, lat], zoom, duration: 0 });
+      return true;
+    }
+
+    if (typeof map.setCenter === "function" && typeof map.setZoom === "function") {
+      map.setCenter([lat, lng]);
+      map.setZoom(zoom);
+      return true;
+    }
+
+    return false;
+  }
+
+  function buildMapFallbackHtml(options) {
+    const opts = options || {};
+    const mapCache = getLastKnownMapApi();
+    const viewportEntry = mapCache?.readViewport?.();
+    const waterbodyEntry = mapCache?.readWaterbody?.();
+    const hasViewport = mapCache?.hasLastKnownViewport?.() === true;
+    const hasWaterbody = mapCache?.hasLastKnownWaterbody?.() === true;
+    const offlineLike = opts.offlineLike !== false && isMapNetworkDegraded();
+    const savedNotice =
+      window.KlevbyLastKnownUi?.savedNoticeHtml?.({
+        title: "Последняя открытая область",
+        subtitle: "Карта обновится, когда появится интернет",
+        compact: true,
+      }) || "";
+
+    if (hasViewport) {
+      const label = mapCache.formatViewportLabel(viewportEntry, waterbodyEntry);
+      const zoomText = Number.isFinite(viewportEntry?.data?.zoom)
+        ? `Масштаб: ${viewportEntry.data.zoom.toFixed(1)}`
+        : "";
+      const waterbodyText = hasWaterbody
+        ? `<div style="margin-top:8px;font-size:13px;opacity:0.86;">Водоём: ${escapeHtml(waterbodyEntry.data.name)}</div>`
+        : "";
+
+      return `
+        <div class="klevby-map-state klevby-map-state--cached">
+          ${savedNotice}
+          <div>${escapeHtml(label)}</div>
+          ${zoomText ? `<div style="margin-top:8px;font-size:13px;opacity:0.82;">${escapeHtml(zoomText)}</div>` : ""}
+          ${waterbodyText}
+          ${
+            hasWaterbody
+              ? '<button class="klevby-map-open-waterbody" type="button">Открыть последний водоём</button>'
+              : ""
+          }
+          <button class="klevby-map-retry" type="button">Повторить</button>
+        </div>
+      `;
+    }
+
+    const title = offlineLike ? "Карта недоступна без интернета" : "Карта временно недоступна";
+    const subtitle = offlineLike
+      ? "Откройте карту один раз с интернетом, чтобы сохранить последнюю область"
+      : "Проверьте соединение и попробуйте снова";
+
+    return `
+      <div class="klevby-map-state">
+        <div>${title}</div>
+        <div style="margin-top:8px;font-size:13px;opacity:0.82;">${subtitle}</div>
+        <button class="klevby-map-retry" type="button">Повторить</button>
+      </div>
+    `;
+  }
+
+  function bindMapFallbackActions(mapSurface) {
+    if (!mapSurface) return;
+
+    mapSurface.querySelector(".klevby-map-retry")?.addEventListener("click", function () {
+      mapInitPromise = null;
+      window.klevbyEnsureMapInitialized?.().catch(function () {});
+    });
+
+    mapSurface.querySelector(".klevby-map-open-waterbody")?.addEventListener("click", function () {
+      const waterbody = getLastKnownMapApi()?.readWaterbody?.()?.data;
+      if (!waterbody || typeof window.KlevbyWaterBodyDetail?.open !== "function") return;
+      window.KlevbyWaterBodyDetail.open({
+        ...waterbody,
+        fromCache: true,
+      });
+    });
+  }
+
+  function showMapOfflineFallbackState(reason) {
+    if (mapInstance) return;
+
+    const mapSurface = getMapSurface();
+    if (!mapSurface) return;
+
+    const offlineLike = isMapNetworkDegraded();
+    window.KlevbyBootStore?.setMapInitStatus?.(
+      offlineLike ? (getLastKnownMapApi()?.hasLastKnownViewport?.() ? "offline-cached" : "offline") : "failed",
+    );
+
+    mapSurface.innerHTML = buildMapFallbackHtml({ offlineLike, reason });
+    bindMapFallbackActions(mapSurface);
+  }
+
   function showMapState(state) {
     if (mapInstance) return;
 
@@ -1248,29 +1461,16 @@
     if (!mapSurface) return;
 
     if (state === "loading") {
+      if (isMapNetworkDegraded()) {
+        showMapOfflineFallbackState("loading-offline");
+        return;
+      }
+
       mapSurface.innerHTML = '<div class="klevby-map-state">Загружаем карту…</div>';
       return;
     }
 
-    const offlineLike = window.KlevbyNetworkState?.isOfflineOrWeak?.() === true;
-    const title = offlineLike ? "Карта недоступна без интернета" : "Карта временно недоступна";
-    const subtitle = offlineLike
-      ? "Последняя открытая область может быть показана, если она была сохранена"
-      : "Проверьте соединение и попробуйте снова";
-
-    window.KlevbyBootStore?.setMapInitStatus?.(offlineLike ? "offline" : "failed");
-
-    mapSurface.innerHTML = `
-      <div class="klevby-map-state">
-        <div>${title}</div>
-        <div style="margin-top:8px;font-size:13px;opacity:0.82;">${subtitle}</div>
-        <button class="klevby-map-retry" type="button">Повторить</button>
-      </div>
-    `;
-
-    mapSurface.querySelector(".klevby-map-retry")?.addEventListener("click", function () {
-      window.klevbyEnsureMapInitialized?.().catch(function () {});
-    });
+    showMapOfflineFallbackState(state === "failed" ? "failed" : "unavailable");
   }
 
   function prepareMapContainer() {
@@ -1806,6 +2006,11 @@
     activeMapProvider = provider;
     mapReady = true;
     window.__klevbySyncWaterDepthControl?.();
+
+    getLastKnownMapApi()?.syncRegistryFromRuntime?.();
+    bindMapViewportPersistence(instance);
+    restoreMapViewportFromCache(instance);
+    schedulePersistMapViewport(instance);
   }
 
   function createYandexMap(mapEl) {
@@ -2486,11 +2691,17 @@
     injectMapStyles();
 
     const mapEl = prepareMapContainer();
+
+    if (isMapNetworkDegraded()) {
+      showMapOfflineFallbackState("init-offline");
+      return null;
+    }
+
     showMapState("loading");
 
     mapDb = getMainSupabaseClient();
 
-    if (!mapDb) {
+    if (!mapDb && !isMapNetworkDegraded()) {
       mapDb = await waitForMainSupabaseClient();
     }
 
@@ -2500,12 +2711,21 @@
     }
 
     mapEl.innerHTML = "";
-    await initializeSelectedProvider(mapEl);
+
+    try {
+      await initializeSelectedProvider(mapEl);
+    } catch (error) {
+      getLastKnownMapApi()?.recordMapError?.(error, "initializeSelectedProvider");
+      showMapOfflineFallbackState("provider-failed");
+      return null;
+    }
 
     window.klevbyReloadMap = refreshMapView;
     window.klevbyDeleteFishingSpot = deleteFishingSpot;
 
-    await reloadMapData();
+    if (!isMapNetworkDegraded()) {
+      await reloadMapData();
+    }
 
     console.log("Klevby карта ловли запущена. Провайдер:", activeMapProvider);
     return mapInstance;
@@ -2518,6 +2738,15 @@
       return refreshMapView().then(function () {
         return mapInstance;
       });
+    }
+
+    if (isMapNetworkDegraded()) {
+      injectMapStyles();
+      const mapEl = document.getElementById("mapSection")?.querySelector("#map");
+      if (mapEl && !mapInstance) {
+        showMapOfflineFallbackState("ensure-offline");
+      }
+      return Promise.resolve(null);
     }
 
     mapInitPromise = initMapLogic()
@@ -2540,9 +2769,10 @@
           document.querySelector(MAPLIBRE_STYLESHEET_SELECTOR)?.remove();
         }
 
-        showMapState("failed");
+        getLastKnownMapApi()?.recordMapError?.(error, "ensureMapInitialized");
+        showMapOfflineFallbackState("ensure-failed");
         console.error("Ошибка запуска карты:", error);
-        throw error;
+        return null;
       });
 
     return mapInitPromise;
@@ -2554,6 +2784,11 @@
     const contoursLayer = window.KlevbyWaterDepthContoursLayer;
     const depthMap = window.KlevbyDepthMapsRegistry?.getByWaterBodyId?.(waterBodyId);
     if (!contoursLayer || !depthMap || depthMap.status !== "available") return false;
+
+    if (window.KlevbyLastKnownCache?.isNetworkDegraded?.()) {
+      window.KlevbyLastKnownMap?.setDepthMapsStatus?.("offline");
+      return false;
+    }
 
     if (typeof window.showSection === "function") {
       window.showSection("map");
