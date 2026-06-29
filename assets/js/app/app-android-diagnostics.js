@@ -1183,14 +1183,6 @@
       container.appendChild(clearCacheButton);
     }
 
-    if (window.KlevbyLastKnownMap?.clearMapCache) {
-      const clearMapCacheButton = createDiagnosticsButton("Clear map cache", () => {
-        window.KlevbyLastKnownMap.clearMapCache();
-        flashButtonLabel(clearMapCacheButton, "Map cache cleared", "Failed", true);
-      }, { background: "#5A4A2E" });
-      container.appendChild(clearMapCacheButton);
-    }
-
     const refreshButton = createDiagnosticsButton("Refresh", () => {
       window.klevbyAndroidDiagnostics.collect();
       flashButtonLabel(refreshButton, "Refreshed", "Refresh failed", true);

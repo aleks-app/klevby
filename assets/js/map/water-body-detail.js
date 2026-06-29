@@ -50,29 +50,10 @@
     const depthEntry = global.KlevbyDepthMapsRegistry?.getByWaterBodyId?.(waterBodyId) || null;
 
     if (!depthEntry || depthEntry.status === "disabled") {
-      const cachedRegistryEntry = global.KlevbyLastKnownMap?.readRegistryEntry?.(waterBodyId) || null;
-      if (cachedRegistryEntry) {
-        return {
-          available: cachedRegistryEntry.status === "available",
-          status: cachedRegistryEntry.status || "draft",
-          label:
-            cachedRegistryEntry.status === "available"
-              ? "Последние сохранённые данные глубин"
-              : "Карта глубин готовится",
-          maxDepth: cachedRegistryEntry.maxDepth || null,
-          depthMapId: cachedRegistryEntry.id,
-          waterBodyId: cachedRegistryEntry.waterBodyId || cachedRegistryEntry.id,
-          format: cachedRegistryEntry.format || "geojson",
-          fromCache: true,
-        };
-      }
-
       return {
         available: false,
         status: "unavailable",
-        label: global.KlevbyLastKnownCache?.isNetworkDegraded?.()
-          ? "Данные водоёма недоступны без интернета"
-          : "Карта глубин пока недоступна",
+        label: "Карта глубин пока недоступна"
       };
     }
 
@@ -91,44 +72,16 @@
     return statusModel;
   }
 
-  function renderCachedNotice(section, visible) {
-    if (!section) return;
-
-    let notice = section.querySelector(".klevby-waterbody-cached-notice");
-    if (!visible) {
-      notice?.remove();
-      return;
-    }
-
-    if (!notice) {
-      notice = document.createElement("div");
-      notice.className = "klevby-waterbody-cached-notice";
-      section.querySelector(".water-body-detail-content")?.prepend(notice);
-    }
-
-    notice.innerHTML =
-      global.KlevbyLastKnownUi?.savedNoticeHtml?.({
-        title: "Последние сохранённые данные",
-        subtitle: "Обновятся, когда появится интернет",
-        compact: true,
-      }) || "";
-  }
-
-  function render(point, options) {
+  function render(point) {
     const section = document.getElementById(SECTION_ID);
     if (!section) return false;
 
-    const fromCache = Boolean(options?.fromCache);
     const depthStatus = getDepthMapStatusForWaterBody(point.waterBodyId);
     const location = [point.region, point.district].filter(Boolean).join(" · ");
     setText(section, ".water-body-detail-name", point.name);
     setText(section, ".water-body-detail-type", point.waterType);
     setText(section, ".water-body-detail-location", location || "Регион не указан");
-    setText(
-      section,
-      ".water-body-detail-status-text",
-      fromCache ? "Последние сохранённые данные" : depthStatus.label,
-    );
+    setText(section, ".water-body-detail-status-text", depthStatus.label);
     setText(
       section,
       ".water-body-detail-draft-copy",
@@ -137,11 +90,7 @@
     setText(
       section,
       ".water-body-detail-draft-note",
-      fromCache
-        ? "Обновятся, когда появится интернет"
-        : depthStatus.depthMapId
-          ? `Формат: ${depthStatus.format}`
-          : "Данные уточняются"
+      depthStatus.depthMapId ? `Формат: ${depthStatus.format}` : "Данные уточняются"
     );
     setText(section, ".water-body-detail-source", "Источник не указан");
     setText(section, ".water-body-detail-data-status", depthStatus.label);
@@ -154,29 +103,16 @@
 
     const depthAction = section.querySelector(".water-body-detail-depth-action");
     if (depthAction) {
-      const canOpenDepth =
-        depthStatus.available &&
-        !global.KlevbyLastKnownCache?.isNetworkDegraded?.();
-      depthAction.disabled = !canOpenDepth;
-      depthAction.textContent = canOpenDepth
-        ? "Открыть глубины"
-        : fromCache
-          ? "Глубины офлайн"
-          : "Скоро";
+      depthAction.disabled = !depthStatus.available;
+      depthAction.textContent = depthStatus.available ? "Открыть глубины" : "Скоро";
     }
-
-    renderCachedNotice(section, fromCache || depthStatus.fromCache === true);
 
     return true;
   }
 
   function open(properties) {
     selectedPoint = normalizePoint(properties);
-    const fromCache = Boolean(properties?.fromCache);
-    if (!fromCache) {
-      global.KlevbyLastKnownMap?.saveWaterbody?.(selectedPoint, { source: "water-body-detail.open" });
-    }
-    if (!render(selectedPoint, { fromCache })) return false;
+    if (!render(selectedPoint)) return false;
 
     if (typeof global.showSection === "function") {
       global.showSection("water-body-detail");
@@ -195,10 +131,6 @@
   }
 
   async function showDepthContours() {
-    if (global.KlevbyLastKnownCache?.isNetworkDegraded?.()) {
-      return false;
-    }
-
     const depthStatus = getDepthMapStatusForWaterBody(selectedPoint?.waterBodyId);
     if (!depthStatus.available || typeof global.klevbyShowWaterDepthContours !== "function") return false;
 
@@ -245,14 +177,6 @@
     close,
     showDepthContours,
     bind,
-    openFromCache(waterBodyId) {
-      const cached = global.KlevbyLastKnownMap?.readWaterbody?.()?.data;
-      if (!cached) return false;
-      if (waterBodyId && cached.waterBodyId !== waterBodyId && cached.id !== waterBodyId) {
-        return false;
-      }
-      return open({ ...cached, fromCache: true });
-    },
     getSelectedPoint: function () {
       return selectedPoint ? { ...selectedPoint } : null;
     }

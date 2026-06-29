@@ -1,5 +1,5 @@
-const CACHE_NAME = "klevby-cache-v26-offline-map-waterbody-20260629";
-const SW_BUILD_VERSION = "20260629-offline-map-waterbody-1";
+const CACHE_NAME = "klevby-cache-v25-last-known-cache-20260629";
+const SW_BUILD_VERSION = "20260629-last-known-cache-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [
@@ -14,7 +14,6 @@ const APP_FILES = [
   "/assets/js/app/app-surface-gate.js",
   "/assets/js/app/app-boot-store.js",
   "/assets/js/app/app-last-known-cache.js",
-  "/assets/js/app/app-last-known-map.js",
   "/assets/js/app/app-last-known-ui.js",
   "/assets/js/app/app-home-last-known-bridge.js",
   "/assets/js/app/app-network-state.js",
