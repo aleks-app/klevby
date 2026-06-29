@@ -128,18 +128,12 @@
 
     return {
       startedAt: raw.startedAt ?? raw.splashStartedAtMs ?? null,
-      initialStateAppliedAt: raw.initialStateAppliedAt ?? null,
-      animationStartedAt: raw.animationStartedAt ?? null,
       shellReadyAt: raw.shellReadyAt ?? raw.shellReadyMarkedAtMs ?? null,
-      minDurationPassedAt: raw.minDurationPassedAt ?? null,
-      fadeOutStartedAt: raw.fadeOutStartedAt ?? null,
       hiddenAt: raw.hiddenAt ?? raw.splashHiddenAtMs ?? null,
       visibleDurationMs: raw.visibleDurationMs ?? raw.elapsedMs ?? null,
-      minDurationMs: raw.minDurationMs ?? null,
-      introDurationMs: raw.introDurationMs ?? null,
+      minDurationMs: raw.minDurationMs ?? raw.requiredVisibleMs ?? null,
       maxSafetyTimeoutMs: raw.maxSafetyTimeoutMs ?? raw.forceHideMs ?? null,
       hideReason: raw.hideReason ?? null,
-      prefersReducedMotion: raw.prefersReducedMotion ?? null,
       isActive: raw.isActive ?? null,
       shellReady: raw.shellReady ?? null,
       hideCommitted: raw.hideCommitted ?? null,
@@ -155,7 +149,7 @@
     const navTiming = getNavigationTiming();
 
     const slowBootMarkers = [];
-    if (splash?.elapsedMs != null && splash.elapsedMs > 3500) {
+    if (splash?.elapsedMs != null && splash.elapsedMs > 3400) {
       slowBootMarkers.push("splash-force-hide-window-reached");
     }
     if (bootSnapshot?.bootDurationMs != null && bootSnapshot.bootDurationMs > 8000) {
