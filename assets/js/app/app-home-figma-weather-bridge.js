@@ -31,6 +31,10 @@
   }
 
   function isSplashActive() {
+    if (document.body?.classList.contains("klevby-splash-active")) {
+      return true;
+    }
+
     const splash = document.getElementById("appSplash");
     if (!splash) return false;
 
