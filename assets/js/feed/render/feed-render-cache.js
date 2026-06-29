@@ -150,11 +150,6 @@
   function readFeedCache() {
     cleanupLegacyFeedCache();
 
-    const unified = window.KlevbyLastKnownCache?.readLastKnown?.("feed");
-    if (Array.isArray(unified?.data) && unified.data.length) {
-      return normalizeFeedCacheItems(unified.data);
-    }
-
     const cacheKeys = getFeedCacheReadKeys();
 
     for (const cacheKey of cacheKeys) {
@@ -203,12 +198,6 @@
     try {
       if (!normalized.length) {
         cacheKeys.forEach(removeCacheKey);
-        if (window.KlevbyLastKnownCache?.saveLastKnown) {
-          window.KlevbyLastKnownCache.saveLastKnown("feed", [], {
-            onlineSuccess: true,
-            count: 0,
-          });
-        }
         return;
       }
 
@@ -222,12 +211,6 @@
       cacheKeys.forEach((cacheKey) => {
         localStorage.setItem(cacheKey, payload);
       });
-
-      window.KlevbyLastKnownCache?.saveLastKnown?.("feed", normalized, {
-        onlineSuccess: true,
-        count: normalized.length,
-      });
-      window.KlevbyHomeLastKnownBridge?.saveHomeSnapshot?.();
     } catch (error) {
       console.debug("Klevby feed render cache: cache write skipped", {
         error: String(error?.message || error)

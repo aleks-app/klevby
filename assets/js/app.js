@@ -651,16 +651,8 @@ function finalizeColdHomeBootPresentation() {
 
     if (typeof homeScreenOwner?.isHomeScreenActive !== "function") {
       reason = "home-screen-owner-unavailable";
-      showSection("home");
-      coldHomeBootPresentationFinalized = true;
-      result = true;
-      reason = "fallback-show-home";
     } else if (!homeScreenOwner.isHomeScreenActive()) {
       reason = "home-screen-inactive";
-      showSection("home");
-      coldHomeBootPresentationFinalized = true;
-      result = true;
-      reason = "forced-show-home";
     } else {
       coldHomeBootPresentationFinalized = true;
       showSection("home");
@@ -669,16 +661,9 @@ function finalizeColdHomeBootPresentation() {
     }
   }
 
-  if (result) {
-    window.KlevbyBootStore?.markShellPresented?.(reason);
-    window.KlevbyAppSplash?.hideAppSplashWhenShellReady?.();
-  }
-
   shellDebug?.capture("finalizeColdHomeBootPresentation() end", { result, reason });
   return result;
 }
-
-window.klevbyFinalizeColdHomeBootPresentation = finalizeColdHomeBootPresentation;
 
 function showSection(section) {
   const safeSection = String(section || "home").trim();
@@ -697,14 +682,6 @@ function showSection(section) {
     safeSection === "map" ? "map" :
     safeSection === "trips" ? "trips" :
     "inner"
-  );
-
-  window.KlevbyBootStore?.setCurrentScreenType?.(
-    safeSection === "home" || safeSection === "feed" || safeSection === "map" || safeSection === "trips"
-      ? "tab"
-      : safeSection.includes("create") || safeSection.includes("flow")
-        ? "flow"
-        : "fullscreen",
   );
 
   const appHeader = document.querySelector("header");
@@ -1173,57 +1150,21 @@ const setupKlevbyAppLifecycle = appResumeManager?.setupKlevbyAppLifecycle || (()
 
 setupAppGlobalEvents();
 
-async function runBootAuthInBackground() {
-  const bootStore = window.KlevbyBootStore;
-  const withTimeout = bootStore?.withTimeout?.bind(bootStore) || ((promise, ms, label) => promise);
-
-  try {
-    if (typeof window.initAuth === "function") {
-      await withTimeout(window.initAuth(), 15000, "initAuth");
-      return;
-    }
-
-    authReady = true;
-    syncGlobalAuthState({ notify: true, forceNotify: true });
-
-    const postsLoader =
-      typeof window.loadPosts === "function"
-        ? window.loadPosts
-        : typeof window.KlevbyPostsApi?.loadPosts === "function"
-          ? window.KlevbyPostsApi.loadPosts.bind(window.KlevbyPostsApi)
-          : null;
-
-    if (postsLoader) {
-      await withTimeout(postsLoader({ force: true }), 10000, "loadPosts");
-    }
-  } catch (error) {
-    bootStore?.recordError?.("boot-auth", error);
-    console.warn("Klevby boot auth degraded:", error);
-  }
-}
-
 async function initKlevbyApp() {
-  const bootStore = window.KlevbyBootStore;
-  bootStore?.capture?.("initKlevbyApp.start");
-
-  finalizeColdHomeBootPresentation();
-
   try {
     patchProfileOpenForExtraSections();
     patchProfileShortcutActions();
     setupKlevbyAppLifecycle();
 
     const ok = initSupabase();
-    bootStore?.setSupabaseStatus?.(ok ? "ready-local" : "unavailable");
+    if (!ok) return;
 
-    if (ok) {
-      if (typeof window.setAuthMode === "function") {
-        window.setAuthMode("register");
-      }
+    if (typeof window.setAuthMode === "function") {
+      window.setAuthMode("register");
+    }
 
-      if (typeof window.fillAuthorLocal === "function") {
-        window.fillAuthorLocal();
-      }
+    if (typeof window.fillAuthorLocal === "function") {
+      window.fillAuthorLocal();
     }
 
     if (typeof window.updateBiteForecast === "function") {
@@ -1243,26 +1184,30 @@ async function initKlevbyApp() {
       window.registerPwaServiceWorker();
     }
 
-    void runBootAuthInBackground().then(() => {
-      if (typeof window.renderProfileFeed === "function") {
-        window.renderProfileFeed();
-      }
+    if (typeof window.initAuth === "function") {
+      await window.initAuth();
+    } else {
+      authReady = true;
+      syncGlobalAuthState({ notify: true, forceNotify: true });
 
-      if (typeof window.updateHomeFloatButton === "function") {
-        window.updateHomeFloatButton();
+      if (typeof window.loadPosts === "function") {
+        await window.loadPosts({ force: true });
       }
-    });
-  } catch (error) {
-    bootStore?.recordError?.("initKlevbyApp", error);
-    console.warn("Klevby init degraded:", error);
+    }
+
+    if (typeof window.renderProfileFeed === "function") {
+      window.renderProfileFeed();
+    }
+
+    if (typeof window.updateHomeFloatButton === "function") {
+      window.updateHomeFloatButton();
+    }
   } finally {
     if (appResumeManager && typeof appResumeManager.markBootCompleted === "function") {
       appResumeManager.markBootCompleted();
     }
 
-    bootStore?.markBootCompleted?.();
     finalizeColdHomeBootPresentation();
-    bootStore?.capture?.("initKlevbyApp.end");
   }
 }
 

@@ -11,46 +11,6 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="color-scheme" content="dark" />
-  <style id="klevby-splash-boot-surface">
-    html,
-    body {
-      background-color: #000000;
-    }
-
-    body.klevby-splash-active {
-      background: #000000 !important;
-    }
-
-    #appSplash {
-      position: fixed;
-      inset: 0;
-      z-index: 2147483645;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background:
-        radial-gradient(circle at 50% 35%, rgba(244, 178, 74, 0.18), transparent 34%),
-        #000000;
-    }
-
-    #appSplash:not(.splash-state-animating):not(.splash-state-completed) .splash-k {
-      opacity: 0;
-      transform: scale(0.72);
-    }
-
-    #appSplash:not(.splash-state-animating):not(.splash-state-completed) .splash-rest .letter {
-      opacity: 0;
-      transform: translateX(42px) translateY(18px) rotate(18deg) scale(0.84);
-      filter: blur(8px);
-    }
-
-    #appSplash:not(.splash-state-animating):not(.splash-state-completed) .splash-logo::after {
-      width: 0;
-      opacity: 0;
-    }
-  </style>
 
   <script>
     (function () {
@@ -135,7 +95,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
-<link rel="stylesheet" href="assets/css/main.css?v=20260629-splash-diagnostics-1">
+<link rel="stylesheet" href="assets/css/main.css?v=20260626-home-figma-fish-icon-align-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -151,20 +111,11 @@
   <script src="assets/js/pwa-manifest.js?v=20260503-4"></script>
 </head>
 
-<body class="klevby-splash-active" data-app-chrome-mode="home">
+<body data-app-chrome-mode="home">
 <script src="assets/js/app/app-home-figma-trace.js?v=20260626-home-figma-split-1"></script>
   <script src="assets/js/app/app-home-figma-header.js?v=20260626-home-figma-avatar-2" defer></script>
-  <script src="assets/js/app/app-home-figma-box-diagnostics.js?v=20260624-diagnostics-freeze-fix-1" defer></script>
+  <script src="assets/js/app/app-home-figma-box-diagnostics.js?v=20260626-home-box-diagnostics-1" defer></script>
   <script src="assets/js/app/app-home-figma-actions-bridge.js" defer></script>
-  <script src="assets/js/app/app-boot-store.js?v=20260626-offline-boot-1" defer></script>
-  <script src="assets/js/app/app-global-diagnostics.js?v=20260629-splash-diagnostics-1" defer></script>
-  <script src="assets/js/app/app-last-known-cache.js?v=20260629-last-known-cache-1" defer></script>
-  <script src="assets/js/app/app-last-known-map.js?v=20260629-offline-map-1" defer></script>
-  <script src="assets/js/app/app-last-known-ui.js?v=20260629-last-known-cache-1" defer></script>
-  <script src="assets/js/app/app-network-state.js?v=20260626-offline-boot-1" defer></script>
-  <script src="assets/js/app/app-boot-hardening.js?v=20260626-offline-boot-1" defer></script>
-  <script src="assets/js/app/app-splash.js?v=20260629-splash-diagnostics-1" defer></script>
-  <script src="assets/js/app/app-home-last-known-bridge.js?v=20260629-last-known-cache-1" defer></script>
   <section id="desktopBlockedScreen" aria-labelledby="desktopBlockedTitle">
     <div class="desktop-blocked-card">
       <img class="desktop-blocked-logo" src="assets/brand/klevby-fish-logo.png" alt="KlevGo" />
@@ -182,7 +133,7 @@
   </section>
 
   <div id="klevbyAppRoot">
-  <div id="appSplash" class="app-splash splash-state-initial" data-splash-state="initial" aria-hidden="false">
+  <div id="appSplash" class="app-splash" aria-hidden="true">
     <div class="splash-logo">
       <span class="splash-k">K</span>
       <div class="splash-rest">
@@ -194,23 +145,6 @@
       </div>
     </div>
   </div>
-  <script>
-    (function () {
-      window.__KLEVBY_SPLASH_PAGE_START__ = performance.now();
-      var splash = document.getElementById("appSplash");
-      if (!splash) return;
-      splash.setAttribute("data-splash-state", "initial");
-      splash.classList.add("splash-state-initial");
-      splash.classList.remove(
-        "splash-state-animating",
-        "splash-state-completed",
-        "splash-state-fading-out",
-        "splash-animate",
-        "hide",
-      );
-      splash.setAttribute("aria-hidden", "false");
-    })();
-  </script>
 
   <header data-chrome-mode="home">
     <div class="wrap header-inner">
@@ -928,6 +862,7 @@
   <script src="assets/js/app/app-shell-viewport-owner.js?v=20260614-app-shell-viewport-pr1-1" defer></script>
   <script src="assets/js/app/app-home-screen-owner.js?v=20260620-home-dimming-diagnostics-1" defer></script>
   <script src="assets/js/app/app-navigation.js?v=20260607-map-app-screen-1" defer></script>
+  <script src="assets/js/app/app-splash.js?v=20260513-app-splash-split-1" defer></script>
   <script src="assets/js/app/app-profile-patches.js?v=20260529-logout-profile-guest-1" defer></script>
   <script src="assets/js/app/app-mobile-actions.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/app/app-ui-helpers.js?v=20260513-app-ui-helpers-split-1" defer></script>
@@ -951,7 +886,7 @@
   <script src="assets/js/map/water-depth-preview-sheet.js?v=20260613-depth-status-pr3-1" defer></script>
   <script src="assets/js/app/app-resume-manager.js?v=20260524-feed-observability-pr26-1" defer></script>
   <script src="assets/js/app/app-viewport-debug.js?v=20260530-viewport-debug-1" defer></script>
-  <script src="assets/js/app/app-android-diagnostics.js?v=20260624-diagnostics-freeze-fix-1" defer></script>
+  <script src="assets/js/app/app-android-diagnostics.js?v=20260620-home-dimming-diagnostics-1" defer></script>
   <script src="assets/js/app.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/chat-shell.js?v=20260505-1" defer></script>
   <script src="assets/js/chat-state.js?v=20260506-1" defer></script>

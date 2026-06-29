@@ -50,7 +50,7 @@ test("header css consumes kg safe/header aliases without rewriting markup", () =
 test("main css imports the PR-11 cache-busted header contract files", () => {
   const css = read(mainCssPath);
 
-  assert.match(css, /\.\/base\/global\.css\?v=20260629-splash-diagnostics-1/);
+  assert.match(css, /\.\/base\/global\.css\?v=20260625-touchbar-home-only-1/);
   assert.match(css, /\.\/core\/screen-contract\.css\?v=20260619-header-screen-contract-1/);
   assert.match(css, /\.\/layout\/header\.css\?v=20260619-header-screen-contract-1/);
   assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260626-touchbar-y847-1/);

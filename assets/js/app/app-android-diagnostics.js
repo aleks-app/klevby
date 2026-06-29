@@ -87,55 +87,7 @@
   }
 
   function getDiagnosticsJson() {
-    try {
-      window.KlevbyGlobalDiagnostics?.collectAndPublish?.();
-    } catch (_) {}
     return JSON.stringify(window.klevbyAndroidDiagnostics.collect(), null, 2);
-  }
-
-  function getGlobalDiagnosticsJson() {
-    try {
-      if (typeof window.__KLEVBY_GLOBAL_DIAGNOSTICS__?.getJson === "function") {
-        return window.__KLEVBY_GLOBAL_DIAGNOSTICS__.getJson({ compact: true });
-      }
-      if (typeof window.KlevbyGlobalDiagnostics?.getJson === "function") {
-        return window.KlevbyGlobalDiagnostics.getJson({ compact: true });
-      }
-      const snapshot =
-        window.KlevbyGlobalDiagnostics?.getSnapshot?.({ compact: true }) ||
-        window.KlevbyGlobalDiagnostics?.collectCompactSync?.() ||
-        null;
-      return JSON.stringify(snapshot, null, 2);
-    } catch (error) {
-      return JSON.stringify({
-        available: false,
-        error: error?.message || String(error),
-        timestamp: new Date().toISOString(),
-      }, null, 2);
-    }
-  }
-
-
-  function getSplashDiagnosticsJson() {
-    try {
-      if (typeof window.__KLEVBY_SPLASH_DIAGNOSTICS__?.getJson === "function") {
-        return window.__KLEVBY_SPLASH_DIAGNOSTICS__.getJson();
-      }
-      if (typeof window.KlevbyAppSplash?.getDiagnosticsSnapshot === "function") {
-        return JSON.stringify(window.KlevbyAppSplash.getDiagnosticsSnapshot(), null, 2);
-      }
-      return JSON.stringify({
-        available: false,
-        error: "Splash diagnostics unavailable",
-        timestamp: new Date().toISOString(),
-      }, null, 2);
-    } catch (error) {
-      return JSON.stringify({
-        available: false,
-        error: error?.message || String(error),
-        timestamp: new Date().toISOString(),
-      }, null, 2);
-    }
   }
 
   function getDiagnosticsName() {
@@ -827,12 +779,6 @@
       };
 
       return {
-        globalDiagnostics: window.KlevbyGlobalDiagnostics?.getSnapshot?.({ compact: true }) ||
-          window.KlevbyGlobalDiagnostics?.lastSnapshot ||
-          null,
-        bootDiagnostics: window.KlevbyBootStore?.getSnapshotSync
-          ? window.KlevbyBootStore.getSnapshotSync()
-          : null,
         unifiedLayoutDiagnostics,
         timestamp: new Date().toISOString(),
         homeInternalGeometry: collectHomeInternalGeometry(),
@@ -1166,35 +1112,9 @@
     container.style.maxWidth = "220px";
 
     const title = document.createElement("div");
-    title.textContent = "KlevGo diagnostics";
+    title.textContent = "Layout diagnostics";
     title.style.cssText = "padding:6px 8px;border-radius:6px;background:rgba(8,12,10,0.92);color:#fff;font:700 12px/1.2 system-ui,sans-serif;";
     container.appendChild(title);
-
-    const globalSummary = document.createElement("div");
-    globalSummary.id = "klevbyGlobalDiagnosticsSummary";
-    globalSummary.style.cssText = "padding:6px 8px;border-radius:6px;background:rgba(18,28,22,0.94);color:#d9f5e5;font:11px/1.35 monospace;max-height:96px;overflow:auto;";
-    container.appendChild(globalSummary);
-
-    function refreshGlobalSummary() {
-      try {
-        const snapshot = window.KlevbyGlobalDiagnostics?.lastSnapshot ||
-          window.KlevbyGlobalDiagnostics?.getSnapshot?.({ compact: true }) ||
-          null;
-        if (!snapshot || !globalSummary) return;
-        const lines = [
-          `screen: ${snapshot.currentScreen?.screenId || "?"} (${snapshot.currentScreen?.screenType || "?"})`,
-          `net: ${snapshot.network?.detectedStatus || "?"} online=${snapshot.network?.navigatorOnLine}`,
-          `boot: ${snapshot.boot?.bootDurationMs ?? "?"}ms splash=${snapshot.splash?.isActive ? "active" : "hidden"}`,
-          `auth: ${snapshot.auth?.authMode || "?"} sw=${snapshot.serviceWorker?.controlled ? "yes" : "no"}`,
-          `warnings: ${snapshot.warnings?.length || 0}`,
-        ];
-        globalSummary.textContent = lines.join("\n");
-      } catch (error) {
-        globalSummary.textContent = `Global diagnostics error: ${error?.message || error}`;
-      }
-    }
-
-    refreshGlobalSummary();
 
     const downloadButton = createDiagnosticsButton(`Save ${getDiagnosticsName()}`, () => {
       window.klevbyAndroidDiagnostics.saveJSON();
@@ -1231,80 +1151,11 @@
     const copyButton = createDiagnosticsButton("Copy JSON", async () => {
       const copied = await window.klevbyAndroidDiagnostics.copyJSON();
       flashButtonLabel(copyButton, "JSON copied", "Copy failed", copied);
-      refreshGlobalSummary();
     });
     container.appendChild(copyButton);
 
-    const copyGlobalButton = createDiagnosticsButton("Copy global JSON", async () => {
-      const json = getGlobalDiagnosticsJson();
-      let copied = false;
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(json);
-          copied = true;
-        }
-      } catch (_) {}
-      if (!copied) copied = copyWithTextarea(json);
-      if (!copied) showManualCopyDialog(json);
-      flashButtonLabel(copyGlobalButton, "Global copied", "Copy failed", copied);
-      refreshGlobalSummary();
-    });
-    container.appendChild(copyGlobalButton);
-
-
-    const copySplashButton = createDiagnosticsButton("Copy splash JSON", async () => {
-      const json = getSplashDiagnosticsJson();
-      let copied = false;
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(json);
-          copied = true;
-        }
-      } catch (_) {}
-      if (!copied) copied = copyWithTextarea(json);
-      if (!copied) showManualCopyDialog(json);
-      flashButtonLabel(copySplashButton, "Splash copied", "Copy failed", copied);
-      refreshGlobalSummary();
-    }, { background: "#244B3A" });
-    container.appendChild(copySplashButton);
-
-    if (window.KlevbyBootStore?.clearDiagnostics) {
-      const clearBootButton = createDiagnosticsButton("Clear diagnostics", () => {
-        window.KlevbyBootStore.clearDiagnostics();
-        flashButtonLabel(clearBootButton, "Cleared", "Failed", true);
-      }, { background: "#5A4A2E" });
-      container.appendChild(clearBootButton);
-    }
-
-    if (window.KlevbyNetworkState?.setSimulatedOffline) {
-      let simulatedOffline = false;
-      const simulateOfflineButton = createDiagnosticsButton("Simulate offline", () => {
-        simulatedOffline = !simulatedOffline;
-        window.KlevbyNetworkState.setSimulatedOffline(simulatedOffline);
-        simulateOfflineButton.textContent = simulatedOffline ? "Disable offline sim" : "Simulate offline";
-      }, { background: "#5A4A2E" });
-      container.appendChild(simulateOfflineButton);
-    }
-
-    if (window.KlevbyLastKnownCache?.clearAllLastKnown) {
-      const clearCacheButton = createDiagnosticsButton("Clear last-known cache", () => {
-        window.KlevbyLastKnownCache.clearAllLastKnown();
-        flashButtonLabel(clearCacheButton, "Cache cleared", "Failed", true);
-      }, { background: "#5A4A2E" });
-      container.appendChild(clearCacheButton);
-    }
-
-    if (window.KlevbyLastKnownMap?.clearMapCache) {
-      const clearMapCacheButton = createDiagnosticsButton("Clear map cache", () => {
-        window.KlevbyLastKnownMap.clearMapCache();
-        flashButtonLabel(clearMapCacheButton, "Map cache cleared", "Failed", true);
-      }, { background: "#5A4A2E" });
-      container.appendChild(clearMapCacheButton);
-    }
-
     const refreshButton = createDiagnosticsButton("Refresh", () => {
       window.klevbyAndroidDiagnostics.collect();
-      refreshGlobalSummary();
       flashButtonLabel(refreshButton, "Refreshed", "Refresh failed", true);
     }, { background: "#356A48" });
     container.appendChild(refreshButton);
@@ -1345,28 +1196,6 @@
   function activateDiagnosticsFromLogoGesture() {
     setStorageEnabled(true);
     initDiagnosticsModule();
-
-    const getHomeJson = () => {
-      if (typeof window.KLEVGO_HOME_BOX_MEASURE === "function") {
-        return JSON.stringify(window.KLEVGO_HOME_BOX_MEASURE(), null, 2);
-      }
-      try {
-        return getDiagnosticsJson();
-      } catch (error) {
-        return JSON.stringify(
-          { error: error?.message || "Home diagnostics unavailable", timestamp: new Date().toISOString() },
-          null,
-          2,
-        );
-      }
-    };
-
-    if (window.KlevbyDiagnosticsOverlay?.show) {
-      window.KlevbyDiagnosticsOverlay.show({ getHomeJson });
-      console.log(`[${getDiagnosticsName()}] Enabled via logo gesture (unified overlay).`);
-      return;
-    }
-
     showDiagnosticsControls();
     console.log(`[${getDiagnosticsName()}] Enabled via logo gesture.`);
   }
