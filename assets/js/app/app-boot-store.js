@@ -203,6 +203,7 @@
         typeof window.getVisibleSectionName === "function" ? window.getVisibleSectionName() : null,
       chromeMode: document.body?.getAttribute("data-app-chrome-mode") || null,
       lastSuccessfulBootAt: readLastSuccessfulBootAt(),
+      lastKnownCache: window.KlevbyLastKnownCache?.getLastKnownSnapshot?.() || null,
       lastBootErrors: state.bootErrors.slice(-10),
       lastNetworkErrors: state.networkErrors.slice(-10),
       recentEvents: state.events.slice(-20),
