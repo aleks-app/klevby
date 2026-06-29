@@ -1,5 +1,5 @@
 const CACHE_NAME = "klevby-cache-v27-splash-intro-timing-20260629";
-const SW_BUILD_VERSION = "20260624-full-app-audit-1";
+const SW_BUILD_VERSION = "20260629-splash-intro-timing-1";
 
 // Minimal app shell for faster cold start.
 const APP_FILES = [

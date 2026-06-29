@@ -10,8 +10,6 @@
 
   const splashStartedAt = performance.now();
   let shellReady = false;
-  let shellReadyMarkedAt = null;
-  let splashHiddenAt = null;
   let hideCommitted = false;
   let evaluateTimer = null;
 
@@ -45,7 +43,6 @@
   function removeSplashNode(splash) {
     if (!splash || !splash.parentNode) return;
     splash.remove();
-    splashHiddenAt = performance.now();
     setSplashActive(false);
     window.dispatchEvent(new CustomEvent("klevby-app-splash-hidden"));
   }
@@ -111,7 +108,6 @@
   function markShellReady() {
     if (shellReady) return;
     shellReady = true;
-    shellReadyMarkedAt = performance.now();
     evaluateHide();
   }
 
@@ -138,27 +134,6 @@
       const splash = getSplashNode();
       if (!splash || hideCommitted) return false;
       return !splash.classList.contains("hide");
-    },
-    getDiagnosticsSnapshot() {
-      const elapsedMs = Math.round(performance.now() - splashStartedAt);
-      return {
-        splashStartedAtMs: splashStartedAt,
-        shellReadyMarkedAtMs: shellReadyMarkedAt,
-        splashHiddenAtMs: splashHiddenAt,
-        elapsedMs,
-        shellReady,
-        hideCommitted,
-        isActive: (() => {
-          const node = getSplashNode();
-          if (!node || hideCommitted) return false;
-          return !node.classList.contains("hide");
-        })(),
-        minVisibleMs: getMinVisibleMs(),
-        introDurationMs: getIntroDurationMs(),
-        requiredVisibleMs: getRequiredVisibleMs(),
-        forceHideMs: KLEVB_SPLASH_FORCE_HIDE_MS,
-        bodySplashActive: document.body?.classList.contains("klevby-splash-active") === true,
-      };
     },
   };
 
