@@ -11,6 +11,46 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="color-scheme" content="dark" />
+  <style id="klevby-splash-boot-surface">
+    html,
+    body {
+      background-color: #000000;
+    }
+
+    body.klevby-splash-active {
+      background: #000000 !important;
+    }
+
+    #appSplash {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483645;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(244, 178, 74, 0.18), transparent 34%),
+        #000000;
+    }
+
+    #appSplash:not(.splash-animate) .splash-k {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+
+    #appSplash:not(.splash-animate) .splash-rest .letter {
+      opacity: 0;
+      transform: translateX(42px) translateY(18px) rotate(18deg) scale(0.84);
+      filter: blur(8px);
+    }
+
+    #appSplash:not(.splash-animate) .splash-logo::after {
+      width: 0;
+      opacity: 0;
+    }
+  </style>
 
   <script>
     (function () {
@@ -95,7 +135,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
-<link rel="stylesheet" href="assets/css/main.css?v=20260626-home-figma-fish-icon-align-1">
+<link rel="stylesheet" href="assets/css/main.css?v=20260624-splash-intro-animation-fix-1">
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
@@ -141,7 +181,7 @@
   </section>
 
   <div id="klevbyAppRoot">
-  <div id="appSplash" class="app-splash" aria-hidden="true">
+  <div id="appSplash" class="app-splash" aria-hidden="false">
     <div class="splash-logo">
       <span class="splash-k">K</span>
       <div class="splash-rest">
@@ -870,7 +910,7 @@
   <script src="assets/js/app/app-shell-viewport-owner.js?v=20260614-app-shell-viewport-pr1-1" defer></script>
   <script src="assets/js/app/app-home-screen-owner.js?v=20260620-home-dimming-diagnostics-1" defer></script>
   <script src="assets/js/app/app-navigation.js?v=20260607-map-app-screen-1" defer></script>
-  <script src="assets/js/app/app-splash.js?v=20260624-diagnostics-freeze-fix-1" defer></script>
+  <script src="assets/js/app/app-splash.js?v=20260624-splash-intro-animation-fix-1" defer></script>
   <script src="assets/js/app/app-profile-patches.js?v=20260529-logout-profile-guest-1" defer></script>
   <script src="assets/js/app/app-mobile-actions.js?v=20260618-trips-create-hard-disable-1" defer></script>
   <script src="assets/js/app/app-ui-helpers.js?v=20260513-app-ui-helpers-split-1" defer></script>
