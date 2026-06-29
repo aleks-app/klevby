@@ -115,29 +115,6 @@
     }
   }
 
-
-  function getSplashDiagnosticsJson() {
-    try {
-      if (typeof window.__KLEVBY_SPLASH_DIAGNOSTICS__?.getJson === "function") {
-        return window.__KLEVBY_SPLASH_DIAGNOSTICS__.getJson();
-      }
-      if (typeof window.KlevbyAppSplash?.getDiagnosticsSnapshot === "function") {
-        return JSON.stringify(window.KlevbyAppSplash.getDiagnosticsSnapshot(), null, 2);
-      }
-      return JSON.stringify({
-        available: false,
-        error: "Splash diagnostics unavailable",
-        timestamp: new Date().toISOString(),
-      }, null, 2);
-    } catch (error) {
-      return JSON.stringify({
-        available: false,
-        error: error?.message || String(error),
-        timestamp: new Date().toISOString(),
-      }, null, 2);
-    }
-  }
-
   function getDiagnosticsName() {
     return isIphone() && isStandaloneMode()
       ? "KlevGo iPhone PWA Home Diagnostics"
@@ -1250,23 +1227,6 @@
       refreshGlobalSummary();
     });
     container.appendChild(copyGlobalButton);
-
-
-    const copySplashButton = createDiagnosticsButton("Copy splash JSON", async () => {
-      const json = getSplashDiagnosticsJson();
-      let copied = false;
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(json);
-          copied = true;
-        }
-      } catch (_) {}
-      if (!copied) copied = copyWithTextarea(json);
-      if (!copied) showManualCopyDialog(json);
-      flashButtonLabel(copySplashButton, "Splash copied", "Copy failed", copied);
-      refreshGlobalSummary();
-    }, { background: "#244B3A" });
-    container.appendChild(copySplashButton);
 
     if (window.KlevbyBootStore?.clearDiagnostics) {
       const clearBootButton = createDiagnosticsButton("Clear diagnostics", () => {

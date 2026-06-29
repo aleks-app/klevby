@@ -49,7 +49,7 @@ test("mobile tabbar consumes kg aliases with legacy fallbacks", () => {
 test("main css imports the PR-11 cache-busted contract files", () => {
   const css = read(mainCssPath);
 
-  assert.match(css, /\.\/base\/global\.css\?v=20260629-splash-diagnostics-1/);
+  assert.match(css, /\.\/base\/global\.css\?v=20260625-hotfix-splash-intro-restore-1/);
   assert.match(css, /\.\/core\/screen-contract\.css\?v=20260619-header-screen-contract-1/);
   assert.match(css, /\.\/mobile\/mobile-tabbar\.css\?v=20260626-touchbar-y847-1/);
 });
