@@ -794,7 +794,19 @@
 
       activeDepthMapId = depthMap.id;
       syncDepthMarkers(map);
+      window.KlevbyLastKnownMap?.saveDepthMode?.({
+        depthMapId: depthMap.id,
+        name: depthMap.name,
+        enabled: true,
+        waterBodyId: depthMap.waterBodyId || depthMap.id,
+      });
+      window.KlevbyLastKnownMap?.setDepthMapsStatus?.("ready");
       return true;
+    } catch (error) {
+      window.KlevbyLastKnownMap?.recordDepthMapsError?.(error, {
+        mapId: depthMap?.id || mapId,
+      });
+      throw error;
     } finally {
       depthMapLoading = false;
     }
@@ -803,12 +815,20 @@
   async function selectDepthMap(map, mapId) {
     if (depthMapLoading) return false;
 
+    if (global.KlevbyLastKnownCache?.isNetworkDegraded?.()) {
+      window.KlevbyLastKnownMap?.setDepthMapsStatus?.("offline");
+      return false;
+    }
+
     try {
       return await showDepthMap(map, mapId);
     } catch (error) {
       console.warn("Klevby Map: failed to load selected depth map", {
         id: normalizeWaterBodyId(mapId),
         error
+      });
+      window.KlevbyLastKnownMap?.recordDepthMapsError?.(error, {
+        mapId: normalizeWaterBodyId(mapId),
       });
       return false;
     }

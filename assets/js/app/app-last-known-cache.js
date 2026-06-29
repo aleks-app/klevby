@@ -9,6 +9,10 @@
     trips: 50,
     weather: 1,
     home: 1,
+    "map-viewport": 1,
+    "map-waterbody": 1,
+    "map-depth": 1,
+    "map-registry": 40,
   };
 
   let lastWriteStatus = "idle";
@@ -56,6 +60,10 @@
         feedPreviewCount: Number(data.feedPreviewCount || 0) || 0,
         hasWeather: Boolean(data.hasWeather),
       };
+    }
+
+    if (normalizedKey === "map-registry" && Array.isArray(data)) {
+      return data.slice(0, MAX_ITEMS["map-registry"]);
     }
 
     return data;
@@ -168,7 +176,16 @@
   }
 
   function clearAllLastKnown() {
-    const keys = ["feed", "trips", "weather", "home"];
+    const keys = [
+      "feed",
+      "trips",
+      "weather",
+      "home",
+      "map-viewport",
+      "map-waterbody",
+      "map-depth",
+      "map-registry",
+    ];
 
     keys.forEach(clearLastKnown);
 
@@ -185,7 +202,16 @@
   }
 
   function getLastKnownSnapshot() {
-    const keys = ["feed", "trips", "weather", "home"];
+    const keys = [
+      "feed",
+      "trips",
+      "weather",
+      "home",
+      "map-viewport",
+      "map-waterbody",
+      "map-depth",
+      "map-registry",
+    ];
     const entries = {};
 
     keys.forEach((key) => {
