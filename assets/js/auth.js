@@ -907,7 +907,17 @@ function scheduleAuthRestore(reason = "resume", reloadData = false) {
 }
 
 async function initAuth() {
-  await restoreAuthState("init", false);
+  const bootStore = window.KlevbyBootStore;
+  const withTimeout =
+    bootStore?.withTimeout?.bind(bootStore) ||
+    ((promise) => promise);
+
+  try {
+    await withTimeout(restoreAuthState("init", false), 8000, "restoreAuthState");
+  } catch (error) {
+    bootStore?.recordError?.("restoreAuthState", error);
+    console.warn("Klevby initAuth: restoreAuthState degraded", error);
+  }
 
   if (window.location.hash.includes("access_token")) {
     const resetModal = document.getElementById("resetModal");
@@ -926,11 +936,22 @@ async function initAuth() {
   updateAuthStatus();
   fillAuthorLocal();
 
-  if (!currentUser && typeof showSection === "function") {
-    showSection("auth");
+  const postsLoader =
+    typeof loadPosts === "function"
+      ? loadPosts
+      : typeof window.KlevbyPostsApi?.loadPosts === "function"
+        ? window.KlevbyPostsApi.loadPosts.bind(window.KlevbyPostsApi)
+        : null;
+
+  if (postsLoader) {
+    try {
+      await withTimeout(postsLoader({ force: true }), 9000, "loadPosts");
+    } catch (error) {
+      bootStore?.recordError?.("loadPosts", error);
+      console.warn("Klevby initAuth: loadPosts degraded", error);
+    }
   }
 
-  await loadPosts();
   reloadPondsIfReady();
 }
 
