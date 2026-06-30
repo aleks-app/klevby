@@ -11,14 +11,78 @@
       color-scheme: dark;
     }
 
+    html {
+      min-height: 100%;
+      min-height: 100dvh;
+    }
+
     body {
       overflow-x: hidden;
+      min-height: 100%;
+      min-height: 100dvh;
     }
 
     #klevbyAppRoot,
     #homeSection,
     #appSplash {
       background: #050807;
+    }
+
+    #appSplash {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      min-height: 100vh;
+      min-height: 100dvh;
+      box-sizing: border-box;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(244, 178, 74, 0.18), transparent 34%),
+        #000000;
+    }
+
+    #appSplash.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #appSplash .splash-logo {
+      position: relative;
+      min-width: 220px;
+      height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 54px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -2px;
+      filter: drop-shadow(0 0 28px rgba(244, 178, 74, 0.20));
+    }
+
+    #appSplash .splash-k,
+    #appSplash .splash-rest,
+    #appSplash .letter {
+      display: inline-block;
+      font-weight: inherit;
+    }
+
+    #appSplash .splash-rest {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #appSplash .splash-rest .letter:nth-child(4),
+    #appSplash .splash-rest .letter:nth-child(5) {
+      color: #F47A2B;
     }
   </style>
   <script src="assets/js/app/app-surface-gate.js?v=20260605-desktop-cleanup-1"></script>
@@ -115,7 +179,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://oecdshvozssadztcokog.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://api.openweathermap.org">
-<link rel="stylesheet" href="assets/css/main.css?v=20260626-home-figma-fish-icon-align-1">
+<link
+    id="klevbyMainCss"
+    rel="preload"
+    as="style"
+    href="assets/css/main.css?v=20260626-home-figma-fish-icon-align-1"
+    onload="this.onload=null;this.rel='stylesheet';this.dataset.klevbyCssPreloaded='true';"
+    onerror="this.dataset.klevbyCssPreloaded='error';document.documentElement.dataset.klevbyMainCssReady='error';document.dispatchEvent(new Event('klevby:main-css-ready'));"
+  >
+  <noscript><link rel="stylesheet" href="assets/css/main.css?v=20260626-home-figma-fish-icon-align-1"></noscript>
   <link rel="stylesheet" href="assets/css/ponds.css?v=20260503-4">
   <link rel="stylesheet" href="assets/css/screens/map-water-depth.css?v=20260613-draft-contours-1">
   <link rel="stylesheet" href="assets/css/screens/water-body-detail.css?v=20260613-draft-contours-1">
