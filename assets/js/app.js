@@ -8,6 +8,90 @@ const ADMIN_EMAIL = KLEVB_CONFIG.ADMIN_EMAIL || "";
 
 window.__klevbyCentralResumeRouter = true;
 
+
+(function setupKlevgoStartupTimings() {
+  if (window.__KLEVGO_STARTUP_TIMINGS__ && window.klevgoStartupTimingMark) return;
+
+  const startedAt = Date.now();
+  const origin = typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : 0;
+  const starts = Object.create(null);
+  const latestEvents = [];
+  const timings = {
+    startedAt,
+    events: latestEvents,
+    latestEvents,
+    durations: {},
+    lastError: {}
+  };
+
+  function nowMs() {
+    return typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now() - startedAt;
+  }
+
+  function safeError(error) {
+    if (!error) return null;
+    return {
+      name: String(error.name || "Error"),
+      message: String(error.message || error)
+    };
+  }
+
+  function mark(step, phase, detail) {
+    if (!step || !phase) return null;
+
+    const at = Math.round(nowMs() - origin);
+    const event = {
+      step: String(step),
+      phase: String(phase),
+      at
+    };
+
+    if (phase === "start") {
+      starts[step] = at;
+    } else if (phase === "end" || phase === "error" || phase === "timeout" || phase === "finally") {
+      if (typeof starts[step] === "number") {
+        timings.durations[step] = Math.max(0, at - starts[step]);
+      }
+    }
+
+    if (phase === "error" || phase === "timeout") {
+      timings.lastError[step] = safeError(detail) || { name: String(phase), message: String(step) };
+    }
+
+    timings.events.push(event);
+    if (timings.events.length > 80) {
+      timings.events.splice(0, timings.events.length - 80);
+    }
+
+    return event;
+  }
+
+  Object.defineProperty(window, "__KLEVGO_STARTUP_TIMINGS__", {
+    value: timings,
+    configurable: false,
+    enumerable: false,
+    writable: false
+  });
+
+  Object.defineProperty(window, "klevgoStartupTimingMark", {
+    value: mark,
+    configurable: false,
+    enumerable: false,
+    writable: false
+  });
+})();
+
+function markKlevgoStartupTiming(step, phase, detail) {
+  if (typeof window.klevgoStartupTimingMark === "function") {
+    window.klevgoStartupTimingMark(step, phase, detail);
+  }
+}
+
+
 window.klevbyAdminEmail = ADMIN_EMAIL;
 window.KLEVB_ADMIN_EMAIL = ADMIN_EMAIL;
 window.ADMIN_EMAIL = ADMIN_EMAIL;
@@ -290,26 +374,32 @@ async function recoverSupabaseClient(options = {}) {
 window.klevbyRecoverSupabaseClient = recoverSupabaseClient;
 
 function initSupabase() {
+  markKlevgoStartupTiming("initSupabase", "start");
+
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     showStatus("Supabase не настроен. Проверь assets/js/config.js.", true);
     console.error("Klevby: SUPABASE_URL или SUPABASE_ANON_KEY пустые.");
+    markKlevgoStartupTiming("initSupabase", "error", new Error("supabase_config_missing"));
     return false;
   }
 
   if (!window.supabase) {
     showStatus("Supabase не загрузился. Обнови страницу.", true);
     console.error("Klevby: библиотека Supabase не загружена.");
+    markKlevgoStartupTiming("initSupabase", "error", new Error("supabase_library_missing"));
     return false;
   }
 
   if (supabaseClient) {
     syncGlobalAuthState();
+    markKlevgoStartupTiming("initSupabase", "end");
     return true;
   }
 
   if (!window.KlevbySupabaseCore || typeof window.KlevbySupabaseCore.initClient !== "function") {
     showStatus("Supabase клиент не удалось создать. Обнови страницу.", true);
     console.error("Klevby: Supabase core module is not available.");
+    markKlevgoStartupTiming("initSupabase", "error", new Error("supabase_core_missing"));
     return false;
   }
 
@@ -334,6 +424,7 @@ function initSupabase() {
   if (!supabaseClient) {
     showStatus("Supabase клиент не удалось создать. Обнови страницу.", true);
     console.error("Klevby: failed to initialize Supabase client via core module.");
+    markKlevgoStartupTiming("initSupabase", "error", new Error("supabase_client_missing"));
     return false;
   }
 
@@ -351,6 +442,8 @@ function initSupabase() {
   window.klevbyIsAdmin = function () {
     return isAdmin();
   };
+
+  markKlevgoStartupTiming("initSupabase", "end");
 
   const authStateHandler = async (event, session) => {
     const previousUserId = currentUser?.id || null;
@@ -1151,6 +1244,8 @@ const setupKlevbyAppLifecycle = appResumeManager?.setupKlevbyAppLifecycle || (()
 setupAppGlobalEvents();
 
 async function initKlevbyApp() {
+  markKlevgoStartupTiming("initKlevbyApp", "start");
+
   try {
     patchProfileOpenForExtraSections();
     patchProfileShortcutActions();
@@ -1202,7 +1297,13 @@ async function initKlevbyApp() {
     if (typeof window.updateHomeFloatButton === "function") {
       window.updateHomeFloatButton();
     }
+
+    markKlevgoStartupTiming("initKlevbyApp", "end");
+  } catch (error) {
+    markKlevgoStartupTiming("initKlevbyApp", "error", error);
+    throw error;
   } finally {
+    markKlevgoStartupTiming("initKlevbyApp", "finally");
     if (appResumeManager && typeof appResumeManager.markBootCompleted === "function") {
       appResumeManager.markBootCompleted();
     }
