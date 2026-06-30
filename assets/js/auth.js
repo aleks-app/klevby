@@ -1,4 +1,5 @@
 const KLEVB_RECENT_LOGOUT_GUARD_MS = 10 * 60 * 1000;
+const KLEVGO_AUTH_STARTUP_TIMEOUT_MS = 1500;
 
 function markKlevgoStartupTiming(step, phase, detail) {
   if (typeof window.klevgoStartupTimingMark === "function") {
@@ -575,6 +576,34 @@ function forceGuestAuthState() {
   updateAuthStatus();
 }
 
+function createKlevgoAuthTimeoutError(label, timeoutMs) {
+  const error = new Error(label || "KLEVGO_AUTH_STARTUP_TIMEOUT");
+  error.name = "KlevgoAuthStartupTimeoutError";
+  error.timeoutMs = timeoutMs;
+  return error;
+}
+
+function isKlevgoAuthStartupTimeout(error) {
+  return error?.name === "KlevgoAuthStartupTimeoutError";
+}
+
+function withKlevgoAuthStartupTimeout(promise, timeoutMs, label) {
+  let timeoutId = null;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(createKlevgoAuthTimeoutError(label, timeoutMs));
+    }, timeoutMs);
+  });
+
+  return Promise.race([Promise.resolve(promise), timeoutPromise])
+    .finally(() => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    });
+}
+
 function withAuthLogoutTimeout(promise, timeoutMs, label) {
   return Promise.race([
     Promise.resolve(promise),
@@ -912,12 +941,23 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
     let sessionData;
     let sessionError;
     try {
-      const sessionResult = await supabaseClient.auth.getSession();
+      const sessionPromise = supabaseClient.auth.getSession();
+      const sessionResult = reason === "init"
+        ? await withKlevgoAuthStartupTimeout(
+            sessionPromise,
+            KLEVGO_AUTH_STARTUP_TIMEOUT_MS,
+            "KLEVGO_AUTH_STARTUP_GET_SESSION_TIMEOUT"
+          )
+        : await sessionPromise;
       sessionData = sessionResult.data;
       sessionError = sessionResult.error;
       markKlevgoStartupTiming("supabase.auth.getSession", "end");
     } catch (error) {
-      markKlevgoStartupTiming("supabase.auth.getSession", "error", error);
+      markKlevgoStartupTiming(
+        "supabase.auth.getSession",
+        isKlevgoAuthStartupTimeout(error) ? "timeout" : "error",
+        error
+      );
       throw error;
     }
 
@@ -933,12 +973,23 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
       let userData;
       let userError;
       try {
-        const userResult = await supabaseClient.auth.getUser();
+        const userPromise = supabaseClient.auth.getUser();
+        const userResult = reason === "init"
+          ? await withKlevgoAuthStartupTimeout(
+              userPromise,
+              KLEVGO_AUTH_STARTUP_TIMEOUT_MS,
+              "KLEVGO_AUTH_STARTUP_GET_USER_TIMEOUT"
+            )
+          : await userPromise;
         userData = userResult.data;
         userError = userResult.error;
         markKlevgoStartupTiming("supabase.auth.getUser", "end");
       } catch (error) {
-        markKlevgoStartupTiming("supabase.auth.getUser", "error", error);
+        markKlevgoStartupTiming(
+          "supabase.auth.getUser",
+          isKlevgoAuthStartupTimeout(error) ? "timeout" : "error",
+          error
+        );
         throw error;
       }
 
