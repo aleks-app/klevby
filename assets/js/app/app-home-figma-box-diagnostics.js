@@ -211,6 +211,169 @@
     };
   }
 
+  function safeComputedBackground(element) {
+    if (!element || typeof getComputedStyle !== "function") return null;
+    try {
+      return getComputedStyle(element).backgroundColor;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function metaContent(selector) {
+    return query(selector)?.getAttribute("content") || null;
+  }
+
+  function timingNumber(entry, key) {
+    const value = entry?.[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function getNavigationTiming() {
+    const navigation = typeof window.performance?.getEntriesByType === "function"
+      ? window.performance.getEntriesByType("navigation")[0]
+      : null;
+    if (!navigation) return null;
+
+    return {
+      type: navigation.type || null,
+      startTime: timingNumber(navigation, "startTime"),
+      workerStart: timingNumber(navigation, "workerStart"),
+      fetchStart: timingNumber(navigation, "fetchStart"),
+      requestStart: timingNumber(navigation, "requestStart"),
+      responseStart: timingNumber(navigation, "responseStart"),
+      responseEnd: timingNumber(navigation, "responseEnd"),
+      domInteractive: timingNumber(navigation, "domInteractive"),
+      domContentLoadedEventStart: timingNumber(navigation, "domContentLoadedEventStart"),
+      domContentLoadedEventEnd: timingNumber(navigation, "domContentLoadedEventEnd"),
+      loadEventStart: timingNumber(navigation, "loadEventStart"),
+      loadEventEnd: timingNumber(navigation, "loadEventEnd"),
+      duration: timingNumber(navigation, "duration"),
+      transferSize: timingNumber(navigation, "transferSize"),
+      encodedBodySize: timingNumber(navigation, "encodedBodySize"),
+      decodedBodySize: timingNumber(navigation, "decodedBodySize")
+    };
+  }
+
+  function getPaintTimings() {
+    const paintEntries = typeof window.performance?.getEntriesByType === "function"
+      ? window.performance.getEntriesByType("paint")
+      : [];
+    return paintEntries.reduce((timings, entry) => {
+      if (entry.name === "first-paint" || entry.name === "first-contentful-paint") {
+        timings[entry.name] = {
+          startTime: timingNumber(entry, "startTime"),
+          duration: timingNumber(entry, "duration")
+        };
+      }
+      return timings;
+    }, {
+      "first-paint": null,
+      "first-contentful-paint": null
+    });
+  }
+
+  function getCssResourceTimings() {
+    const resources = typeof window.performance?.getEntriesByType === "function"
+      ? window.performance.getEntriesByType("resource")
+      : [];
+
+    return resources
+      .filter((entry) => {
+        const name = entry.name || "";
+        return name.includes("assets/css/main.css") ||
+          name.includes("assets/css/base/global.css") ||
+          name.includes(".css");
+      })
+      .slice(0, 10)
+      .map((entry) => ({
+        name: entry.name || null,
+        shortName: entry.name ? entry.name.split("/").slice(-3).join("/") : null,
+        startTime: timingNumber(entry, "startTime"),
+        responseStart: timingNumber(entry, "responseStart"),
+        responseEnd: timingNumber(entry, "responseEnd"),
+        duration: timingNumber(entry, "duration"),
+        transferSize: timingNumber(entry, "transferSize")
+      }));
+  }
+
+  function timeoutValue(ms, value) {
+    return new Promise((resolve) => {
+      window.setTimeout(() => resolve(value), ms);
+    });
+  }
+
+  async function getServiceWorkerDiagnostics() {
+    const supported = "serviceWorker" in navigator;
+    const serviceWorker = {
+      supported,
+      controllerPresent: Boolean(navigator.serviceWorker?.controller),
+      controllerScriptURL: navigator.serviceWorker?.controller?.scriptURL || null,
+      controllerState: navigator.serviceWorker?.controller?.state || null,
+      readyActiveScriptURL: null,
+      readyActiveState: null,
+      waitingScriptURL: null,
+      installingScriptURL: null,
+      timedOut: false,
+      error: null
+    };
+
+    if (!supported) return serviceWorker;
+
+    try {
+      const registration = await Promise.race([
+        navigator.serviceWorker.getRegistration(),
+        timeoutValue(300, { __klevgoTimedOut: true })
+      ]);
+      if (registration?.__klevgoTimedOut) {
+        serviceWorker.timedOut = true;
+        return serviceWorker;
+      }
+      serviceWorker.readyActiveScriptURL = registration?.active?.scriptURL || null;
+      serviceWorker.readyActiveState = registration?.active?.state || null;
+      serviceWorker.waitingScriptURL = registration?.waiting?.scriptURL || null;
+      serviceWorker.installingScriptURL = registration?.installing?.scriptURL || null;
+    } catch (error) {
+      serviceWorker.error = error?.message || String(error);
+    }
+
+    return serviceWorker;
+  }
+
+  async function getPwaColdStartDiagnostics() {
+    const criticalFirstPaintStyle = document.getElementById("klevgo-critical-first-paint");
+    return {
+      criticalFirstPaintStyle: {
+        present: Boolean(criticalFirstPaintStyle),
+        textLength: criticalFirstPaintStyle?.textContent?.length || 0
+      },
+      computedBackgrounds: {
+        html: safeComputedBackground(document.documentElement),
+        body: safeComputedBackground(document.body),
+        homeSection: safeComputedBackground(document.getElementById("homeSection")),
+        appSplash: safeComputedBackground(document.getElementById("appSplash"))
+      },
+      meta: {
+        themeColor: metaContent('meta[name="theme-color"]'),
+        backgroundColor: metaContent('meta[name="background-color"]'),
+        appleMobileWebAppCapable: metaContent('meta[name="apple-mobile-web-app-capable"]'),
+        appleMobileWebAppStatusBarStyle: metaContent('meta[name="apple-mobile-web-app-status-bar-style"]'),
+        manifestHref: query('link[rel="manifest"]')?.getAttribute("href") || null
+      },
+      serviceWorker: await getServiceWorkerDiagnostics(),
+      navigationTiming: getNavigationTiming(),
+      paintTimings: getPaintTimings(),
+      cssResourceTimings: getCssResourceTimings(),
+      startupTimings: getStartupTimingsSnapshot()
+    };
+  }
+
+  async function measureWithPwaColdStartDiagnostics() {
+    const data = measure();
+    data.pwaColdStart = await getPwaColdStartDiagnostics();
+    return data;
+  }
+
   function getWeatherBridgeDiagnostics() {
     const bridgeDebug = window.KLEVGO_FIGMA_WEATHER_BRIDGE_DEBUG || {};
     const weatherState = window.KlevGoWeatherState || {};
@@ -433,9 +596,9 @@
     return copyTextFallback(text);
   }
 
-  function showOverlay() {
+  async function showOverlay() {
     hideOverlay();
-    const data = measure();
+    const data = await measureWithPwaColdStartDiagnostics();
     const json = JSON.stringify(data, null, 2);
     const overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
@@ -454,8 +617,8 @@
     return data;
   }
 
-  function printMeasure() {
-    const data = measure();
+  async function printMeasure() {
+    const data = await measureWithPwaColdStartDiagnostics();
     console.log(JSON.stringify(data, null, 2));
     return data;
   }
@@ -507,6 +670,7 @@
   }
 
   window.KLEVGO_HOME_BOX_MEASURE = measure;
+  window.KLEVGO_HOME_BOX_MEASURE_PWA_COLD_START = measureWithPwaColdStartDiagnostics;
   window.KLEVGO_HOME_BOX_PRINT = printMeasure;
   window.KLEVGO_HOME_BOX_SHOW = showOverlay;
   window.KLEVGO_HOME_BOX_HIDE = hideOverlay;
