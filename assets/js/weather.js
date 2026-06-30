@@ -73,7 +73,8 @@ const HOME_WEATHER_MODE_ICONS = {
   rainy: "assets/icons/weather/cloud-rain-wind.svg"
 };
 
-const WEATHER_FETCH_TIMEOUT_MS = 2000;
+const WEATHER_FETCH_TIMEOUT_MS = 3500;
+const LAST_REAL_WEATHER_STATE_STORAGE_KEY = "klevgo:lastRealWeatherState";
 
 function getSafeWeatherMode(mode) {
   return HOME_WEATHER_MODE_LABELS[mode] ? mode : "cloudy";
@@ -88,11 +89,18 @@ function publishKlevGoWeatherState({
   pressureText,
   biteIconSrc = "assets/icons/weather/fish-light.svg",
   biteTitle,
-  biteDescription
+  biteDescription,
+  isFallback = false,
+  isUnavailable = false,
+  source = "live",
+  errorCode = null,
+  lastRealUpdatedAt,
+  fallbackUsedAt
 }) {
   const safeWeatherMode = getSafeWeatherMode(weatherMode);
   const nextState = {
     mode,
+    weatherMode: safeWeatherMode,
     iconSrc: HOME_WEATHER_MODE_ICONS[safeWeatherMode],
     tempText,
     conditionText: conditionText || HOME_WEATHER_MODE_LABELS[safeWeatherMode].card,
@@ -101,13 +109,125 @@ function publishKlevGoWeatherState({
     biteIconSrc,
     biteTitle,
     biteDescription,
+    isFallback,
+    isUnavailable,
+    source,
+    errorCode,
     updatedAt: new Date().toISOString()
   };
+
+  if (lastRealUpdatedAt) {
+    nextState.lastRealUpdatedAt = lastRealUpdatedAt;
+  }
+
+  if (fallbackUsedAt) {
+    nextState.fallbackUsedAt = fallbackUsedAt;
+  }
 
   window.KlevGoWeatherState = nextState;
   window.dispatchEvent(new CustomEvent("klevgo:weather-updated", {
     detail: nextState
   }));
+}
+
+
+let lastRealWeatherState = null;
+
+function getWeatherErrorCode(error) {
+  if (error?.message) return error.message;
+  if (error?.name) return error.name;
+  return "weather_error";
+}
+
+function readLastRealWeatherState() {
+  if (lastRealWeatherState) return lastRealWeatherState;
+
+  try {
+    const savedState = window.localStorage?.getItem(LAST_REAL_WEATHER_STATE_STORAGE_KEY);
+    if (!savedState) return null;
+
+    const parsedState = JSON.parse(savedState);
+    if (!parsedState || typeof parsedState !== "object") return null;
+    if (parsedState.isFallback || parsedState.isUnavailable || parsedState.source !== "live") return null;
+    if (typeof parsedState.tempText !== "string" || typeof parsedState.updatedAt !== "string") return null;
+
+    lastRealWeatherState = parsedState;
+    return lastRealWeatherState;
+  } catch (error) {
+    console.warn("Failed to read last real weather state", error);
+    return null;
+  }
+}
+
+function saveLastRealWeatherState(state) {
+  if (!state || state.isFallback || state.isUnavailable || state.source !== "live") return;
+
+  const safeState = {
+    mode: state.mode,
+    weatherMode: state.weatherMode,
+    iconSrc: state.iconSrc,
+    tempText: state.tempText,
+    conditionText: state.conditionText,
+    windText: state.windText,
+    pressureText: state.pressureText,
+    biteIconSrc: state.biteIconSrc,
+    biteTitle: state.biteTitle,
+    biteDescription: state.biteDescription,
+    isFallback: false,
+    isUnavailable: false,
+    source: "live",
+    errorCode: null,
+    updatedAt: state.updatedAt
+  };
+
+  lastRealWeatherState = safeState;
+
+  try {
+    window.localStorage?.setItem(LAST_REAL_WEATHER_STATE_STORAGE_KEY, JSON.stringify(safeState));
+  } catch (error) {
+    console.warn("Failed to save last real weather state", error);
+  }
+}
+
+function publishLastRealWeatherFallback(errorCode) {
+  const state = readLastRealWeatherState();
+  if (!state) return false;
+
+  publishKlevGoWeatherState({
+    mode: state.mode,
+    weatherMode: state.weatherMode,
+    tempText: state.tempText,
+    conditionText: state.conditionText,
+    windText: state.windText,
+    pressureText: state.pressureText,
+    biteIconSrc: state.biteIconSrc,
+    biteTitle: state.biteTitle,
+    biteDescription: state.biteDescription,
+    isFallback: true,
+    isUnavailable: false,
+    source: "last-real",
+    errorCode,
+    lastRealUpdatedAt: state.updatedAt,
+    fallbackUsedAt: new Date().toISOString()
+  });
+
+  return true;
+}
+
+function publishUnavailableWeatherState(errorCode) {
+  publishKlevGoWeatherState({
+    weatherMode: "cloudy",
+    tempText: "—°C",
+    conditionText: "Обновляем…",
+    windText: "— м/с",
+    pressureText: "— мм рт. ст.",
+    biteTitle: "Нет данных",
+    biteDescription: "Погода обновится, когда появится связь.",
+    isFallback: true,
+    isUnavailable: true,
+    source: "unavailable",
+    errorCode
+  });
 }
 
 function windDirection(deg) {
@@ -198,26 +318,21 @@ async function fetchWeather() {
       windText,
       pressureText: formatHomeWeatherPressureText(pressureMm),
       biteTitle: biteResult.shortText,
-      biteDescription: biteResult.text
+      biteDescription: biteResult.text,
+      isFallback: false,
+      isUnavailable: false,
+      source: "live",
+      errorCode: null
     });
+    saveLastRealWeatherState(window.KlevGoWeatherState);
     markKlevgoStartupTiming("fetchWeather", "end");
   } catch (error) {
     markKlevgoStartupTiming("fetchWeather", "error", error);
     console.error(error);
 
-    const fallbackTempText = "+14°C";
-    const fallbackWindText = "3 м/с СЗ";
-    const fallbackPressureMm = 752;
-    const fallbackBiteResult = getBiteForecastByPressure(fallbackPressureMm);
-
-    publishKlevGoWeatherState({
-      weatherMode: getWeatherMode("Clouds", "облачно"),
-      tempText: fallbackTempText,
-      conditionText: HOME_WEATHER_MODE_LABELS.cloudy.card,
-      windText: fallbackWindText,
-      pressureText: formatHomeWeatherPressureText(fallbackPressureMm),
-      biteTitle: fallbackBiteResult.shortText,
-      biteDescription: fallbackBiteResult.text
-    });
+    const errorCode = getWeatherErrorCode(error);
+    if (!publishLastRealWeatherFallback(errorCode)) {
+      publishUnavailableWeatherState(errorCode);
+    }
   }
 }
