@@ -1,4 +1,11 @@
 (function () {
+
+function markKlevgoStartupTiming(step, phase, detail) {
+  if (typeof window.klevgoStartupTimingMark === "function") {
+    window.klevgoStartupTimingMark(step, phase, detail);
+  }
+}
+
   function markKlevbyResumeDebug(source, reason, detail = {}) {
     const api = window.KlevbyResumeDebug;
     if (!api || typeof api.mark !== "function") return null;
@@ -731,6 +738,8 @@
   }
 
   async function loadPosts(options = {}) {
+    markKlevgoStartupTiming("loadPosts", "start");
+
     const force = Boolean(options.force);
     const retry = Number(options.retry || 0);
     const silent = Boolean(options.silent);
@@ -744,7 +753,14 @@
         setPostsPendingForceReload(true);
       }
 
-      return activePostsLoadPromise;
+      try {
+        const activeResult = await activePostsLoadPromise;
+        markKlevgoStartupTiming("loadPosts", "end");
+        return activeResult;
+      } catch (error) {
+        markKlevgoStartupTiming("loadPosts", "error", error);
+        throw error;
+      }
     }
 
     setPostsPendingForceReload(false);
@@ -801,6 +817,7 @@
             `;
           }
 
+          markKlevgoStartupTiming("loadPosts", "timeout", error);
           schedulePostsLoad(POSTS_LOAD_RETRY_DELAY_MS);
           setPostsInitialLoadDone(true);
           return;
@@ -896,7 +913,12 @@
     setPostsLoadPromise(nextPostsLoadPromise);
 
     try {
-      return await nextPostsLoadPromise;
+      const result = await nextPostsLoadPromise;
+      markKlevgoStartupTiming("loadPosts", "end");
+      return result;
+    } catch (error) {
+      markKlevgoStartupTiming("loadPosts", "error", error);
+      throw error;
     } finally {
       setPostsLoadPromise(null);
 

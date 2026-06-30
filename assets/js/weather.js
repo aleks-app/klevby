@@ -1,3 +1,9 @@
+function markKlevgoStartupTiming(step, phase, detail) {
+  if (typeof window.klevgoStartupTimingMark === "function") {
+    window.klevgoStartupTimingMark(step, phase, detail);
+  }
+}
+
 function getBiteForecastByPressure(pressureMm) {
   const pressure = Number(pressureMm);
 
@@ -110,6 +116,8 @@ function windDirection(deg) {
 }
 
 async function fetchWeather() {
+  markKlevgoStartupTiming("fetchWeather", "start");
+
   const config = window.KLEVB_CONFIG || {};
   const weatherApiKey = config.WEATHER_API_KEY || window.WEATHER_API_KEY || "";
 
@@ -149,7 +157,9 @@ async function fetchWeather() {
       biteTitle: biteResult.shortText,
       biteDescription: biteResult.text
     });
+    markKlevgoStartupTiming("fetchWeather", "end");
   } catch (error) {
+    markKlevgoStartupTiming("fetchWeather", "error", error);
     console.error(error);
 
     const fallbackTempText = "+14°C";

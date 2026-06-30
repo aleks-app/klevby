@@ -1,4 +1,11 @@
 const KLEVB_RECENT_LOGOUT_GUARD_MS = 10 * 60 * 1000;
+
+function markKlevgoStartupTiming(step, phase, detail) {
+  if (typeof window.klevgoStartupTimingMark === "function") {
+    window.klevgoStartupTimingMark(step, phase, detail);
+  }
+}
+
 const KLEVB_RECENT_LOGOUT_STORAGE_KEY = "klevby_recent_logout_at";
 const KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR = [
   "sb-oecdshvozssadztcokog-auth-token",
@@ -809,7 +816,12 @@ function setAuthMode(mode) {
 }
 
 async function restoreAuthState(reason = "manual", reloadData = false) {
-  if (!supabaseClient || authRestoreInProgress) return currentUser;
+  markKlevgoStartupTiming("restoreAuthState", "start");
+
+  if (!supabaseClient || authRestoreInProgress) {
+    markKlevgoStartupTiming("restoreAuthState", "end");
+    return currentUser;
+  }
 
   if (isAuthLogoutGuardActive()) {
     refreshGuestStateDuringLogoutGuard();
@@ -818,12 +830,14 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
       reloadPondsIfReady();
     }
     maybeResetAuthFormUiAfterRestore();
+    markKlevgoStartupTiming("restoreAuthState", "end");
     return null;
   }
 
   const now = Date.now();
 
   if (reason !== "init" && now - lastAuthRestoreAt < 900) {
+    markKlevgoStartupTiming("restoreAuthState", "end");
     return currentUser;
   }
 
@@ -833,18 +847,42 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
   const previousUserId = currentUser?.id || null;
 
   try {
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    markKlevgoStartupTiming("supabase.auth.getSession", "start");
+    let sessionData;
+    let sessionError;
+    try {
+      const sessionResult = await supabaseClient.auth.getSession();
+      sessionData = sessionResult.data;
+      sessionError = sessionResult.error;
+      markKlevgoStartupTiming("supabase.auth.getSession", "end");
+    } catch (error) {
+      markKlevgoStartupTiming("supabase.auth.getSession", "error", error);
+      throw error;
+    }
 
     if (sessionError) {
+      markKlevgoStartupTiming("supabase.auth.getSession", "error", sessionError);
       console.warn("Не удалось получить Supabase session:", sessionError);
     }
 
     let restoredUser = sessionData?.session?.user || null;
 
     if (!restoredUser) {
-      const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+      markKlevgoStartupTiming("supabase.auth.getUser", "start");
+      let userData;
+      let userError;
+      try {
+        const userResult = await supabaseClient.auth.getUser();
+        userData = userResult.data;
+        userError = userResult.error;
+        markKlevgoStartupTiming("supabase.auth.getUser", "end");
+      } catch (error) {
+        markKlevgoStartupTiming("supabase.auth.getUser", "error", error);
+        throw error;
+      }
 
       if (userError) {
+        markKlevgoStartupTiming("supabase.auth.getUser", "error", userError);
         console.warn("Не удалось получить Supabase user:", userError);
       }
 
@@ -853,6 +891,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
 
     if (isAuthLogoutGuardActive()) {
       refreshGuestStateDuringLogoutGuard();
+      markKlevgoStartupTiming("restoreAuthState", "end");
       return null;
     }
 
@@ -877,8 +916,10 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
       reloadPondsIfReady();
     }
 
+    markKlevgoStartupTiming("restoreAuthState", "end");
     return currentUser;
   } catch (error) {
+    markKlevgoStartupTiming("restoreAuthState", "error", error);
     console.warn("Ошибка восстановления входа:", reason, error);
     authReady = true;
     syncGlobalAuthState();
@@ -907,7 +948,10 @@ function scheduleAuthRestore(reason = "resume", reloadData = false) {
 }
 
 async function initAuth() {
-  await restoreAuthState("init", false);
+  markKlevgoStartupTiming("initAuth", "start");
+
+  try {
+    await restoreAuthState("init", false);
 
   if (window.location.hash.includes("access_token")) {
     const resetModal = document.getElementById("resetModal");
@@ -932,6 +976,11 @@ async function initAuth() {
 
   await loadPosts();
   reloadPondsIfReady();
+    markKlevgoStartupTiming("initAuth", "end");
+  } catch (error) {
+    markKlevgoStartupTiming("initAuth", "error", error);
+    throw error;
+  }
 }
 
 function updateAuthStatus() {
