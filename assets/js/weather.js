@@ -73,6 +73,8 @@ const HOME_WEATHER_MODE_ICONS = {
   rainy: "assets/icons/weather/cloud-rain-wind.svg"
 };
 
+const WEATHER_FETCH_TIMEOUT_MS = 2000;
+
 function getSafeWeatherMode(mode) {
   return HOME_WEATHER_MODE_LABELS[mode] ? mode : "cloudy";
 }
@@ -115,6 +117,47 @@ function windDirection(deg) {
   return dirs[Math.round(deg / 45) % 8];
 }
 
+function createWeatherTimeoutError() {
+  return new Error("weather_timeout");
+}
+
+async function fetchWeatherWithTimeout(url, timeoutMs = WEATHER_FETCH_TIMEOUT_MS) {
+  if (typeof AbortController === "function") {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      return await fetch(url, { signal: controller.signal });
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw createWeatherTimeoutError();
+      }
+
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(createWeatherTimeoutError());
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      fetch(url),
+      timeoutPromise
+    ]);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 async function fetchWeather() {
   markKlevgoStartupTiming("fetchWeather", "start");
 
@@ -127,7 +170,7 @@ async function fetchWeather() {
     }
 
     const url = `https://api.openweathermap.org/data/2.5/weather?q=Minsk,BY&appid=${weatherApiKey}&units=metric&lang=ru`;
-    const response = await fetch(url);
+    const response = await fetchWeatherWithTimeout(url);
 
     if (!response.ok) {
       throw new Error("weather_error");
