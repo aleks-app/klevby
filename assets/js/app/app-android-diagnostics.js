@@ -61,6 +61,54 @@
     );
   }
 
+
+  function isPlainObject(value) {
+    if (!value || typeof value !== "object") return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  }
+
+  function sanitizeStartupTimingValue(value, seen = new WeakSet()) {
+    if (value == null) return value;
+    const valueType = typeof value;
+    if (valueType === "string" || valueType === "boolean") return value;
+    if (valueType === "number") return Number.isFinite(value) ? value : null;
+    if (valueType !== "object") return undefined;
+    if (seen.has(value)) return undefined;
+
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      return value
+        .slice(-25)
+        .map((item) => sanitizeStartupTimingValue(item, seen))
+        .filter((item) => item !== undefined);
+    }
+
+    if (!isPlainObject(value)) return undefined;
+
+    const sanitized = {};
+    Object.entries(value).forEach(([key, entryValue]) => {
+      const sanitizedValue = sanitizeStartupTimingValue(entryValue, seen);
+      if (sanitizedValue !== undefined) sanitized[key] = sanitizedValue;
+    });
+    return sanitized;
+  }
+
+  function getStartupTimingsSnapshot() {
+    const timings = window.__KLEVGO_STARTUP_TIMINGS__;
+    if (!isPlainObject(timings)) return { available: false };
+
+    return {
+      available: true,
+      startedAt: sanitizeStartupTimingValue(timings.startedAt) ?? null,
+      events: sanitizeStartupTimingValue(Array.isArray(timings.events) ? timings.events : []) || [],
+      latestEvents: sanitizeStartupTimingValue(Array.isArray(timings.latestEvents) ? timings.latestEvents : []) || [],
+      durations: sanitizeStartupTimingValue(isPlainObject(timings.durations) ? timings.durations : {}) || {},
+      lastError: sanitizeStartupTimingValue(timings.lastError) ?? null
+    };
+  }
+
   function getCapacitorNativeState() {
     const capacitor = window.Capacitor;
     if (!capacitor || typeof capacitor.isNativePlatform !== "function") {
@@ -786,6 +834,7 @@
         locationHref: window.location.href,
         documentReadyState: document.readyState,
         documentVisibilityState: document.visibilityState,
+        startupTimings: getStartupTimingsSnapshot(),
         capacitorPlatform:
           isNativePlatform && typeof capacitor.getPlatform === "function"
             ? capacitor.getPlatform()
