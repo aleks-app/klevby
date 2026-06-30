@@ -6,6 +6,23 @@ function markKlevgoStartupTiming(step, phase, detail) {
   }
 }
 
+function getKlevgoLoadPosts() {
+  if (typeof window.loadPosts === "function") return window.loadPosts;
+  if (typeof window.KlevbyPostsApi?.loadPosts === "function") {
+    return window.KlevbyPostsApi.loadPosts;
+  }
+  return null;
+}
+
+async function runKlevgoLoadPosts(options) {
+  const loadPostsFn = getKlevgoLoadPosts();
+  if (typeof loadPostsFn !== "function") {
+    console.warn("KlevGo auth: loadPosts is not available yet; skipping startup posts load.");
+    return null;
+  }
+  return loadPostsFn(options);
+}
+
 const KLEVB_RECENT_LOGOUT_STORAGE_KEY = "klevby_recent_logout_at";
 const KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR = [
   "sb-oecdshvozssadztcokog-auth-token",
@@ -826,7 +843,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
   if (isAuthLogoutGuardActive()) {
     refreshGuestStateDuringLogoutGuard();
     if (reloadData) {
-      await loadPosts();
+      await runKlevgoLoadPosts();
       reloadPondsIfReady();
     }
     maybeResetAuthFormUiAfterRestore();
@@ -909,7 +926,7 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
     syncKnownProfileUserId(newUserId);
 
     if (reloadData || userChanged) {
-      await loadPosts();
+      await runKlevgoLoadPosts();
       reloadPondsIfReady();
     } else {
       renderPosts();
@@ -974,7 +991,7 @@ async function initAuth() {
     showSection("auth");
   }
 
-  await loadPosts();
+  await runKlevgoLoadPosts();
   reloadPondsIfReady();
     markKlevgoStartupTiming("initAuth", "end");
   } catch (error) {
@@ -1318,7 +1335,7 @@ async function logout() {
     forceGuestAuthState();
     resetAuthFormUiState();
     setAuthMode("register");
-    await loadPosts();
+    await runKlevgoLoadPosts();
     reloadPondsIfReady();
     markAuthLogoutFinished();
 
