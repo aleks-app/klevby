@@ -23,6 +23,46 @@ async function runKlevgoLoadPosts(options) {
   return loadPostsFn(options);
 }
 
+let klevgoStartupPostsLoadScheduled = false;
+
+function scheduleKlevgoStartupPostsLoad(reason = "startup") {
+  if (klevgoStartupPostsLoadScheduled) {
+    return false;
+  }
+
+  klevgoStartupPostsLoadScheduled = true;
+  const maxAttempts = 3;
+  const retryDelayMs = 400;
+
+  const runWhenReady = (attempt = 1) => {
+    setTimeout(() => {
+      if (typeof getKlevgoLoadPosts() !== "function") {
+        if (attempt < maxAttempts) {
+          runWhenReady(attempt + 1);
+          return;
+        }
+
+        klevgoStartupPostsLoadScheduled = false;
+        console.warn("KlevGo auth: loadPosts is not available yet; skipping startup posts load.");
+        reloadPondsIfReady();
+        return;
+      }
+
+      runKlevgoLoadPosts()
+        .catch((error) => {
+          console.warn("KlevGo auth: startup posts load failed:", reason, error);
+        })
+        .finally(() => {
+          reloadPondsIfReady();
+        });
+    }, attempt === 1 ? 0 : retryDelayMs);
+  };
+
+  runWhenReady();
+
+  return true;
+}
+
 const KLEVB_RECENT_LOGOUT_STORAGE_KEY = "klevby_recent_logout_at";
 const KLEVB_AUTH_STORAGE_KEYS_TO_CLEAR = [
   "sb-oecdshvozssadztcokog-auth-token",
@@ -843,8 +883,12 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
   if (isAuthLogoutGuardActive()) {
     refreshGuestStateDuringLogoutGuard();
     if (reloadData) {
-      await runKlevgoLoadPosts();
-      reloadPondsIfReady();
+      if (reason === "init") {
+        scheduleKlevgoStartupPostsLoad("restoreAuthState:logout-guard");
+      } else {
+        await runKlevgoLoadPosts();
+        reloadPondsIfReady();
+      }
     }
     maybeResetAuthFormUiAfterRestore();
     markKlevgoStartupTiming("restoreAuthState", "end");
@@ -925,7 +969,9 @@ async function restoreAuthState(reason = "manual", reloadData = false) {
     handleProfileStorageOnAccountSwitch(previousUserId, newUserId);
     syncKnownProfileUserId(newUserId);
 
-    if (reloadData || userChanged) {
+    if (reason === "init") {
+      renderPosts();
+    } else if (reloadData || userChanged) {
       await runKlevgoLoadPosts();
       reloadPondsIfReady();
     } else {
@@ -970,29 +1016,28 @@ async function initAuth() {
   try {
     await restoreAuthState("init", false);
 
-  if (window.location.hash.includes("access_token")) {
-    const resetModal = document.getElementById("resetModal");
-    if (resetModal) {
-      resetModal.classList.remove("hidden");
+    if (window.location.hash.includes("access_token")) {
+      const resetModal = document.getElementById("resetModal");
+      if (resetModal) {
+        resetModal.classList.remove("hidden");
+      }
     }
-  }
 
-  const pendingSignup = currentUser ? null : getPendingSignup();
-  if (pendingSignup) {
-    fillPendingSignupInputs(pendingSignup);
-    window.klevbyAuthStatusNotice = "Введите код из письма. Если писем несколько — используйте последний код.";
-  }
+    const pendingSignup = currentUser ? null : getPendingSignup();
+    if (pendingSignup) {
+      fillPendingSignupInputs(pendingSignup);
+      window.klevbyAuthStatusNotice = "Введите код из письма. Если писем несколько — используйте последний код.";
+    }
 
-  setAuthMode(currentUser ? "login" : (pendingSignup ? "verify" : "register"));
-  updateAuthStatus();
-  fillAuthorLocal();
+    setAuthMode(currentUser ? "login" : (pendingSignup ? "verify" : "register"));
+    updateAuthStatus();
+    fillAuthorLocal();
 
-  if (!currentUser && typeof showSection === "function") {
-    showSection("auth");
-  }
+    if (!currentUser && typeof showSection === "function") {
+      showSection("auth");
+    }
 
-  await runKlevgoLoadPosts();
-  reloadPondsIfReady();
+    scheduleKlevgoStartupPostsLoad("initAuth");
     markKlevgoStartupTiming("initAuth", "end");
   } catch (error) {
     markKlevgoStartupTiming("initAuth", "error", error);
@@ -1448,4 +1493,3 @@ window.closeResetModal = closeResetModal;
   }
 })();
 // /TEMP auth skip button
-
